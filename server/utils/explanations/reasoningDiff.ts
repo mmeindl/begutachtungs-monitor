@@ -334,13 +334,16 @@ interface EntryInput {
 function fill(f: Filling, unit: LawDiffUnit, key: string, make: () => EntryInput): void {
   if (f.skipped.has(key)) return
   if (!f.out.entries[key]) {
-    if (Object.keys(f.out.entries).length >= MAX_ENTRIES) {
-      f.capped.add(diffUnitKey(unit))
-      return
-    }
+    // The texts before the ceiling (20.11.2026): a unit the ceiling turns
+    // away keeps silent because its Begründung was found (`capped`), and
+    // asked first, the ceiling also took units whose passage had no text.
     const { label, basis, a, b, uncompared } = make()
     if (!b || (!a && !uncompared)) {
       f.skipped.add(key)
+      return
+    }
+    if (Object.keys(f.out.entries).length >= MAX_ENTRIES) {
+      f.capped.add(diffUnitKey(unit))
       return
     }
     f.out.entries[key] = uncompared && !sameWords(a, b)
@@ -1519,6 +1522,8 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       // A real unit under the half's key keeps its own entry.
       if (byKey.has(diffUnitKey(half))) continue
       joinAtParagraph(f, [half], ambiguous, byLaw, read)
+      // A half the ceiling turned away is its unit's: found, so no gap line.
+      if (f.capped.has(diffUnitKey(half))) f.capped.add(diffUnitKey(unit))
       const key = f.out.units[diffUnitKey(half)]
       if (!key) continue
       Reflect.deleteProperty(f.out.units, diffUnitKey(half))
@@ -1641,8 +1646,8 @@ function provesAbsence(doc: HtmlExplanations, other: HtmlExplanations, unit: Law
   if (paras.size === 0 && !(ziffer && doc.special.some((p) => p.ziffern.length > 0))) return false
   if (namesChange(doc, ziffer, paras, unitArticle(unit, side))) return false
   const theirs = changeParagraphs(unit, side === 'before' ? 'after' : 'before', read)
-  const witnesses = other.special.filter((p) => p.paragraphs.some((x) => theirs.has(explanationParaId(x) ?? ''))).map((p) => passageWords(p.text))
-  return !witnesses.some((w) => doc.special.some((p) => sharesWords(w, passageWords(p.text))))
+  const witnesses = other.special.filter((p) => p.paragraphs.some((x) => theirs.has(explanationParaId(x) ?? ''))).map(passageWords)
+  return !witnesses.some((w) => doc.special.some((p) => sharesWords(w, passageWords(p))))
 }
 
 /** The §§ a change is about on one side: a new law's § by its own designation (`unitParagraph`), an instruction's by what it amends. */
@@ -1652,9 +1657,29 @@ function changeParagraphs(unit: LawDiffUnit, side: Side, read: Readings): Readon
   return new Set(own ? [own] : [])
 }
 
-/** A passage's words, lower-cased, for `sharesWords`. */
-function passageWords(text: readonly string[]): string[] {
-  return text.join(' ').toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []
+/** A passage's words, lower-cased, as counts and their sum — for `sharesWords`. */
+interface PassageWords {
+  counts: ReadonlyMap<string, number>
+  total: number
+}
+
+/**
+ * Read once per passage (20.11.2026). `provesAbsence` asks for every change
+ * the words of every passage of the document, and built them, with a count
+ * map, per witness and per candidate: 43/ME XXVIII (164 passages, 73 changes)
+ * took 513 ms where it had taken 31 — inside the cached service, on the small
+ * production heap.
+ */
+const wordsOf = new WeakMap<HtmlPassage, PassageWords>()
+function passageWords(passage: HtmlPassage): PassageWords {
+  let words = wordsOf.get(passage)
+  if (!words) {
+    const counts = new Map<string, number>()
+    const tokens = passage.text.join(' ').toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []
+    for (const t of tokens) counts.set(t, (counts.get(t) ?? 0) + 1)
+    wordsOf.set(passage, (words = { counts, total: tokens.length }))
+  }
+  return words
 }
 
 /**
@@ -1665,20 +1690,13 @@ function passageWords(text: readonly string[]): string[] {
  * shorter text, not of both. Used only to withhold „nicht gefunden": a
  * wrong hit costs a line its reason, never its truth.
  */
-function sharesWords(a: readonly string[], b: readonly string[]): boolean {
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
-  if (short.length < 8) return false
-  const count = new Map<string, number>()
-  for (const t of long) count.set(t, (count.get(t) ?? 0) + 1)
+function sharesWords(a: PassageWords, b: PassageWords): boolean {
+  const [short, long] = a.total <= b.total ? [a, b] : [b, a]
+  if (short.total < 8) return false
+  // Each word of the shorter as often as the longer has it, at most.
   let common = 0
-  for (const t of short) {
-    const c = count.get(t) ?? 0
-    if (c > 0) {
-      common++
-      count.set(t, c - 1)
-    }
-  }
-  return common / short.length >= 0.7
+  for (const [t, n] of short.counts) common += Math.min(n, long.counts.get(t) ?? 0)
+  return common / short.total >= 0.7
 }
 
 /**

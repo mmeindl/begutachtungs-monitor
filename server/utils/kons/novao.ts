@@ -1473,6 +1473,8 @@ const COMPOUND_SPLIT = /[;,]\s*(?=[A-Za-zÄÖÜ§])|\s+(?:sowie|und)\s+/gi
 // of three operands, refused as „Paarbildung unklar", and with it the chain
 // of renumberings it stood in (32/ME XXVIII, E-ControlG § 23; 27.10.2026).
 const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfäll[te]\b|\bentfallen\b|\bgestrichen\b|\baufgehoben\b|bezeichnung(?:en)?\b|\bbezeichnet\b|wie folgt geändert|\b(?:wird|werden)\s+zu(?=\s*§)/i
+/** `VERB_RE`, every occurrence (`splitCompound`). */
+const VERB_ALL_RE = new RegExp(VERB_RE.source, 'gi')
 
 /**
  * „Der bisherige § 57 erhält die Absatzbezeichnung ‚(1)'. Als neuer Abs. 2
@@ -1510,6 +1512,13 @@ export function splitCompound(line: string): string[] {
   const masked = line.replace(/"[^"]*"/g, (m) => '\u0000'.repeat(m.length))
   const bounds: number[] = []
   const gapped = new Set<number>()
+  // The verbs once, not every slice against VERB_RE (20.11.2026): a new
+  // law's § read as an instruction (the Begründung's § join) has hundreds of
+  // separators, and testing both halves at each was quadratic — 43/ME XXVIII,
+  // the EABG, spent three quarters of its Begründungsvergleich of half a
+  // second here. A slice starts and ends at a separator, so no verb is cut.
+  const verbs = [...masked.matchAll(VERB_ALL_RE)].map((v) => [v.index, v.index + v[0].length] as const)
+  const verbIn = (from: number, to: number): boolean => verbs.some(([a, b]) => a >= from && b <= to)
   let last = 0
   for (const m of masked.matchAll(COMPOUND_SPLIT)) {
     const at = m.index! + m[0].length
@@ -1528,11 +1537,13 @@ export function splitCompound(line: string): string[] {
     // Nor does a half that opens with „durch": „das Wort ‚oder' gestrichen
     // und durch einen Beistrich ersetzt" is one replacement with two verbs,
     // the object stands in front of both (217ED740, 27.10.2026).
-    const left = masked.slice(last, m.index!)
-    if (VERB_RE.test(left) && VERB_RE.test(masked.slice(at)) && !/^\s*durch\b/i.test(masked.slice(at))) {
+    const leftVerb = verbIn(last, m.index!)
+    if (leftVerb && verbIn(at, masked.length) && !/^\s*durch\b/i.test(masked.slice(at, at + 40))) {
       bounds.push(m.index!, at)
       last = at
-    } else if (/^\s+und\s+$/.test(m[0]) && !VERB_RE.test(left) && GAPPED_LEFT_RE.test(maskQuotes(line.slice(last, m.index!))) && GAPPED_RIGHT_RE.test(maskQuotes(line.slice(at)))) {
+      // The gapped form ends its left side in a quotation: asked first, the
+      // backtracking pattern runs only where it can match.
+    } else if (/^\s+und\s+$/.test(m[0]) && !leftVerb && masked.slice(Math.max(last, m.index! - 8), m.index!).trimEnd().endsWith('\u0000') && GAPPED_LEFT_RE.test(maskQuotes(line.slice(last, m.index!))) && GAPPED_RIGHT_RE.test(maskQuotes(line.slice(at)))) {
       gapped.add(bounds.length)
       bounds.push(m.index!, at)
       last = at
