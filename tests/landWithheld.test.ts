@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { enactedNote, moveTargets, quotedInstruction, reachesGroups, reachesNote, renumberedNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
+import { enactedNote, moveTargets, quotedInstruction, reachesGroups, reachesNote, renumberedNote, unreadAnnouncedNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
 
 describe('withheldGroups — where the page counts a § it does not show', () => {
   it('files a § of another law under that law, not under the one group shown (Kärnten 38532/2024)', () => {
@@ -130,5 +130,19 @@ describe('reachesGroups — instructions said for their law (26.10.2026)', () =>
     expect(reachesGroups([{ law: 'M', instruction: 'Das Gesetz M, LGBl. Nr. 1/2000, tritt außer Kraft.', repeal: true }], []).get('M')).toEqual([{ instruction: 'Das Gesetz M, LGBl. Nr. 1/2000, tritt außer Kraft.', repeal: true }])
     expect(quotedInstruction('Der 4. Abschnitt lautet:')).toBe('Der 4. Abschnitt lautet: …')
     expect(quotedInstruction('Im ganzen Gesetz wird „x“ durch „y“ ersetzt.')).toBe('Im ganzen Gesetz wird „x“ durch „y“ ersetzt.')
+  })
+})
+
+describe('the announced text a station pair did not read (19.11.2026)', () => {
+  it('names the withheld instructions with what is missing where, and the lead the list keeps', () => {
+    const [note] = withheldNotes([{ law: 'V', id: 'Z2', reason: 'announced' }, { law: 'V', id: 'Z3', reason: 'announced' }])
+    expect(note).toMatchObject({ cause: 'announced', ids: ['Z2', 'Z3'], lead: 'Nicht gezeigt:' })
+    expect(note!.text).toContain('in einem der beiden Dokumente nicht an seiner Stelle')
+  })
+
+  it('says of instructions shown which part of them is not compared, as a gap sentence', () => {
+    expect(unreadAnnouncedNote([])).toBeNull()
+    expect(unreadAnnouncedNote(['Z1'])).toBe('Nicht lesbar: Z 1. Den Text, den diese Anweisung ankündigt – etwa einen Eintrag im Inhaltsverzeichnis –, fand der Monitor in keinem der beiden Dokumente an seiner Stelle; verglichen ist der Rest der Anweisung, dieser Text nicht.')
+    expect(unreadAnnouncedNote(['Z1', 'Z4', 'Z7'])).toMatch(/^Nicht lesbar: Z 1, Z 4 und Z 7\. Den Text, den diese Anweisungen ankündigen/)
   })
 })

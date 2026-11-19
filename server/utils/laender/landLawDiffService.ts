@@ -25,13 +25,15 @@
  * held for the day.
  */
 import { gapDe } from '#shared/utils/gaps'
-import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandTextStation } from '#shared/types'
+import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandTextStation, LawDiffUnit } from '#shared/types'
 import { landDraftPath } from '#shared/utils/laender'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { summarizeDiff } from '../diff/lawDiff'
-import { diffLandDraft, packageChanges } from './landLawDiff'
+import type { LawUnit } from '../lawtext/lawUnits'
+import { announcedKey, announcedReading, announcedVerdict } from './announcedText'
+import { comparedText, diffLandDraft, packageChanges } from './landLawDiff'
 import { compareTgu } from './landTguService'
 import { draftsSharingKundmachung } from './sources'
 import { NOT_A_DRAFT, type ReadText } from './texts/read'
@@ -115,10 +117,12 @@ export function compareReadTexts(from: LandTextStation, to: LandTextStation, rea
     const missing = !x?.length ? docs.fromDocument.label : docs.toDocument.label
     return unavailable(from, to, gapDe('unreadable', `In „${missing}“ fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.`), docs)
   }
-  const units = diffLandDraft(x, y)
+  const all = diffLandDraft(x, y)
   const { added, dropped } = packageChanges(x, y)
+  const overall = summarizeDiff(all)
+  if (!overall.unchanged && !overall.changed) return unavailable(from, to, NOTHING_PAIRS, docs)
+  const { units, withheld, unread } = settleAnnounced(all, x, y)
   const s = summarizeDiff(units)
-  if (!s.unchanged && !s.changed) return unavailable(from, to, NOTHING_PAIRS, docs)
   return {
     from,
     to,
@@ -130,8 +134,40 @@ export function compareReadTexts(from: LandTextStation, to: LandTextStation, rea
     addedLaws: added,
     droppedLaws: dropped,
     sharedWith: [],
-    withheld: [],
+    withheld,
+    ...(unread.length ? { unreadAnnounced: unread } : {}),
   }
+}
+
+/**
+ * The instructions whose announced text a reader did not find in its place
+ * (`announcedText.ts`, 19.11.2026): withheld where the two sides read it
+ * differently — the diff would show as new or gone what both documents
+ * carry (Salzburg 33884's Abschussplan rows, Oberösterreich 16103's
+ * table-of-contents entry) —, named as unread where both lack it alike.
+ */
+function settleAnnounced(all: LawDiffUnit[], x: readonly LawUnit[], y: readonly LawUnit[]): {
+  units: LawDiffUnit[]
+  withheld: LandLawDiffResponse['withheld']
+  unread: NonNullable<LandLawDiffResponse['unreadAnnounced']>
+} {
+  const before = announcedReading(x, comparedText)
+  const after = announcedReading(y, comparedText)
+  const units: LawDiffUnit[] = []
+  const withheld: LandLawDiffResponse['withheld'] = []
+  const unread: NonNullable<LandLawDiffResponse['unreadAnnounced']> = []
+  for (const u of all) {
+    const from = u.fromId === null || u.fromText === null ? undefined : before.get(announcedKey(u.fromId, u.fromText))
+    const to = u.change === 'removed' || u.toText === null ? undefined : after.get(announcedKey(u.id, u.toText))
+    const verdict = announcedVerdict(u.change, from, to)
+    if (verdict === 'withhold') {
+      withheld.push({ law: u.article, id: u.id, ...(u.fromId && u.fromId !== u.id ? { fromId: u.fromId } : {}), reason: 'announced' })
+      continue
+    }
+    if (verdict === 'unread') unread.push({ law: u.article, id: u.id })
+    units.push(u)
+  }
+  return { units, withheld, unread }
 }
 
 /**

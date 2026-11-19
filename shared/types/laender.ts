@@ -352,6 +352,14 @@ export interface LandLawDiffResponse {
    * `repeal`: nothing is left to compose). Only `geltend → entwurf`.
    */
   reaches?: { law: string | null; instruction: string; repeal?: true }[]
+  /**
+   * Instructions shown whose announced text — a table's row, an entry of the
+   * table of contents — neither side's reader found in its place
+   * (`announcedText.ts`, 19.11.2026): the rest of the instruction is
+   * compared, that text is not. Where only one side lacks it the unit is
+   * `withheld` (reason `announced`) instead. Station pairs only.
+   */
+  unreadAnnounced?: { law: string | null; id: string }[]
   /** Pages of the Land's document the reader did not read; said as the Bund's annex says it (`annexDroppedPagesNote`). */
   droppedPages?: number
   /**
@@ -427,7 +435,7 @@ export interface LandLawDiffResponse {
  *    text RIS holds in no single version the monitor reads with certainty
  *    (19.11.2026).
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'enactedUnread' | 'notInDraft'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'enactedUnread' | 'notInDraft' | 'announced'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

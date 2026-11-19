@@ -47,7 +47,11 @@ const committeeSentence = computed(() => landCommitteeSentenceDe(props.land))
       <dt>Lieber kein Vergleich als ein falscher</dt>
       <dd>
         Haben zwei Texte keinen einzigen Teil gemeinsam, zeigen wir keinen
-        Vergleich, statt alles als neu zu melden.
+        Vergleich, statt alles als neu zu melden. Ebenso bei einer Anordnung,
+        deren angekündigten Text – eine Zeile einer Tabelle oder des
+        Inhaltsverzeichnisses – wir in einem der beiden Dokumente nicht an
+        seiner Stelle finden: Sie steht dann als „nicht gezeigt“ bei ihrem
+        Gesetz.
       </dd>
     </div>
     <div>

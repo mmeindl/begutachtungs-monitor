@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { LandLawDiffResponse } from '#shared/types'
 import { displayId } from '#shared/utils/unitName'
-import { IN_FORCE_MARK, enactedNote, quotedInstruction, reachesNote, withheldNotes, type Reach } from '~/utils/landWithheld'
+import { IN_FORCE_MARK, enactedNote, quotedInstruction, reachesNote, unreadAnnouncedNote, withheldNotes, type Reach } from '~/utils/landWithheld'
 
 /**
- * The §§ of one law that the comparison does not show, one line per cause
+ * The §§ (on a station pair: the instructions) of one law that the
+ * comparison does not show, one line per cause
  * (`withheldNotes`, 25.10.2026) — each with the sentence that is true of
  * it, and the way to the Land's document, which shows them. After them the
  * law's instructions that reach §§ they do not name, as the document prints
@@ -24,9 +25,18 @@ const props = defineProps<{
   movedTo?: ReadonlySet<string>
   /** The document that shows them is the Landesgesetzblatt (a Landesgesetz's page), not the Land's Textgegenüberstellung. */
   lgbl?: boolean
+  /**
+   * A station pair (19.11.2026): no Textgegenüberstellung shows the
+   * instructions; both documents are linked under the comparison, and the
+   * cause's sentence says what is missing where.
+   */
+  station?: boolean
+  /** Instructions shown whose announced text neither side read (`unreadAnnounced`), for this law */
+  unread?: readonly string[]
 }>()
 
 const notes = computed(() => withheldNotes(props.items, { alone: props.alone, movedTo: props.movedTo }))
+const unreadNote = computed(() => unreadAnnouncedNote(props.unread ?? []))
 const reaching = reachesNote()
 
 /* „§ 3, § 7 und § 12": the joint before the k-th of n. */
@@ -36,11 +46,13 @@ const joint = (k: number, n: number) => (k === 0 ? '' : k === n - 1 ? ' und ' : 
 <template>
   <p v-for="n in notes" :key="n.cause" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
     {{ n.lead }} <template v-for="(id, k) in n.ids" :key="k">{{ joint(k, n.ids.length) }}<!-- A renumbered § as the comparison names it, „§ 13 → § 9" (26.10.2026). --><template v-if="n.fromIds[k]">{{ displayId(n.fromIds[k]!) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(id) }}<template v-if="n.inForce[k]">&nbsp;{{ IN_FORCE_MARK }}</template></template>. <template v-if="n.text">{{ n.text }}. </template>
-    <template v-if="lgbl && documentUrl">Das <ExternalLink :href="documentUrl" class="link-inline">Landesgesetzblatt</ExternalLink> zeigt die Anweisungen.</template>
+    <template v-if="station" />
+    <template v-else-if="lgbl && documentUrl">Das <ExternalLink :href="documentUrl" class="link-inline">Landesgesetzblatt</ExternalLink> zeigt die Anweisungen.</template>
     <template v-else-if="lgbl">Das Landesgesetzblatt zeigt die Anweisungen.</template>
     <template v-else-if="documentUrl">Die <ExternalLink :href="documentUrl" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ n.pronoun }}.</template>
     <template v-else>Die Textgegenüberstellung des Landes zeigt {{ n.pronoun }}.</template>
   </p>
+  <GapNote v-if="unreadNote" :text="unreadNote" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary" />
   <p v-if="enacted" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ enactedNote() }}</p>
   <p v-for="r in reaches ?? []" :key="r.instruction" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
     {{ reaching.lead }} <span class="italic">{{ quotedInstruction(r.instruction) }}</span><template v-if="!r.repeal"> {{ reaching.after }}</template>

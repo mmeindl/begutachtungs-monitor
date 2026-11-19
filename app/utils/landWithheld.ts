@@ -6,7 +6,8 @@
  * Pure: no Vue, no Nuxt — tests/landWithheld.test.ts runs it as it is.
  */
 import type { LandLawDiffResponse } from '#shared/types'
-import { renumberedFrom } from '#shared/utils/unitName'
+import { gapDe } from '#shared/utils/gaps'
+import { displayId, renumberedFrom } from '#shared/utils/unitName'
 
 export type LandWithheld = LandLawDiffResponse['withheld'][number]
 
@@ -72,6 +73,12 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     lead: 'Nicht gezeigt:',
     one: 'Einen Teil dessen, was die Textgegenüberstellung bei ihm als neu zeigt, fand der Monitor im Entwurf an dieser Stelle nicht – das kann daran liegen, wie der Monitor die beiden Texte liest',
     many: 'Einen Teil dessen, was die Textgegenüberstellung bei ihnen als neu zeigt, fand der Monitor im Entwurf an diesen Stellen nicht – das kann daran liegen, wie der Monitor die beiden Texte liest',
+  },
+  // A station pair (19.11.2026, `announcedText.ts`): one side's reader did not find what the instruction announces, so the diff would show it as new or gone.
+  announced: {
+    lead: 'Nicht gezeigt:',
+    one: 'Den Text, den diese Anweisung ankündigt – etwa eine Zeile einer Tabelle oder des Inhaltsverzeichnisses –, fand der Monitor in einem der beiden Dokumente nicht an seiner Stelle, und ein Vergleich würde ihn als neu oder als entfallen zeigen. Das liegt daran, wie der Monitor die Dokumente liest',
+    many: 'Den Text, den diese Anweisungen ankündigen – etwa Zeilen einer Tabelle oder des Inhaltsverzeichnisses –, fand der Monitor in einem der beiden Dokumente nicht an seiner Stelle, und ein Vergleich würde ihn als neu oder als entfallen zeigen. Das liegt daran, wie der Monitor die Dokumente liest',
   },
   twice: {
     lead: 'Nicht gezeigt:',
@@ -139,7 +146,7 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
+const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'announced', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
  * The numbers other §§ of a group move to: „§ 34 → § 33" makes § 33 one
@@ -179,6 +186,23 @@ export function withheldNotes(items: readonly LandWithheld[], { alone = false, m
     const inForce = listed.map((w) => !w.fromId && w.reason !== 'inserted' && movedTo.has(w.id))
     return { cause, ids, fromIds: listed.map((w) => (renumberedFrom(w.fromId, w.id) ? w.fromId! : null)), inForce, lead, text: ids.length === 1 ? note.one : note.many, pronoun: ids.length === 1 && cause !== 'annex' ? 'ihn' as const : 'sie' as const }
   })
+}
+
+/**
+ * The instructions of a station pair that are shown, and whose announced
+ * text neither side's reader found in its place (`unreadAnnounced`,
+ * 19.11.2026): „Nicht lesbar: Z 1 und Z 4. …" — a gap sentence, since the
+ * rest of each instruction is compared and only that text is not. Null
+ * where there are none. Ids as the comparison names them (`displayId`).
+ */
+export function unreadAnnouncedNote(ids: readonly string[]): string | null {
+  if (!ids.length) return null
+  const named = ids.map(displayId)
+  const list = named.length === 1 ? named[0]! : `${named.slice(0, -1).join(', ')} und ${named.at(-1)}`
+  const text = ids.length === 1
+    ? 'Den Text, den diese Anweisung ankündigt – etwa einen Eintrag im Inhaltsverzeichnis –, fand der Monitor in keinem der beiden Dokumente an seiner Stelle; verglichen ist der Rest der Anweisung, dieser Text nicht.'
+    : 'Den Text, den diese Anweisungen ankündigen – etwa Einträge im Inhaltsverzeichnis –, fand der Monitor in keinem der beiden Dokumente an seiner Stelle; verglichen ist der Rest der Anweisungen, dieser Text nicht.'
+  return gapDe('unreadable', `${list}. ${text}`)
 }
 
 /**

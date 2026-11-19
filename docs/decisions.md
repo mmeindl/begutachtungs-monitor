@@ -1100,6 +1100,30 @@ gets an entry of its own only where it carries a reason the rule does not.
   is listed — never as „eine Anweisung nennt ihn", and never dropped.
 - **„Entfallen" only where the draft says so.** An empty right column can be
   text the reader missed (§12.52).
+- **An instruction whose announced text a reader did not find in its place
+  is not compared as if it had none** (19.11.2026, `announcedText.ts`,
+  `settleAnnounced` in `landLawDiffService.ts`). A Land's PDF sets a
+  schedule's row or a table-of-contents entry as a table; its text layer
+  puts it elsewhere, or the reader drops it (table-of-contents entries by
+  design, on both sides), and the Landesgesetzblatt's reader loses an
+  announced heading the same way. Where one side lost the text, the station
+  comparison showed it as new or as gone — Salzburg 33884's Abschussplan
+  rows as added in the Landesgesetzblatt and removed from the next
+  instruction (the real change: row 2.3 from 45 86 61 to 43 80 59),
+  Oberösterreich 16103's entry „§ 49a" as added, Salzburg 31409's six new
+  headings as removed. Such a unit is now **withheld** („Nicht gezeigt",
+  reason `announced`); where both sides lack the text alike the unit is
+  shown and named in a „Nicht lesbar" line (`unreadAnnounced`): the rest of
+  the instruction is compared, that text is not. Checked only in an
+  instruction (in a §, a colon before a list is the law's own); a row of
+  figures after the colon is the text, not a sub-instruction („2.3 43 80
+  59"); trailing quotations count as displaced only where they are row-like
+  and the instructions before left exactly as many announcements empty.
+  Old against new over the 372 cached station pairs: 37 units in 21 pairs
+  withheld, each read — two of them over-withheld (Salzburg 32001 and 32075:
+  the Vorlage adds table-of-contents sub-instructions, real but unreadable
+  in content). Reading the tables in place, from the page's geometry, is
+  the fix that would show these instead; not built.
 - **A document a Land files as the draft but that is not one is not read as
   the draft;** the page says so (§12.63). Among several candidates the
   content decides, not the title: where the first holds no law text, the

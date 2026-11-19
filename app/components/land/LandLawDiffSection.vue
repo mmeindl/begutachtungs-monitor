@@ -242,6 +242,16 @@ const withheldByGroup = computed(() => {
   return withheldGroups(data.value.withheld, units.value.map((u) => u.article))
 })
 
+/* A station pair (19.11.2026): neither the Textgegenüberstellung nor a Landesgesetz's page. */
+const station = computed(() => !ofDraft.value && !ofLaw.value)
+
+/* Instructions shown whose announced text neither side read (`unreadAnnounced`), per group; hidden by a search, as the withheld ones. */
+const unreadByGroup = computed(() => {
+  if (!data.value?.available || query.value.trim()) return new Map<string, string[]>()
+  const groups = withheldGroups(data.value.unreadAnnounced ?? [], units.value.map((u) => u.article))
+  return new Map([...groups].map(([key, items]) => [key, items.map((w) => w.id)]))
+})
+
 /* The title of a group of §§ the reader filed under no law of the package. */
 const UNFILED = 'Ohne Zuordnung zu einem Gesetz'
 
@@ -342,7 +352,7 @@ const groups = computed(() => {
     }
     flush()
     // A group of §§ only withheld, under no law: the reader could not tell which law of the package they are (Kärnten, 25.10.2026).
-    return { ...g, title: groupTitle(g.article) || (g.units.length ? '' : UNFILED), replacedBy: replacedBy.value.get(g.article) ?? null, blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
+    return { ...g, title: groupTitle(g.article) || (g.units.length ? '' : UNFILED), replacedBy: replacedBy.value.get(g.article) ?? null, blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], unread: unreadByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
   })
 })
 
@@ -375,7 +385,7 @@ const hasUnits = computed(() => units.value.length > 0)
           :open="groupOpen(law)"
           @toggle="toggleGroup(law)"
         >
-          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :enacted="enactedLaws.has(law)" :moved-to="movedToByGroup.get(law)" :document-url="(ofLaw ? data.toDocument?.url : data.fromDocument?.url) ?? null" :lgbl="ofLaw" alone />
+          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :enacted="enactedLaws.has(law)" :moved-to="movedToByGroup.get(law)" :document-url="(ofLaw ? data.toDocument?.url : data.fromDocument?.url) ?? null" :lgbl="ofLaw" :station="station" alone />
         </DiffGroup>
       </ListBox>
     </template>
@@ -428,7 +438,7 @@ const hasUnits = computed(() => units.value.length > 0)
                text. Named where the header counts it, each cause in its own
                words (`withheldNotes`), with the way to the document that does
                show it — so the §§ shown are not read as all the draft changes. -->
-          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :enacted="enactedLaws.has(g.article)" :moved-to="movedToByGroup.get(g.article)" :document-url="(ofLaw ? data.toDocument?.url : data.fromDocument?.url) ?? null" :lgbl="ofLaw" />
+          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :enacted="enactedLaws.has(g.article)" :moved-to="movedToByGroup.get(g.article)" :document-url="(ofLaw ? data.toDocument?.url : data.fromDocument?.url) ?? null" :lgbl="ofLaw" :station="station" :unread="g.unread" />
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
             Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.
           </p>

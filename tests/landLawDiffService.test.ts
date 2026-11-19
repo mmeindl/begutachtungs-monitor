@@ -18,7 +18,7 @@ vi.mock('../server/utils/laender/texts/stations', () => ({ textSources: vi.fn() 
 
 const { compareTgu } = vi.mocked(await import('../server/utils/laender/landTguService'))
 const { textSources } = vi.mocked(await import('../server/utils/laender/texts/stations'))
-const { cachedLandComparison, compareLandTexts } = await import('../server/utils/laender/landLawDiffService')
+const { cachedLandComparison, compareLandTexts, compareReadTexts } = await import('../server/utils/laender/landLawDiffService')
 
 const detail = { draft: { id: 'ktn-1-2025-1' }, comparisons: [['geltend', 'entwurf']] } as unknown as LandDraftDetail
 const answer = (withheld: LandLawDiffResponse['withheld']): LandLawDiffResponse => ({
@@ -63,5 +63,41 @@ describe('compareLandTexts — what the Land filed as the draft and is none (26.
     const ofDraft = { ...detail, comparisons: [['entwurf', 'lgbl']] } as unknown as LandDraftDetail
     const got = await compareLandTexts('sbg', ofDraft, 'entwurf', 'lgbl')
     expect(got.value).toMatchObject({ available: false, unavailableReason: 'Nicht veröffentlicht: Als Entwurf hat das Land ein anderes Dokument veröffentlicht; der Monitor liest es nicht als Entwurf.' })
+  })
+})
+
+describe('compareReadTexts — an instruction whose announced text one side did not read (19.11.2026)', () => {
+  const unit = (id: string, text: string) => ({ article: 'Abschussplanverordnung', articleNumber: null, id, heading: null, quotedHeadings: [], text, blocks: [{ kind: 'novao', cls: 'pdf', text, gld: null }] }) as never
+  const doc = (label: string) => ({ label, url: null, publisher: 'Land Salzburg' })
+  // Salzburg 33884: the draft's PDF sets the rows Z 2 announces after Z 3; the Landesgesetzblatt under Z 2.
+  const draft = [
+    unit('Z1', 'Im § 2 wird das Wort „Rotwild“ durch das Wort „Rot- und Gamswild“ ersetzt.'),
+    unit('Z2', 'Im § 3 werden folgende Änderungen vorgenommen: 2.1. Im Wildraum 2 lautet die die Wildregion 2.3 betreffende Zeile: 2.2. Im Wildraum 8 lautet die die Wildregion 8.2 betreffende Zeile:'),
+    unit('Z3', 'Im § 4 wird angefügt: „(2) Die §§ 1 und 3 treten mit dem auf die Kundmachung folgenden Tag in Kraft.“ „ 2.3 45 86 61 “ „ 8.2 35 80 50 “'),
+  ]
+  const lgbl = [
+    unit('Z1', 'Im § 2 wird das Wort „Rotwild“ durch das Wort „Rot- und Gamswild“ ersetzt.'),
+    unit('Z2', 'Im § 3 werden folgende Änderungen vorgenommen: 2.1. Im Wildraum 2 lautet die die Wildregion 2.3 betreffende Zeile: „2.3 43 80 59“ 2.2. Im Wildraum 8 lautet die die Wildregion 8.2 betreffende Zeile: „8.2 35 80 50“'),
+    unit('Z3', 'Im § 4 wird angefügt: „(2) Die §§ 1 und 3 treten mit 12. März 2026 in Kraft.“'),
+  ]
+
+  it('withholds both instructions instead of showing the rows as added under Z 2 and removed under Z 3', () => {
+    const got = compareReadTexts('entwurf', 'lgbl', [{ units: draft, text: '' }, { units: lgbl, text: '' }], [doc('Entwurf'), doc('LGBl. Nr. 20/2026')])
+    expect(got.units.map((u) => u.id)).toEqual(['Z1'])
+    expect(got.withheld).toEqual([
+      { law: 'Abschussplanverordnung', id: 'Z2', reason: 'announced' },
+      { law: 'Abschussplanverordnung', id: 'Z3', reason: 'announced' },
+    ])
+    expect(got.stats.total).toBe(1)
+    expect(got.unreadAnnounced).toBeUndefined()
+  })
+
+  it('shows an instruction whose announced text both sides lack, and names it as unread', () => {
+    const toc = unit('Z1', 'Im Inhaltsverzeichnis lautet die den § 27 betreffende Zeile:')
+    const word = unit('Z2', 'Im § 2 wird das Wort „Rotwild“ durch das Wort „Rot- und Gamswild“ ersetzt.')
+    const got = compareReadTexts('entwurf', 'rv', [{ units: [toc, word], text: '' }, { units: [toc, word], text: '' }], [doc('Entwurf'), doc('Regierungsvorlage')])
+    expect(got.units.map((u) => [u.id, u.change])).toEqual([['Z1', 'unchanged'], ['Z2', 'unchanged']])
+    expect(got.withheld).toEqual([])
+    expect(got.unreadAnnounced).toEqual([{ law: 'Abschussplanverordnung', id: 'Z1' }])
   })
 })

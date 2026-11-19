@@ -33,13 +33,18 @@ const QUOTES_RE = /[„“”"»«‚‘]/g
 
 /* Quotes out, and a compound split at a line end closed up again
    („Median- Entgelthöhe" in the XML): a hyphen, a space, a capital. „Land-
-   und Forstwirtschaft" keeps its space — the next word is lower case. */
+   und Forstwirtschaft" keeps its space — the next word is lower case.
+   Exported as `comparedText`: a unit's `fromText`/`toText` is this of its
+   text, which is how the comparison finds a unit as read again
+   (`announcedText.ts`). */
 function clean(text: string): string {
   return text.replace(QUOTES_RE, '').replace(/(\p{L})- (?=\p{Lu})/gu, '$1-').replace(/\s*&\s*/g, '&')
     // One bullet glyph („•" in the PDF, „●" in RIS), and no image path RIS
     // leaves in the text of a table („/Dokumente/LgblAuth/…/image002.jpg").
     .replace(/[•●▪◦]/g, '•').replace(/\S*\/Dokumente\/\S+\.(?:jpe?g|png|gif)\b/gi, ' ').replace(/\s+/g, ' ').trim()
 }
+
+export const comparedText = clean
 
 /* The Artikel names too: RIS writes „Artikel\u00a0I" with a no-break
    space, the PDF „Artikel I" — equal to the eye, not to the map the units
