@@ -663,8 +663,13 @@ const ANNEX_TITLE_RE = /^textgeg(?:en)?b?ü?berstellung\b/i
  * to whichever § happened to be open — the Radonschutzverordnung filed all six
  * of its Anlagen onto §§ 1 to 6 and scored 11–45 % against the wrong
  * provisions (2026-09-09). The marker itself is group 1, without the prefix.
+ *
+ * „§. 121.", with a full stop after the sign, is how RIS prints the §§ of
+ * the Jurisdiktionsnorm (1895). Unread, § 121 JN was front matter of its
+ * Artikel and its change was in no row (Budgetbegleitgesetz 2027-2028,
+ * 19.11.2026).
  */
-const UNIT_RE = new RegExp(String.raw`^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*(?=\d+\.\d)${PARAGRAPH_NUMBER}\.?|§\s*${PARAGRAPH_NUMBER}\.|Art(?:\.|ikel)\s*\d+[a-z]*(?=\s)|Anlage\s+[\dIVXL]+[a-z]?|Anhang\s+[\dIVXL]+[a-z]?)`)
+const UNIT_RE = new RegExp(String.raw`^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*(?=\d+\.\d)${PARAGRAPH_NUMBER}\.?|§\.?\s*${PARAGRAPH_NUMBER}\.|Art(?:\.|ikel)\s*\d+[a-z]*(?=\s)|Anlage\s+[\dIVXL]+[a-z]?|Anhang\s+[\dIVXL]+[a-z]?)`)
 /**
  * What follows a designation that is a *citation* rather than a provision.
  *

@@ -670,6 +670,19 @@ describe('what looks like a provision but is not', () => {
     expect(rows.map((r) => r.gld)).toEqual(['§ 3.14', '§ 3.15'])
     expect(rows[0]!.current).toContain('§ 3.22 und 3.25, führen:')
   })
+
+  // RIS prints the §§ of the Jurisdiktionsnorm and the old ZPO as „§. 121.".
+  // Unread, § 121 JN was front matter of its Artikel and its change reached no
+  // row (Budgetbegleitgesetz 2027-2028, RIS 04AE704E, 19.11.2026).
+  it('opens a § printed with a full stop after the sign', () => {
+    const rows = parse([page([
+      { y: 700, left: '§. 121. Die Beglaubigung von Unterschriften und die', right: '§. 121. Die Beglaubigung von Unterschriften und die' },
+      { y: 686, left: 'gerichtliche Aufnahme letztwilliger Anordnungen.', right: 'Vidimirung von Abschriften.' },
+      { y: 672, left: '§. 122. Alte Fassung.', right: '§. 122. Neue Fassung.' },
+    ])])
+    expect(rows.map((r) => r.gld)).toEqual(['§. 121.', '§. 122.'])
+    expect(rows[0]!.change).toBe('changed')
+  })
 })
 
 describe('the tail of one unit and the heading of the next', () => {
