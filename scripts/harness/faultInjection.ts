@@ -180,35 +180,56 @@
  *   Check 3's ground. Broken down by whether an unchanged row prints the
  *   site or nothing does.
  *
- * `checkOf` names which of the five checks caught each fault. Before any
- * change to the oracle (19.11.2026, GP XXVIII, 104 PDF and 137 table drafts):
+ * `checkOf` names which of the five checks caught each fault (P2r: check 2's
+ * row order). 19.11.2026, GP XXVIII, 104 PDF and 137 table drafts — before
+ * any change to the oracle, and after the three oracle commits of that night
+ * (ordinals in `stripMarkers`, the heading a § opens with, the row order):
  *
- * | | PDF-Pfad | Tabellenpfad |
- * |---|---:|---:|
- * | Wort-weg        | 1365/1377 (99,1 %) | 987/988 (99,9 %) |
- * | Wort-weg-Sinn   | 1206/1224 (98,5 %) | 854/861 (99,2 %) |
- * | Wort-neu        | 1375/1377 (99,9 %) | 987/988 (99,9 %) |
- * | Wort-tausch     | 1375/1377 (99,9 %) | 987/988 (99,9 %) |
- * | Zahl            |  438/482 (90,9 %)  | 268/295 (90,8 %) |
- * | Verweis         |  971/972 (99,9 %)  | 642/643 (99,8 %) |
- * | Ziffer-Reihe    |  268/268 (100 %)   |  40/113 (35,4 %) |
- * | Überschrift     |  971/1087 (89,3 %) |  44/57 (77,2 %)  |
- * | Ungedruckt-weg  |  671/1037 (64,7 %) | 569/849 (67,0 %) |
- * | Ungedruckt-neu  |  251/1037 (24,2 %) | 236/849 (27,8 %) |
- * | Ungedruckt-Zahl |  480/522 (92,0 %)  | 334/383 (87,2 %) |
+ * | | PDF vorher | PDF nachher | Tabelle vorher | Tabelle nachher |
+ * |---|---:|---:|---:|---:|
+ * | Wort-weg        | 1365/1377 (99,1 %) | 1372/1377 (99,6 %) | 987/988 (99,9 %) | 988/988 (100 %) |
+ * | Wort-weg-Sinn   | 1206/1224 (98,5 %) | 1219/1224 (99,6 %) | 854/861 (99,2 %) | 859/860 (99,9 %) |
+ * | Wort-neu        | 1375/1377 (99,9 %) | 1376/1377 (99,9 %) | 987/988 (99,9 %) | 988/988 (100 %) |
+ * | Wort-tausch     | 1375/1377 (99,9 %) | 1376/1377 (99,9 %) | 987/988 (99,9 %) | 988/988 (100 %) |
+ * | Zahl            |  438/482 (90,9 %)  |  481/482 (99,8 %)  | 268/295 (90,8 %) | 294/296 (99,3 %) |
+ * | Verweis         |  971/972 (99,9 %)  |  970/971 (99,9 %)  | 642/643 (99,8 %) | 642/643 (99,8 %) |
+ * | Ziffer-Reihe    |  268/268 (100 %)   |  269/269 (100 %)   |  40/113 (35,4 %) | 113/113 (100 %) |
+ * | Überschrift     |  971/1087 (89,3 %) | 1030/1087 (94,8 %) |  44/57 (77,2 %)  |  57/57 (100 %) |
+ * | Ungedruckt-weg  |  671/1037 (64,7 %) |  674/1037 (65,0 %) | 569/849 (67,0 %) | 566/849 (66,7 %) |
+ * | Ungedruckt-neu  |  251/1037 (24,2 %) |  247/1037 (23,8 %) | 236/849 (27,8 %) | 238/849 (28,0 %) |
+ * | Ungedruckt-Zahl |  480/522 (92,0 %)  |  500/522 (95,8 %)  | 334/383 (87,2 %) | 374/385 (97,1 %) |
+ *
+ * The populations shift by a few §§ between the columns: a § the oracle no
+ * longer confirms is no injection site. The classes of 01.10. and 26.10.
+ * moved too — E 117/118 → 118/118 and 104/106 → 106/106 —, and without
+ * injection the PDF path keeps its 1.548 confirmations (APG § 4 withdrawn,
+ * PKG § 49b gained) while the table path withdraws three of 1.155 (StPO § 23,
+ * EU-JZG § 2a, ApoBetrO § 33a; each named in its commit).
  *
  * Read: inside a printed stretch check 2 catches nearly everything, because it
  * wants each stretch as one unbroken run. What it let through were the
  * places its exceptions reach — the heading stack above a § and the stretch
- * read as a group heading alone —, figures `stripMarkers` takes for a
+ * read as a group heading alone —, figures `stripMarkers` took for a
  * Ziffer's marker („das 18. Lebensjahr", „nach dem 2. Hauptstück", a year
  * ending a sentence) on both sides alike, and on the table path the ORDER of
- * rows, since every row is looked up from the start of the result. Outside a
- * printed stretch only check 3 reads, and its bags ask whether a word stands
- * anywhere in the annex, not where.
+ * rows, since every row was looked up from the start of the result.
+ *
+ * **What is still open.** Outside a printed stretch only check 3 reads, and
+ * its bags ask whether a word stands anywhere in the annex, not where: a
+ * dropped „der" or an added word of the same § passes. That is real, not
+ * hypothetical — 14/ME XXVIII BilDokG § 26 („§ 26 lautet: Mit der Vollziehung
+ * dieses Bundesgesetzes ist 1. …") came out of the engine with that line as
+ * its heading and the heading „Vollziehung" gone, and was confirmed, because
+ * the only word lost stands in the body. A check that holds every change
+ * with three words of context (prototyped the same night) catches 99,5 to
+ * 99,9 % of both Ungedruckt classes and that §, and withdraws 22 PDF and 8
+ * table confirmations nobody has read yet; it is not in. Überschrift misses
+ * on the PDF path are mostly a § heading printed in one stretch with its
+ * group heading and no § symbol, which `isGroupHeadingOnly` still skips.
  *
  * Only the classes at ≥ 95 % on both paths with ≥ 20 tries are held to the
- * `--mindestens` floor; the others are printed, not floored.
+ * `--mindestens` floor (`flooredWordClasses`); Überschrift and Ungedruckt-weg
+ * / -neu are printed, not floored.
  *
  * **Duplicate Absatz numbers are RIS's, not the engine's** (19.11.2026). The
  * Reihe fault used to swap two Absätze of the same number — Listing Act
@@ -1430,7 +1451,7 @@ const oracleFaults = {
 /** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
 const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl]
 /** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
-const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Verweis]
+const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.UngedrucktZahl]
 
 const docs: any[] = []
 for (let page = 1; page <= 4 && docs.length < limit; page++) {
