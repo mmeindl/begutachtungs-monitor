@@ -44,6 +44,7 @@ import { annexSection, parseTextComparison, type ComparisonParse, type Compariso
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { installFetchCache } from '../lib/harnessCache'
 import type { AnnexReport } from '../lib/annexReport'
+import type { TextComparisonRow } from '../../shared/types'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickBundledTextComparisons, pickOlderTextComparisons, pickTextComparisons } from '../lib/ris'
@@ -178,6 +179,28 @@ interface GateResult {
   withheldWithoutCause: number
   /** The verdict map itself, so a second pass can ask what the gate said. */
   verdicts: Record<string, ParagraphVerdict>
+  /** The rows as the response carries them, for `--zeilen=`. */
+  rows: readonly TextComparisonRow[]
+}
+
+/**
+ * `--zeilen=<path>`: every draft's rows as the response would carry them,
+ * written as one JSON file — what an old-against-new comparison of a parser
+ * or gate change reads item by item (19.11.2026). The figures above count;
+ * only the rows show which § moved and how.
+ */
+const dumpedRows: Record<string, unknown> = {}
+function dumpRows(id: string, cite: string, parsed: ComparisonParse, gate: GateResult): void {
+  dumpedRows[id] = {
+    cite,
+    refusal: parsed.refusal,
+    unplaced: 'unplacedKinds' in parsed ? parsed.unplacedKinds : undefined,
+    rows: gate.rows.map((r) => ({
+      kind: r.kind, law: r.law, heading: r.heading, para: r.para, gld: r.gld, paraAfter: r.paraAfter, change: r.change, check: r.check,
+      cause: r.withheldCause ?? null, reason: r.uncheckedReason ?? null, elided: r.elided, elisionRange: r.elisionRange, editorial: r.editorial,
+      current: r.current, proposed: r.proposed,
+    })),
+  }
 }
 
 /**
@@ -254,7 +277,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const id = String(meta?.Technisch?.ID ?? cite)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {} }
+  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [] }
   const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
@@ -324,7 +347,12 @@ async function verify(doc: any): Promise<DraftResult | null> {
     : []
   const parsed: ComparisonParse = fromPdf ?? parseTextComparison([annexXmlText!, ...restXml], articles)
   const droppedPages = fromPdf?.droppedPages ?? 0
-  if (parsed.refusal) return { ...blank(`verweigert: ${parsed.refusal.slice(0, 52)}`, amending.length), droppedPages }
+  if (parsed.refusal) {
+    // The request path runs the gate over a refused package all the same;
+    // the figures above leave it out, the row dump does not.
+    if (rowsPath) dumpRows(id, cite, parsed, await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks }))
+    return { ...blank(`verweigert: ${parsed.refusal.slice(0, 52)}`, amending.length), droppedPages }
+  }
 
   // One RIS lookup per law of the package, not per row. A law whose Stammnorm
   // is not a BGBl at all (the UGB is "dRGBl. S. 219/1897") has nothing to
@@ -431,6 +459,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   // something else. Nothing here decides anything; the verdicts below still
   // come from `verifyAnnex`.
   const gate = await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks })
+  if (rowsPath) dumpRows(id, cite, parsed, gate)
   let unchangedRows = 0
   let unchangedParas = 0
   let unchangedProse = 0
@@ -539,6 +568,7 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promi
     withheldWithText: checked.rows.filter((r) => r.check === 'withheld' && (r.current !== '' || r.proposed !== '' || r.segments !== null)).length,
     withheldWithoutCause: Object.entries(check.verdicts).filter(([key, v]) => v === 'withheld' && check.withheldCauses[key] === undefined).length,
     verdicts: check.verdicts,
+    rows: rowsPath ? checked.rows : [],
   }
 }
 
@@ -556,6 +586,7 @@ const only = argAssigned('only') ?? null
 const ceilingArg = argAssigned('obergrenze')
 const ceiling = ceilingArg === null ? null : Number(ceilingArg)
 const dumpWorst = argFlag('dump-worst')
+const rowsPath = argAssigned('zeilen') ?? null
 const xmlMode = argFlag('xml')
 /**
  * `--nur-inhalt` scores only the drafts whose annex was picked by content
@@ -747,4 +778,9 @@ if (jsonPath) {
   }
   writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`)
   console.log(`\nBericht geschrieben: ${jsonPath} (${report.drafts.length} Entwürfe)`)
+}
+if (rowsPath) {
+  const { writeFileSync } = await import('node:fs')
+  writeFileSync(rowsPath, `${JSON.stringify(dumpedRows)}\n`)
+  console.log(`Zeilen geschrieben: ${rowsPath} (${Object.keys(dumpedRows).length} Entwürfe)`)
 }
