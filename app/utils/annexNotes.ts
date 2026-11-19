@@ -146,6 +146,44 @@ export function annexDroppedPagesNote(n: number): string | null {
 }
 
 /**
+ * Text before a law's first § that differs between the columns
+ * (`frontMatterDiffers`, 19.11.2026, audit A3).
+ *
+ * The PDF path leaves out everything a column prints before a law's first
+ * § designation, by method and for every annex: mostly the Langtitel and
+ * the Promulgationsklausel, but also a provision that carries no §, such as
+ * the Versorgungssicherungsgesetz's Art. I (Verfassungsbestimmung), whose
+ * „2026" the draft makes „2036". Left out without a word, that change was in
+ * no row and on no page. Hence „Nicht im Monitor" — our method, for every
+ * case of its kind — and not „Nicht lesbar", which would claim a failed
+ * reading where nothing failed; and „etwa", because what stands there is
+ * not always a title or a clause.
+ *
+ * Said only where the columns differ in that text: where they say the same,
+ * nothing is lost.
+ */
+const FRONT_MATTER = 'vor dem ersten Paragraphen druckt – etwa Titel oder Promulgationsklausel –, vergleicht der Monitor nicht'
+
+/** …inside the law's own group, where it needs no name (as `annexDoubtfulGroupNote`). */
+export function annexFrontMatterGroupNote(): string {
+  return gapDe('outOfScope', `Text, den die Beilage zu diesem Gesetz ${FRONT_MATTER}; die beiden Spalten unterscheiden sich darin.`)
+}
+
+/**
+ * …above the comparison: for an annex not divided into laws (`null`) and
+ * for named laws no group carries — at most one sentence each.
+ */
+export function annexFrontMatterNotes(laws: readonly (string | null)[]): string[] {
+  const out: string[] = []
+  if (laws.includes(null)) out.push(gapDe('outOfScope', `Text, den die Beilage ${FRONT_MATTER}; die beiden Spalten unterscheiden sich darin.`))
+  const named = laws.filter((l): l is string => l !== null)
+  const quoted = named.map((l) => `„${l}“`)
+  const list = quoted.length > 1 ? `${quoted.slice(0, -1).join(', ')} und ${quoted.at(-1)}` : quoted[0]
+  if (list) out.push(gapDe('outOfScope', `Text, den die Beilage zu einem Gesetz ${FRONT_MATTER}; bei ${list} unterscheiden sich die beiden Spalten darin.`))
+  return out
+}
+
+/**
  * A law whose §§ fail in a cluster. Named, and the cause named honestly with
  * it — which depends on where the rows came from.
  *

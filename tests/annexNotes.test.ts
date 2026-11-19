@@ -3,6 +3,8 @@ import {
   annexDoubtfulGroupNote,
   annexDoubtfulNote,
   annexDroppedPagesNote,
+  annexFrontMatterGroupNote,
+  annexFrontMatterNotes,
   annexUncheckedNote,
   annexWithheldBlame,
   annexWithheldLead,
@@ -54,6 +56,25 @@ describe('annexWithheldBlame', () => {
     const blame = annexWithheldBlame('alreadyStanding', 'table')!
     expect(blame).toContain('unsere Prüfung unterscheidet die Absätze nicht')
     expect(blame).not.toContain('Beilage')
+  })
+})
+
+describe('annexFrontMatter… — text before a law\'s first § that differs between the columns (19.11.2026)', () => {
+  // Our method for every annex, so „Nicht im Monitor", not „Nicht lesbar".
+  it('says at the law that the monitor does not compare that text, and that the columns differ in it', () => {
+    expect(annexFrontMatterGroupNote()).toBe(
+      'Nicht im Monitor: Text, den die Beilage zu diesem Gesetz vor dem ersten Paragraphen druckt – etwa Titel oder Promulgationsklausel –, vergleicht der Monitor nicht; die beiden Spalten unterscheiden sich darin.',
+    )
+  })
+
+  it('says it above for an undivided annex and names the laws no group carries, one sentence each', () => {
+    expect(annexFrontMatterNotes([])).toEqual([])
+    expect(annexFrontMatterNotes([null])).toEqual([
+      'Nicht im Monitor: Text, den die Beilage vor dem ersten Paragraphen druckt – etwa Titel oder Promulgationsklausel –, vergleicht der Monitor nicht; die beiden Spalten unterscheiden sich darin.',
+    ])
+    expect(annexFrontMatterNotes([null, 'Änderung der Kellerbuchverordnung', 'Änderung der Kostverordnung'])[1]).toBe(
+      'Nicht im Monitor: Text, den die Beilage zu einem Gesetz vor dem ersten Paragraphen druckt – etwa Titel oder Promulgationsklausel –, vergleicht der Monitor nicht; bei „Änderung der Kellerbuchverordnung“ und „Änderung der Kostverordnung“ unterscheiden sich die beiden Spalten darin.',
+    )
   })
 })
 

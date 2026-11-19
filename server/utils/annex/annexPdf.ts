@@ -1969,6 +1969,18 @@ export interface AnnexParse {
   /** The two halves of `unplaced`, for a caller that has to name them. */
   unplacedKinds?: { frontMatter: number; contents: number }
   /**
+   * The laws whose front matter differs between the two columns — null for
+   * the law of an annex the parse did not divide. `frontMatter` drops it
+   * from both sides by design, and that is a triviality only while the two
+   * sides say the same: the Versorgungssicherungsgesetz's Art. I
+   * (Verfassungsbestimmung, „2026" → „2036") opens no unit and stood there,
+   * and so do a Langtitel the draft rewrites and a Verordnung's
+   * Promulgationsklausel, the only change some drafts make (19.11.2026,
+   * audit A3). The page says, at the law, that it does not compare that text
+   * and that the columns differ in it.
+   */
+  frontMatterDiffers?: (string | null)[]
+  /**
    * Pages whose geometry the parse could not vouch for and therefore did not
    * read — 0 when none, which is every document of GP XXVIII (`isProven`).
    * Counted rather than explained: the caller phrases what a missing page
@@ -2173,6 +2185,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
 
   let frontMatter = 0
   let contents = 0
+  const frontMatterDiffers: (string | null)[] = []
   for (const section of sections) {
     const law = section.article?.key ?? null
     if (section.opened && section.article) {
@@ -2196,6 +2209,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     contents += leftRead.contents + rightRead.contents
     const byId = new Map(left.filter((u) => u.id).map((u) => [u.id!, u]))
     const used = new Set<string>()
+    if (frontMatterDiffer(left, right) && !frontMatterDiffers.includes(law)) frontMatterDiffers.push(law)
 
     // Everything a column prints before its first § marker is one unit
     // without an identifier: the annex's front matter — "Inhaltsverzeichnis",
@@ -2241,7 +2255,35 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     }
   }
   designateAfter(rows)
-  return { rows, refusal: resolution.refusal, unplaced: frontMatter + contents, unplacedKinds: { frontMatter, contents }, droppedPages }
+  return { rows, refusal: resolution.refusal, unplaced: frontMatter + contents, unplacedKinds: { frontMatter, contents }, frontMatterDiffers, droppedPages }
+}
+
+/**
+ * Does a section's front matter — every unit before its column's first
+ * marker — say something else on the left than on the right?
+ *
+ * Compared word by word, punctuation left out: „(ORF-Gesetz," against
+ * „(ORF-Gesetz -" is a line set otherwise, not a change. Left out too is
+ * what can only be the document's own chrome and never law text: „Entwurf"
+ * with or without its „Stand: <Datum>", „Bundesrecht konsolidiert" (the RIS
+ * print the left column was copied from), and a side that is nothing but a
+ * page counter („1 von 7"). Patterns such as „Fassung vom …" or „3 von 5"
+ * inside a text stay: law text uses them, and a change hidden under a
+ * stripped phrase would be the silence this exists to end (19.11.2026).
+ */
+function frontMatterDiffer(left: readonly ColumnUnit[], right: readonly ColumnUnit[]): boolean {
+  return frontMatterWords(left) !== frontMatterWords(right)
+}
+
+const FRONT_MATTER_CHROME_RE = /\bE\s?N\s?T\s?W\s?U\s?R\s?F\b(?:\s*[-–]?\s*Stand:?\s*\d{1,2}\.\s?\d{1,2}\.\s?\d{4})?|\bBundesrecht konsolidiert\b/giu
+const PAGE_COUNTER_RE = /^\d+\s+von\s+\d+$/
+
+function frontMatterWords(units: readonly ColumnUnit[]): string {
+  const text = units.filter((u) => !u.id).map((u) => u.text).join(' ').replace(FRONT_MATTER_CHROME_RE, ' ').trim()
+  if (PAGE_COUNTER_RE.test(text)) return ''
+  // A hyphen with or without the line break after it („DAC- Verordnung",
+  // „DAC-Verordnung") joins: both columns then say the same word.
+  return (normalizeText(text).toLowerCase().replace(/-\s*/g, '').match(/[\p{L}\d]+/gu) ?? []).join(' ')
 }
 
 /**
@@ -2287,8 +2329,8 @@ export function parseAnnexParts(parts: readonly (readonly AnnexPage[] | null)[],
     }
   }
   const annex = parseAnnexPdf(read.filter((part) => sameTypesetting(first, part)).flat(), articles)
-  // A part set differently contributes its rows and the pages of it the
-  // parse could not vouch for.
+  // A part set differently contributes its rows, the pages of it the parse
+  // could not vouch for, and its laws whose front matter differs.
   //
   // **A part set differently that yields no row at all counts every page of
   // it as unread** (19.11.2026). It used to contribute nothing, and nothing
@@ -2302,6 +2344,7 @@ export function parseAnnexParts(parts: readonly (readonly AnnexPage[] | null)[],
     if (apart.rows.length > 0) {
       annex.rows.push(...apart.rows)
       annex.droppedPages += apart.droppedPages
+      for (const law of apart.frontMatterDiffers ?? []) if (!annex.frontMatterDiffers?.includes(law)) annex.frontMatterDiffers?.push(law)
     } else {
       annex.droppedPages += part.filter((page) => page.items.length > 0).length
     }

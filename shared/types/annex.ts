@@ -336,6 +336,18 @@ export interface TextComparisonResponse {
    */
   droppedPages: number
   /**
+   * The laws whose front matter differs between the two columns of a PDF
+   * annex — null for an annex the parse did not divide into laws. Everything
+   * a column prints before a law's first § is left out on the PDF path
+   * (`AnnexParse.frontMatterDiffers`): a Langtitel, a Promulgationsklausel,
+   * and sometimes a provision without a § designation, such as an Art. I
+   * Verfassungsbestimmung. Where the columns say the same there, nothing is
+   * lost; where they do not, the page says that it does not compare that
+   * text. **Empty on the table path and whenever nothing differs**, never
+   * undefined, for the reason `droppedPages` gives.
+   */
+  frontMatterDiffers: (string | null)[]
+  /**
    * Set when the draft amends several laws and the annex does not mark where
    * one ends and the next begins. The comparison is shown undivided, and this
    * says why — the alternative is to divide it wrongly.

@@ -57,6 +57,7 @@ export function emptyComparison(who: DraftIdentity, reason: string, source: Trac
     pdf,
     readFrom: null,
     droppedPages: 0,
+    frontMatterDiffers: [],
     boundaryNote: null,
     stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
     verification: null,
@@ -85,7 +86,7 @@ export async function readAndCheck(
   cacheKey: string = identityKey(who),
 ): Promise<TextComparisonResponse | string> {
   if (typeof chosen === 'string') return chosen
-  const { parsed, source, publisher, readFrom, droppedPages } = chosen
+  const { parsed, source, publisher, readFrom, droppedPages, frontMatterDiffers } = chosen
   const { rows, refusal } = parsed
   // Both columns are checked before the rows are sent. The left one claims
   // to be the standing law and RIS holds that text independently; the right
@@ -105,6 +106,7 @@ export async function readAndCheck(
     pdf: pdfFallback,
     readFrom,
     droppedPages,
+    frontMatterDiffers: frontMatterDiffers ?? [],
     // The parser's refusal is ours — a check refused the law boundaries —
     // so it goes out as a „Nicht lesbar" gap. Set here, not in the parser,
     // whose wording the annex baseline pins.

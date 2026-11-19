@@ -63,6 +63,8 @@ export interface AnnexDraftReport {
   /** Column lines of the PDF that reach no row, and those that differ from the other column (`lineAccounting` in the harness, 19.11.2026); absent in older reports. */
   lostLines?: number
   lostDiffering?: number
+  /** Laws whose front matter differs between the columns, said on the page (19.11.2026); absent in older reports. */
+  frontMatterLaws?: number
   ran: boolean
   notRunReason: string | null
   verifiedParas: number

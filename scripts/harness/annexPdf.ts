@@ -145,6 +145,13 @@ interface DraftResult {
   /** …and the lines of parts read on their own that reach no row. */
   lostApart: number
   /**
+   * Laws whose front matter differs between the columns
+   * (`AnnexParse.frontMatterDiffers`): the parse leaves that text out and the
+   * page now says so at the law (19.11.2026, audit A3). Most of the lost
+   * lines above that differ are here; 0 on the table path.
+   */
+  frontMatterLaws: number
+  /**
    * How far rule 2's reference reaches: instructions read, instructions that
    * addressed at least one §, and the annex's §§ split by whether the draft's
    * instructions name them (`annex/rightColumn.ts`, `draftBags`).
@@ -271,7 +278,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const id = String(meta?.Technisch?.ID ?? cite)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
   const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, withheldRepealUnproven: 0, withheldRepeated: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [] }
-  const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, lostLines: 0, lostDiffering: 0, lostApart: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
+  const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, lostLines: 0, lostDiffering: 0, lostApart: 0, frontMatterLaws: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -501,7 +508,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   // Every line of the annex against the rows (`lineAccounting`): what no other figure here can see.
   const lost = fromPdf ? lineAccounting(pdfParts.filter((p): p is AnnexPage[] => p !== null), parsed.rows) : { lost: 0, differing: [], apart: 0 }
   if (dumpLost) for (const l of lost.differing) console.log(`    ~ ${cite} S. ${l.page} ${l.side}: ${l.text.slice(0, 140)}`)
-  return { id, cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, lostLines: lost.lost, lostDiffering: lost.differing.length, lostApart: lost.apart, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, unchangedRows, unchangedParas, unchangedProse, unchangedBelow, unchangedBelowVerified, gate }
+  return { id, cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, lostLines: lost.lost, lostDiffering: lost.differing.length, lostApart: lost.apart, frontMatterLaws: fromPdf?.frontMatterDiffers?.length ?? 0, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, unchangedRows, unchangedParas, unchangedProse, unchangedBelow, unchangedBelowVerified, gate }
 }
 
 /**
@@ -634,7 +641,7 @@ for (const doc of docs.slice(0, limit)) {
     // A dropped page is named on the draft's own line, not only in the total:
     // it is a hole in *this* annex, and a sum over the corpus cannot say which
     // document is missing a page.
-    const dropped = (r.droppedPages > 0 ? ` [${r.droppedPages} Seite${r.droppedPages === 1 ? '' : 'n'} ungelesen]` : '') + (r.lostDiffering > 0 ? ` [${r.lostDiffering} Zeile${r.lostDiffering === 1 ? '' : 'n'} ohne Zeile, abweichend]` : '')
+    const dropped = (r.droppedPages > 0 ? ` [${r.droppedPages} Seite${r.droppedPages === 1 ? '' : 'n'} ungelesen]` : '') + (r.lostDiffering > 0 ? ` [${r.lostDiffering} Zeile${r.lostDiffering === 1 ? '' : 'n'} ohne Zeile, abweichend]` : '') + (r.frontMatterLaws > 0 ? ` [Vorspann abweichend, gesagt: ${r.frontMatterLaws}]` : '')
     if (r.note) console.log(`  ·  ${r.cite.padEnd(9)} ${r.note}${dropped}`)
     else console.log(`  ${r.clean === r.checked ? '✓' : '✗'}  ${r.cite.padEnd(9)} ${r.clean}/${r.checked} Paragraphen ≥99 % im RIS${dropped}${r.worst.length ? ` — ${r.worst.slice(0, 2).join('; ')}` : ''}`)
   } catch (err) {
@@ -672,6 +679,7 @@ if (!xmlMode) {
   const lostDiff = results.reduce((n, r) => n + r.lostDiffering, 0)
   console.log(`  Spaltenzeilen, die keine Zeile erreichen: ${lostAll}; davon von der anderen Spalte verschieden: ${lostDiff} in ${results.filter((r) => r.lostDiffering > 0).length} Beilagen (--verloren listet sie)`)
   console.log(`    in Teilen, die für sich gelesen werden (andere Seitengröße): ${results.reduce((n, r) => n + r.lostApart, 0)} in ${results.filter((r) => r.lostApart > 0).length} Beilagen`)
+  console.log(`  Gesetze, deren Vorspann (Text vor dem ersten Paragraphen) zwischen den Spalten abweicht — die Seite sagt es: ${results.reduce((n, r) => n + r.frontMatterLaws, 0)} in ${results.filter((r) => r.frontMatterLaws > 0).length} Beilagen`)
 }
 
 // The gate as it ships, over every draft with a readable annex — including
@@ -776,6 +784,7 @@ if (jsonPath) {
       droppedPages: r.droppedPages,
       lostLines: r.lostLines,
       lostDiffering: r.lostDiffering,
+      frontMatterLaws: r.frontMatterLaws,
       ran: r.gate.ran,
       notRunReason: r.gate.notRunReason,
       verifiedParas: r.gate.verifiedParas,

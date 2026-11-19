@@ -819,6 +819,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   `typ="para"` heading, or at the head of both columns — opens its § like a
   `<gldsym>` (`typedDesignation` in `comparisonRows.ts`); unread, SchOG
   §§ 6, 21c and 40 were withheld for rows of §§ 8, 35, 37, 39 and 45.
+- **What a PDF annex prints before a law's first § is said where the
+  columns differ in it** (19.11.2026, `frontMatterDiffers`): the parse
+  leaves it out by method — Langtitel, Promulgationsklausel, and sometimes
+  a provision without a § (the Versorgungssicherungsgesetz's Art. I,
+  „2026" → „2036"). Compared word by word, chrome that cannot be law text
+  left out, a difference puts „Nicht im Monitor: …" at the law. Showing it
+  as a row was rejected: an annex that prints amending instructions in the
+  right column would diff an old § against an instruction. About one flag
+  in five is a trivial difference (a title fragment, a reprinted contents
+  line); the sentence stays true there. A part set otherwise that yields
+  no row counts its pages as unread (`droppedPages`).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

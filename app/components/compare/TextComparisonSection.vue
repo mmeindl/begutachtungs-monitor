@@ -26,6 +26,8 @@ import {
   annexDoubtfulGroupNote,
   annexDoubtfulNote,
   annexDroppedPagesNote,
+  annexFrontMatterGroupNote,
+  annexFrontMatterNotes,
   annexUncheckedNote,
   annexWithheldBlame,
   annexWithheldLead,
@@ -362,6 +364,15 @@ const doubtfulGroupNote = computed(() => annexDoubtfulGroupNote(data.value?.read
  *  lost — no group of the UNFILTERED comparison (`placeAtParagraphs`): this
  *  note stands above the toolbar, so neither the search nor the legend may
  *  move it (25.10.2026). */
+/** Laws whose text before the first § differs between the columns (`frontMatterDiffers`):
+ *  said in the law's group, above the comparison only for an undivided annex
+ *  and a law no group carries (the doubtful-law rule). */
+const frontMatterLaws = computed(() => new Set(data.value?.frontMatterDiffers ?? []))
+const frontMatterGroupNote = annexFrontMatterGroupNote()
+const frontMatterNotes = computed(() => {
+  const keys = new Set(placed.value.groupKeys)
+  return annexFrontMatterNotes([...frontMatterLaws.value].filter((l) => l === null || !keys.has(l)))
+})
 const doubtfulNote = computed(() => {
   const keys = new Set(placed.value.groupKeys)
   return annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !keys.has(l)), data.value?.readFrom ?? null)
@@ -432,7 +443,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
              in one draft, where the annex does not say where one ends:
              shown undivided, and said so — dividing it wrongly would put one
              law's § 5 under another law's name. -->
-        <ComparisonCaveats :notes="[doubtfulNote, droppedPagesNote, data.boundaryNote]" />
+        <ComparisonCaveats :notes="[doubtfulNote, droppedPagesNote, data.boundaryNote, ...frontMatterNotes]" />
       </div>
 
       <ListBox class="mt-4">
@@ -462,6 +473,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
           @more="showAll(g.key)"
         >
           <p v-if="doubtfulLaws.has(g.key)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ doubtfulGroupNote }}</p>
+          <GapNote v-if="frontMatterLaws.has(g.key)" :text="frontMatterGroupNote" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary" />
           <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-4 py-3 last:border-b-0">
             <!-- The paragraph as law prints it: designation and title on one
                  line, once, above its Absätze — and no rule between the two,

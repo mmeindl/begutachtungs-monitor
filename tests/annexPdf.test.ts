@@ -1449,6 +1449,50 @@ describe('parseAnnexParts — the parts of one annex (19.11.2026)', () => {
   })
 })
 
+describe('front matter that differs between the columns (19.11.2026, audit A3)', () => {
+  const body = { y: 600, left: '§ 1. (1) Die Behörde entscheidet.', right: '§ 1. (1) Das Gericht entscheidet.' }
+  const front = (lines: { y: number; left?: string; right?: string }[], articles: DraftArticle[] = ONE_LAW) =>
+    parseAnnexPdf([headerPage(), page([...lines, body])], articles).frontMatterDiffers
+
+  // The Versorgungssicherungsgesetz (RIS 9E5072AC): its Art. I opens no unit,
+  // and „31. Dezember 2026" → „2036" was in no row and on no page.
+  it('names the law whose text before the first § differs', () => {
+    expect(front([
+      { y: 700, left: 'Artikel I (Verfassungsbestimmung)', right: 'Artikel I (Verfassungsbestimmung)' },
+      { y: 686, left: '(1) … sind bis zum Ablauf des 31. Dezember 2026 Bundessache.', right: '(1) … sind bis zum Ablauf des 31. Dezember 2036 Bundessache.' },
+    ])).toEqual(['Änderung des Sicherheitspolizeigesetzes'])
+  })
+
+  it('names nothing where the two columns say the same there', () => {
+    expect(front([{ y: 700, left: 'Verordnung des Bundesministers für Inneres', right: 'Verordnung des Bundesministers für Inneres' }])).toEqual([])
+  })
+
+  it('does not count a line set otherwise, a hyphen, the word „Entwurf" or a page counter as a difference', () => {
+    expect(front([
+      { y: 720, left: 'ENTWURF - Stand: 29.11.2024', right: '1 von 7' },
+    ])).toEqual([])
+    expect(front([
+      { y: 720, right: 'E n t w u r f' },
+      { y: 700, left: 'Bundesgesetz über den Rundfunk (ORF-Gesetz,', right: 'Bundesgesetz über den Rundfunk (ORF-Gesetz -' },
+      { y: 686, left: 'DAC-Verordnung „Kamptal"', right: 'DAC- Verordnung „Kamptal"' },
+    ])).toEqual([])
+  })
+
+  it('names the law of the section, in a package divided into laws', () => {
+    const articles = draft({ n: '1', title: 'Änderung des Aktiengesetzes' }, { n: '2', title: 'Änderung des GmbH-Gesetzes' })
+    const parsed = parseAnnexPdf([headerPage(), pageOf([
+      { x: 300, y: 760, width: 260, text: 'Artikel 1' },
+      ...page([{ y: 740, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items,
+      { x: 300, y: 700, width: 260, text: 'Artikel 2' },
+      ...page([
+        { y: 680, left: '(1) Dieser Artikel tritt mit 1. Jänner 2017 in Kraft.', right: '(1) Dieser Artikel tritt mit 1. Jänner 2027 in Kraft.' },
+        { y: 660, left: '§ 2. Alt.', right: '§ 2. Neu.' },
+      ]).items,
+    ])], articles)
+    expect(parsed.frontMatterDiffers).toEqual(['Änderung des GmbH-Gesetzes'])
+  })
+})
+
 describe('a text layer read in the wrong code page', () => {
   // 119/ME XXVIII: Windows-1252 read as Mac Roman — „§" came out as „ß", so no
   // § mark was ever found and the annex yielded no row (06.10.2026).

@@ -154,6 +154,8 @@ export interface AnnexSource {
   publisher: Publisher
   readFrom: 'table' | 'pdf'
   droppedPages: number
+  /** PDF path: the laws whose front matter differs between the columns (`AnnexParse.frontMatterDiffers`). */
+  frontMatterDiffers?: (string | null)[]
 }
 
 /**
@@ -218,6 +220,7 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
     publisher: 'ris',
     readFrom: 'pdf',
     droppedPages: fromPdf.droppedPages,
+    frontMatterDiffers: fromPdf.frontMatterDiffers ?? [],
   }
 }
 
