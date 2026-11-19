@@ -174,6 +174,26 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
     expect(blocks.at(-1)!.text).toBe('1. Im § 1 wird die Gleichbehandlung im Oö. Agrarrecht-Organisationsgesetz für die Land- und Forstwirtschaft geregelt.')
   })
 
+  it('keeps a table value printed on a line of its own, and drops a bare number only at a page\'s edge (Salzburg 34234 § 130, 19.11.2026)', () => {
+    const pages = [
+      page('3', 'Der Salzburger Landtag hat beschlossen:', '§ 130', 'Zulagen', '(1) Die Zulage beträgt in Prozent:', 'Stufe A', '100', 'Stufe B', '60', 'Stufe C', '35', '4'),
+      page('5', '(2) Text.'),
+    ]
+    const text = lawBlocksFromPdfPages(pages)!.map((b) => b.text).join(' | ')
+    expect(text).toContain('Stufe A 100 Stufe B 60 Stufe C 35')
+    expect(text).not.toMatch(/35 4|\| 5|^3 /)
+    // Between two PDFs a changed cell is a change, not two values dropped alike.
+    const other = [page(...pages[0]!.split('\n').map((l) => (l === '60' ? '80' : l))), pages[1]!]
+    expect(diffLandDraft(landDraftUnits(pages)!, landDraftUnits(other)!).map((u) => u.change)).toEqual(['changed'])
+  })
+
+  it('drops Salzburg\'s running head wrapped onto two lines, and on a network path (33547; a 2024 draft)', () => {
+    const law = (...head: string[]) => lawBlocksFromPdfPages([page('Der Salzburger Landtag hat beschlossen:', '§ 1', 'Höchstsätze', '(1) Der Tagsatz beträgt 35,82 Euro.', ...head, '(2) Das Format .docx ist zulässig.')])!.map((b) => b.text).join(' | ')
+    expect(law('Q:\\2003\\GESETZ-BEARBEITEN-AKTUELL\\L-Tarifobergrenzen-Verordnung für', '2026.docx \\ 27.11.2025 07:29:00')).not.toMatch(/GESETZ-BEARBEITEN|27\.11\.2025/)
+    expect(law('\\\\land-sbg\\daten\\Desktop\\A-Volksbefragungsgesetz Nov 24.docx \\ 08.05.2024 09:34:00')).not.toMatch(/land-sbg|Volksbefragungsgesetz/)
+    expect(law()).toContain('(2) Das Format .docx ist zulässig.')
+  })
+
   it('says null where no enacting clause marks a legal text', () => {
     expect(lawBlocksFromPdfPages([page('Erläuterungen', 'Allgemeiner Teil')])).toBeNull()
   })

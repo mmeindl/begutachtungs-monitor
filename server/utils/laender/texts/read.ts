@@ -22,6 +22,8 @@ const PDF_MAX_BYTES = 30 * 1024 * 1024
 export interface ReadText {
   units: LawUnit[] | null
   text: string
+  /** A PDF's text per page, as `text` joins it: the draft reader drops a page's number only at the page's edge (`draftPdfLaw.ts`). */
+  pages?: string[]
   /** The document the Land files as the draft is evidently none (`notADraft`). */
   notDraft?: true
   /** The document read, where its content chose another than the source names (`draftByContent`). */
@@ -118,7 +120,7 @@ export async function pdfStyledPages(url: string): Promise<StyledPages> {
 
 export async function readPdf(url: string, pagesOf: PagesReader = pdfPages): Promise<ReadText> {
   const pages = await pagesOf(url)
-  return { units: landDraftUnits(pages), text: pages.join('\n') }
+  return { units: landDraftUnits(pages), text: pages.join('\n'), pages }
 }
 
 export async function readLgbl(xmlUrl: string | null): Promise<ReadText> {
@@ -218,7 +220,7 @@ export function draftSource(documents: readonly LandDocument[], publisher: strin
         return notADraft(read) ? { ...read, notDraft: true } : read
       }
       const chosen = (await draftByContent(candidates, pagesOf))!
-      const read: ReadText = { units: landDraftUnits(chosen.pages), text: chosen.pages.join('\n') }
+      const read: ReadText = { units: landDraftUnits(chosen.pages), text: chosen.pages.join('\n'), pages: chosen.pages }
       return chosen.url === url ? read : { ...read, document: { label: chosen.doc.title, url: chosen.url, publisher } }
     },
   }

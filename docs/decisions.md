@@ -897,6 +897,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   a citation the column wrapped („… gemäß" / „§ 8.") split the § it stands
   in. No test of the number's order: a contents list echoed before the law
   numbers below the § before it too.
+- **A bare number is a page's own only at the page's edge** (19.11.2026,
+  `pageLines` in `draftPdfLaw.ts`): a table value on a line of its own is
+  law text, and dropped it read as inserted against the Landesgesetzblatt.
+  Salzburg's running head is known by its path or its save stamp, each line
+  on its own, so a head wrapped onto two lines is no law text either.
 - **„Entfallen" only where the draft says so.** An empty right column can be
   text the reader missed (§12.52).
 - **A document a Land files as the draft but that is not one is not read as

@@ -9,8 +9,8 @@
  *
  * A Land publishes its drafts only as PDF: there is no RIS Begutachtung for
  * Landesrecht. What the PDF's text layer gives is clean on the drafts read
- * (Oberösterreich, 2026): no running headers but „Seite n", no split words
- * but the ordinary hyphenation, and the legal text in the legistic form the
+ * (Oberösterreich, 2026): page numbers, Salzburg's running head (`pageLines`),
+ * no split words but the ordinary hyphenation, and the legal text in the legistic form the
  * Landesgesetzblatt prints — Artikel, the clause „… wird wie folgt geändert:",
  * numbered instructions, the new wording in quotes.
  *
@@ -29,6 +29,37 @@ import { RUNS_ON_RE } from './landTgu'
 /** Running header and footer lines of the Land's draft template. */
 /* Tirol's running head is its Geschäftszahl and version: „VD-173/2-2026 Fassung vom 9. März 2026" (23.10.2026). */
 export const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+|[A-Z]:\\.*\.docx?\b.*|E n t w u r f|[A-Z]{2,5}-\d+\/\d+-\d{4} Fassung vom \d{1,2}\. \p{L}+ \d{4})$/u
+
+/**
+ * A page's number, standing alone: page furniture only as the page's first
+ * or last line of text (19.11.2026). Dropped wherever it stood until then,
+ * and with it every table value printed on a line of its own — the
+ * percentages of Salzburg's Landesbedienstetengesetz § 130 (34234), the
+ * Tarifposten of its Kehrtarif (34874): against the Landesgesetzblatt, which
+ * keeps them, the Landtag read as having inserted them; between two PDFs a
+ * changed value read as unchanged. The rule the Salzburg
+ * Textgegenüberstellung's reader applies (`withoutPageNumber`). Old against
+ * new over 848 cached Land PDFs (606 with law text): 23 change, each a number
+ * restored — a table cell, a Tarifpost, a year in a title („für das Jahr
+ * 2026") — or a running head dropped (below); no page number entered a block.
+ */
+const BARE_NUMBER_RE = /^\d+$/
+/**
+ * Salzburg's running head — the file's path and Word's save stamp, „Q:\2003\
+ * GESETZ-BEARBEITEN-AKTUELL\….docx \ 27.11.2025 07:29:00" — tested line by
+ * line (19.11.2026): wrapped onto two lines, neither line held both the path
+ * and „.docx", `NOISE_RE` passed both, and the head read as law (33547). A
+ * network path „\\land-sbg\…" too (a 2024 draft). Not every line that names
+ * „.docx": law text can name a file format.
+ */
+const RUNNING_HEAD_RE = /^(?:[A-Z]:\\|\\\\)\S|\.docx?\s*\\\s*\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}(?::\d{2})?$/
+
+/** A page's lines of law text: without its running head and footer, and without a bare number at its edge (`BARE_NUMBER_RE`). */
+function pageLines(page: string): string[] {
+  const lines = page.split('\n').map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter((l) => l && !RUNNING_HEAD_RE.test(l) && (BARE_NUMBER_RE.test(l) || !NOISE_RE.test(l)))
+  return lines.filter((l, k) => !BARE_NUMBER_RE.test(l) || (k > 0 && k < lines.length - 1))
+}
 
 /** Where the legal text begins: the enacting clause. */
 /* A Verordnung is issued, not resolved: „Auf Grund des § … wird verordnet:". */
@@ -137,7 +168,7 @@ function joinLines(a: string, b: string): string {
  * marks it — then the PDF is not a draft law this reader can take apart.
  */
 export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | null {
-  const lines = pages.flatMap((p) => p.split('\n')).map((l) => l.replace(/\s+/g, ' ').trim()).filter((l) => l && !NOISE_RE.test(l))
+  const lines = pages.flatMap(pageLines)
   // Where a draft leaves out the enacting clause (Salzburg's S.WFG 2025),
   // its title „Gesetz vom …… über/, mit dem …" marks the start instead.
   const enacting = lines.findIndex((l) => ENACTING_RE.test(l))

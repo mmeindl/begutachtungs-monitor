@@ -69,7 +69,8 @@ export async function tguDraftBlocks(land: LandCode, detail: LandDraftRecord, dr
   const source = draftSource(detail.draft.documents, `Land ${land}`, draftPagesOf)
   if (!source) return null
   const read = await source.read()
-  return read.notDraft ? null : lawBlocksFromPdfPages([read.text])
+  // Page by page: a bare number is a page's own only at the page's edge (`draftPdfLaw.ts`).
+  return read.notDraft ? null : lawBlocksFromPdfPages(read.pages ?? [read.text])
 }
 
 /** How the Textgegenüberstellung's bytes are read: `landPdfBytes`, or a harness's cached copy. */
