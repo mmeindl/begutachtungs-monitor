@@ -206,6 +206,14 @@ const ANLAGE_DESIGNATION_RE = /^"?\s*(?:Anlage|Anlagen|Anhang|Anhänge|Anl\.)\s+
 const ANLAGE_CONTINUATION_RE = /^\(\s*zu\s/i
 
 /**
+ * The class RIS gives a schedule's designation (`<ueberschrift typ="anlage">`,
+ * `risXml.ts`), outside a table — inside one it is the two-column layout of a
+ * Textgegenüberstellung, not law text. Parliament's Word template marks the
+ * same line `71Anlagenbez`, which its reader keeps as text (`other`).
+ */
+const RIS_SCHEDULE_DESIGNATION_CLS = 'ueberschrift/anlage'
+
+/**
  * How a block changes the quotation state. A payload is enclosed in
  * quotation marks: `normalizeText` folds „ “ ” to ", so that pair is a
  * parity bit, while »…« nests around an instruction quoted inside another
@@ -327,6 +335,25 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         // `section` on BOTH sides and go on being dropped on both; keeping
         // them here would create the same asymmetry in the other direction.
         if (novelleMode && current && (ANLAGE_DESIGNATION_RE.test(b.text) || (continuesAnlage && ANLAGE_CONTINUATION_RE.test(b.text)))) {
+          current.blocks.push(b)
+          anlageRun = true
+          continue
+        }
+        // **The same holds in a law the draft enacts** (19.11.2026). Its
+        // schedules follow its last §, and Parliament's reader kept „Anlage I"
+        // / „(zu § 106)" as text of that § while this one dropped the RIS
+        // heading — so the Plenum→Kundmachung and HTML→XML comparisons showed
+        // every designation as removed from the last § (32/ME ElWG § 190 and
+        // § 182, 43/ME EABG §§ 63 and 59: 19 pieces, `harness/station.ts`).
+        // Kept here only by RIS's own class, and only the designation and
+        // the heading of that class directly below it („(zu § 106)", „Zu
+        // § 5"): the class also carries stray lines a converter left there
+        // (a binary's file path, „Teil 2"), which Parliament's text lacks.
+        //
+        // The schedules still read as text of the last §, on both sides
+        // alike. As units of their own they would need the Begründung join,
+        // the list of a new law's §§ and the Land PDF reader to agree first.
+        if (!novelleMode && current && b.cls === RIS_SCHEDULE_DESIGNATION_CLS && (ANLAGE_DESIGNATION_RE.test(b.text) || continuesAnlage)) {
           current.blocks.push(b)
           anlageRun = true
           continue

@@ -519,6 +519,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   Bundesgesetzblätter and 21 over 595 Parliament texts, and showed a kept
   line as „entfallen" (95/ME, 58/ME, 15/ME). The table-of-contents echo rule
   drops only a unit that holds no instruction. Gate: `pnpm harness:units`.
+- **A schedule's designation is text on both readers, in a Novelle and in a
+  law the draft enacts** (19.11.2026, `lawUnits.ts`): Parliament keeps
+  `71Anlagenbez`, so the RIS reader keeps `<ueberschrift typ="anlage">` and
+  the heading of that class right below it. Dropped on one side only, every
+  „Anlage I (zu § 106)" read as removed from the last § (32/ME, 43/ME). The
+  schedules still count as text of the last §; units of their own are open.
 - **„Redaktionell" is decided by what changed, never by how much.** A change
   is editorial only if every inserted or removed piece is a citation, a
   number, a date, a single letter or punctuation; „und" → „oder" is not.
