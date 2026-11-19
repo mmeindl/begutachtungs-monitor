@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
-import { displayId, extraHeading, unitName, withoutOwnDesignation } from '../shared/utils/unitName'
+import { displayId, extraHeading, renumberedFrom, unitName, withoutOwnDesignation } from '../shared/utils/unitName'
 
 function unit(u: Partial<LawDiffUnit>): LawDiffUnit {
   return {
@@ -87,6 +87,22 @@ describe('displayId', () => {
     expect(displayId('Z15#dup')).toBe('Z 15')
     expect(displayId('Z1a#dup')).toBe('Z 1a')
     expect(displayId('Art.11#dup')).toBe('Art. 11')
+  })
+})
+
+describe('renumberedFrom', () => {
+  it('names the old designation of a renumbered unit', () => {
+    expect(renumberedFrom('§13', '§9')).toBe('§ 13')
+    expect(renumberedFrom('Z4', 'Z3a')).toBe('Z 4')
+  })
+
+  it('draws no arrow between two equal designations (19.11.2026)', () => {
+    // „Z1" paired with „Z1#dup" is the same printed Z 1: the page showed
+    // „Z 1 → Z 1", a renumbering that never happened.
+    expect(renumberedFrom('Z1', 'Z1#dup')).toBeNull()
+    expect(renumberedFrom('§8#dup', '§8')).toBeNull()
+    expect(renumberedFrom('§8', '§8')).toBeNull()
+    expect(renumberedFrom(null, '§8')).toBeNull()
   })
 })
 

@@ -6,6 +6,7 @@
  * Pure: no Vue, no Nuxt — tests/landWithheld.test.ts runs it as it is.
  */
 import type { LandLawDiffResponse } from '#shared/types'
+import { renumberedFrom } from '#shared/utils/unitName'
 
 export type LandWithheld = LandLawDiffResponse['withheld'][number]
 
@@ -143,7 +144,7 @@ const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'standi
  * become §§ 9 to 12).
  */
 export function moveTargets(entries: readonly { id: string; fromId?: string | null }[]): Set<string> {
-  return new Set(entries.filter((e) => e.fromId && e.fromId !== e.id).map((e) => e.id))
+  return new Set(entries.filter((e) => renumberedFrom(e.fromId, e.id)).map((e) => e.id))
 }
 
 /** What follows such a §'s number: „§ 33 (alt)". */
@@ -170,7 +171,7 @@ export function withheldNotes(items: readonly LandWithheld[], { alone = false, m
     // „Die Textgegenüberstellung des Landes zeigt ihn" — a Paragraph, an Artikel; an Anlage is „sie".
     // `fromIds`: the number a renumbered § has in force, named „§ 13 → § 9" as the comparison shows it (26.10.2026).
     const inForce = listed.map((w) => !w.fromId && w.reason !== 'inserted' && movedTo.has(w.id))
-    return { cause, ids, fromIds: listed.map((w) => w.fromId ?? null), inForce, lead, text: ids.length === 1 ? note.one : note.many, pronoun: ids.length === 1 && cause !== 'annex' ? 'ihn' as const : 'sie' as const }
+    return { cause, ids, fromIds: listed.map((w) => (renumberedFrom(w.fromId, w.id) ? w.fromId! : null)), inForce, lead, text: ids.length === 1 ? note.one : note.many, pronoun: ids.length === 1 && cause !== 'annex' ? 'ihn' as const : 'sie' as const }
   })
 }
 

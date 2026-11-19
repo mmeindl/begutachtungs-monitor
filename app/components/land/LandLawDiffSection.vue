@@ -6,7 +6,7 @@ import { diffUnitKey } from '#shared/utils/diffKey'
 import { formatDateDe } from '#shared/utils/format'
 import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, landShortTitle } from '#shared/utils/laender'
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
-import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
+import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
@@ -160,7 +160,7 @@ const IN_FROM: Record<LandTextStation, string> = { geltend: 'in der geltenden Fa
 /* A unit the later text numbers otherwise: „§ 13 → § 9", for every pair of
    texts this section compares (26.10.2026) — the federal Beilage's form
    (`TextComparisonSection`), which replaced „(in der geltenden Fassung § 13)". */
-const movedFrom = (u: LawDiffUnit) => (u.fromId && u.fromId !== u.id ? displayId(u.fromId) : null)
+const movedFrom = (u: LawDiffUnit) => renumberedFrom(u.fromId, u.id)
 
 /* Each comparison's anchor, which the bar and inbound links use. Two
    comparisons end at the Kundmachung on a Salzburg page — the Landtag's step

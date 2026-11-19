@@ -58,6 +58,19 @@ export function displayId(id: string): string {
 }
 
 /**
+ * The designation a unit had before it was renumbered, as printed, or null
+ * where it kept its own. Compared as printed, not as keys: „Z1" → „Z1#dup"
+ * is the same Z 1 under its repeat mark, and an arrow between two equal
+ * designations, „Z 1 → Z 1", announced a renumbering that never happened
+ * (19.11.2026). Every „→" and every „(alt)" asks here.
+ */
+export function renumberedFrom(fromId: string | null | undefined, id: string): string | null {
+  if (!fromId) return null
+  const from = displayId(fromId)
+  return from === displayId(id) ? null : from
+}
+
+/**
  * The heading, but only where it says something the block does not.
  *
  * For a § it is the § title ("Anwendungsbereich") — real information. For a

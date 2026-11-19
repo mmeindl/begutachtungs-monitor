@@ -25,7 +25,7 @@ import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
-import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
+import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import { lawDiffCredits } from '~/utils/lawDiffCredits'
 import { explanationsMissingNote, reasoningGapNote } from '~/utils/reasoningNotes'
@@ -275,7 +275,7 @@ const toGenitive = computed(() => lawStationGenitiveDe(pair.value.to, first))
 /* A unit the later text numbers otherwise: „§ 13 → § 9", as the Beilage
    (`TextComparisonSection`) and the Länder comparisons write it (26.10.2026)
    — it replaced „(im Entwurf § 13)", so one sign means one thing. */
-const movedFrom = (u: LawDiffUnit) => (u.fromId && u.fromId !== u.id ? displayId(u.fromId) : null)
+const movedFrom = (u: LawDiffUnit) => renumberedFrom(u.fromId, u.id)
 const toLabel = computed(() => lawStationLabelOf(pair.value.to, first))
 
 /** The three sources of a name and their order live in `#shared/utils/unitName`. */

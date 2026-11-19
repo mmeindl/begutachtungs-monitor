@@ -89,7 +89,8 @@ describe('withheldNotes — a renumbered § (26.10.2026)', () => {
   })
 
   it('names the § in force under a number another § moves to „(alt)", and not one printed as new (Tirol 575)', () => {
-    const movedTo = moveTargets([{ id: '§33', fromId: '§34' }, { id: '§5', fromId: '§5' }, { id: '§6' }])
+    // „§ 8" paired with its repeat key „§8#dup" is the same printed § (19.11.2026).
+    const movedTo = moveTargets([{ id: '§33', fromId: '§34' }, { id: '§5', fromId: '§5' }, { id: '§6' }, { id: '§8#dup', fromId: '§8' }])
     expect([...movedTo]).toEqual(['§33'])
     const notes = withheldNotes([
       { law: 'T', id: '§33', reason: 'unsure' },
