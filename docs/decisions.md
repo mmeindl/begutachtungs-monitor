@@ -664,6 +664,30 @@ gets an entry of its own only where it carries a reason the rule does not.
   each row from where the one above ended, so two Ziffern swapped across
   rows (the table path prints one per row) are a contradiction, reported as
   text standing „an anderer Stelle".
+- **What stands in front of an omission mark is law unless it can only be
+  the omission's label** (19.11.2026, `withoutHead` in
+  `server/utils/annex/elision.ts`). A chain behind text of the stretch's
+  own is the label only where a head can start: after a finished sentence,
+  at a bare marker behind prose, at a range whose first number has no dot,
+  or as the §'s designation behind its heading. Taken off from any space,
+  „gemäß §§ 3 Abs. 2 Z 1 bis 6 und 4 … Z 1 und 2. (2) …" lost the citation
+  the draft changes, and the oracle could not see whether the engine
+  changed it.
+- **A heading the draft does not mark as one never replaces the law's own**
+  (19.11.2026, `parsePayload` and `GUESSED_HEADINGS` in
+  `server/utils/kons/lawApply.ts`). RIS marks a printed § heading
+  (`ueberschrift typ="para"`); a bare first line is a guess, and a lead-in
+  that ends in a colon or a lower-case word is text. Without „samt
+  Überschrift", a guess that would overrule the standing heading is
+  refused. Heading and body read as one string to the oracle's checks 1 to
+  3, so a moved boundary between them read right: BilDokG 2020 § 26
+  (14/ME XXVIII) stood on the page as confirmed with its lead-in printed as
+  the heading.
+- **The Prüfstand holds the designations as well as the words**
+  (19.11.2026, `markerSequence` in `scripts/harness/kons.ts`). „identisch"
+  compares `plainText`, which carries no „(2)", „3." or „b)"; the page
+  shows them. A confirmed § whose designations differ from the RIS text is
+  to stay at 0.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
