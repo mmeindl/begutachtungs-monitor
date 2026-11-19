@@ -61,7 +61,7 @@ function namesSeveralArticles(heading: string): boolean {
   const numerals = new Set([...heading.matchAll(ARTICLE_WITH_ZIFFER_RE)].map((m) => m[1]!.toLowerCase()))
   return numerals.size > 1
 }
-const ARTICLE_WITH_ZIFFER_RE = /(?:^|[,(]|\b(?:und|sowie))\s*(?:zu\s+(?:den\s+)?)?art(?:ikel|\.)\s*([0-9]+[a-z]?|[ivxlc]+)\s+Z\b/gi
+const ARTICLE_WITH_ZIFFER_RE = /(?:^|[,(]|\b(?:und|sowie))\s*(?:zu\s+(?:den\s+)?)?art(?:ikel|\.)\s*([0-9]+[a-z]?|[ivxlc]+)\s+Z(?=\s*\d)/gi
 
 /**
  * From where on two law names count as the same, where the passage names no
