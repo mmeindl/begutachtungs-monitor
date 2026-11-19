@@ -1198,9 +1198,25 @@ function quotedParts(t: string): string[] {
   return [...t.matchAll(QUOTED)].map((m) => stripQuotes(m[1]!))
 }
 
-/** The instruction proper, cut before the colon that opens a quoted block. */
+/**
+ * The instruction proper, cut before the colon that opens a quoted block.
+ *
+ * Not at a colon inside a quotation: „wird der Ausdruck „http://simap.europa.eu"
+ * durch den Ausdruck „https://ted.europa.eu" ersetzt" was cut at „http:", and
+ * the head held no verb (BVergG 2018 Anhang VIII Z 3, BGBl. I Nr. 8/2026).
+ * Where the quotation marks do not pair, nothing tells inside from outside,
+ * and the first colon cuts as before.
+ */
 function instructionHead(t: string): string {
-  const colon = t.indexOf(':')
+  let colon = t.indexOf(':')
+  if ((t.match(/"/g)?.length ?? 0) % 2 === 0) {
+    colon = -1
+    let quoted = false
+    for (let i = 0; i < t.length && colon < 0; i++) {
+      if (t[i] === '"') quoted = !quoted
+      else if (t[i] === ':' && !quoted) colon = i
+    }
+  }
   return colon > 0 && colon <= 240 ? t.slice(0, colon) : t
 }
 

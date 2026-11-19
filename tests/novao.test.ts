@@ -1460,3 +1460,24 @@ describe('the heading of a division named by the § above it (20.11.2026)', () =
     }
   })
 })
+
+describe('a colon inside a quotation (20.11.2026)', () => {
+  // BVergG 2018 Anhang VIII Z 3, BGBl. I Nr. 8/2026: cut at „http:", the
+  // head held no verb and the line was refused.
+  it('reads the verb behind a quoted URL', () => {
+    const r = parseInstruction('In Anhang VIII Z 3 wird der Ausdruck „http://simap.europa.eu“ durch den Ausdruck „https://ted.europa.eu“ ersetzt.')
+    expect(r.reason).toBeNull()
+    expect(r.ops).toMatchObject([{ kind: 'replacePhrase', target: { para: 'Anhang VIII', z: '3' }, from: 'http://simap.europa.eu', to: 'https://ted.europa.eu' }])
+  })
+
+  // 22e95d18: past the quoted colon, the guard for a division's heading speaks.
+  it('refuses the heading of a division even with a colon in its quote', () => {
+    expect(parseInstruction('Die Abschnittsüberschrift nach § 11 „5. Abschnitt: Durchführung genehmigungsfreier Bauvorhaben“ lautet:').reason).toMatch(/Gliederungseinheit/)
+  })
+
+  it('still cuts at the colon that opens the new text', () => {
+    const r = parseInstruction('In § 3 wird nach Abs. 2 folgender Abs. 2a eingefügt: „(2a) Gilt: „x“.“')
+    expect(r.reason).toBeNull()
+    expect(r.ops[0]).toMatchObject({ kind: 'insertAfter', anchor: { para: '§ 3', abs: '2' } })
+  })
+})
