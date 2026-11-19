@@ -105,6 +105,9 @@ const RIS_MAP = { rows: [{ inr: 1, risId: 'BEGUT_X', risUrl: 'https://www.ris.bk
 
 const timeout = () => Promise.reject(new Error('The operation was aborted due to timeout'))
 
+/** A Gesetzestext in the legistic template's classes: one §. */
+const LAW = '<html><body><p class=11Titel>Bundesgesetz über X</p><p class=45UeberschrPara>Geltungsbereich</p><p class=51Abs><span class=991GldSymbol>§ 1.</span> (1) Dieses Gesetz gilt.</p></body></html>'
+
 /** What Parliament answers per item, swapped per test. */
 let me = meDetail()
 let rv = rvDetail()
@@ -215,6 +218,12 @@ describe('the Vorlage\'s record does not arrive', () => {
 describe('the draft\'s own text does not arrive, where a later pair is cut to it', () => {
   it('throws instead of comparing the whole Sammelgesetz as „nicht trennbar"', async () => {
     rv = rvDetail({ bundled: true })
+    // Two later texts that parse: a pair with an unreadable side is refused
+    // before the draft is read at all.
+    fetchDocument.mockImplementation(async (url: string) => {
+      if (unreachable.has(url)) throw new Error(`timeout: ${url}`)
+      return url === RV_HTML || url === AUSSCHUSS_HTML ? LAW : '<html><body></body></html>'
+    })
     unreachable.add(ME_HTML)
     await expect(getLawDiff('XXVIII', 1, 'rv', 'ausschuss')).rejects.toThrow('timeout')
     expect(stored()).toEqual([])
@@ -223,5 +232,23 @@ describe('the draft\'s own text does not arrive, where a later pair is cut to it
     await getLawDiff('XXVIII', 1, 'rv', 'ausschuss')
     expect(fetchDocument).toHaveBeenCalledWith(ME_HTML)
     expect(stored()).toEqual(['law-diff:XXVIII-1-rv-ausschuss'])
+  })
+})
+
+describe('one text parses into no § (19.11.2026)', () => {
+  it('names the text that could not be read, instead of showing the other whole as „neu"', async () => {
+    fetchDocument.mockImplementation(async (url: string) => (url === RV_HTML ? LAW : '<html><body><p>§ 1. Ohne Klassen.</p></body></html>'))
+    const diff = await getLawDiff('XXVIII', 1, 'me', 'rv')
+    expect(diff.available).toBe(false)
+    expect(diff.units).toEqual([])
+    expect(diff.unavailableReason).toBe('Nicht lesbar: Der Gesetzestext des Entwurfs ließ sich nicht in Paragraphen gliedern.')
+  })
+
+  it('the same for the later text, and the old sentence where neither is readable', async () => {
+    fetchDocument.mockImplementation(async (url: string) => (url === ME_HTML ? LAW : '<html><body></body></html>'))
+    expect((await getLawDiff('XXVIII', 1, 'me', 'rv')).unavailableReason).toBe('Nicht lesbar: Der Gesetzestext der Regierungsvorlage ließ sich nicht in Paragraphen gliedern.')
+    clearNitroCache()
+    fetchDocument.mockImplementation(async () => '<html><body></body></html>')
+    expect((await getLawDiff('XXVIII', 1, 'me', 'rv')).unavailableReason).toBe('Nicht lesbar: Der Gesetzestext ließ sich nicht in Paragraphen gliedern.')
   })
 })

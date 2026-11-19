@@ -293,6 +293,24 @@ const readLawDiff = defineCachedFunction(
     let toUnits = toHtml ? parseLawUnits(toDoc) : parseLawUnitsFromRis(toDoc)
 
     /*
+     * A text that parses into no § at all, said for that text (19.11.2026).
+     * `diffLawPackage` calls a comparison unpaired only where both sides have
+     * units, so one empty side went through and the page showed the other
+     * text whole as „neu" or „entfallen" — every § of 43/ME XXVIII's
+     * Vorlage as new, read against a draft page without the template's
+     * classes. Asked of the texts as read, before `scopeToDraft`: a later
+     * pair cut to the draft's laws may rightly leave one side empty (the
+     * committee dropped the draft's law), and that is a finding, not a gap.
+     */
+    if (!fromUnits.length || !toUnits.length) {
+      const side = (id: LawStationId) => `Der Gesetzestext ${lawStationGenitiveDe(id, first)} ließ sich nicht in Paragraphen gliedern.`
+      return answer(
+        gapDe('unreadable', !fromUnits.length && !toUnits.length ? 'Der Gesetzestext ließ sich nicht in Paragraphen gliedern.' : side(fromUnits.length ? to : from)),
+        { fromSource, toSource },
+      )
+    }
+
+    /*
      * Between two LATER stations of a Vorlage that bundles this draft with
      * others, only the draft's laws (30.09.2026). Both sides then carry the whole Sammelgesetz, every
      * Artikel pairs, and `diffLawPackage` has nothing to cut — 17/ME XXVIII
