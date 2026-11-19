@@ -33,9 +33,17 @@
  * the mark (`displayId`), the citation names no place for it
  * (`lawUnitCiteDe`), the § comparison pairs it by heading and similarity and
  * takes it for a sign of several laws in one Artikel (`lawDiff`). Each one is
- * counted by its cause, read from the unit before it:
+ * counted by its cause, read from the unit before it and from the source
+ * lines the two opened on (`scripts/lib/unitCensus.ts`):
  *   · wiederholt — the source prints the number twice (Waffengesetz, two
- *     instructions „82." in one Bundesgesetzblatt);
+ *     instructions „82." in one Bundesgesetzblatt; a draft that prints
+ *     „Variante A" and „Variante B" under one number; an old draft whose
+ *     Textgegenüberstellung prints each § in both columns);
+ *   · verdoppelt — the same number as the unit before, but the source printed
+ *     it once: the reader gave the number a second time — a first line with
+ *     no number promoted to „1." in front of the printed „1." (`segmentUnits`,
+ *     the single-respect rule), a table row of a schedule read as an
+ *     instruction. A reader fault, not a reading;
  *   · neu gezählt — the numbering starts over: one law amended in two Artikel
  *     of the same title (VBG 1948, Artikel 7 and 11), or an old draft whose
  *     Artikel no reader can split;
@@ -68,91 +76,13 @@
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { novaoNumber, segmentUnits, type LawUnit, type TextBlock } from '../../server/utils/lawtext/lawUnits'
+import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { articleBlocks } from '../../server/utils/lawtext/draftArticles'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { argAssigned, argFlag } from '../lib/args'
-
-interface Census {
-  /** Instruction blocks in the input */
-  lines: number
-  /** Numbered instruction lines in no unit, and unnumbered ones in none after a unit opened */
-  lost: TextBlock[]
-  /** Instruction lines in more than one unit */
-  doubled: TextBlock[]
-  /** Unit ids marked `#dup`, by cause (see the header) */
-  dupIds: DupCauses
-  /** Ids that occur twice under one law key */
-  sameIds: number
-}
-
-interface DupCauses { wiederholt: number; neu: number; folge: number; ohneNummer: number }
-const noDups = (): DupCauses => ({ wiederholt: 0, neu: 0, folge: 0, ohneNummer: 0 })
-
-/** Each `#dup` unit's cause, read from the unit before it in the same law. */
-function dupCauses(units: readonly LawUnit[]): DupCauses {
-  const out = noDups()
-  for (const [i, u] of units.entries()) {
-    if (!u.id.includes('#dup')) continue
-    const base = u.id.replace(/(?:#dup)+$/, '')
-    const prev = units[i - 1]
-    if (!/\d/.test(base)) out.ohneNummer++
-    else if (prev && prev.article === u.article && prev.id.replace(/(?:#dup)+$/, '') === base) out.wiederholt++
-    else if (prev && prev.article === u.article && prev.id.includes('#dup')) out.folge++
-    else out.neu++
-  }
-  return out
-}
-
-/** Census of one `segmentUnits` run: `units` must be `segmentUnits(blocks)`. */
-function instructionCensus(blocks: readonly TextBlock[], units: readonly LawUnit[]): Census {
-  const index = new Map(blocks.map((b, i) => [b, i] as const))
-  const owners = new Array<number>(blocks.length).fill(0)
-  let pos = 0
-  for (const u of units) {
-    for (const [k, bb] of u.blocks.entries()) {
-      const at = index.get(bb)
-      if (at !== undefined) {
-        owners[at]!++
-        pos = Math.max(pos, at + 1)
-        continue
-      }
-      // The opener, copied with its number cut off.
-      if (k !== 0 || bb.kind !== 'novao') continue
-      const want = normalizeText(bb.text)
-      for (let j = pos; j < blocks.length; j++) {
-        const src = blocks[j]!
-        if (owners[j] === 0 && src.cls === bb.cls && src.gld === bb.gld && normalizeText(src.text).endsWith(want)) {
-          owners[j]!++
-          pos = j + 1
-          break
-        }
-      }
-    }
-  }
-  const lost: TextBlock[] = []
-  const doubled: TextBlock[] = []
-  let lines = 0
-  let opened = false
-  for (const [i, b] of blocks.entries()) {
-    if (b.kind === 'article') opened = false
-    if (owners[i]! > 0) opened = true
-    if (b.kind !== 'novao') continue
-    lines++
-    if (owners[i]! > 1) doubled.push(b)
-    else if (owners[i] === 0 && (novaoNumber(b.text) !== null || opened)) lost.push(b)
-  }
-  const seen = new Set<string>()
-  let sameIds = 0
-  for (const u of units) {
-    const key = `${u.article ?? ''}\u0000${u.id}`
-    if (seen.has(key)) sameIds++
-    seen.add(key)
-  }
-  return { lines, lost, doubled, dupIds: dupCauses(units), sameIds }
-}
+import { instructionCensus, noDups, type DupCauses } from '../lib/unitCensus'
 
 // --- CLI ----------------------------------------------------------------------
 const cacheDir = process.env.HARNESS_CACHE ?? '.harness-cache'
@@ -173,6 +103,7 @@ const add = (path: string, doc: string, blocks: readonly TextBlock[], scope: str
   t.sameIds += c.sameIds
   if (c.lost.length + c.doubled.length > 0) t.hit.add(doc)
   for (const b of c.lost) report.push(`LOST    ${path.padEnd(18)} ${doc.slice(0, 12)} ${(scope ?? '').slice(0, 40).padEnd(40)} :: ${normalizeText(b.text).slice(0, 110)}`)
+  for (const { unit, prev } of c.verdoppelt) report.push(`#DUP    ${path.padEnd(18)} ${doc.slice(0, 12)} ${(scope ?? '').slice(0, 40).padEnd(40)} :: ${unit.id} verdoppelt — davor ${prev.id}: ${normalizeText(prev.text).slice(0, 60)} | ${normalizeText(unit.text).slice(0, 60)}`)
   for (const b of c.doubled) report.push(`DOUBLED ${path.padEnd(18)} ${doc.slice(0, 12)} ${(scope ?? '').slice(0, 40).padEnd(40)} :: ${normalizeText(b.text).slice(0, 110)}`)
 }
 const docsOf = new Map<string, number>()
@@ -240,8 +171,8 @@ console.log('Zählung der Anweisungen — jede Anweisungszeile in genau einer Ei
 for (const [path, t] of [...tallies].sort()) {
   failed += t.lost + t.doubled
   const d = t.dupIds
-  const dups = d.wiederholt + d.neu + d.folge + d.ohneNummer
-  console.log(`  ${path.padEnd(16)} Dokumente ${String(docsOf.get(path) ?? 0).padStart(5)}  Zeilen ${String(t.lines).padStart(6)}  verloren ${String(t.lost).padStart(4)}  doppelt ${String(t.doubled).padStart(3)}  betroffen ${String(t.hit.size).padStart(3)}   | #dup ${dups} (wiederholt ${d.wiederholt}, neu gezählt ${d.neu}, Folge ${d.folge}, ohne Nummer ${d.ohneNummer}), gleiche Id ${t.sameIds}`)
+  const dups = d.wiederholt + d.verdoppelt + d.neu + d.folge + d.ohneNummer
+  console.log(`  ${path.padEnd(16)} Dokumente ${String(docsOf.get(path) ?? 0).padStart(5)}  Zeilen ${String(t.lines).padStart(6)}  verloren ${String(t.lost).padStart(4)}  doppelt ${String(t.doubled).padStart(3)}  betroffen ${String(t.hit.size).padStart(3)}   | #dup ${dups} (wiederholt ${d.wiederholt}, verdoppelt ${d.verdoppelt}, neu gezählt ${d.neu}, Folge ${d.folge}, ohne Nummer ${d.ohneNummer}), gleiche Id ${t.sameIds}`)
 }
 if (list || failed > 0) for (const line of report) console.log(line)
 if (failed > 0) {

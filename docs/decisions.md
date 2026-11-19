@@ -524,8 +524,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   Waffengesetz), one law amended in two Artikel of one title, an old draft
   whose Artikel no reader splits. Pages print the number alone
   (`displayId`); the census counts the marks by cause and does not fail on
-  them, since a gate would fail on the source's own numbering. Its class
-  „ohne Nummer" is a reader fault, not a reading.
+  them, since a gate would fail on the source's own numbering. Its classes
+  „ohne Nummer" and „verdoppelt" are reader faults, not readings:
+  „verdoppelt" is the number of the unit before, given a second time where
+  the source printed it once (an unnumbered first line promoted to „1."
+  before the printed „1.", a table row „2.1" read as instruction 2); only a
+  number both opening lines print is „wiederholt" (`scripts/lib/unitCensus.ts`).
 - **A schedule's designation is text on both readers, in a Novelle and in a
   law the draft enacts** (19.11.2026, `lawUnits.ts`): Parliament keeps
   `71Anlagenbez`, so the RIS reader keeps `<ueberschrift typ="anlage">` and
