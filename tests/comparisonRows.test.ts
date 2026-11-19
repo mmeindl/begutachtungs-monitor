@@ -944,6 +944,16 @@ describe('a designation typed as text', () => {
     expect(rows.map((r) => r.para)).toEqual(['§ 21c.', '§ 3.', '§ 3a.'])
   })
 
+  // As a `<gldsym>` is (`stripGld`): left in, the page printed „§ 3." twice
+  // and the oracle looked for it in a result that holds the heading alone.
+  it('takes the typed designation out of the text it opened, as a <gldsym>', () => {
+    const rows = parse(annex([open, pair('§ 3. Voraussetzungen für die Errichtung.', '§ 3. Errichtung einer Privatschule.'), pair('', '§ 3a. Neue Bestimmung.')]))
+    expect(rows.slice(1).map((r) => [r.gld, r.current, r.proposed])).toEqual([
+      ['§ 3.', 'Voraussetzungen für die Errichtung.', 'Errichtung einer Privatschule.'],
+      ['§ 3a.', '', 'Neue Bestimmung.'],
+    ])
+  })
+
   it('opens nothing from a range left out, nor where the two columns name different §§', () => {
     const rows = parse(annex([open, pair('§ 21. bis 25. …', '§ 21. bis 25. …'), pair('§ 7. Alt.', '§ 8. Neu.')]))
     expect(rows.map((r) => r.para)).toEqual(['§ 21c.', '§ 21c.', '§ 21c.'])

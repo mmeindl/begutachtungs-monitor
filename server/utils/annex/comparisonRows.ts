@@ -198,6 +198,13 @@ function typedDesignation(current: string, proposed: string): string | null {
   return null
 }
 
+/** The text without the typed designation `own` at its head, where it opens with it. */
+function withoutTyped(text: string, own: string | null): string {
+  if (own === null) return text
+  const m = TYPED_DESIGNATION_RE.exec(text)
+  return m && designationKey(m[1]!) === designationKey(own) ? text.slice(m[0].length).trim() : text
+}
+
 /**
  * A structural division of the law — "3. Abschnitt", "Abschnitt XI",
  * "2. Hauptstück", "7. Teil", with or without its title on the same line.
@@ -614,8 +621,14 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     // beside the badge and "§ 40. (1) Wurden …" underneath it. A consumer that
     // wants the provision as printed joins `gld` and `current`. A designation
     // the row does *not* carry stays in the text (`stripGld`).
-    const current = cellText(stripGld(currentHtml, gld))
-    const proposed = cellText(stripGld(proposedHtml, gld))
+    // A designation typed at the head of the columns is the same data as a
+    // `<gldsym>` once it opens the §, and comes out the same way: left in,
+    // the page printed „§ 3." twice and the oracle looked for „§ 3. Errichtung
+    // einer Privatschule." in a result that holds the heading alone
+    // (Privatschulgesetz, RIS 95BA094D, 19.11.2026).
+    const typedOwn = !gldMatch && !headingGld ? gld : null
+    const current = withoutTyped(cellText(stripGld(currentHtml, gld)), typedOwn)
+    const proposed = withoutTyped(cellText(stripGld(proposedHtml, gld)), typedOwn)
     // Where the two designations differ, the § is renumbered. The right one is
     // the column's own Gliederungssymbol, or — where the ressort typed it as
     // text — a designation at the head of the column that the left one does
