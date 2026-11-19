@@ -1435,6 +1435,18 @@ describe('parseAnnexParts — the parts of one annex (19.11.2026)', () => {
   it('answers null where no part could be read at all, as before', () => {
     expect(parseAnnexParts([null, [pageOf([])]], ONE_LAW)).toBeNull()
   })
+
+  // The Methodenverordnung Wasser (RIS 08E3BE3E): its „Textgegenüberstellung
+  // (Anlagen)", 72 portrait pages without the header pair, yielded no row and
+  // left no trace — the page showed seven §§ and not a word about the
+  // schedules.
+  it('counts the pages of a part set otherwise that yields no row as unread', () => {
+    const portrait = (y: number, text: string) => pageOf([run(LEFT_X, y, text)], 595)
+    const schedules = [portrait(700, 'Anlage A Methodenvorschriften für Emissionsmessungen'), portrait(700, 'Abschnitt I Abwassermengenmessung'), pageOf([], 595)]
+    const parse = parseAnnexParts([part(), schedules], ONE_LAW)!
+    expect(parse.rows).toHaveLength(1)
+    expect(parse.droppedPages).toBe(2)
+  })
 })
 
 describe('a text layer read in the wrong code page', () => {

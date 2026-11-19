@@ -2256,9 +2256,9 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
  * list: parsed on its own, half an annex is refused for skipping a law it
  * never claimed to carry. **Joined only where the parts are set alike**
  * (`sameTypesetting`): a part set otherwise is its own document, read on its
- * own, and contributes its rows and nothing else — the Methodenverordnung
- * Wasser's 72 portrait pages of schedules against 7 landscape pages of
- * Gegenüberstellung.
+ * own, and contributes its rows — or, where it yields none, its pages as
+ * unread: the Methodenverordnung Wasser's 72 portrait pages of schedules
+ * against 7 landscape pages of Gegenüberstellung.
  *
  * **A part that could not be read refuses the whole annex** (19.11.2026).
  * pdf.js reads a damaged file as an empty document, and such a part used to
@@ -2287,15 +2287,23 @@ export function parseAnnexParts(parts: readonly (readonly AnnexPage[] | null)[],
     }
   }
   const annex = parseAnnexPdf(read.filter((part) => sameTypesetting(first, part)).flat(), articles)
-  // A part set differently contributes its rows and nothing else: its dropped
-  // pages are NOT the annex's, because `droppedPages` means „pages of this
-  // annex whose geometry we could not vouch for", and a document that is no
-  // two-column comparison at all is the statement `unreadable` makes.
+  // A part set differently contributes its rows and the pages of it the
+  // parse could not vouch for.
+  //
+  // **A part set differently that yields no row at all counts every page of
+  // it as unread** (19.11.2026). It used to contribute nothing, and nothing
+  // said so: the Methodenverordnung Wasser's „Textgegenüberstellung
+  // (Anlagen)", 72 portrait pages without the header pair, vanished behind
+  // the seven §§ of its landscape part, and the page showed a comparison
+  // without its schedules. Its pages are set otherwise than the rest and what
+  // is on them is missing here — the sentence `droppedPages` puts on the page.
   for (const part of read.filter((p) => !sameTypesetting(first, p))) {
     const apart = parseAnnexPdf(part, articles)
     if (apart.rows.length > 0) {
       annex.rows.push(...apart.rows)
       annex.droppedPages += apart.droppedPages
+    } else {
+      annex.droppedPages += part.filter((page) => page.items.length > 0).length
     }
   }
   return annex
