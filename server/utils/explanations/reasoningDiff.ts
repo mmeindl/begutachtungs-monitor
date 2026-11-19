@@ -1531,7 +1531,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       gaps[key] = gap
       continue
     }
-    const absent = (side: Side) => !namesChange(side === 'before' ? before : after, unitZiffer(unit, side).ziffer, read.paragraphIds(unit, side))
+    const absent = (side: Side) => !namesChange(side === 'before' ? before : after, unitZiffer(unit, side).ziffer, read.paragraphIds(unit, side), unitArticle(unit, side))
     const notBefore = gap !== 'missingAfter' && absent('before')
     const notAfter = gap !== 'missingBefore' && absent('after')
     gaps[key] = notBefore || notAfter ? missingGap(notBefore, notAfter) : 'unread'
@@ -1554,9 +1554,12 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
  *    otherwise than its text — the passage is there, under another number.
  *
  * Any Artikel and any number of the line count, an Absatz's too: a wrong hit
- * costs the line its reason, never its truth.
+ * costs the line its reason, never its truth. And a block that explains the
+ * unit's whole law under its Artikel heading names every change of it
+ * (`explainsLawWhole`, 19.11.2026).
  */
-function namesChange(doc: HtmlExplanations, ziffer: string | null, paras: ReadonlySet<string>): boolean {
+function namesChange(doc: HtmlExplanations, ziffer: string | null, paras: ReadonlySet<string>, article: string | null): boolean {
+  if (explainsLawWhole(doc, article)) return true
   if (doc.special.some((p) => p.paragraphs.some((x) => paras.has(explanationParaId(x) ?? '')))) return true
   const lines = [...doc.general, ...doc.special.flatMap((p) => [p.heading, ...p.text])]
   for (const line of lines) {
@@ -1567,6 +1570,50 @@ function namesChange(doc: HtmlExplanations, ziffer: string | null, paras: Readon
   }
   return false
 }
+
+/**
+ * Whether a document explains the law under `article` as a whole: the
+ * Artikel heading itself carries the text, naming no Ziffer and no §, and no
+ * passage under that Artikel is titled by Ziffer (19.11.2026). 96/ME
+ * XXVIII's draft explains the EStG in one block of 11.509 characters under
+ * „Zu Art. 7 (Änderung des Einkommensteuergesetzes 1988)" — the
+ * Aktivitätsfreibetrag of § 105a and its Inkrafttreten throughout —, and
+ * its Z 8 and Z 9 read „im Entwurf nicht gefunden"; Z 1 to Z 7 escaped the
+ * same line only because another Artikel's „Zu Z 1 und 3" named their
+ * numbers. Such a block may explain any change of its law, so absence is not
+ * proven; it is no change's passage, so it attaches nothing. Only the unit's
+ * own Artikel counts — never another's, never a passage under no Artikel,
+ * never a „Zu Abs. …" below a §, and never an Artikel whose changes the
+ * document titles by Ziffer: there the block is an introduction. Passages
+ * titled by § beside it do not make it one: 97/ME XXVII explains the UbG by
+ * § and says under „Zu Artikel 1 (…)" itself what becomes of „Kranken" in
+ * „§§ 6, 10, … und 43". The block must carry prose: „Zum 1. Abschnitt:"
+ * alone (the TKG 2021 of GP XXVII, a new law explained in 393 § passages) is
+ * a sub-heading the reader folded into it, and explains nothing.
+ */
+function explainsLawWhole(doc: HtmlExplanations, article: string | null): boolean {
+  if (!article) return false
+  const ofArticle = doc.special.filter((p) => p.article === article)
+  if (ofArticle.some((p) => p.ziffern.length > 0)) return false
+  return ofArticle.some(
+    (p) => p.paragraphs.length === 0 && p.section?.length === 1 && p.section[0] === article && ARTICLE_HEAD_RE.test(p.heading) && p.text.some((t) => !isSubHeading(t)),
+  )
+}
+
+/** „Zu Art. 7 (…)", „Zu Artikel 7", „Artikel 7" — an Artikel heading. */
+const ARTICLE_HEAD_RE = /^(?:zu\s+)?art(?:ikel|\.)?\s*\S/i
+
+/**
+ * A line of a block that only heads what follows: empty, or short and ending
+ * in a colon („Zu Abschnitt 1:", „Kompetenzgrundlage:"), or naming a part of
+ * the law („Zum 1. Abschnitt (Allgemeine Bestimmungen)"). A long line ending
+ * in a colon is prose that opens a list.
+ */
+function isSubHeading(line: string): boolean {
+  const t = line.trim()
+  return t.length === 0 || (t.length <= 100 && (/:$/.test(t) || SUB_PART_RE.test(t)))
+}
+const SUB_PART_RE = /^(?:zu[mr]?\s+)?(?:(?:\d+|[ivx]+)\.\s*)?(?:unter)?(?:abschnitt|teil|hauptstück)\b/i
 
 /** A „Zu …" line up to its colon. */
 const ZU_LINE_RE = /\bZu\s[^:]{1,240}/g

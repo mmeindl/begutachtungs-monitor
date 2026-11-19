@@ -961,6 +961,24 @@ describe('compareReasoning — warum eine Änderung keine Begründung hat (gaps)
     const range = erl('Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung. Zu Z 4, Z 100 bis Z 104 (Titel): Neu.')
     expect(compareReasoning(units, range, range).gaps['Gesetz|Z102|changed']).toBe('unread')
   })
+
+  it('behauptet kein Fehlen, wo der Entwurf das Gesetz im Ganzen unter seiner Artikelüberschrift begründet (96/ME XXVIII EStG Z 8)', () => {
+    const ASVG = 'Änderung des Allgemeinen Sozialversicherungsgesetzes'
+    const ESTG = 'Änderung des Einkommensteuergesetzes 1988'
+    const units = [
+      unit(ASVG, 'Z1', 'In § 3 Abs. 1 wird "a" durch "b" ersetzt.', 'changed', { to: '1' }),
+      unit(ESTG, 'Z8', 'Nach § 105 wird folgender § 105a samt Überschrift eingefügt: Aktivitätsfreibetrag …', 'changed', { to: '7' }),
+    ]
+    const draft = (...estg: string[]) => erl(`Zu Artikel 1 (${ASVG}):`, 'Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung.', `Zu Art. 7 (${ESTG})`, ...estg)
+    const bill = erl(`Zu Artikel 1 (${ASVG}):`, 'Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung.', `Zu Artikel 7 (${ESTG}):`, 'Zu Z 8 (§ 105a):', 'Der Aktivitätsfreibetrag.')
+
+    // The draft explains the Aktivitätsfreibetrag only in the block under its Artikel heading.
+    expect(compareReasoning(units, draft('Pensionisten soll für aktive Erwerbseinkünfte ein monatlicher Freibetrag zustehen.'), bill).gaps).toEqual({ [`${ESTG}|Z8|changed`]: 'unread' })
+    // A sub-heading folded into the block explains nothing.
+    expect(compareReasoning(units, draft('Zum 1. Abschnitt:'), bill).gaps).toEqual({ [`${ESTG}|Z8|changed`]: 'missingBefore' })
+    // Where the document titles the law's changes by Ziffer, the block is an introduction.
+    expect(compareReasoning(units, draft('Allgemeines zum Freibetrag.', 'Zu Z 2 (§ 4):', 'Anderes.'), bill).gaps).toEqual({ [`${ESTG}|Z8|changed`]: 'missingBefore' })
+  })
 })
 
 // „Zu den Z 22 und 102 (…):" is a heading (14.11.2026): read as text, it gave

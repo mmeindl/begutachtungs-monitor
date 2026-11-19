@@ -625,7 +625,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   another change of the same law amends is another §, never a slip of the
   heading);
   „nicht gefunden" only where that document names neither the Ziffer nor one
-  of the change's §§ in any „Zu …" line or passage heading (`namesChange`).
+  of the change's §§ in any „Zu …" line or passage heading (`namesChange`),
+  and does not explain the change's law in prose under its own Artikel
+  heading with no passage titled by Ziffer (`explainsLawWhole`: 96/ME
+  XXVIII explains the EStG's § 105a in one block under „Zu Art. 7 (…)").
   Otherwise the line is „Begründung: nicht zuzuordnen." with no reason: an
   unproven „nicht gefunden" would have been false on most such changes.
 - **The reasoning comparison runs only ME → RV, and only where both sides
