@@ -516,6 +516,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   number, a date, a single letter or punctuation; „und" → „oder" is not.
 - **The comparison key may fold typography; the displayed text never does**
   (§12.33).
+- **What the unit key forgives, the badge forgives** (19.11.2026,
+  `spacingOnly` in `server/utils/diff/wordDiff.ts`): a removed and an
+  inserted run that differ only in spaces and hyphens are no changed word for
+  „redaktionell", except a separator between two digits („1 3" is not
+  „13"). The runs stay shown as they are; folding them to `equal` would print
+  the earlier spelling as agreed.
 - **Erläuterungen a side has not given us are said, above the comparison**
   (14.11.2026, `explanationsMissingNote`; in the frame's Begründung row
   until 17.11.2026), instead of the Begründungen going missing silently. Parliament's record proves only what it lists, so the sentence

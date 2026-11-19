@@ -257,6 +257,8 @@ const PUNCT_RE = /^[\p{P}\p{S}]+$/u
 const DATE_RE = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/
 /** The sentence's closing punctuation, which belongs to the sentence and not to the number. */
 const TRAILING_PUNCT_RE = /[.,;:]+$/
+/** A citation word glued to what it cites, „nr.xxx/2026" — lowercased, as `bare` hands it on. */
+const GLUED_CITATION_RE = /^(?:nr|abs|lit|art)\.(?=[xy\d])/
 
 type TokenClass = 'number' | 'placeholder' | 'citation' | 'connective' | 'punct' | 'word'
 
@@ -291,8 +293,13 @@ function bare(raw: string): string {
 function isPlaceholder(raw: string): boolean {
   // Trailing punctuation belongs to the sentence, not to the number:
   // „xxx/2025." stands at the end of an Inkrafttretensbestimmung, and `bare`
-  // clears the quotation marks but not the period in front of them.
-  const t = raw.replace(TRAILING_PUNCT_RE, '')
+  // clears the quotation marks but not the period in front of them. A
+  // citation word glued to the front belongs to the citation: „BGBl. I
+  // Nr.xxx/2026," (116/ME Umweltförderungsgesetz Z 3, 14/ME
+  // Bildungsdokumentationsgesetz Z 24, 19.11.2026) is the same blank as
+  // „Nr. xxx/2026," — read as one `word`, it made the filled Fundstelle a
+  // change of substance.
+  const t = raw.replace(TRAILING_PUNCT_RE, '').replace(GLUED_CITATION_RE, '')
   if (!/^[xy\d]+(?:\/[xy\d]+)?$/i.test(t)) return false
   const blanks = (t.match(/[xy]/gi) ?? []).length
   return blanks >= 2 || (blanks === 1 && /\d/.test(t))
@@ -393,6 +400,12 @@ export function isEditorialChange(segments: readonly LawDiffSegment[] | null, co
     const s = segments[i]!
     if (s.type === 'equal') continue
     sawChange = true
+    // A removed run and the inserted run beside it that differ in spacing
+    // alone are one word set twice, not a changed word (`spacingOnly`).
+    if (spacingOnly(s, segments[i + 1])) {
+      i++
+      continue
+    }
     const tokens = s.text.split(/\s+/).filter(Boolean)
     const classes = tokens.map(classifyToken)
     if (classes.includes('word')) return false
@@ -415,6 +428,42 @@ export function isEditorialChange(segments: readonly LawDiffSegment[] | null, co
     }
   }
   return sawChange
+}
+
+/**
+ * A run with the spacing taken out that `compareKey` forgives at the unit
+ * level — every space and every hyphen — but not one between two digits:
+ * „1 3" is not „13", and the word level must not copy the one fold of the
+ * unit key that can join two numbers.
+ */
+function spacingKey(text: string): string {
+  // Whole runs, decided by their two neighbours: a lookbehind pattern would
+  // backtrack into „1 - 3" and take it apart piece by piece.
+  return text.replace(/[\s-]+/g, (run, at: number) => (DIGIT_RE.test(text[at - 1] ?? '') && DIGIT_RE.test(text[at + run.length] ?? '') ? run : ''))
+}
+
+/**
+ * Is this removed run, with the inserted run after it, the same text spaced
+ * differently?
+ *
+ * **One rule for the unit and the word, since 19.11.2026.** `compareKey`
+ * decides „geändert" with every space and hyphen left out; the word diff
+ * folds only the space before `.,;:` and the hyphen inside a word. So once a
+ * unit was changed for any other reason, a space only one side sets — „in
+ * Kraft. "" against „in Kraft."" (the closing quote), „Börseunternehmensgemäß"
+ * against „Börseunternehmens gemäß" — came out as a struck and an inserted
+ * word, and one `word` ends `isEditorialChange` at once. Measured over the
+ * station pairs of GP XXVIII (`scripts/harness/station.ts`): a unit that
+ * filled its Fundstelle and lost that one space stayed „geändert", its twin
+ * without the space „redaktionell" (41/ME Börsegesetz Z 52 and Z 53).
+ *
+ * Only the verdict reads it. The segments stay as they are, because the
+ * difference is true and visible — and an `equal` run is emitted from the
+ * EARLIER text, so folding the pair there would print the earlier spelling
+ * as the agreed one.
+ */
+function spacingOnly(s: LawDiffSegment, next: LawDiffSegment | undefined): boolean {
+  return s.type === 'removed' && next?.type === 'inserted' && spacingKey(s.text) === spacingKey(next.text)
 }
 
 /**

@@ -222,6 +222,29 @@ describe('editorial vs substantive', () => {
     expect(isEditorialChange(null)).toBe(false)
     expect(isEditorialChange([{ type: 'equal', text: 'x' }])).toBe(false)
   })
+  it('a space only one side sets is no changed word: the unit key forgives it, so the verdict does (19.11.2026)', () => {
+    // 41/ME Börsegesetz Z 53, 116/ME Wasserstoffförderungsgesetz Z 8 on rv/plenum → Kundmachung:
+    // the Fundstelle filled in, and the closing quote lost its space — „geändert"
+    // where the same unit without the space (Z 52) was „redaktionell".
+    expect(isEditorialChange(seg('BGBl. I Nr. xx/202x treten mit 6. Juni 2026 in Kraft. "', 'BGBl. I Nr. 27/2026 treten mit 6. Juni 2026 in Kraft."'))).toBe(true)
+    expect(isEditorialChange(seg('BGBl. I Nr. xx/202x treten mit 6. Juni 2026 in Kraft.', 'BGBl. I Nr. 27/2026 treten mit 6. Juni 2026 in Kraft.'))).toBe(true)
+    // 30/ME Börsegesetz Z 2: a word split by a space, beside a real change.
+    expect(isEditorialChange(seg('des Börseunternehmensgemäß § 5', 'des Börseunternehmens gemäß § 5'))).toBe(true)
+    // The segments themselves stay: the difference is shown, only the badge forgives it.
+    expect(seg('in Kraft. "', 'in Kraft."')!.filter((x) => x.type !== 'equal').map((x) => x.text)).toEqual(['Kraft. "', 'Kraft."'])
+    // But never a space between two digits: „1 3" is not „13".
+    expect(isEditorialChange(seg('binnen 1 3 Wochen', 'binnen 13 Wochen'))).toBe(false)
+    expect(isEditorialChange(seg('gemäß Z 1 - 3 Wochen', 'gemäß Z 13 Wochen'))).toBe(false)
+    // And a real word beside a spacing difference keeps the unit substantive.
+    expect(isEditorialChange(seg('sechs Wochen in Kraft. "', 'acht Wochen in Kraft."'))).toBe(false)
+  })
+  it('a Fundstelle with its citation word glued on is still a placeholder (19.11.2026)', () => {
+    // 116/ME Umweltförderungsgesetz Z 3, 14/ME Bildungsdokumentationsgesetz Z 24.
+    expect(isEditorialChange(seg('Resilienzgesetzes, BGBl. I Nr.xxx/2026, unbeschadet', 'Resilienzgesetzes, BGBl. I Nr. 62/2026, unbeschadet'))).toBe(true)
+    expect(isEditorialChange(seg('des Bundesgesetzes BGBl. I Nr.xxx/2025 treten', 'des Bundesgesetzes BGBl. I Nr. 28/2025 treten'))).toBe(true)
+    // A glued REAL number replaced by another is still a different Fundstelle.
+    expect(isEditorialChange(seg('BGBl. I Nr.12/2024 gilt', 'BGBl. I Nr. 50/2025 gilt'))).toBe(false)
+  })
 })
 
 describe('isAddressOnlyDifference', () => {
