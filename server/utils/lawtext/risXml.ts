@@ -5,7 +5,7 @@
  * PURE MODULE — relative imports only, so vitest runs it directly.
  */
 import type { BlockKind, TextBlock } from './lawUnits'
-import { ARTICLE_RE, refineArticleHeadings } from './articleHeadings'
+import { ARTICLE_LINE_RE, ARTICLE_RE, refineArticleHeadings } from './articleHeadings'
 import { stripTags } from './normalize'
 import { FIGURE_MARK } from '../../../shared/utils/figureMark'
 
@@ -87,6 +87,39 @@ const N_AT_DASH_RE = /<\/n>((?:<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>)*)(?=<g
  */
 const BINARY_RE = /<binary\b[^>]*?(?:\/>|>[\s\S]*?<\/binary\s*>)/g
 
+/**
+ * „<ueberschrift typ="art">Artikel 1<br />Änderung des
+ * Beamten-Dienstrechtsgesetzes 1979</ueberschrift>" — the Artikel line and
+ * the law's name in ONE heading, split by a line break: the RIS twin of
+ * `articleNameSplit` in `parliamentHtml.ts`, and split the same way, into the
+ * Artikel line and its name as a `section`.
+ *
+ * The class mapping knows no `art`, and `refineArticleHeadings` takes only
+ * the bare Artikel line, so the joined heading stayed `other` — text of the
+ * instruction above it. The package read as one law: every Artikel after the
+ * first went on numbering under the first one's key, its first instruction
+ * „1." as `Z1#dup` behind the unit before (19.11.2026, `harness/units.ts`:
+ * three „verdoppelt" in Oö. and Kärntner Landesgesetzblätter, 250 such
+ * headings in the cached ones; and three Dienstrechts-Novellen of the Bund,
+ * 32 headings). The Land page was not affected — `lgblUnits` retypes `art`
+ * as `g1` before it reads.
+ *
+ * Only `typ="art"`, the one heading class the mapping leaves to the text:
+ * a `g1` heading of this shape is an Artikel already, keyed by the whole
+ * line, and splitting it would rekey 198 cached headings for no reading that
+ * was wrong. Not inside a table, and only where the part before the break
+ * is a bare Artikel line — an Artikel quoted in amendment text opens with
+ * the quotation mark.
+ */
+function articleNameSplit(typ: string, inner: string): [string, string] | null {
+  if (typ !== 'art') return null
+  const br = /<br\b[^>]*>/.exec(inner)
+  if (!br) return null
+  const line = risText(inner.slice(0, br.index))
+  const name = risText(inner.slice(br.index + br[0].length))
+  return ARTICLE_LINE_RE.test(line) && name ? [line, name] : null
+}
+
 function risText(inner: string): string {
   return stripTags(
     inner
@@ -136,6 +169,12 @@ export function parseRisXml(xml: string): TextBlock[] {
           : inner,
     )
     if (!text && !gld) continue
+    const split = tag === 'ueberschrift' && !gld && !inTable(m.index!) ? articleNameSplit(typ, inner) : null
+    if (split) {
+      const cls = `${tag}/${typ}`
+      blocks.push({ kind: 'article', cls, text: split[0], gld: null }, { kind: 'section', cls, text: split[1], gld: null })
+      continue
+    }
     let kind: BlockKind
     if (tag === 'ueberschrift') {
       kind = RIS_HEADING_KIND[typ] ?? 'other'

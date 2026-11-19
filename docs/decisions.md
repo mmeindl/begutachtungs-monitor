@@ -530,6 +530,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   the source printed it once (an unnumbered first line promoted to „1."
   before the printed „1.", a table row „2.1" read as instruction 2); only a
   number both opening lines print is „wiederholt" (`scripts/lib/unitCensus.ts`).
+- **An Artikel line and its name in one heading are two blocks, on both
+  readers** (19.11.2026). „Artikel 1<br>Änderung des …" is split into the
+  Artikel line and its name wherever the class mapping leaves the line to
+  the text: Parliament's `articleNameSplit`, and RIS `ueberschrift
+  typ="art"` (`risXml.ts`). Unsplit, the heading was text of the instruction
+  above it and the package read as one law. A RIS `g1` heading of that shape
+  is an Artikel already, keyed by the whole line, and stays as it is.
 - **A schedule's designation is text on both readers, in a Novelle and in a
   law the draft enacts** (19.11.2026, `lawUnits.ts`): Parliament keeps
   `71Anlagenbez`, so the RIS reader keeps `<ueberschrift typ="anlage">` and

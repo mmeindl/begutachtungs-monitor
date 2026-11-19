@@ -239,6 +239,31 @@ describe('the name under an Artikel line', () => {
     expect(units).toHaveLength(1)
     expect(units[0]).toMatchObject({ article: 'Artikel 1', id: '§1', heading: 'Geltungsbereich' })
   })
+
+  // LGBl. für Oberösterreich Nr. 34 (Bautechnikgesetz 2013 and EU-Begleitregelungs-
+  // und Umsetzungsgesetz), shortened; the Bund's Dienstrechts-Novellen set it the same way.
+  it('reads RIS `ueberschrift typ="art"` with the name behind a line break as Artikel line and name', () => {
+    const units = parseLawUnitsFromRis(
+      ris([
+        ['ueberschrift/art', 'Artikel I<br />Änderung des Oö. Bautechnikgesetzes 2013'],
+        ['absatz/promkleinlsatz', 'Das Oö. Bautechnikgesetz 2013, LGBl. Nr. 35/2013, wird wie folgt geändert:'],
+        ['absatz/novao1', 'Im § 85 Abs. 1 wird nach Z 12 folgende Z 12a eingefügt:'],
+        ['listelem/', '„12a. ein Bauprodukt, das entgegen der Bestimmung des § 72 verwendet;“'],
+        ['ueberschrift/art', 'Artikel II<br />Änderung des Oö. EU-Begleitregelungs- und Umsetzungsgesetzes'],
+        ['absatz/promkleinlsatz', 'Das Oö. EU-Begleitregelungs- und Umsetzungsgesetz, LGBl. Nr. 113/2018, wird wie folgt geändert:'],
+        ['absatz/novao1', '1. § 16 Abs. 3 lautet:'],
+        ['absatz/abs', '„(3) Die Informationen haben zu erfolgen.“'],
+        ['absatz/novao2', '2. Im § 17 wird der Betrag „1.000 Euro“ durch den Betrag „36.000 Euro“ ersetzt.'],
+      ]),
+    )
+    expect(units.map((u) => [u.articleNumber, u.article, u.id])).toEqual([
+      ['Artikel I', 'Änderung des Oö. Bautechnikgesetzes 2013', 'Z1'],
+      ['Artikel II', 'Änderung des Oö. EU-Begleitregelungs- und Umsetzungsgesetzes', 'Z1'],
+      ['Artikel II', 'Änderung des Oö. EU-Begleitregelungs- und Umsetzungsgesetzes', 'Z2'],
+    ])
+    // The heading is no longer text of the instruction above it.
+    expect(units[0]!.text).not.toMatch(/Artikel II/)
+  })
 })
 
 describe('the title of a draft without Artikel', () => {
