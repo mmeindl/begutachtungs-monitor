@@ -1037,7 +1037,7 @@ function submitSearch() {
 
       <!-- Below the newest laws since 17.11.2026 (maintainer): it spans the
            whole period and barely moves between visits. These five rows
-           carry both directions with the stakes attached: 707
+           carry change and standstill with the stakes attached: 707
            Stellungnahmen that became a Gesetz, 616 that have been waiting
            since Oktober 2025. Ordered by participation, never by outcome:
            Nachverfolgung, kein Punktestand. Until 17.11.2026 it opened the

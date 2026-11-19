@@ -105,8 +105,8 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
 
 ### Framing: Nachverfolgung, not a blame counter
 
-The monitor shows what became of the input, in both directions. Changes made
-after the Begutachtung are shown as prominently as standstill. No rankings by
+The monitor shows what became of the input: changes made after the
+Begutachtung as prominently as standstill. No rankings by
 outcome, no accusation badges, and no figure presented as the effect of a
 Stellungnahme. This binds UI and copy.
 

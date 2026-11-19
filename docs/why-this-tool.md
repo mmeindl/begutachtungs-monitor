@@ -11,8 +11,7 @@ answers one question, *what became of this draft and of the public's input?*,
 for people who do not work in the building: citizens, journalists, NGOs and
 the people who filed a Stellungnahme.
 
-It answers in both directions, and shows where a draft changed as prominently
-as where nothing happened.
+It shows where a draft changed as prominently as where nothing happened.
 
 ## What the monitor adds
 
