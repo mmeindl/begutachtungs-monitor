@@ -864,6 +864,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   the § („c. Telefonnummer", a lone „42.") is read by no renderer and no
   check; a picture's file path would stand as law text. Both refused, as a
   table is (`kons/lawApply.ts`).
+- **„Nach der Z 3 folgender Satz angefügt" closes the list** (19.11.2026):
+  the text goes behind the unit named, into the unit above it, as its
+  Schlussteil, and only behind the list's last unit with no Schlussteil
+  yet. A Schlussteil closes Ziffern or Literae, never Absätze
+  (`behindListItem` in `kons/novao.ts`, `kons/lawApply.ts`).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

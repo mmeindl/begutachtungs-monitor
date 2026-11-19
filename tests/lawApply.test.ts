@@ -2706,3 +2706,41 @@ describe('an appended unit is the unit the line announces (19.11.2026)', () => {
     expect(results[0]!.reason).toMatch(/^Neuer Text trägt nicht die angekündigte Bezeichnung/)
   })
 })
+
+describe('a sentence appended behind a list unit closes the list (19.11.2026)', () => {
+  function law(withSchluss = false): StandingLaw {
+    const p = makeNode('para', '18', '§ 18.', '', 'Daten')
+    const a = makeNode('abs', '2', '(2)', 'Personenbezogene Daten sind erforderlich, wenn')
+    a.children.push(makeNode('z', '1', '1.', 'sie der Aufsicht dienen,'), makeNode('z', '2', '2.', 'sie der Abgabe dienen oder'), makeNode('z', '3', '3.', 'sie der Statistik dienen.'))
+    if (withSchluss) a.children.push(makeNode('schluss', 'schluss', '', 'Sie sind zu löschen.'))
+    p.children.push(a)
+    return { paragraphs: [p] }
+  }
+  const shape = (l: StandingLaw) => l.paragraphs[0]!.children[0]!.children.map((c) => `${c.level}:${c.id}:${c.text}`)
+
+  // Tabakmonopolgesetz § 18 (BGBl. I Nr. 97/2025): the sentence joined Z 3's
+  // own text, the same words as RIS, which files it as Abs. 2's Schlussteil.
+  it('puts the sentence behind the last Ziffer as the closing part of the Absatz', () => {
+    const { law: out, results } = run(law(), instr('In § 18 Abs. 2 wird nach der Z 3 folgender Satz angefügt:', ['Personenbezogene Daten gelten weiters als erforderlich, wenn sie bestehen.']))
+    expect(results[0]!.applied).toBe(true)
+    expect(shape(out)).toEqual(['z:1:sie der Aufsicht dienen,', 'z:2:sie der Abgabe dienen oder', 'z:3:sie der Statistik dienen.', 'schluss:schluss:Personenbezogene Daten gelten weiters als erforderlich, wenn sie bestehen.'])
+  })
+
+  it('reads a Schlussteil or Schlusssatz behind the last Ziffer the same way', () => {
+    for (const line of ['Im § 18 Abs. 2 wird nach Z 3 folgender Schlussteil angefügt:', 'In § 18 Abs. 2 wird nach Ziffer 3 folgender Schlusssatz angefügt:']) {
+      const { law: out, results } = run(law(), instr(line, ['Die Daten sind zu löschen.']))
+      expect(results[0]!.applied).toBe(true)
+      expect(shape(out).at(-1)).toBe('schluss:schluss:Die Daten sind zu löschen.')
+    }
+  })
+
+  it('refuses it behind a unit that is not the last, or in front of a Schlussteil', () => {
+    expect(run(law(), instr('In § 18 Abs. 2 wird nach der Z 2 folgender Satz angefügt:', ['Neu.'])).results[0]!.reason).toBe('Anfügung nach Z 2 — nicht die letzte Einheit der Aufzählung')
+    expect(run(law(true), instr('In § 18 Abs. 2 wird nach der Z 3 folgender Satz angefügt:', ['Neu.'])).results[0]!.reason).toBe('Anfügung nach Z 3 — ein Schlussteil schließt die Aufzählung schon')
+  })
+
+  it('closes no list of Absätze with a Schlussteil', () => {
+    const standing = (): StandingLaw => ({ paragraphs: [para('11', 'Titel', ['Eins.', 'Zwei.'])] })
+    expect(run(standing(), instr('Im § 11 wird folgender Schlusssatz angefügt:', ['Neu.'])).results[0]!.reason).toBe('Schlussteil ohne Liste, die er schließt')
+  })
+})

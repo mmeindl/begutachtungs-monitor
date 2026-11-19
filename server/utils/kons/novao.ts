@@ -1060,6 +1060,11 @@ export type NovaoOp =
      * the same step (`mergeEndMarks`).
      */
     endMark?: { from: string; to: string }
+    /**
+     * „In § 18 Abs. 2 wird nach der Z 3 folgender Satz angefügt": the list
+     * unit the new text stands behind, inside `target` (`behindListItem`).
+     */
+    behind?: { level: 'z' | 'lit'; id: string }
   }
   /** "Nach § 5 wird folgender § 5a eingefügt:" — inserted behind the anchor */
   | { kind: 'insertAfter'; anchor: NovaoAddress; child: ChildLevel; childIds: string[]; where: 'after' | 'before' }
@@ -1372,7 +1377,9 @@ const CHILD_BY_WORD: readonly (readonly [RegExp, ChildLevel])[] = [
   [/\bZ(?:iffern?)?\.?\s*\d/i, 'z'],
   [/\blit(era)?\.?\s*[a-z]\b/i, 'lit'],
   [/\bHalbs(?:atz|ätze)\b/i, 'halbsatz'],
-  [/\bSchlussteil\b/i, 'schluss'],
+  // „nach Ziffer 3 folgender Schlusssatz angefügt": the closing part of a
+  // list by another name (`behindListItem`).
+  [/\bSchlu(?:ss|ß)(?:teil|s?satz)\b/i, 'schluss'],
   [/\bSätze\b|\bSatz\b/i, 'satz'],
   [/§|\bParagraf|\bArt(\.|ikel)|\bAnlage\b/i, 'para'],
 ]
@@ -1955,6 +1962,25 @@ function siblingAnchor(a: NovaoAddress, child: 'abs' | 'z' | 'lit'): NovaoAddres
   return { ...base, level: 'lit' }
 }
 
+/** „nach der Z 3", „nach lit. k." — a place behind a list unit. Quoted text is no place word. */
+const BEHIND_ITEM_RE = /\bnach\s+(?:der\s+|dem\s+)?(Z\.?|Ziffer|lit\.|Litera)\s*(\d+[a-z]*|[a-z]{1,2})\b/i
+
+/**
+ * The list unit a sentence or Schlussteil is appended behind, and the unit
+ * above it that takes the text: „In § 18 Abs. 2 wird nach der Z 3 folgender
+ * Satz angefügt" → Abs. 2, behind Z 3. Null unless the place names the very
+ * unit the address ends in, with no sentence or heading below it.
+ */
+function behindListItem(scope: string, a: NovaoAddress): { host: NovaoAddress; item: { level: 'z' | 'lit'; id: string } } | null {
+  const m = BEHIND_ITEM_RE.exec(maskQuotes(scope))
+  if (!m || a.satz !== null || a.halbsatz !== null || a.heading) return null
+  const level = /^z/i.test(m[1]!) ? 'z' : 'lit'
+  const id = m[2]!
+  if (level === 'z' ? a.z !== id || a.lit !== null : a.lit !== id) return null
+  const host: NovaoAddress = level === 'z' ? { ...a, z: null, lit: null, level: a.abs !== null ? 'abs' : 'para' } : { ...a, lit: null, level: a.z !== null ? 'z' : a.abs !== null ? 'abs' : 'para' }
+  return { host, item: { level, id } }
+}
+
 /**
  * „vor Abs. 2", „Vor § 5": a clause that places its new unit in front of
  * the one it names. „Nach § 10a und vor § 11" names both neighbours and
@@ -2533,6 +2559,22 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     if (before) {
       if (child === 'satz' && target.satz && targets.length === 1 && target.siblings.length === 0) return ok({ kind: 'insertAfter', anchor: target, child, childIds: [], where: 'before' })
       return fail('Anfügung „vor" einer Einheit — Stelle nicht bestimmbar')
+    }
+    // „In § 18 Abs. 2 wird nach der Z 3 folgender Satz angefügt", „… nach
+    // Z 4 folgender Schlussteil angefügt": the new text stands BEHIND the
+    // unit named, in the unit above it, as the closing part of the list. RIS
+    // files it so (Tabakmonopolgesetz § 18, BGBl. I Nr. 97/2025). Read with
+    // the Ziffer as its host, the sentence joined that Ziffer's own text —
+    // the same words, which no check tells from the right place, but a
+    // closing sentence then governs one Ziffer instead of the list — and a
+    // Schlussteil was refused for want of a list in the Ziffer, or closed its
+    // Literae (19.11.2026). Only behind the list's last unit (`lawApply`).
+    if (child === 'satz' || child === 'schluss') {
+      const behind = behindListItem(scope, target)
+      if (behind) {
+        if (targets.length > 1 || target.siblings.length > 0) return fail(ONE_PLACE_SEVERAL_UNITS)
+        return ok({ kind: 'append', target: behind.host, child, childIds: [], behind: behind.item })
+      }
     }
     // "§ 3 Abs. 1 und § 4 Abs. 1 wird jeweils folgender Satz angefügt" names
     // two places; appending to the first alone reported success on a law

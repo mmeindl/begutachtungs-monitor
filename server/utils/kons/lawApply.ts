@@ -2054,6 +2054,18 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       let host = resolveTarget(law, op.target)
       if (!host) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       if (payload.length === 0) return 'Anfügung ohne Text'
+      // „nach der Z 3 folgender Satz angefügt" (`behind`, `kons/novao.ts`):
+      // the closing part of the list, so only behind its last unit. Behind
+      // another one the text would stand inside the list, and in front of a
+      // Schlussteil that already closes it the words do not say whether it
+      // joins that one or precedes it (19.11.2026).
+      if (op.behind) {
+        const body = bodyOf(host)
+        const last = body.children.filter((c) => c.level !== 'schluss').at(-1)
+        const name = `${op.behind.level === 'z' ? 'Z' : 'lit.'} ${op.behind.id}`
+        if (last?.level !== op.behind.level || last.id !== op.behind.id) return `Anfügung nach ${name} — nicht die letzte Einheit der Aufzählung`
+        if (body.children.at(-1)?.level === 'schluss') return `Anfügung nach ${name} — ein Schlussteil schließt die Aufzählung schon`
+      }
       // A Satz is not a node: it joins the target's own text. Common enough
       // that refusing it cost a fifth of the appends in the harness.
       if (op.child === 'satz' || op.child === 'halbsatz') {
@@ -2115,7 +2127,10 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         const added = payload.map((p) => plainText(p)).join(' ').trim()
         if (!added) return 'Anfügung ohne Text'
         const body = bodyOf(host)
-        const items = body.children.filter((c) => c.level !== 'schluss')
+        // Ziffern or Literae: Absätze are no list a Schlussteil closes, and
+        // „Im § 11 wird folgender Schlusssatz angefügt" over a § of numbered
+        // Absätze would stand beside them, unnumbered (19.11.2026).
+        const items = body.children.filter((c) => c.level === 'z' || c.level === 'lit')
         if (items.length === 0) return 'Schlussteil ohne Liste, die er schließt'
         if (body.children.some((c) => c.level === 'schluss')) return 'Schlussteil besteht bereits'
         body.children.push(makeNode('schluss', 'schluss', '', added))

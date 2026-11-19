@@ -1320,3 +1320,20 @@ describe('the sentence a „folgender Satz wird angefügt" inherits (19.11.2026)
     expect(parseInstruction('In § 16 Abs. 2 werden anstelle des letzten Satzes folgende Sätze angefügt:').reason).toMatch(/^„An Stelle"/)
   })
 })
+
+describe('„nach der Z 3 folgender Satz angefügt" (19.11.2026)', () => {
+  it('appends to the unit above, behind the Ziffer named', () => {
+    const op = parseInstruction('In § 18 Abs. 2 wird nach der Z 3 folgender Satz angefügt:').ops[0] as Extract<NovaoOp, { kind: 'append' }>
+    expect(op.kind).toBe('append')
+    expect([op.target.abs, op.target.z, op.target.level, op.child, op.behind]).toEqual(['2', null, 'abs', 'satz', { level: 'z', id: '3' }])
+    const lit = parseInstruction('In § 1 Abs. 8 wird nach der lit. k. folgender Satz angefügt:').ops[0] as Extract<NovaoOp, { kind: 'append' }>
+    expect([lit.target.abs, lit.target.lit, lit.target.level, lit.behind]).toEqual(['8', null, 'abs', { level: 'lit', id: 'k' }])
+  })
+
+  it('leaves an append to the unit itself and a sentence place alone', () => {
+    const own = parseInstruction('Dem § 18 Abs. 2 Z 3 wird folgender Satz angefügt:').ops[0] as Extract<NovaoOp, { kind: 'append' }>
+    expect([own.target.z, own.behind]).toEqual(['3', undefined])
+    const satz = parseInstruction('In § 1 Abs. 5 wird nach dem zweiten Satz folgender Satz angefügt:').ops[0] as Extract<NovaoOp, { kind: 'append' }>
+    expect([satz.target.satz, satz.behind]).toEqual(['zweiter', undefined])
+  })
+})
