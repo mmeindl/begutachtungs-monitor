@@ -32,9 +32,29 @@
 import type { LawDiffUnit } from '#shared/types'
 import { PARAGRAPH_NUMBER } from './paragraphNumber'
 
-/** "§5" → "§ 5", "Z3" → "Z 3" */
+/**
+ * `segmentUnits`' mark on a number that recurs under one law's key: „Z1#dup"
+ * is the second Z 1 there. Three causes, all real readings (19.11.2026, over
+ * the harness cache): one law amended in two Artikel of the same title (VBG
+ * 1948 in Artikel 7 and 11 of one Bundesgesetzblatt), a source that prints a
+ * number twice (Waffengesetz, two instructions „82."), and an old draft whose
+ * Artikel no reader can split, so each law's numbering starts over. The
+ * source prints „Z 1" every time, and so does the page — the mark is a key,
+ * not a designation (`citations.lawUnitCiteDe` names no place for it).
+ */
+const REPEAT_MARK_RE = /(?:#dup)+$/
+
+/**
+ * A unit id as the source prints it: "§5" → "§ 5", "Z3" → "Z 3", "Art.5" →
+ * "Art. 5". Every page that names a unit goes through here, so no internal
+ * mark reaches one (the Länder page printed „§ 8#dup" until 19.11.2026).
+ */
 export function displayId(id: string): string {
-  return id.replace(/^§/, '§ ').replace(/^Z(\d)/, 'Z $1')
+  return id
+    .replace(REPEAT_MARK_RE, '')
+    .replace(/^§/, '§ ')
+    .replace(/^Z(\d)/, 'Z $1')
+    .replace(/^Art\.(?=\S)/, 'Art. ')
 }
 
 /**

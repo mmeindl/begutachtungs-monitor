@@ -35,9 +35,9 @@ export function enactedLawsOf(draft: DraftText): EnactedLaw[] {
       paragraphs: units
         .filter((u) => u.article === a.key)
         .map((u) => ({
-          // „#dup" marks a second unit of the same number (`segmentUnits`):
-          // real text, printed under the number the draft gives it.
-          id: displayId(u.id.replace(/#dup$/, '')),
+          // A second unit of the same number („#dup") is real text, printed
+          // under the number the draft gives it (`displayId`).
+          id: displayId(u.id),
           heading: u.heading,
           lines: u.blocks.filter((b) => BODY.has(b.kind) && b.text.trim()).map((b) => ({ text: b.text, sub: b.kind === 'ziff' })),
         }))

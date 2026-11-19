@@ -75,7 +75,18 @@ describe('displayId', () => {
   it('setzt das Leerzeichen, das die Bezeichnung lesbar macht', () => {
     expect(displayId('§5')).toBe('§ 5')
     expect(displayId('Z3')).toBe('Z 3')
-    expect(displayId('§5#dup')).toBe('§ 5#dup')
+    expect(displayId('Z25a')).toBe('Z 25a')
+    expect(displayId('Art.5')).toBe('Art. 5')
+    expect(displayId('Art.II')).toBe('Art. II')
+  })
+
+  it('never prints the internal mark of a repeated number (19.11.2026)', () => {
+    // The Länder page printed „§ 8#dup" and „Z 15#dup": the source prints
+    // the number, the mark only keeps two units of one number apart.
+    expect(displayId('§8#dup')).toBe('§ 8')
+    expect(displayId('Z15#dup')).toBe('Z 15')
+    expect(displayId('Z1a#dup')).toBe('Z 1a')
+    expect(displayId('Art.11#dup')).toBe('Art. 11')
   })
 })
 
