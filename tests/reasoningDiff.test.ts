@@ -976,8 +976,23 @@ describe('compareReasoning — warum eine Änderung keine Begründung hat (gaps)
     expect(compareReasoning(units, draft('Pensionisten soll für aktive Erwerbseinkünfte ein monatlicher Freibetrag zustehen.'), bill).gaps).toEqual({ [`${ESTG}|Z8|changed`]: 'unread' })
     // A sub-heading folded into the block explains nothing.
     expect(compareReasoning(units, draft('Zum 1. Abschnitt:'), bill).gaps).toEqual({ [`${ESTG}|Z8|changed`]: 'missingBefore' })
-    // Where the document titles the law's changes by Ziffer, the block is an introduction.
-    expect(compareReasoning(units, draft('Allgemeines zum Freibetrag.', 'Zu Z 2 (§ 4):', 'Anderes.'), bill).gaps).toEqual({ [`${ESTG}|Z8|changed`]: 'missingBefore' })
+    // An introduction above passages titled by Ziffer may explain the
+    // changes none of them takes (226/ME XXVII: „im Übrigen … Anpassungen der
+    // Geschlechterbezeichnungen").
+    expect(compareReasoning(units, draft('Im Übrigen erfolgen redaktionelle Anpassungen.', 'Zu Z 2 (§ 4):', 'Anderes.'), bill).gaps).toEqual({ [`${ESTG}|Z8|changed`]: 'unread' })
+    // Another Artikel's block names nothing of this law.
+    const elsewhere = erl(`Zu Artikel 1 (${ASVG}):`, 'Die Änderungen des ASVG dienen der Klarstellung.', 'Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung.', `Zu Art. 7 (${ESTG})`, 'Zu Z 2 (§ 4):', 'Anderes.')
+    expect(compareReasoning(units, elsewhere, bill).gaps).toEqual({ [`${ESTG}|Z8|changed`]: 'missingBefore' })
+  })
+
+  it('liest eine Artikelüberschrift über mehrere Artikel für jeden von ihnen (66/ME XXVII „Zu Artikel 2 bis 8")', () => {
+    const SCHPFLG = 'Änderung des Schulpflichtgesetzes 1985'
+    const units = [unit('Bildungsdokumentationsgesetz', 'Z1', 'In § 3 wird "a" durch "b" ersetzt.', 'changed', { to: '1' }), unit(SCHPFLG, 'Z4', 'Dem § 30 wird folgender Abs. 27 angefügt: "(27) …"', 'changed', { to: '5' })]
+    const bill = erl('Zu Artikel 1 (Bildungsdokumentationsgesetz):', 'Zu Z 1 (§ 3):', 'Klarstellung.', `Zu Artikel 5 (${SCHPFLG}):`, 'Zu Z 4 (§ 30 Abs. 27):', 'Inkrafttreten.')
+    const draft = (range: string) => erl('Zu Artikel 1 (Bildungsdokumentationsgesetz):', 'Zu Z 1 (§ 3):', 'Klarstellung.', range, 'In den angeführten Bundesgesetzen haben redaktionelle Anpassungen der Verweise zu erfolgen.')
+
+    expect(compareReasoning(units, draft(`Zu Artikel 2 bis 8: ${SCHPFLG}, …`), bill).gaps).toEqual({ [`${SCHPFLG}|Z4|changed`]: 'unread' })
+    expect(compareReasoning(units, draft('Zu Artikel 2 bis 4: Änderung anderer Gesetze'), bill).gaps).toEqual({ [`${SCHPFLG}|Z4|changed`]: 'missingBefore' })
   })
 })
 

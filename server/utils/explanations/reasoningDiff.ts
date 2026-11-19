@@ -99,6 +99,7 @@ import { ADDRESS_WORD_RE, headingAddress, leadingAddress } from './risExplanatio
 // raw Gliederungssymbol such as § 365m1, which never reaches here.
 import { articleParagraphKey, explanationParaId } from '../../../shared/utils/explanationKey'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+import { articleNumberKey } from '../text/designation'
 
 /**
  * A ceiling for the outlier, set from the corpus (27.09.2026, `aenderungsrate.ts
@@ -1572,33 +1573,47 @@ function namesChange(doc: HtmlExplanations, ziffer: string | null, paras: Readon
 }
 
 /**
- * Whether a document explains the law under `article` as a whole: the
- * Artikel heading itself carries the text, naming no Ziffer and no §, and no
- * passage under that Artikel is titled by Ziffer (19.11.2026). 96/ME
- * XXVIII's draft explains the EStG in one block of 11.509 characters under
- * „Zu Art. 7 (Änderung des Einkommensteuergesetzes 1988)" — the
- * Aktivitätsfreibetrag of § 105a and its Inkrafttreten throughout —, and
- * its Z 8 and Z 9 read „im Entwurf nicht gefunden"; Z 1 to Z 7 escaped the
- * same line only because another Artikel's „Zu Z 1 und 3" named their
- * numbers. Such a block may explain any change of its law, so absence is not
- * proven; it is no change's passage, so it attaches nothing. Only the unit's
- * own Artikel counts — never another's, never a passage under no Artikel,
- * never a „Zu Abs. …" below a §, and never an Artikel whose changes the
- * document titles by Ziffer: there the block is an introduction. Passages
- * titled by § beside it do not make it one: 97/ME XXVII explains the UbG by
- * § and says under „Zu Artikel 1 (…)" itself what becomes of „Kranken" in
- * „§§ 6, 10, … und 43". The block must carry prose: „Zum 1. Abschnitt:"
- * alone (the TKG 2021 of GP XXVII, a new law explained in 393 § passages) is
- * a sub-heading the reader folded into it, and explains nothing.
+ * Whether a document explains the law under `article` as a whole: a block
+ * at the Artikel level that carries prose and names no Ziffer and no §
+ * (19.11.2026). 96/ME XXVIII's draft explains the EStG in one block of
+ * 11.509 characters under „Zu Art. 7 (Änderung des Einkommensteuergesetzes
+ * 1988)" — the Aktivitätsfreibetrag of § 105a and its Inkrafttreten
+ * throughout —, and its Z 8 and Z 9 read „im Entwurf nicht gefunden"; Z 1 to
+ * Z 7 escaped the same line only because another Artikel's „Zu Z 1 und 3"
+ * named their numbers. Such a block may explain any change of its law, so
+ * absence is not proven; it is no change's passage, so it attaches nothing.
+ *
+ * The unit's own Artikel heading counts, and a range heading whose range
+ * holds it: 66/ME XXVII explains Artikel 2 to 8 together under „Zu Artikel 2
+ * bis 8: Änderung des Schulpflichtgesetzes 1985, …" („redaktionelle
+ * Anpassungen der Verweise"). An introduction above passages titled by
+ * Ziffer or § counts too: 226/ME XXVII's Vorlage says under „Zu Art. 2
+ * (Änderung des Filmförderungsgesetzes):" that the Novelle „im Übrigen"
+ * adjusts the Geschlechterbezeichnungen — the Begründung of the Ziffern no
+ * passage takes —, and 97/ME XXVII says there what becomes of „Kranken" in
+ * „§§ 6, 10, … und 43 UbG". Never another Artikel's heading, never a passage
+ * under no Artikel, never a „Zu Abs. …" below a §. The block must carry
+ * prose: „Zum 1. Abschnitt:" alone (the TKG 2021 of GP XXVII, a new law
+ * explained in 393 § passages) is a sub-heading the reader folded into it.
  */
 function explainsLawWhole(doc: HtmlExplanations, article: string | null): boolean {
   if (!article) return false
-  const ofArticle = doc.special.filter((p) => p.article === article)
-  if (ofArticle.some((p) => p.ziffern.length > 0)) return false
-  return ofArticle.some(
-    (p) => p.paragraphs.length === 0 && p.section?.length === 1 && p.section[0] === article && ARTICLE_HEAD_RE.test(p.heading) && p.text.some((t) => !isSubHeading(t)),
-  )
+  return doc.special.some((p) => p.paragraphs.length === 0 && p.ziffern.length === 0 && headsArticle(p, article) && p.text.some((t) => !isSubHeading(t)))
 }
+
+/** Whether a passage is the Artikel heading of `article` — its own, or a range („Zu Artikel 2 bis 8: …") that holds it. */
+function headsArticle(p: HtmlPassage, article: string): boolean {
+  if (!ARTICLE_HEAD_RE.test(p.heading)) return false
+  if (p.article === article && p.section?.length === 1 && p.section[0] === article) return true
+  const range = ARTICLE_RANGE_HEAD_RE.exec(p.heading)
+  const from = range ? articleNumberKey(range[1]!) : null
+  const to = range ? articleNumberKey(range[2]!) : null
+  const n = Number(article)
+  return from !== null && to !== null && Number.isInteger(n) && Number(from) <= n && n <= Number(to)
+}
+
+/** „Zu Artikel 2 bis 8", „Zu den Art. 106 bis 122", „Zu Artikel II – IV". */
+const ARTICLE_RANGE_HEAD_RE = /^(?:zu\s+(?:den\s+)?)?art(?:ikeln?|\.)?\s*([0-9]+|[ivxlc]+)\s*(?:bis|–|-)\s*(?:art(?:ikel|\.)?\s*)?([0-9]+|[ivxlc]+)(?![0-9a-z])/i
 
 /** „Zu Art. 7 (…)", „Zu Artikel 7", „Artikel 7" — an Artikel heading. */
 const ARTICLE_HEAD_RE = /^(?:zu\s+)?art(?:ikel|\.)?\s*\S/i
