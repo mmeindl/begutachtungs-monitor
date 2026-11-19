@@ -50,8 +50,11 @@ export function repealKey(designation: string): string {
  */
 const LIST_REPEAL_RE = /^(?:\d+[a-z]?\.\s*)?(?:(?:Die|Der|Das)\s+)?(§§?|Anlagen?|Anhänge|Anhang)\s+([\dIVXL]+[a-z]?(?:\s*(?:,|und|sowie|bis)\s*[\dIVXL]+[a-z]?)*)\s+(?:samt\s+(?:den\s+|der\s+)?Überschriften?\s+)?(?:entf(?:ällt|allen)|(?:wird|werden)\s+aufgehoben)\.?$/
 
-/** „Der 9. Teil entfällt.", „Der 3. Abschnitt des 6. Hauptstücks entfällt.": the innermost division is group 1. */
-const DIVISION_REPEAL_RE = /^(?:\d+[a-z]?\.\s*)?(?:Der|Das|Die)\s+((?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Hauptstück|Abschnitt|Unterabschnitt))\b(?:\s+(?:des|der)\s+[^,;:]{1,60}?)?\s+(?:samt\s+(?:der\s+)?Überschrift\s+)?(?:entfällt|wird\s+aufgehoben)\.?$/i
+/**
+ * „Der 9. Teil entfällt.", „Der 3. Abschnitt des 6. Hauptstücks entfällt.":
+ * the innermost division is group 1, the division it is qualified by group 2.
+ */
+const DIVISION_REPEAL_RE = /^(?:\d+[a-z]?\.\s*)?(?:Der|Das|Die)\s+((?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Hauptstück|Abschnitt|Unterabschnitt))\b(?:\s+((?:des|der)\s+[^,;:]{1,60}?))?\s+(?:samt\s+(?:der\s+)?Überschrift\s+)?(?:entfällt|wird\s+aufgehoben)\.?$/i
 
 /** A division's designation in either order RIS prints it: „9. Teil", „Abschnitt 13", „ABSCHNITT II". */
 const DIVISION_RE = /(?:\b(\d+[a-z]?|[IVXL]+)\.\s*(Teil|Hauptstück|Abschnitt|Unterabschnitt)\b|\b(Teil|Hauptstück|Abschnitt|Unterabschnitt)\s+(\d+[a-z]?|[IVXL]+)\b)/giu
@@ -90,13 +93,20 @@ export function draftRepeals(blocks: readonly TextBlock[], article: DraftArticle
         const text = block.text.replace(/\s+/g, ' ').trim()
         const division = DIVISION_REPEAL_RE.exec(text)
         if (division) {
+          // „Der 3. Abschnitt des 6. Hauptstücks": the check knows only the
+          // innermost division a § stands in, so keyed „3. abschnitt" this
+          // would vouch for a removed § in the 3. Abschnitt of any
+          // Hauptstück. Such a repeal proves nothing here (19.11.2026).
+          if (division[2]) continue
           const m = /^(\S+)\.\s*(\S+)$/.exec(division[1]!.replace(/\s+/g, ' '))
           if (m) out.divisions.add(divisionKey(m[1]!, m[2]!))
           continue
         }
         const { ops } = parseInstruction(block.text, i === 0 ? null : inherited)
         for (const op of ops) {
-          if (op.kind !== 'delete' || op.target.level !== 'para') continue
+          // „Die Überschrift zu § 5 entfällt" deletes a heading, not the §:
+          // the § moved or stays, which is the case the rule withholds.
+          if (op.kind !== 'delete' || op.target.level !== 'para' || op.target.heading) continue
           for (const para of namedParagraphs(op.target)) out.paragraphs.add(repealKey(para))
         }
         if (ops.length > 0) continue

@@ -37,8 +37,20 @@ describe('draftRepeals', () => {
   })
 
   it('reads whole divisions, innermost first', () => {
-    const r = draftRepeals(draftOf('7. Der 9. Teil entfällt.', '6. Der 3. Abschnitt des 6. Hauptstücks entfällt.', '3. Der 4a. Abschnitt entfällt.'), article())
-    expect([...r.divisions].sort()).toEqual(['3. abschnitt', '4a. abschnitt', '9. teil'])
+    const r = draftRepeals(draftOf('7. Der 9. Teil entfällt.', '3. Der 4a. Abschnitt entfällt.'), article())
+    expect([...r.divisions].sort()).toEqual(['4a. abschnitt', '9. teil'])
+  })
+
+  it('counts no division qualified by another: the check knows only the innermost (19.11.2026)', () => {
+    // Keyed „3. abschnitt", it vouched for the 3. Abschnitt of every Hauptstück.
+    const r = draftRepeals(draftOf('6. Der 3. Abschnitt des 6. Hauptstücks entfällt.'), article())
+    expect(r.divisions.size).toBe(0)
+  })
+
+  it('counts no deleted heading as a repeal of its § (19.11.2026)', () => {
+    // A § whose heading goes has moved or stays: exactly what the rule withholds.
+    const r = draftRepeals(draftOf('4. Die Überschrift zu § 5 entfällt.', '5. Die Überschriften zu den §§ 7 bis 9 entfallen.'), article())
+    expect(r.paragraphs.size + r.ranges.length).toBe(0)
   })
 
   it('counts nothing a renumbering or a rewrite says', () => {
