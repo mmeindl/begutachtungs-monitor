@@ -91,7 +91,7 @@ import { diffUnitKey } from '../../../shared/utils/diffKey'
 import { displayId, isParagraphUnit } from '../../../shared/utils/unitName'
 import { diffTokens, isEditorialChange, renumberingOf, sameWording } from '../diff/wordDiff'
 import { addressedParagraph, addressedParagraphOf, instructionParagraphs } from '../lawtext/instructionAddress'
-import { passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from './explanationsHtml'
+import type { HtmlExplanations, HtmlPassage } from './explanationsHtml'
 import { ADDRESS_WORD_RE, headingAddress, leadingAddress } from './risExplanations'
 // The key of `passagesByParagraph`, and the same reading the page looks up
 // with. Its `\b` changes nothing for the designations `parseAddress` builds:
@@ -345,28 +345,126 @@ function fill(f: Filling, unit: LawDiffUnit, key: string, make: () => EntryInput
 }
 
 /**
+ * Where the § join reads a unit's Begründung: the entry's key and both
+ * sides' texts at the unit's § — `ambiguous` where two Artikel of the draft
+ * address the number — or null where it cannot be keyed.
+ */
+type ParagraphTextsAt = (unit: LawDiffUnit, para: string, id: string, ambiguous: boolean) => { key: string; a: string; b: string } | null
+
+/**
  * The § join over `units`, in the order given — by § where the number is
  * unique in the draft, by Artikel and § where it is not, and where not even
- * that holds, nothing.
+ * that holds, nothing (`ParagraphTextsAt`).
  */
-function joinAtParagraph(f: Filling, units: readonly LawDiffUnit[], ambiguous: ReadonlySet<string>, before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null, read: Readings): void {
+function joinAtParagraph(f: Filling, units: readonly LawDiffUnit[], ambiguous: ReadonlySet<string>, at: ParagraphTextsAt, read: Readings): void {
   for (const unit of units) {
     const para = read.addressed(unit)
     const id = explanationParaId(para)
     if (!para || !id) continue
-    if (!ambiguous.has(para)) {
-      fill(f, unit, para, () => ({ basis: 'paragraph', label: para, a: before.get(id) ?? '', b: after.get(id) ?? '' }))
-      continue
-    }
-    if (!byArticle || !unit.fromArticleKey || !unit.articleKey) continue
-    const { fromArticleKey, articleKey } = unit
-    fill(f, unit, `Art. ${articleKey} ${para}`, () => ({
-      basis: 'paragraph',
-      label: para,
-      a: byArticle.before.get(articleParagraphKey(fromArticleKey, id)) ?? '',
-      b: byArticle.after.get(articleParagraphKey(articleKey, id)) ?? '',
-    }))
+    const found = at(unit, para, id, ambiguous.has(para))
+    if (!found) continue
+    fill(f, unit, found.key, () => ({ basis: 'paragraph', label: para, a: found.a, b: found.b }))
   }
+}
+
+/** The § join's texts as it read them until 19.11.2026 — `compareReasoningByParagraph`, the measurement's baseline. */
+function textsByNumber(before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null): ParagraphTextsAt {
+  return (unit, para, id, ambiguous) => {
+    if (!ambiguous) return { key: para, a: before.get(id) ?? '', b: after.get(id) ?? '' }
+    if (!byArticle || !unit.fromArticleKey || !unit.articleKey) return null
+    return {
+      key: `Art. ${unit.articleKey} ${para}`,
+      a: byArticle.before.get(articleParagraphKey(unit.fromArticleKey, id)) ?? '',
+      b: byArticle.after.get(articleParagraphKey(unit.articleKey, id)) ?? '',
+    }
+  }
+}
+
+/**
+ * The unit's Artikel on one side: its own where it exists there; where it
+ * does not (an inserted instruction in the draft, a removed one in the
+ * Vorlage), the Artikel its law carries on that side, read off a unit of the
+ * same law present on both — the same Artikel on the other side, or where
+ * that side numbers none, the same `article`, the law the page groups the
+ * units under (95/ME XXVIII: the draft's text has no Artikel, the Vorlage's
+ * an „Artikel 1"). Never the other side's number: a removed unit carries
+ * the draft's Artikel in `articleKey` too (`toUnit`), and a Sammelvorlage
+ * renumbers — 20/ME XXVIII's Artikel 16 is 129 d.B.'s Artikel 42.
+ */
+function articleOn(unit: LawDiffUnit, side: Side, units: readonly LawDiffUnit[]): string | null {
+  const own = (u: LawDiffUnit) => (side === 'after' ? u.articleKey : u.fromArticleKey)
+  if (existsOn(unit, side)) return own(unit)
+  const otherKey = (u: LawDiffUnit) => (side === 'after' ? u.fromArticleKey : u.articleKey)
+  const key = otherKey(unit)
+  const sameLaw = (u: LawDiffUnit) => (key ? otherKey(u) === key : unit.article !== null && u.article === unit.article)
+  const peer = units.find((u) => isPaired(u) && own(u) && sameLaw(u))
+  return peer ? own(peer) : null
+}
+
+/**
+ * The § join's texts law by law (19.11.2026): on each side the passages
+ * naming the §, without those the document sets under another law's Artikel
+ * (`ofLaw`), each with the sub-passages under it (`ownedPassages`). Until
+ * then a number no second Artikel of the draft addresses took every passage
+ * naming it — and a Vorlage that bundles other drafts explains laws the
+ * comparison does not hold: 20/ME XXVIII's Bundes-Seniorengesetz § 15 was
+ * compared against the § 15 passages of four laws of 129 d.B., 53 units of
+ * GP XXVIII against a Begründung that was partly another law's. Where two
+ * Artikel of the draft address the number, by Artikel as before, each side
+ * under its own (`articleOn`).
+ *
+ * Each passage with the sub-passages set under it (`ownedPassages`), in
+ * printed order (02.10.2026): „Zu § 267a:" in 4/ME XXVIII has no text of its
+ * own; its Begründung stands in „Zu Abs. 1:" and „Zu Abs. 9:" below it, which
+ * name no §, so keyed by their own address they reached no Paragraph.
+ */
+function textsByLaw(units: readonly LawDiffUnit[], before: HtmlExplanations, after: HtmlExplanations): ParagraphTextsAt {
+  const side = (doc: HtmlExplanations, s: Side) => {
+    const byId = new Map<string, number[]>()
+    doc.special.forEach((p, i) => {
+      for (const para of p.paragraphs) {
+        const id = explanationParaId(para)
+        if (id) byId.set(id, [...(byId.get(id) ?? []), i])
+      }
+    })
+    const keyed = units.some((u) => existsOn(u, s) && (s === 'after' ? u.articleKey : u.fromArticleKey))
+    return {
+      all: (id: string) => textOf(doc, byId.get(id) ?? []),
+      law: (id: string, article: string | null) => textOf(doc, (byId.get(id) ?? []).filter((i) => ofLaw(doc.special[i]!, article, keyed))),
+      article: (id: string, article: string) => textOf(doc, (byId.get(id) ?? []).filter((i) => doc.special[i]!.article === article)),
+    }
+  }
+  const me = side(before, 'before')
+  const rv = side(after, 'after')
+  return (unit, para, id, ambiguous) => {
+    const a = articleOn(unit, 'before', units)
+    const b = articleOn(unit, 'after', units)
+    // As before only for a unit that carries an Artikel on both sides
+    // (an inserted one does not) — but each side looked up under its own.
+    if (ambiguous) return unit.fromArticleKey && unit.articleKey && a && b ? { key: `Art. ${b} ${para}`, a: me.article(id, a), b: rv.article(id, b) } : null
+    const texts = { a: me.law(id, a), b: rv.law(id, b) }
+    // The key stays the §'s where no passage of another law was left out,
+    // so nothing else moves.
+    const filtered = texts.a !== me.all(id) || texts.b !== rv.all(id)
+    return { key: filtered ? `${para} (Art. ${a ?? '–'}|${b ?? '–'})` : para, ...texts }
+  }
+}
+
+/**
+ * Whether a passage can be about the law whose Artikel on this side is
+ * `article` — false only for one the document sets under another Artikel
+ * (`HtmlPassage.article`), unless the Artikel heading in force names the
+ * unit's (`HtmlPassage.section`: a Sammelvorlage keeps the draft's numbering
+ * inside its own Artikel heading, 129 d.B. XXVIII). `keyed`: the side's
+ * units carry Artikel numbers at all; where they do not, nothing tells the
+ * laws apart, and every passage counts as before. Where they do and the
+ * unit's law has no Artikel on the side, every passage under an Artikel is
+ * another law's.
+ */
+function ofLaw(passage: HtmlPassage, article: string | null, keyed: boolean): boolean {
+  if (!keyed || passage.article === null) return true
+  if (!article) return false
+  return passage.article === article || (passage.section?.includes(article) ?? false)
 }
 
 /**
@@ -389,7 +487,7 @@ export function compareReasoningByParagraph(units: readonly LawDiffUnit[], befor
   // before the second key existed — measured, 43, 202 and 230/ME of GP XXVII
   // would have lost Begründungen they have today.
   const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(read.addressed(u) ?? '')
-  joinAtParagraph(f, [...units.filter((u) => !isAmbiguous(u)), ...units.filter(isAmbiguous)], ambiguous, before, after, byArticle, read)
+  joinAtParagraph(f, [...units.filter((u) => !isAmbiguous(u)), ...units.filter(isAmbiguous)], ambiguous, textsByNumber(before, after, byArticle), read)
   return finish(f.out)
 }
 
@@ -480,6 +578,8 @@ interface ZifferSide {
   byParagraph: Map<string, LawDiffUnit[]>
   /** The Artikel the document gives an Artikel heading of their own (`HtmlPassage.section`) — see `foreignNumbered`. */
   sectioned: Set<string>
+  /** The side's units carry Artikel numbers, so a passage's Artikel can tell their laws apart (`ofLaw`). */
+  keyed: boolean
 }
 
 /**
@@ -662,19 +762,6 @@ function ownedPassages(doc: HtmlExplanations, index: number): number[] {
   return out
 }
 
-/**
- * The § join's input: per key the passages titled by that §, each with the
- * sub-passages set under it (`ownedPassages`), in printed order — the reading
- * the Ziffer join and the join by the unit's own § already had (02.10.2026).
- * „Zu § 267a:" in 4/ME XXVIII has no text of its own; its Begründung stands
- * in „Zu Abs. 1:" and „Zu Abs. 9:" below it, which name no §, so keyed by
- * their own address they reached no Paragraph, and § 267a UGB showed none.
- */
-function ownedTexts(doc: HtmlExplanations, byKey: Map<string, HtmlPassage[]>): Map<string, string> {
-  const index = new Map(doc.special.map((p, i) => [p, i]))
-  return new Map([...byKey].map(([key, passages]) => [key, textOf(doc, passages.map((p) => index.get(p)!))]))
-}
-
 /** The joined text of passages with their sub-passages, in printed order. */
 function textOf(doc: HtmlExplanations, passages: readonly number[]): string {
   const all = new Set(passages.flatMap((i) => ownedPassages(doc, i)))
@@ -726,7 +813,8 @@ function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: 
       }
     }
   })
-  return { side, doc, mode, byZiffer, units: map, owned, byParagraph, sectioned }
+  const keyed = units.some((u) => existsOn(u, side) && unitArticle(u, side))
+  return { side, doc, mode, byZiffer, units: map, owned, byParagraph, sectioned, keyed }
 }
 
 /**
@@ -739,8 +827,17 @@ function sameLaw(side: ZifferSide, passage: HtmlPassage, unit: LawDiffUnit, ambi
     const title = unitTitle(unit, side.side)
     return passage.law !== null && title !== null && lawTitleKey(passage.law) === lawTitleKey(title)
   }
-  if (side.mode === 'single' || !ambiguous.has(read.addressed(unit) ?? '')) return true
+  // A number no second Artikel of the draft addresses, but a passage the
+  // document sets under another law's Artikel: that law's (`ofLaw`) — in
+  // `single` mode too, which counts only the Artikel of passages titled by
+  // Ziffer, not a law the document explains by § alone.
+  if (side.mode === 'single' || !ambiguous.has(read.addressed(unit) ?? '')) return ofLaw(passage, existsOn(unit, side.side) ? unitArticle(unit, side.side) : null, side.keyed)
   return passage.article !== null && passage.article === unitZiffer(unit, side.side).article
+}
+
+/** The Artikel a unit carries on one side, as its text numbers it. */
+function unitArticle(unit: LawDiffUnit, side: Side): string | null {
+  return side === 'after' ? unit.articleKey : unit.fromArticleKey
 }
 
 /**
@@ -1194,10 +1291,8 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   // the units it always served, and the inserted and removed ones.
   const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(read.addressed(u) ?? '')
   const rest = [...atParagraph, ...oneSided]
-  const texts = (doc: HtmlExplanations) => ({ all: ownedTexts(doc, passagesByParagraph(doc)), byArticle: ownedTexts(doc, passagesByArticleParagraph(doc)) })
-  const me = texts(before)
-  const rv = texts(after)
-  joinAtParagraph(f, [...rest.filter((u) => !isAmbiguous(u)), ...rest.filter(isAmbiguous)], ambiguous, me.all, rv.all, { before: me.byArticle, after: rv.byArticle }, read)
+  const byLaw = textsByLaw(units, before, after)
+  joinAtParagraph(f, [...rest.filter((u) => !isAmbiguous(u)), ...rest.filter(isAmbiguous)], ambiguous, byLaw, read)
   // Last, so a new law's §§ never take the ceiling from an entry the layer
   // showed before they had one.
   joinOwnParagraph(f, units, ownParagraph, before, after, read)
@@ -1233,7 +1328,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     for (const half of [{ ...unit, change: 'inserted' as const, fromText: null }, { ...unit, change: 'removed' as const, toText: null }]) {
       // A real unit under the half's key keeps its own entry.
       if (byKey.has(diffUnitKey(half))) continue
-      joinAtParagraph(f, [half], ambiguous, me.all, rv.all, { before: me.byArticle, after: rv.byArticle }, read)
+      joinAtParagraph(f, [half], ambiguous, byLaw, read)
       const key = f.out.units[diffUnitKey(half)]
       if (!key) continue
       Reflect.deleteProperty(f.out.units, diffUnitKey(half))

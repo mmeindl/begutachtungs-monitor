@@ -589,7 +589,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   Parliament's `preconst` says the Regierungsvorlage bundles other drafts,**
   never by package size (§12.33, §12.40).
 - **The ministry's reasoning is attached to a § only where the law key is
-  certain.** A wrong reasoning at a § is worse than none (§12.30).
+  certain.** A wrong reasoning at a § is worse than none (§12.30). A passage
+  the document sets under another law's Artikel is never taken, even where
+  no second Artikel of the draft addresses the number: a Vorlage that
+  bundles other drafts explains laws the comparison does not hold, and 53
+  units of GP XXVIII were compared against partly another law's Begründung
+  (`ofLaw`, `articleOn` in `server/utils/explanations/reasoningDiff.ts`).
 - **A Begründung printed under the neighbouring Ziffer is attached only with
   witnesses beyond the number** (`offsetPassage`): every § the passage names
   is one this change amends, the change that carries that number amends none

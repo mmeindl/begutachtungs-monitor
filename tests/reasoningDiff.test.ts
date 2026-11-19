@@ -942,3 +942,49 @@ describe('compareReasoning — die neu adressierte Anordnung behält die Begrün
     expect(out.gaps['Gesetz|Z27|changed']).toBe('unread')
   })
 })
+
+// The § join holds a passage to its law (19.11.2026): a number no second
+// Artikel of the draft addresses took every passage naming it, and a Vorlage
+// that bundles other drafts explains laws the comparison does not hold.
+describe('compareReasoning — keine Passage eines anderen Gesetzes am §', () => {
+  const GEN = 'Änderung des Genossenschaftsrevisionsgesetzes 1997'
+
+  it('lässt die Passage weg, die ein Dokument unter einem anderen Artikel führt (4/ME XXVIII: APAG § 12 neben GenRevG § 12)', () => {
+    const units = [unit(GEN, 'Z3', 'In § 12 Abs. 1 wird die Wendung "bis zu 3 500 Euro" gestrichen.', 'changed', { to: '6' })]
+    const before = erl(`Zu Artikel 6 (${GEN}):`, 'Zu § 12:', 'Für die Zwangsstrafenbeträge wird auf § 284 UGB verwiesen.')
+    const after = erl(`Zu Artikel 6 (${GEN}):`, 'Zu § 12:', 'Für die Zwangsstrafenbeträge wird auf § 284 UGB verwiesen.', 'Zu Artikel 14 (Änderung des Abschlussprüfer-Aufsichtsgesetzes):', 'Zu § 12:', 'Zum Zwecke der Verwaltungsvereinfachung.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units[`${GEN}|Z3|changed`]!]).toMatchObject({ basis: 'paragraph', label: '§ 12', changed: false })
+  })
+
+  it('liest eine entfernte Anweisung in der Vorlage unter dem Artikel ihres Gesetzes, nicht unter der Nummer des Entwurfs (20/ME XXVIII: Artikel 16 wird 42)', () => {
+    const SEN = 'Änderung des Bundes-Seniorengesetzes'
+    // `toUnit` gives a removed unit the draft's Artikel on both keys.
+    const units = [
+      unit(SEN, 'Z1', 'In § 15 wird das Wort "Amtsverschwiegenheit" durch das Wort "Geheimhaltung" ersetzt.', 'removed', { from: '16', to: '16' }),
+      unit(SEN, 'Z2', 'In § 3 wird das Wort "a" durch das Wort "b" ersetzt.', 'changed', { from: '16', to: '42' }),
+    ]
+    const before = erl(`Zu Artikel 16 (${SEN}):`, 'Zu § 15:', 'Der Begriff wird ersetzt.')
+    const after = erl('Zu Artikel 16 (Änderung des Tierärztegesetzes):', 'Zu § 15:', 'Die Tierärztekammer.', `Zu Artikel 42 (${SEN}):`, 'Zu § 15:', 'Der Begriff wird ersetzt, nach der Begutachtung genauer.')
+
+    const out = compareReasoning(units, before, after)
+
+    const entry = out.entries[out.units[`${SEN}|Z1|removed`]!]!
+    expect(entry).toMatchObject({ basis: 'paragraph', changed: true })
+    expect(entry.segments!.map((s) => s.text).join('')).not.toContain('Tierärztekammer')
+  })
+
+  it('nimmt auch an der Ziffer keine nach § betitelte Passage eines anderen Gesetzes', () => {
+    // The Vorlage titles its Ziffern, but explains this change only under
+    // another law's Artikel by § alone.
+    const units = [unit(GEN, 'Z1', 'In § 12 Abs. 1 wird die Wendung "bis zu 3 500 Euro" gestrichen.', 'changed', { to: '6' }), unit(GEN, 'Z2', 'In § 13 wird "a" durch "b" ersetzt.', 'changed', { to: '6' })]
+    const before = erl(`Zu Artikel 6 (${GEN}):`, 'Zu Z 1 (§ 12):', 'Die Strafen.', 'Zu Z 2 (§ 13):', 'Anpassung.')
+    const after = erl(`Zu Artikel 6 (${GEN}):`, 'Zu Z 2 (§ 13):', 'Anpassung.', 'Zu Artikel 14 (Änderung des Abschlussprüfer-Aufsichtsgesetzes):', 'Zu § 12:', 'Zum Zwecke der Verwaltungsvereinfachung.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.units[`${GEN}|Z1|changed`]).toBeUndefined()
+  })
+})
