@@ -224,6 +224,16 @@ function lawOf(heading: string): string | null {
 }
 
 /**
+ * A degree sign where Word had a non-breaking space — „Zu Artikel°2
+ * (Änderung des Bankwesengesetzes)", „§°2 Abs.°7", „Nr.°600/2014" in 9 of the
+ * 1.681 cached documents of GP XXVI–XXVIII (19.11.2026). Read as printed, the
+ * Artikel heading named no Artikel, and 174/ME XXVII's Bankwesengesetz stood
+ * under Artikel 1's mark; „§°2" named no §. Only between a letter, a point
+ * or „§" and a digit or a bracket: a real degree follows a number („20 °C").
+ */
+const DEGREE_AS_SPACE_RE = /(?<=[A-Za-zÄÖÜäöüß.§])°(?=[\d(])/g
+
+/**
  * One Parliament Erläuterungen document, split into the Allgemeiner Teil and
  * the passages of the Besonderer Teil.
  *
@@ -259,7 +269,7 @@ export function parseExplanationsHtml(
   let law: string | null = null
 
   for (const block of parseParliamentHtml(html)) {
-    const text = normalizeText(block.text).trim()
+    const text = normalizeText(block.text.replace(DEGREE_AS_SPACE_RE, ' ')).trim()
     if (!text) continue
 
     const part = partKind(text)

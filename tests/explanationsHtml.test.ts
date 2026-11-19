@@ -257,3 +257,22 @@ describe('the Artikel heading in force — section and law (01.10.2026)', () => 
     expect(parsed.special[1]!.section).toBeNull()
   })
 })
+
+// A degree sign for a non-breaking space (19.11.2026): „Zu Artikel°2 (…)"
+// named no Artikel, and „§°92" no §.
+describe('the degree sign Word printed for a non-breaking space', () => {
+  it('reads „Artikel°2" and „§°92 Abs.°8" as „Artikel 2" and „§ 92 Abs. 8"', () => {
+    const parsed = parseExplanationsHtml(doc('Besonderer Teil', 'Zu Artikel 1 (Änderung des AIFMG)', 'Zu § 1:', 'Eins.', 'Zu Artikel°2 (Änderung des Bankwesengesetzes)', 'Zu §°92 Abs.°8:', 'Zwei.'))
+    expect(parsed.special.map((p) => [p.heading, p.article, p.paragraphs])).toEqual([
+      ['Zu Artikel 1 (Änderung des AIFMG)', '1', []],
+      ['Zu § 1:', '1', ['§ 1']],
+      ['Zu Artikel 2 (Änderung des Bankwesengesetzes)', '2', []],
+      ['Zu § 92 Abs. 8:', '2', ['§ 92']],
+    ])
+  })
+
+  it('leaves a real degree alone', () => {
+    const parsed = parseExplanationsHtml(doc('Besonderer Teil', 'Zu § 5:', 'Bei 20°C und 3 °C.'))
+    expect(parsed.special[0]!.text).toEqual(['Bei 20°C und 3 °C.'])
+  })
+})
