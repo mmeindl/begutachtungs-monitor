@@ -102,8 +102,8 @@ const OPENER = '(?:§|Art\\b|Abs\\b|Z\\b|In\\b|Im\\b|Dem\\b|Den\\b|Der\\b|Die\\b
  */
 const NOVAO_NUMBER_RE = new RegExp(`^(\\d{1,3})[a-z]?(?:\\s*\\.\\s*(?=\\S)|\\s*[-,:]\\s+(?=${OPENER})|\\s+(?=${OPENER}))`)
 
-/** The instruction number at the head of `text`, or null. */
-function novaoNumber(text: string): string | null {
+/** The instruction number at the head of `text`, or null. Exported for the census (`scripts/harness/units.ts`). */
+export function novaoNumber(text: string): string | null {
   return NOVAO_NUMBER_RE.exec(normalizeText(text))?.[1] ?? null
 }
 

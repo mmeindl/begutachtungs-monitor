@@ -20,6 +20,7 @@
     "harness:guard-eval": "vite-node scripts/harness/guardEval.ts --",
     "harness:segments": "vite-node scripts/harness/segments.ts --",
     "harness:land-guard": "vite-node -c vitest.config.ts scripts/harness/landGuard.ts --",
+    "harness:units": "vite-node -c vitest.config.ts scripts/harness/units.ts --",
     "audit:classifier": "vite-node scripts/audit/classifier.ts --",
     "audit:para-title": "vite-node scripts/audit/paraTitle.ts --",
     "corpus:verordnungen": "vite-node scripts/corpus/verordnungen.ts --",
