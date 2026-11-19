@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-19T15:53:10.859Z",
+  "at": "2026-11-19T16:25:45.486Z",
   "gp": "XXVIII",
   "paths": {
     "xml": {
@@ -3076,12 +3076,12 @@
         "droppedPages": 0,
         "ran": true,
         "notRunReason": null,
-        "verifiedParas": 3,
-        "withheldParas": 180,
+        "verifiedParas": 156,
+        "withheldParas": 8,
         "withheldStanding": 3,
         "withheldAlreadyStanding": 0,
         "withheldNotInDraft": 0,
-        "uncheckedParas": 6,
+        "uncheckedParas": 25,
         "rowsNoPara": 0,
         "changeRowsNoPara": 0
       },
