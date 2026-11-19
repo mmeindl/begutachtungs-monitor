@@ -764,8 +764,8 @@ export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
     // and from the PDF, as the page reads it; until 18.11.2026 the table alone (106 of 106).
     source: 'bund',
     step: 'tgu',
-    text: 'Die Lesefassung, an kundgemachten Gesetzen geprüft: Von 429 Paragraphen, die der Monitor zeigen würde, sind 428 wortgleich mit dem geltenden Text im RIS. Dem übrigen fehlt ein Teil; ein Wort, das nicht im Gesetz steht, hat keiner. Ohne die Bestätigung durch die Textgegenüberstellung wären es 1.428 von 1.476.',
-    population: '1.796 Paragraphen aus 60 Bundesgesetzblättern',
+    text: 'Die Lesefassung, an kundgemachten Gesetzen geprüft: Von 430 Paragraphen, die der Monitor zeigen würde, sind 429 wortgleich mit dem geltenden Text im RIS. Dem übrigen fehlt ein Teil; ein Wort, das nicht im Gesetz steht, hat keiner. Ohne die Bestätigung durch die Textgegenüberstellung wären es 1.432 von 1.475.',
+    population: '1.794 Paragraphen aus 60 Bundesgesetzblättern',
     date: '20.11.2026',
   },
   {
