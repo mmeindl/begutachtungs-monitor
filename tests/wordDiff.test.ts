@@ -352,14 +352,14 @@ describe('diffTokens past the ceiling, for a caller that only shows the diff (19
     to: segments.filter((s) => s.type !== 'removed').map((s) => s.text).join(' '),
   })
   /** An independent LCS length, row by row. */
-  const lcs = (a: string[], b: string[]) => {
-    let prev = new Array(b.length + 1).fill(0)
+  const lcs = (a: string[], b: string[]): number => {
+    let prev: number[] = new Array<number>(b.length + 1).fill(0)
     for (const x of a) {
-      const row = [0]
-      for (let j = 1; j <= b.length; j++) row[j] = x === b[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], row[j - 1])
+      const row: number[] = [0]
+      for (let j = 1; j <= b.length; j++) row[j] = x === b[j - 1] ? prev[j - 1]! + 1 : Math.max(prev[j]!, row[j - 1]!)
       prev = row
     }
-    return prev[b.length]
+    return prev[b.length]!
   }
 
   it('marks the one changed word of a long unit, where the ceiling showed none (80/ME Z 13)', () => {

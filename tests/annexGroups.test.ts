@@ -220,13 +220,13 @@ describe('annexParas', () => {
     expect(hidden).toBe(2)
   })
 
-  it('splits a row whose word diff hit its ceiling, each side marked whole', () => {
+  it('splits a row whose word diff hit its ceiling, each side whole and unmarked (19.11.2026, `splitSegments`)', () => {
     const { paras } = parasOf([row('§ 1', { segments: null })])
     const b = paras[0]!.blocks[0]!
     expect(b.kind === 'row' && [b.split, b.from, b.to]).toEqual([
       true,
-      [{ type: 'removed', text: 'alt § 1' }],
-      [{ type: 'inserted', text: 'neu § 1' }],
+      [{ type: 'equal', text: 'alt § 1' }],
+      [{ type: 'equal', text: 'neu § 1' }],
     ])
   })
 
