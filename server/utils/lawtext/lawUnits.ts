@@ -355,7 +355,10 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         // the list of a new law's §§ and the Land PDF reader to agree first.
         if (!novelleMode && current && b.cls === RIS_SCHEDULE_DESIGNATION_CLS && (ANLAGE_DESIGNATION_RE.test(b.text) || continuesAnlage)) {
           current.blocks.push(b)
-          anlageRun = true
+          // Only a designation opens a run, so one heading below it is kept
+          // and the next line of the class is judged afresh: kept after a
+          // kept heading, a stray converter line or a column head chained on.
+          anlageRun = ANLAGE_DESIGNATION_RE.test(b.text)
           continue
         }
         // **A law is named before its first instruction, and only there.**

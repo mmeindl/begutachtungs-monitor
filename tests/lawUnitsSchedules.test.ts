@@ -44,4 +44,16 @@ describe('segmentUnits: a new law’s schedule designation reads the same from H
     ))
     expect(units.map((u) => u.text.replace(/\s+/g, ' ').trim())).toEqual(['Text des Paragraphen. Weiter im Text.'])
   })
+
+  it('keeps one heading below the designation, not every line of the class after it (19.11.2026)', () => {
+    const units = parseLawUnitsFromRis(ris(
+      '<absatz typ="abs"><gldsym>§ 5.</gldsym> Text des Paragraphen.</absatz>',
+      '<ueberschrift typ="anlage">Anlage 1</ueberschrift>',
+      '<ueberschrift typ="anlage">(zu § 3)</ueberschrift>',
+      '<ueberschrift typ="anlage">Teil 2</ueberschrift>',
+      '<ueberschrift typ="anlage">Anlage 2</ueberschrift>',
+      '<ueberschrift typ="anlage">(zu § 4)</ueberschrift>',
+    ))
+    expect(units.map((u) => u.text.replace(/\s+/g, ' ').trim())).toEqual(['Text des Paragraphen. Anlage 1 (zu § 3) Anlage 2 (zu § 4)'])
+  })
 })
