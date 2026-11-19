@@ -2062,6 +2062,50 @@ describe('a § replaced by one bare line, and a heading named by the § below it
     expect(bodyText(out.paragraphs[0]!)).toBe('Dieses Bundesgesetz dient der Verordnung (EU) 2023/2869.')
   })
 
+  // The same shape with a list behind it (19.11.2026): BilDokG 2020 § 26
+  // in 14/ME XXVIII, „§ 26 lautet: Mit der Vollziehung dieses Bundesgesetzes
+  // ist 1. … 5. … betraut." The lead-in became the §'s heading, „Vollziehung"
+  // went, and the page struck the lead-in from the body and printed it as
+  // the new heading — the comparison form, heading and body as one string,
+  // read right, so the annex confirmed it.
+  it('takes a lead-in before the Ziffern for the §\'s text, not its heading', () => {
+    const vollziehung = (): StandingLaw => ({ paragraphs: [para('26', 'Vollziehung', [{ text: 'Mit der Vollziehung dieses Bundesgesetzes ist', ziffern: ['hinsichtlich der Schulen die Bundesministerin,', 'im Übrigen die Bundesregierung betraut.'] }])] })
+    const { law: out, results } = run(vollziehung(), instr('§ 26 lautet:', ['Mit der Vollziehung dieses Bundesgesetzes ist', '1. hinsichtlich der Schulen die Bundesministerin für Bildung,', '2. im Übrigen die Bundesregierung betraut.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.heading).toBe('Vollziehung')
+    expect(bodyText(out.paragraphs[0]!)).toMatch(/^Mit der Vollziehung dieses Bundesgesetzes ist\n1\. hinsichtlich der Schulen die Bundesministerin für Bildung,/)
+    // A heading still names a matter and opens the § above its Absätze.
+    expect(parsePayload(['Strafbestimmungen', '(1) Wer gegen § 7 verstößt, ist zu bestrafen.'])[0]!.heading).toBe('Strafbestimmungen')
+    expect(parsePayload(['Begriffsbestimmungen', '1. Abfall: bewegliche Sachen,'])[0]!.heading).toBe('Begriffsbestimmungen')
+  })
+
+  // „§ 6 (1) Der Steuerschuldner …" without the stop behind the number
+  // (Feuerschutzsteuergesetz in the Abgabenänderungsgesetz 2025): read as a
+  // bare line, the whole Absatz became the heading (19.11.2026).
+  it('opens a § at „§ 6 (1)" although the stop is missing', () => {
+    const [p] = parsePayload(['§ 6 (1) Der Steuerschuldner hat die Steuer selbst zu berechnen.', '(2) Die Steuer ist zu entrichten.'])
+    expect(p!.id).toBe('6')
+    expect(p!.heading).toBeNull()
+    expect(p!.children.map((c) => c.id)).toEqual(['1', '2'])
+    // A sentence that opens with a citation stays text.
+    expect(parsePayload(['§ 6 Abs. 1 gilt sinngemäß.'])[0]!.level).toBe('para')
+    expect(parsePayload(['§ 6 Abs. 1 gilt sinngemäß.'])[0]!.id).toBe('')
+  })
+
+  // The second line of defence behind the two above: a heading guessed from
+  // a bare line never replaces the standing one unless the instruction says
+  // „samt Überschrift" — RIS marks a printed heading as one.
+  it('refuses to let a heading read off a bare line replace the standing one', () => {
+    const steuer = (): StandingLaw => ({ paragraphs: [para('10', 'Höchstgrenzen', ['Die Grenze beträgt zehn Generationen.'])] })
+    const { results } = run(steuer(), instr('§ 10 lautet:', ['Basis', '(1) Die Grenze beträgt acht Generationen.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/nicht als Überschrift auszeichnet/)
+    // Marked as a heading by its block, it is the new heading.
+    const marked = run(steuer(), instr('§ 10 lautet:', [{ text: 'Generationen', heading: true }, '(1) Die Grenze beträgt acht Generationen.']))
+    expect(marked.results[0]!.reason).toBeNull()
+    expect(marked.law.paragraphs[0]!.heading).toBe('Generationen')
+  })
+
   it('refuses one line that has to be heading and text at once', () => {
     const { results } = run(zweck(), instr('§ 1 lautet samt Überschrift:', ['Dieses Bundesgesetz dient der Verordnung (EU) 2023/2869.']))
     expect(results[0]!.applied).toBe(false)

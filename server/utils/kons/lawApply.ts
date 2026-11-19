@@ -150,11 +150,22 @@ export interface ApplyReport {
 // into a lookahead, it cannot give its decimal back to the full stop. A
 // Verordnung numbered by Kapitel prints „§ 10.07a Sorgfaltspflicht …" with no
 // full stop behind the number, and read as „§ 10." its new § 10.07a went in
-// as a § 10 (707EA278, 26.10.2026). A plain number still needs its stop.
-const PARA_LINE = new RegExp(String.raw`^§\s*(?=(${PARAGRAPH_NUMBER}))\1(?:\.|(?<=\.\d[\da-z]*)(?=\s|$))\s*`)
+// as a § 10 (707EA278, 26.10.2026). A plain number still needs its stop —
+// or an Absatz marker right behind it: „§ 6 (1) Der Steuerschuldner …" lost
+// its stop in the draft, was read as a bare line, and the whole Absatz
+// became the §'s heading (19.11.2026). A sentence that opens with a citation
+// writes „§ 6 Abs. 1", never „§ 6 (1)".
+const PARA_LINE = new RegExp(String.raw`^§\s*(?=(${PARAGRAPH_NUMBER}))\1(?:\.|(?<=\.\d[\da-z]*)(?=\s|$)|(?=\s+\(\d+[a-z]*\)\s))\s*`)
 const ABS_LINE = /^\((\d+[a-z]*)\)\s*/
 const Z_LINE = /^(\d+[a-z]*)\.\s+/
 const LIT_LINE = /^([a-z]{1,2})\)\s+/
+/**
+ * A first bare line that ends like a sentence leading into a list — „Mit der
+ * Vollziehung dieses Bundesgesetzes ist", „Im Sinne dieses Gesetzes
+ * bedeutet:" — and never like a heading, which names a matter and ends in
+ * its noun, a number or a bracket.
+ */
+const LEAD_IN_RE = /(?::|\s\p{Ll}[\p{L}-]*,?)$/u
 
 /**
  * One printed line of the quoted new text. A heading line is marked as such
@@ -173,6 +184,9 @@ function lineText(l: PayloadLine): string {
  * prints its new text with the same markers the law uses, which is what
  * makes an inserted Absatz addressable the moment it lands.
  */
+/** § nodes whose heading `parsePayload` read off a bare line — no block marked it as one. */
+export const GUESSED_HEADINGS = new WeakSet<LawNode>()
+
 export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {
   const out: LawNode[] = []
   let para: LawNode | null = null
@@ -180,6 +194,8 @@ export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {
   let z: LawNode | null = null
   /** "§ 5 lautet samt Überschrift:" prints the new heading on its own line, above the §. */
   let pendingHeading: string | null = null
+  /** Whether `pendingHeading` came from a bare line rather than a block marked as a heading. */
+  let guessed = false
 
   /**
    * A heading followed by "(1) …" without a § line of its own — the § symbol
@@ -193,6 +209,7 @@ export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {
     if (para) return para.children
     if (pendingHeading !== null) {
       para = makeNode('para', '', '', '', pendingHeading)
+      if (guessed) GUESSED_HEADINGS.add(para)
       pendingHeading = null
       out.push(para)
       return para.children
@@ -218,6 +235,7 @@ export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {
     }
     if (isHeading) {
       pendingHeading = line
+      guessed = false
       continue
     }
     if (pm) {
@@ -276,11 +294,12 @@ export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {
       // law the same way, so the two sides now render in the same order.
       if (abs.children.length) abs.children.push(makeNode('schluss', 'schluss', '', line))
       else abs.text = `${abs.text} ${line}`.trim()
-    } else if (pendingHeading === null && !para && out.length === 0) {
+    } else if (pendingHeading === null && !para && out.length === 0 && !LEAD_IN_RE.test(line)) {
       // The first bare line of a payload: a heading when a marked line
       // follows, the text itself when the payload is one sentence (a § or an
       // Absatz without inner numbering).
       pendingHeading = line
+      guessed = true
     } else {
       abs = makeNode('abs', '', '', line)
       host().push(abs)
@@ -1782,6 +1801,15 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
             ? { ...para, level: 'para' as const, children: [makeNode('abs', '', '', replacement.heading ?? '')] }
             : { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: replacement.heading ?? para.heading }
           if (isLoneLine(replacement, para) && op.withHeading) return 'samt Überschrift, aber nur eine Zeile im neuen Text'
+          // A heading read off a bare line, replacing the standing one where
+          // the instruction does not say „samt Überschrift": RIS marks a
+          // printed heading as one (`ueberschrift typ="para"`), so a guess
+          // that overrules the law's heading is a misreading — the two the
+          // corpus held were „Basis" and an Absatz whose „§ 6 (1)" had lost
+          // its stop (19.11.2026), and the BGBl Prüfstand has none.
+          if (!isLoneLine(replacement, para) && GUESSED_HEADINGS.has(replacement) && !op.withHeading && para.heading && replacement.heading !== para.heading) {
+            return 'Überschrift aus einer Zeile, die der Entwurf nicht als Überschrift auszeichnet — die geltende bliebe ohne Anweisung ersetzt'
+          }
           if (outgoing.length === 1 && arrivesBeside(law, para)) {
             law.paragraphs.splice(at, 0, restated)
             arrive(law, restated)
