@@ -21,17 +21,17 @@ const REASONING_GAP_DE: Record<ReasoningGap, string> = {
   // Ours (20.11.2026): the join failed, so the lead word of a reading that
   // failed. Until then every line opened „Begründung: nicht zuzuordnen", an
   // exception to the lead words that left open whose gap it was.
-  numbering: gapDe('unreadable', 'die Begründung zu dieser Änderung – die Erläuterungen zählen die Ziffern anders.'),
+  numbering: gapDe('unreadable', 'die Begründung – die Erläuterungen zählen die Ziffern anders.'),
   // The documents name the change in a line the reader did not take as a
   // heading: no reason we could prove, so none is given.
-  unread: gapDe('unreadable', 'die Begründung zu dieser Änderung – wo die Erläuterungen sie führen, liest der Monitor nicht sicher heraus.'),
+  unread: gapDe('unreadable', 'die Begründung – wo die Erläuterungen sie führen, liest der Monitor nicht sicher heraus.'),
   // The document's, and proven (`provesAbsence`): no heading and no „Zu …"
   // line names the change, and no block explains its law whole. A fact
   // about the document, not a gap of anyone's — so no lead word; and not
   // „nicht veröffentlicht", because prose elsewhere may still touch it.
-  missingBefore: 'Begründung: Die Erläuterungen des Entwurfs haben zu dieser Änderung keinen Abschnitt.',
-  missingAfter: 'Begründung: Die Erläuterungen der Regierungsvorlage haben zu dieser Änderung keinen Abschnitt.',
-  missingBoth: 'Begründung: Die Erläuterungen beider Texte haben zu dieser Änderung keinen Abschnitt.',
+  missingBefore: 'Begründung: Die Erläuterungen des Entwurfs haben dazu keinen Abschnitt.',
+  missingAfter: 'Begründung: Die Erläuterungen der Regierungsvorlage haben dazu keinen Abschnitt.',
+  missingBoth: 'Begründung: Die Erläuterungen beider Texte haben dazu keinen Abschnitt.',
 }
 
 export function reasoningGapNote(gap: ReasoningGap | null | undefined): string | null {

@@ -5,11 +5,11 @@ const stats = (compared: number) => ({ compared, changed: 0, editorial: 0, uncom
 
 describe('reasoningGapNote', () => {
   it('sagt an der Änderung, warum keine Begründung steht — mit Grund nur, wo er belegt ist', () => {
-    expect(reasoningGapNote('numbering')).toBe('Nicht lesbar: die Begründung zu dieser Änderung – die Erläuterungen zählen die Ziffern anders.')
-    expect(reasoningGapNote('missingBefore')).toBe('Begründung: Die Erläuterungen des Entwurfs haben zu dieser Änderung keinen Abschnitt.')
-    expect(reasoningGapNote('missingAfter')).toBe('Begründung: Die Erläuterungen der Regierungsvorlage haben zu dieser Änderung keinen Abschnitt.')
-    expect(reasoningGapNote('missingBoth')).toBe('Begründung: Die Erläuterungen beider Texte haben zu dieser Änderung keinen Abschnitt.')
-    expect(reasoningGapNote('unread')).toBe('Nicht lesbar: die Begründung zu dieser Änderung – wo die Erläuterungen sie führen, liest der Monitor nicht sicher heraus.')
+    expect(reasoningGapNote('numbering')).toBe('Nicht lesbar: die Begründung – die Erläuterungen zählen die Ziffern anders.')
+    expect(reasoningGapNote('missingBefore')).toBe('Begründung: Die Erläuterungen des Entwurfs haben dazu keinen Abschnitt.')
+    expect(reasoningGapNote('missingAfter')).toBe('Begründung: Die Erläuterungen der Regierungsvorlage haben dazu keinen Abschnitt.')
+    expect(reasoningGapNote('missingBoth')).toBe('Begründung: Die Erläuterungen beider Texte haben dazu keinen Abschnitt.')
+    expect(reasoningGapNote('unread')).toBe('Nicht lesbar: die Begründung – wo die Erläuterungen sie führen, liest der Monitor nicht sicher heraus.')
     expect(reasoningGapNote(undefined)).toBeNull()
   })
 })

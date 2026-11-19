@@ -653,12 +653,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   have been false on most such changes. **Whose gap the line names**
   (maintainer, 20.11.2026; until then every line opened „Begründung: nicht
   zuzuordnen", an exception to the lead words): where the join failed, it is
-  ours — „Nicht lesbar: die Begründung zu dieser Änderung – die
-  Erläuterungen zählen die Ziffern anders." and, without a proven reason,
+  ours — „Nicht lesbar: die Begründung – die Erläuterungen zählen die
+  Ziffern anders." and, without a proven reason,
   „… – wo die Erläuterungen sie führen, liest der Monitor nicht sicher
   heraus."; where absence is proven, it is a fact about the document and
-  takes no lead word — „Begründung: Die Erläuterungen des Entwurfs haben zu
-  dieser Änderung keinen Abschnitt." (der Regierungsvorlage, beider Texte),
+  takes no lead word — „Begründung: Die Erläuterungen des Entwurfs haben dazu
+  keinen Abschnitt." (der Regierungsvorlage, beider Texte); the line stands
+  at its change, so it does not name the change again,
   never „Nicht veröffentlicht", because prose elsewhere may still touch it.
   An inserted or removed change (20.11.2026) gets the line only where the
   one document it stands in proves the absence — the Regierungsvorlage's
@@ -2505,8 +2506,8 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | The same where no changed row prints anything (word dropped / added / figure changed) | 99.0 / 99.7 / 99.6 % (PDF), 99.5 / 99.9 / 99.7 % (table), floored; 65.0 / 23.8 / 95.8 % and 66.7 / 28.0 / 97.1 % while check 3 asked only whether a word stands anywhere in the annex. Withdrawn without injection: 6 of 1,549 PDF and 2 of 1,153 table confirmations, each read (four engine gaps behind a refusal, one result without a heading the annex prints, three correct results the annex prints wrongly: TDBG § 40b, HSG § 7, BD-EG § 38) | GP XXVIII · 19.11.2026 |
 | A struck Absatz put back under its old number (fault class Zurück) | 45 of 45 (PDF), 25 of 25 (table); 41 of 46 and 20 of 25 before checks 4 and 5 read a struck Absatz that opens like the next | GP XXVIII · 19.11.2026 |
 | Silent omission read (`silentOmissions`) under fault injection | a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16 | GP XXVIII · 14.11.2026 |
-| Changed §§ with an outcome on the page | all 4,701 in 163 drafts (ME) and 1,490 in 219 (without Gegenstand); 4,463 and 1,541 on 27.10.2026. The second fell although five drafts came, and none of it is the engine: six drafts left the set (−89; four got a Parliament page as 150/ME to 153/ME, two were lost by the corpus read, next table), eleven came (+38), and on the 208 in both the count stayed 1,452. Reconstructed by running the code of 27.10. offline on the same inputs: 214 drafts, 1,541, 630, the recorded figures. The JSON of an `accounting.ts` run is the per-draft record from now on | GP XXVIII · 18.11.2026 (§12.12c) |
-| Of those shown | 2,267 and 623; 2,167 and 630 on 27.10.2026. Without Gegenstand: −33 with the six that left, +11 with the eleven that came, +15 on the 208 in both (7262426, omissions without „…": 14; 14984f1, letter-spaced words: 1) | same |
+| Changed §§ with an outcome on the page | all 4,798 in 164 drafts (ME) on 20.11.2026, no invariant violated, „verloren" included (4,701 in 163 on 18.11.2026); 1,490 in 219 without Gegenstand (18.11.2026, not re-run); 4,463 and 1,541 on 27.10.2026. The second fell although five drafts came, and none of it is the engine: six drafts left the set (−89; four got a Parliament page as 150/ME to 153/ME, two were lost by the corpus read, next table), eleven came (+38), and on the 208 in both the count stayed 1,452. Reconstructed by running the code of 27.10. offline on the same inputs: 214 drafts, 1,541, 630, the recorded figures. The JSON of an `accounting.ts` run is the per-draft record from now on | GP XXVIII · 18.11.2026 (§12.12c) |
+| Of those shown | 2,393 (ME, 20.11.2026: the engine and annex fixes of 18.–20.11.); 2,267 and 623 on 18.11.2026; 2,167 and 630 on 27.10.2026. Without Gegenstand: −33 with the six that left, +11 with the eleven that came, +15 on the 208 in both (7262426, omissions without „…": 14; 14984f1, letter-spaced words: 1) | same |
 | RIS Begut list read whole | 4,621 of 4,621 with the repair; without it one pass gave 4,602 (19 sent twice, 19 skipped), another 4,614, the dev server's 380 of the 382 in the period | `pnpm corpus:tgu-deckung`, one pass over 47 pages · 18.11.2026 |
 | Amending drafts that show at least one § | 111 of 122 | GP XXVIII · 06.10.2026 (§12.12) |
 | Amending drafts with a readable annex | 121 of 122 | 06.10.2026 (§12.12) |

@@ -772,9 +772,9 @@ export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
     // decisions.md, same table (`scripts/harness/accounting.ts --gp=XXVIII`).
     source: 'bund',
     step: 'tgu',
-    text: 'Von 4.701 geänderten Paragraphen zeigt der Monitor 2.267 als Lesefassung; bei jedem anderen steht der Grund.',
-    population: '163 Ministerialentwürfe der XXVIII. GP',
-    date: '18.11.2026',
+    text: 'Von 4.798 geänderten Paragraphen zeigt der Monitor 2.393 als Lesefassung; bei jedem anderen steht der Grund.',
+    population: '164 Ministerialentwürfe der XXVIII. GP',
+    date: '20.11.2026',
   },
   {
     // so-funktionierts #eu-recht.
