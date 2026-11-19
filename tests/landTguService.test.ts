@@ -38,8 +38,12 @@ const detail = (title = `Gesetz, mit dem das ${LAW} geändert wird`): LandDraftD
   retentionNote: null, listUrl: 'https://www.ktn.gv.at/', comparisons: [['geltend', 'entwurf']],
 } as unknown as LandDraftDetail)
 
-/** RIS's § text, as `standsInRis` reads it: the § heading's words, then its body. */
-const ris = (text: string) => `<nutzdaten>${text}</nutzdaten>`
+/**
+ * RIS's § text, as `standsInRis` reads it: the § heading's words, then its
+ * body — after RIS's „Text" heading, where its law text begins
+ * (`risLawText`), and before its own fields.
+ */
+const ris = (text: string) => `<nutzdaten><ueberschrift typ="titel" halign="j">Text</ueberschrift>${text}<ueberschrift typ="titel" halign="j">Im RIS seit</ueberschrift><absatz typ="erltext" ct="veroeffentlicht" halign="j">01.01.2020</absatz></nutzdaten>`
 const TEXT_5 = 'Begriffe (1) Begriffe sind in diesem Gesetz so zu verstehen, wie sie hier stehen.'
 const para = (number: string, over: Partial<TguParagraph> = {}): TguParagraph => ({ law: LAW, number, old: [], neu: [], changed: true, ...over })
 

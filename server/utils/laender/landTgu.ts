@@ -593,14 +593,25 @@ export function withHeadings<U extends { heading: string | null; article: string
   })
 }
 
-/** Words, compared as RIS and the PDF both print them: no markup, no quotes, no hyphens, no § designations, no notes of RIS's own. */
-export function comparableWords(text: string): string[] {
-  return text
+/**
+ * Words, compared as RIS and the PDF both print them: no markup, no quotes,
+ * no hyphens, no § designations, no notes of RIS's own. RIS writes a hyphen
+ * as an element — „B<gdash />VG", „Bewilligungs<bdash />inhaberin" at a
+ * line's end — and an exponent as one, „m<super>2</super>": read as markup,
+ * each split its word in two (19.11.2026).
+ */
+export function comparableWords(text: string, keepParagraphNumbers = false): string[] {
+  const unmarked = text
+    .replace(/<bdash\s*\/>/g, '')
+    .replace(/<gdash\s*\/>/g, '-')
+    .replace(/<\/?(?:sub|super|sup)>/g, '')
     .replace(/<[^>]+>/g, ' ')
-    // The § designation is where the two print differently — RIS between
-    // heading and „(1)", the document on a line of its own — and the § is
-    // already fixed by looking it up by number.
-    .replace(/§\s*\d+[a-z]*\.?/g, ' ')
+  // The § designation is where the two print differently — RIS between
+  // heading and „(1)", the document on a line of its own — and the § is
+  // already fixed by looking it up by number. The rule takes a citation's
+  // number with it („gemäß § 26"): `coverOfRis`, which reads RIS's law text
+  // without its headings, keeps them (`keepParagraphNumbers`).
+  return (keepParagraphNumbers ? unmarked : unmarked.replace(/§\s*\d+[a-z]*\.?/g, ' '))
     .replace(/&[a-z]+;/g, ' ')
     .replace(/[„“”"»«‚‘]/g, '')
     .toLowerCase()
@@ -656,26 +667,56 @@ function lcsShare(text: string, risText: string): number | null {
 export const STANDS_IN_RIS = 0.98
 
 /**
- * The other direction of `shareInRis`: how much of RIS's § the printed text
- * covers — the share of RIS's words, from the §'s first printed words to
- * RIS's trailer, that stand in order in the printed text, 0 to 1. Null where
- * RIS's text has no place the first words stand at.
+ * RIS's § as law text alone (19.11.2026): what stands between its „Text"
+ * heading and the first of RIS's own fields after it — „Anmerkung",
+ * „Schlagworte", „Im RIS seit" — without headings and without RIS's notes.
+ * A heading is an `ueberschrift` (the division's, the §'s, its number) or a
+ * paragraph RIS sets centred and wholly bold, as in Salzburg's older
+ * Verordnungen („<b>Umsetzungshinweis</b>", „<b>§ 4</b>"): the
+ * comparison's text of a § carries no heading (`TguParagraph`, the heading
+ * is its own field). A note is „(Anm: LGBl.Nr. 82/1996)", „(Anm.
+ * LGBl.Nr. 127/2024)", or one RIS leaves open at its element's end
+ * („(Anm: LGBl.Nr. 38/2025</i>"). Measured over the 2,100 RIS §§ the Länder
+ * guard harness holds: every one has its „Text" heading; the headings after
+ * it are only RIS's fields (Anmerkung, Schlagworte, Im RIS seit, Zuletzt
+ * aktualisiert am, Gesetzesnummer, Dokumentnummer, alte Dokumentnummer);
+ * and law text also comes as `erltext` (419 paragraphs), so a field is told
+ * by its heading, never by its element. Every centred, wholly bold
+ * paragraph (61 documents) is a heading. Null where RIS's text has no
+ * „Text" heading.
  */
-export function coverOfRis(text: string, risText: string): number | null {
-  const ARTICLE = /\bArt(?:ikel|\.)\s*\d+[a-z]*\.?/g
-  return lcsCover(text, risText) ?? lcsCover(text.replace(ARTICLE, ' '), risText.replace(ARTICLE, ' '))
+export function risLawText(risText: string): string | null {
+  const start = /<ueberschrift typ="titel"[^>]*>\s*Text\s*<\/ueberschrift>/.exec(risText)
+  if (!start) return null
+  const rest = risText.slice(start.index + start[0].length)
+  const end = rest.search(/<ueberschrift typ="titel"/)
+  return (end < 0 ? rest : rest.slice(0, end))
+    .replace(/<ueberschrift\b[^>]*>[\s\S]*?<\/ueberschrift>/g, ' ')
+    .replace(/<absatz\b[^>]*\bhalign="c"[^>]*>\s*<b>[^<]*<\/b>\s*<\/absatz>/g, ' ')
+    .replace(/\(\s*Anm\b\.?:?[^)<]*(?:\)|(?=<))/g, ' ')
 }
 
-function lcsCover(text: string, risText: string): number | null {
-  const a = comparableWords(text)
-  if (!a.length) return null
-  let b = comparableWords(risText)
-  const trailer = b.findIndex((w, i) => (w === 'im' && b[i + 1] === 'ris' && b[i + 2] === 'seit') || (w === 'zuletzt' && b[i + 1] === 'aktualisiert'))
-  if (trailer > 0) b = b.slice(0, trailer)
-  const head = a.slice(0, 4).join(' ')
-  const at = b.findIndex((_, i) => b.slice(i, i + 4).join(' ') === head)
-  if (at < 0) return null
-  b = b.slice(at)
+/**
+ * The other direction of `shareInRis`: how much of RIS's § the printed text
+ * covers — the share of the words of RIS's law text (`risLawText`) that
+ * stand in order in the printed text, 0 to 1. Words are compared without
+ * their punctuation: „machen." is RIS's „machen ." (19.11.2026). Every
+ * number counts, a citation's too („gemäß § 26", „Art. 9 der Verordnung"):
+ * RIS's law text holds no designation of the § or its article, and one the
+ * document prints is a word RIS lacks, which costs nothing here. Null where
+ * RIS's law text cannot be told apart, or either side has no word.
+ *
+ * The whole of RIS's § counts, from its first word: anchored at the
+ * printed text's first words, as until 19.11.2026, a § that lost its start
+ * in both columns covered what was left of RIS after the cut.
+ */
+export function coverOfRis(text: string, risText: string): number | null {
+  const law = risLawText(risText)
+  if (law === null) return null
+  const bare = (s: string) => comparableWords(s, true).map((w) => w.replace(/[^\p{L}\p{N}]/gu, '')).filter(Boolean)
+  const a = bare(text)
+  const b = bare(law)
+  if (!a.length || !b.length) return null
   let prevRow = new Uint16Array(b.length + 1)
   let row = new Uint16Array(b.length + 1)
   for (let i = 1; i <= a.length; i++) {
@@ -687,26 +728,42 @@ function lcsCover(text: string, risText: string): number | null {
   return prevRow[b.length]! / b.length
 }
 
-/** Below this share of RIS's § (`coverOfRis`) a § printed whole and unchanged is cut short. */
-export const COVERS_RIS = 0.9
-
 /**
  * A § the document prints the same in both columns, leaving nothing out,
- * whose text covers only part of RIS's § (19.11.2026): cut short in both
- * columns at the same place, by the reader or the document. `standsInRis`
- * asks only how much of the printed text stands in RIS, so a cut § passed
- * it whole and was shown „unverändert" — while the part cut off held the
- * change: Salzburg 34574's § 3 („(1) Form und Inhalt … ergeben sich aus
- * der", 10 of RIS's 108 words; the draft rewrites its Abs. 2 and 3) and
- * Oberösterreich 2025-16103's § 25 (118 of 462; the draft changes five of
- * its Absätze). A § shown as changed is not asked: a Textgegenüberstellung
- * may print only the Absatz it changes, and the change it shows is true.
+ * whose text does not hold every word of RIS's § (19.11.2026): cut short in
+ * both columns at the same place, by the reader or the document.
+ * `standsInRis` asks only how much of the printed text stands in RIS, so a
+ * cut § passed it whole and was shown „unverändert" — while the part cut
+ * off held the change: Salzburg 34574's § 3 („(1) Form und Inhalt …
+ * ergeben sich aus der", 10 of RIS's 108 words; the draft rewrites its
+ * Abs. 2 and 3) and Oberösterreich 2025-16103's § 25 (118 of 462; the draft
+ * changes five of its Absätze). A § shown as changed is not asked: a
+ * Textgegenüberstellung may print only the Absatz it changes, and the
+ * change it shows is true.
+ *
+ * **Every word, not most of them.** The first floor, 0.9 of RIS's words,
+ * saw only cuts near a §'s middle: of §§ cut at their end in both columns
+ * it caught 48 % of a lost last sentence, 63 % of a lost last Absatz, 8 %
+ * of a lost last line and 1 % of a lost last word — and a lost table value
+ * holds a change as well as a lost Absatz does. Over the 1,155 §§ the
+ * Länder guard harness shows, every § shown unverändert (32) and every one
+ * shown as repealed (42) holds every word of RIS's law text
+ * (`risLawText`), so the floor costs nothing there; a § it refuses is
+ * „nicht sicher gelesen", never shown. Nor is a § shown where RIS's law
+ * text cannot be told apart (`coverOfRis` null): that is no confirmation.
+ *
+ * What it cannot see: a § printed with omissions („…", Salzburg's bare
+ * designations) is not asked, since what it leaves out it leaves out on
+ * purpose; the § heading is not part of the comparison's text; and a new
+ * text the reader lost only where it differs, so that the right column
+ * reads as the left: the text in force is whole, and nothing here holds an
+ * unchanged § against the draft's instructions.
  */
 export function cutShort(p: Pick<TguParagraph, 'old' | 'neu'>, risText: string, bare = false): boolean {
   const old = joinLines(p.old)
   if (old !== joinLines(p.neu) || elides(bare ? withMarkedOmissions(old) : old)) return false
   const cover = coverOfRis(old, risText)
-  return cover !== null && cover < COVERS_RIS
+  return cover === null || cover < 1
 }
 
 /**

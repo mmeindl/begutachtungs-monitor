@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
 import { parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annex/annexPdf'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, cutShort, withMarkedOmissions, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renamedTo, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, comparableWords, cutShort, risLawText, withMarkedOmissions, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renamedTo, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -292,17 +292,60 @@ describe('tguUnits and joinLines', () => {
 })
 
 describe('cutShort — a § printed unchanged and cut short in both columns (19.11.2026)', () => {
-  const risText = '<nutzdaten>Umwelterheblichkeitsprüfung § 3. (1) Form und Inhalt der Umwelterheblichkeitsprüfung ergeben sich aus der Anlage 2. Die Beurteilung hat auf Grund der Unterlagen zu erfolgen. (2) Die Behörde hat die Stellungnahmen der Umweltstelle einzuholen und bei ihrer Entscheidung zu berücksichtigen. (3) Die Entscheidung ist kundzumachen.</nutzdaten>'
+  /** A § as RIS's XML holds it: its fields, „Text", the headings, the law text, RIS's fields after it. */
+  const ris = (law: string, after = '') => `<nutzdaten><abschnitt><ueberschrift typ="titel" halign="j">Kurztitel</ueberschrift><absatz typ="erltext" ct="kurztitel" halign="j">Salzburger Testgesetz</absatz><ueberschrift typ="titel" halign="j">Text</ueberschrift><ueberschrift typ="g1" ct="text" halign="c">2. Abschnitt</ueberschrift><ueberschrift typ="para" ct="text" halign="c">Umwelterheblichkeitsprüfung</ueberschrift><ueberschrift typ="para" ct="text" halign="c">§ 3</ueberschrift>${law}${after}<ueberschrift typ="titel" halign="j">Im RIS seit</ueberschrift><absatz typ="erltext" ct="veroeffentlicht" halign="j">01.01.2020</absatz></abschnitt></nutzdaten>`
+  const law = '<absatz typ="abs" ct="text" halign="j">(1) Form und Inhalt der Umwelterheblichkeitsprüfung ergeben sich aus der Anlage 2. Die Beurteilung hat auf Grund der Unterlagen zu erfolgen.</absatz><absatz typ="abs" ct="text" halign="j">(2) Die Behörde hat die Stellungnahmen der Umweltstelle einzuholen und bei ihrer Entscheidung zu berücksichtigen.</absatz><absatz typ="abs" ct="text" halign="j">(3) Die Entscheidung ist kundzumachen.</absatz>'
+  const risText = ris(law)
   const cut = 'Umwelterheblichkeitsprüfung (1) Form und Inhalt der Umwelterheblichkeitsprüfung ergeben sich aus der'
   const whole = 'Umwelterheblichkeitsprüfung (1) Form und Inhalt der Umwelterheblichkeitsprüfung ergeben sich aus der Anlage 2. Die Beurteilung hat auf Grund der Unterlagen zu erfolgen. (2) Die Behörde hat die Stellungnahmen der Umweltstelle einzuholen und bei ihrer Entscheidung zu berücksichtigen. (3) Die Entscheidung ist kundzumachen.'
+  const same = (text: string) => ({ old: [text], neu: [text] })
   it('is what the RIS check alone lets through: every printed word stands in RIS (Salzburg 34574, § 3)', () => {
     expect(standsInRis(cut, risText)).toBe(true)
-    expect(cutShort({ old: [cut], neu: [cut] }, risText)).toBe(true)
+    expect(cutShort(same(cut), risText)).toBe(true)
   })
   it('is not a § printed whole, one printed as changed, or one that leaves something out', () => {
-    expect(cutShort({ old: [whole], neu: [whole] }, risText)).toBe(false)
+    expect(cutShort(same(whole), risText)).toBe(false)
     expect(cutShort({ old: [cut], neu: [`${cut} Anlage 3.`] }, risText)).toBe(false)
-    expect(cutShort({ old: [`${cut} … (3) bis (4) …`], neu: [`${cut} … (3) bis (4) …`] }, risText)).toBe(false)
+    expect(cutShort(same(`${cut} … (3) bis (4) …`), risText)).toBe(false)
+  })
+  // The first floor, 0.9 of RIS's words, passed every one of these.
+  it('is a § cut at its end: the last Absatz, or only its last word', () => {
+    expect(cutShort(same(whole.replace(' (3) Die Entscheidung ist kundzumachen.', '')), risText)).toBe(true)
+    expect(cutShort(same(whole.replace(' kundzumachen.', '')), risText)).toBe(true)
+  })
+  it('is a § cut at its start: anchored at the printed words, the part before them did not count', () => {
+    expect(cutShort(same(whole.replace('Umwelterheblichkeitsprüfung (1) Form und Inhalt der Umwelterheblichkeitsprüfung ergeben sich aus der Anlage 2. ', '')), risText)).toBe(true)
+  })
+  it('is a § that lost one number inside: a table value holds a change as an Absatz does', () => {
+    expect(cutShort(same(whole.replace('Anlage 2.', 'Anlage')), risText)).toBe(true)
+  })
+  it('is a § that lost a citation\'s number: „26." alone on a line reads like a page number', () => {
+    const cited = ris('<absatz typ="abs" ct="text" halign="j">(1) Die Funktion endet nach Maßgabe des § 26.</absatz><absatz typ="abs" ct="text" halign="j">(2) Art. 9 der Verordnung (EU) 2016/679 bleibt unberührt.</absatz>')
+    const text = '§ 3. (1) Die Funktion endet nach Maßgabe des § 26. (2) Art. 9 der Verordnung (EU) 2016/679 bleibt unberührt.'
+    expect(cutShort(same(text), cited)).toBe(false)
+    expect(cutShort(same(text.replace('§ 26.', '§')), cited)).toBe(true)
+    expect(cutShort(same(text.replace('Art. 9', 'Art.')), cited)).toBe(true)
+  })
+  it('holds a § against RIS\'s law text only: no notes, fields, headings or RIS\'s own hyphens', () => {
+    const noted = ris(
+      law.replace('Anlage 2.', 'Anlage 2. <i>(Anm. LGBl.Nr. 127/2024)</i>').replace('kundzumachen.', 'kund<bdash />zumachen. <i>(Anm: LGBl.Nr. 38/2025</i>')
+        .replace('<absatz typ="abs" ct="text" halign="j">(2)', '<absatz typ="erltext" ct="text" halign="c"><b>(Verfassungsbestimmung)</b></absatz><absatz typ="abs" ct="text" halign="j">(2)'),
+      '<ueberschrift typ="titel" halign="j">Anmerkung</ueberschrift><absatz typ="erltext" ct="anmerkung" halign="j">Zu LGBl Nr 21/2020: Das Inkrafttreten mit 1. Jänner 2021 ergibt sich durch das Gesetz LGBl Nr 29/2020.</absatz><ueberschrift typ="titel" halign="j">Schlagworte</ueberschrift><absatz typ="erltext" ct="schlagworte" halign="j">Invasive Arten<gdash />Gesetz</absatz>',
+    )
+    expect(risLawText(noted)).not.toMatch(/Anm|Inkrafttreten|Schlagworte|Invasive|Verfassungsbestimmung|Abschnitt|Kurztitel|RIS seit/)
+    expect(cutShort(same(whole), noted)).toBe(false)
+    expect(cutShort(same(whole.replace(' kundzumachen.', '')), noted)).toBe(true)
+  })
+  it('is no confirmation where RIS\'s law text cannot be told apart', () => {
+    expect(risLawText('<nutzdaten><absatz>(1) Ein Text ohne die Überschrift „Text".</absatz></nutzdaten>')).toBeNull()
+    expect(cutShort(same(whole), `<nutzdaten>${law}</nutzdaten>`)).toBe(true)
+  })
+})
+
+describe('comparableWords', () => {
+  it('reads RIS\'s hyphens and exponents as the PDF prints them, not as markup that splits a word (19.11.2026)', () => {
+    expect(comparableWords('Art. 15a B<gdash />VG, die Bewilligungs<bdash />inhaberin, 5 m<super>2</super>, § 9 E<gdash />Government-Gesetz'))
+      .toEqual(comparableWords('Art. 15a B-VG, die Bewilligungsinhaberin, 5 m2, § 9 E-Government-Gesetz'))
   })
 })
 

@@ -876,8 +876,15 @@ gets an entry of its own only where it carries a reason the rule does not.
   shown only where RIS confirms its current wording on the document's date
   (≥ 0.98 word match) or the § is new; the rest is withheld and counted
   (§12.45, §12.52). The match runs both ways for a § printed unchanged and
-  without omissions: it must also cover ≥ 0.9 of RIS's § (`cutShort`,
-  19.11.2026), or a § cut short in both columns reads „unverändert". An omission is read as the Land prints it: Salzburg
+  without omissions: it must also hold every word of RIS's law text, from
+  its first to its last, numbers and citations included (`cutShort`,
+  `risLawText`, 19.11.2026), or a § cut short in both columns reads
+  „unverändert". A share floor (0.9) saw only cuts near a §'s middle: it
+  passed half of the lost last sentences and nearly every lost last line,
+  first line or single number. RIS's notes, fields and headings are not its
+  law text. Not seen: a § printed with omissions, the § heading, and a new
+  text lost only where it differs, so that both columns read as the old.
+  An omission is read as the Land prints it: Salzburg
   marks an unchanged Absatz or Ziffer by its bare designation („(1) (2) …",
   „1. 2. …"), read as „…" for Salzburg only, and only where the next
   designation follows or a pair ends the § (14.11.2026).

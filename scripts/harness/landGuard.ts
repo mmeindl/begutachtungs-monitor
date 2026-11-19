@@ -35,14 +35,14 @@
  * last three are below the rule's floors or outside its reach by design;
  * they are run so that is a measured statement, not an assumption.
  *
- * And one fault for the LEFT column's check (19.11.2026, „Beide gekürzt"):
+ * And faults for the LEFT column's check (19.11.2026, „Beide gekürzt"):
  * every § shown whose text in force leaves nothing out and stands in RIS is
- * cut at the sentence nearest its middle in BOTH columns — the reader
- * failure that showed Salzburg 34574's § 3 and Oberösterreich 2025-16103's
- * § 25 „unverändert" — and the product's RIS rule is asked again:
- * `standsInRis` alone (the rule until then) and with `cutShort`. The control
- * asks `cutShort` of the uncut texts, as if each were printed unchanged:
- * what the floor would cost on sound §§.
+ * cut in BOTH columns — near its middle (the reader failure that showed
+ * Salzburg 34574's § 3 and Oberösterreich 2025-16103's § 25 „unverändert"),
+ * and at its end, its start and inside it (`CUTS`) — and the product's RIS
+ * rule is asked again: `standsInRis` alone (the rule until then) and with
+ * `cutShort`. The control asks `cutShort` of the uncut texts, as if each
+ * were printed unchanged: what the rule costs on sound §§.
  *
  * Runs with `-c vitest.config.ts`: `texts/read.ts` imports `#shared`.
  */
@@ -371,8 +371,74 @@ for (const [n, site] of sites.entries()) {
 }
 
 // --- Fault: both columns cut (the left column's check) --------------------
-interface CutRecord { land: LandCode; draft: string; law: string | null; id: string; words: number; kept: number; standsAlone: boolean; refused: boolean; controlRefused: boolean }
+/**
+ * Where a reader cuts a § short in both columns (19.11.2026): near its
+ * middle (`Mitte`, the first class, 34574 § 3 and 16103 § 25), and the
+ * likelier failures the review named — the last sentence, the last Absatz,
+ * the last line or only its last word (a short last line), the first line,
+ * a line or a single word inside, and a number standing alone (a table
+ * value, the draft reader's failure of fcf3eae). A line is six words, as in
+ * a two-column Textgegenüberstellung.
+ */
+type Cut = 'Mitte' | 'letzter Satz' | 'letzter Absatz' | 'letzte Zeile' | 'letztes Wort' | 'erste Zeile' | 'Zeile innen' | 'Wort innen' | 'Zahl innen'
+const CUTS: Cut[] = ['Mitte', 'letzter Satz', 'letzter Absatz', 'letzte Zeile', 'letztes Wort', 'erste Zeile', 'Zeile innen', 'Wort innen', 'Zahl innen']
+const LINE = 6
+const middleCut = (text: string, words: number): string => {
+  let cut = ''
+  for (const sentence of text.split(SENTENCE_SPLIT)) {
+    if (cut && comparableWords(`${cut} ${sentence}`).length > words / 2) break
+    cut = cut ? `${cut} ${sentence}` : sentence
+  }
+  if (comparableWords(cut).length >= words * 0.8) cut = text.split(/\s+/).slice(0, Math.ceil(text.split(/\s+/).length / 2)).join(' ')
+  return cut
+}
+/** `text` without `n` whitespace tokens from `at` on. */
+const without = (tokens: string[], at: number, n: number) => [...tokens.slice(0, at), ...tokens.slice(at + n)].join(' ')
+function cutOf(kind: Cut, text: string, words: number): string | null {
+  const tokens = text.split(/\s+/)
+  const middle = Math.floor(tokens.length / 2)
+  /** The index of the token nearest the middle that `ok` accepts, or -1. */
+  const nearMiddle = (ok: (t: string) => boolean) => tokens.map((t, i) => [t, i] as const).filter(([t, i]) => i > 0 && i < tokens.length - 1 && ok(t)).sort((a, b) => Math.abs(a[1] - middle) - Math.abs(b[1] - middle))[0]?.[1] ?? -1
+  switch (kind) {
+    case 'Mitte': return middleCut(text, words)
+    case 'letzter Satz': {
+      const parts = text.split(SENTENCE_SPLIT)
+      return parts.length > 1 ? parts.slice(0, -1).join(' ') : null
+    }
+    case 'letzter Absatz': {
+      const parts = text.split(/\s(?=\(\d+[a-z]?\)\s)/)
+      return parts.length > 2 ? parts.slice(0, -1).join(' ') : null
+    }
+    case 'letzte Zeile': return tokens.length >= 3 * LINE ? tokens.slice(0, -LINE).join(' ') : null
+    case 'letztes Wort': return tokens.slice(0, -1).join(' ')
+    case 'erste Zeile': return tokens.length >= 3 * LINE ? tokens.slice(LINE).join(' ') : null
+    case 'Zeile innen': return tokens.length >= 3 * LINE ? without(tokens, middle - LINE / 2, LINE) : null
+    case 'Wort innen': {
+      const at = nearMiddle((t) => /\p{L}{3,}/u.test(t))
+      return at < 0 ? null : without(tokens, at, 1)
+    }
+    case 'Zahl innen': {
+      const at = nearMiddle((t) => /^\d[\d.,]*[,;.]?$/.test(t))
+      return at < 0 ? null : without(tokens, at, 1)
+    }
+  }
+}
+/** What a cut took, with a few words around it: the first and last place where the texts part. */
+function lostOf(text: string, cut: string): string {
+  const a = text.split(/\s+/)
+  const b = cut.split(/\s+/)
+  let i = 0
+  while (i < b.length && a[i] === b[i]) i++
+  let j = 0
+  while (j < b.length - i && a[a.length - 1 - j] === b[b.length - 1 - j]) j++
+  const lost = a.slice(i, a.length - j).join(' ')
+  return `${a.slice(Math.max(0, i - 3), i).join(' ')} [${lost.length > 120 ? `${lost.slice(0, 60)} … ${lost.slice(-50)}` : lost}] ${a.slice(a.length - j, a.length - j + 3).join(' ')}`.trim()
+}
+interface CutRecord { cut: Cut; land: LandCode; draft: string; law: string | null; id: string; words: number; kept: number; standsAlone: boolean; refused: boolean; lost: string }
+/** The control: `cutShort` asked of the uncut text, as if it were printed unchanged — what the rule costs on sound §§. */
+interface ControlRecord { land: LandCode; draft: string; law: string | null; id: string; change: string; refused: boolean }
 const cuts: CutRecord[] = []
+const controls: ControlRecord[] = []
 const ELIDES = /…|\.\.\./
 for (const answer of answers) {
   if (!answer.available || !answer.date) continue
@@ -387,19 +453,14 @@ for (const answer of answers) {
     const bare = answer.land === 'sbg'
     // Only §§ whose whole text the rule passes: the fault is the cut, nothing else.
     if (!ris || !standsInRis(u.fromText, ris, bare)) continue
-    const sentences = u.fromText.split(SENTENCE_SPLIT)
-    let cut = ''
-    for (const sentence of sentences) {
-      if (cut && comparableWords(`${cut} ${sentence}`).length > words / 2) break
-      cut = cut ? `${cut} ${sentence}` : sentence
+    const at = { land: answer.land, draft: answer.draft, law: u.law, id: u.id }
+    controls.push({ ...at, change: u.change, refused: cutShort({ old: [u.fromText], neu: [u.fromText] }, ris, bare) })
+    for (const kind of CUTS) {
+      const cut = cutOf(kind, u.fromText, words)
+      if (cut === null || cut === u.fromText) continue
+      const standsAlone = standsInRis(cut, ris, bare)
+      cuts.push({ cut: kind, ...at, words, kept: comparableWords(cut).length, standsAlone, refused: !standsAlone || cutShort({ old: [cut], neu: [cut] }, ris, bare), lost: lostOf(u.fromText, cut) })
     }
-    if (comparableWords(cut).length >= words * 0.8) cut = u.fromText.split(/\s+/).slice(0, Math.ceil(u.fromText.split(/\s+/).length / 2)).join(' ')
-    const standsAlone = standsInRis(cut, ris, bare)
-    cuts.push({
-      land: answer.land, draft: answer.draft, law: u.law, id: u.id, words, kept: comparableWords(cut).length,
-      standsAlone, refused: !standsAlone || cutShort({ old: [cut], neu: [cut] }, ris, bare),
-      controlRefused: cutShort({ old: [u.fromText], neu: [u.fromText] }, ris, bare),
-    })
   }
 }
 
@@ -409,6 +470,7 @@ writeFileSync(join(outDir, 'faults.jsonl'), faults.map((f) => JSON.stringify(f))
 writeFileSync(join(outDir, 'drafts.jsonl'), drafts.map((d) => JSON.stringify(d)).join('\n') + '\n')
 writeFileSync(join(outDir, 'tgu.jsonl'), answers.map((a) => JSON.stringify(a)).join('\n') + '\n')
 writeFileSync(join(outDir, 'cuts.jsonl'), cuts.map((c) => JSON.stringify(c)).join('\n') + '\n')
+writeFileSync(join(outDir, 'controls.jsonl'), controls.map((c) => JSON.stringify(c)).join('\n') + '\n')
 
 const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)} %` : '–')
 const lines: string[] = []
@@ -466,14 +528,26 @@ for (const fault of ['R-neu', 'R-fremd', 'Zahl', 'Wort', 'Satz weg'] as Fault[])
 lines.push('')
 lines.push('## Beide Spalten gekürzt (linke Spalte gegen RIS)')
 lines.push('')
-lines.push('| Land | §§ | standsInRis allein fängt | mit cutShort fängt | Kontrolle: ungekürzt abgelehnt |')
+lines.push('| Schnitt | Land | §§ | standsInRis allein fängt | mit cutShort fängt |')
 lines.push('|---|---|---|---|---|')
-for (const land of [...TGU_LANDS, 'alle'] as const) {
-  const c = cuts.filter((x) => land === 'alle' || x.land === land)
-  if (!c.length) continue
-  lines.push(`| ${land} | ${c.length} | ${c.filter((x) => !x.standsAlone).length} (${pct(c.filter((x) => !x.standsAlone).length, c.length)}) | ${c.filter((x) => x.refused).length} (${pct(c.filter((x) => x.refused).length, c.length)}) | ${c.filter((x) => x.controlRefused).length} |`)
+for (const kind of CUTS) {
+  for (const land of [...TGU_LANDS, 'alle'] as const) {
+    const c = cuts.filter((x) => x.cut === kind && (land === 'alle' || x.land === land))
+    if (!c.length || (land !== 'alle' && c.every((x) => x.refused))) continue
+    lines.push(`| ${kind} | ${land} | ${c.length} | ${c.filter((x) => !x.standsAlone).length} (${pct(c.filter((x) => !x.standsAlone).length, c.length)}) | ${c.filter((x) => x.refused).length} (${pct(c.filter((x) => x.refused).length, c.length)}) |`)
+  }
 }
-for (const c of cuts.filter((x) => !x.refused || x.controlRefused)) lines.push(`- ${c.controlRefused ? 'Kontrolle abgelehnt' : 'nicht gefangen'}: ${c.draft} ${c.law ?? ''} ${c.id} (${c.kept} von ${c.words} Wörtern)`)
+for (const c of cuts.filter((x) => !x.refused)) lines.push(`- nicht gefangen (${c.cut}): ${c.draft} ${c.law ?? ''} ${c.id} (${c.kept} von ${c.words} Wörtern): ${c.lost}`)
+lines.push('')
+lines.push('Kontrolle: cutShort am ungekürzten Text, als wäre er unverändert gedruckt — gezeigt werden nur unveränderte §§, die anderen sind ein Stellvertreter dafür, wie ganz eine linke Spalte RIS trifft.')
+lines.push('')
+lines.push('| Änderung | §§ | abgelehnt |')
+lines.push('|---|---|---|')
+for (const change of [...new Set(controls.map((c) => c.change))].sort()) {
+  const c = controls.filter((x) => x.change === change)
+  lines.push(`| ${change} | ${c.length} | ${c.filter((x) => x.refused).length} |`)
+}
+for (const c of controls.filter((x) => x.refused && x.change !== 'changed')) lines.push(`- Kontrolle abgelehnt (${c.change}): ${c.draft} ${c.law ?? ''} ${c.id}`)
 lines.push('')
 lines.push('## Abweichende §§ (die das Produkt zurückhalten würde)')
 lines.push('')
