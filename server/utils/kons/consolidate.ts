@@ -627,8 +627,17 @@ export async function consolidate(
  * optional heading, an optional designation, an optional heading, then the
  * word, and nothing after it. The words are the ones the corpus prints at a
  * repealed unit (141/ME XXVIII, C4F11447) and RIS's own „aufgehoben".
+ *
+ * And the spellings a ressort may set instead (20.11.2026): in square
+ * brackets or between dashes („[entfällt]", „– entfällt –"), the plural, „gestrichen",
+ * „weggefallen". None stands in GP XXVIII's annexes (census of every unit
+ * whose proposed column is short and holds a repeal word: one match, and
+ * eleven misses that are standing text with RIS's „(Anm.: aufgehoben
+ * durch …)"), but a miss here is a false „Unser Ergebnis weicht von der
+ * Beilage ab", and a unit whose whole new text is such a word stands no
+ * longer.
  */
-const REPEAL_ONLY_RE = /^(?:[^.()]{0,80}?\s)?(?:(?:§+\s*[\w.]+|(?:Anlage|Anhang|Anl\.)(?:\s+[\w/]+)?)\.?\s*)?(?:[^.()]{0,80}?\s)?\(?\s*(?:entfällt|aufgehoben|ersatzlos\s+gestrichen)\s*\.?\s*\)?\.?$/iu
+const REPEAL_ONLY_RE = /^(?:[^.()[\]]{0,80}?\s)?(?:(?:§+\s*[\w.]+|(?:Anlage|Anhang|Anl\.)(?:\s+[\w/]+)?)\.?\s*)?(?:[^.()[\]]{0,80}?\s)?[([–—-]?\s*(?:entfällt|entfallen|aufgehoben|weggefallen|(?:ersatzlos\s+)?gestrichen)\s*\.?\s*[)\]–—-]?\.?$/iu
 
 /**
  * Whether the annex shows a unit still standing after the draft: some row of

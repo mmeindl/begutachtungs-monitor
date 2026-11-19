@@ -219,6 +219,13 @@ describe('annexKeepsUnit', () => {
     expect(annexKeepsUnit([])).toBe(false)
   })
 
+  it('reads a repeal in the other spellings a ressort may use (20.11.2026)', () => {
+    for (const t of ['§ 63. [entfällt]', '§ 63. – entfällt –', '§§ 63 und 64 entfallen.', '§ 63. (weggefallen)', '§ 63. Gestrichen.', 'Anlage 2 [aufgehoben]']) expect(annexKeepsUnit([row(t)]), t).toBe(false)
+    // A unit whose text goes on after the word still stands.
+    expect(annexKeepsUnit([row('§ 63. (1) entfällt. (2) Die Frist beträgt drei Wochen.')])).toBe(true)
+    expect(annexKeepsUnit([row('§ 64. (1) bis (4) ... (5) (Anm. : aufgehoben durch BGBl. I Nr. 68/2015) (6) ...')])).toBe(true)
+  })
+
   it('reads text that stands, an elision included, and ignores what the annex strikes', () => {
     expect(annexKeepsUnit([row('Anlage 2 (zu § 2) Ersatz von Lehrabschlussprüfungen Abgelegte Lehrabschlussprüfung Ersetzt')])).toBe(true)
     expect(annexKeepsUnit([row('Anlage 1 [...] [...] [...]')])).toBe(true)

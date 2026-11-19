@@ -47,6 +47,11 @@ describe('draftRepeals', () => {
     expect(r.divisions.size).toBe(0)
   })
 
+  it('reads a division qualified by the law itself as the division (20.11.2026)', () => {
+    const r = draftRepeals(draftOf('2. Der 1. Abschnitt des Gesetzes ( "Allgemeine Auskunftspflicht" ) entfällt.', '3. Der 3. Abschnitt des Bundesgesetzes entfällt.'), article())
+    expect([...r.divisions].sort()).toEqual(['1. abschnitt', '3. abschnitt'])
+  })
+
   it('counts no deleted heading as a repeal of its § (19.11.2026)', () => {
     // A § whose heading goes has moved or stays: exactly what the rule withholds.
     const r = draftRepeals(draftOf('4. Die Überschrift zu § 5 entfällt.', '5. Die Überschriften zu den §§ 7 bis 9 entfallen.'), article())

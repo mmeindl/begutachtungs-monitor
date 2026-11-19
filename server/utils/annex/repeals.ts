@@ -56,6 +56,9 @@ const LIST_REPEAL_RE = /^(?:\d+[a-z]?\.\s*)?(?:(?:Die|Der|Das)\s+)?(§§?|Anlage
  */
 const DIVISION_REPEAL_RE = /^(?:\d+[a-z]?\.\s*)?(?:Der|Das|Die)\s+((?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Hauptstück|Abschnitt|Unterabschnitt))\b(?:\s+((?:des|der)\s+[^,;:]{1,60}?))?\s+(?:samt\s+(?:der\s+)?Überschrift\s+)?(?:entfällt|wird\s+aufgehoben)\.?$/i
 
+/** „des Gesetzes", „des Bundesgesetzes", with the division's name in brackets after it: the law itself, no division around this one. */
+const LAW_ITSELF_RE = /^des\s+(?:Bundes|Landes)?[Gg]esetzes\b(?:\s*\([^()]*\))?\s*$/
+
 /** A division's designation in either order RIS prints it: „9. Teil", „Abschnitt 13", „ABSCHNITT II". */
 const DIVISION_RE = /(?:\b(\d+[a-z]?|[IVXL]+)\.\s*(Teil|Hauptstück|Abschnitt|Unterabschnitt)\b|\b(Teil|Hauptstück|Abschnitt|Unterabschnitt)\s+(\d+[a-z]?|[IVXL]+)\b)/giu
 
@@ -97,7 +100,13 @@ export function draftRepeals(blocks: readonly TextBlock[], article: DraftArticle
           // innermost division a § stands in, so keyed „3. abschnitt" this
           // would vouch for a removed § in the 3. Abschnitt of any
           // Hauptstück. Such a repeal proves nothing here (19.11.2026).
-          if (division[2]) continue
+          // „des Gesetzes („Allgemeine Auskunftspflicht")" qualifies by the
+          // law itself, which holds the division once: no qualifier
+          // (20.11.2026; two of the four qualified repeals in the corpus).
+          // Walking the outer division instead was not built: the other two
+          // would need the check to fetch every § back to the Hauptstück's
+          // first, which it never does.
+          if (division[2] && !LAW_ITSELF_RE.test(division[2])) continue
           const m = /^(\S+)\.\s*(\S+)$/.exec(division[1]!.replace(/\s+/g, ' '))
           if (m) out.divisions.add(divisionKey(m[1]!, m[2]!))
           continue
