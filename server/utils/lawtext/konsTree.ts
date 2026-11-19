@@ -170,16 +170,22 @@ function withoutSplitNotes(body: string): string {
  * between such a note and the next upright one is apparatus: amounts, quoted
  * Novelle wording, „vgl." references.
  */
-const FOOTNOTE_RULE_RE = /^\(?\s*_{5,}\s*\)?$/
+const FOOTNOTE_RULE_RE = /^\(?\s*(?:_{5,}|-{5,})\s*\)?$/
 const NUMBERED_NOTE_RE = /^\(?\s*Anm\.?\s*\d+[a-z]?\s*(?:\([^)]*\)\s*)?\.?\s*:/
 const OPENS_ITALIC_RE = /^\s*<i>/
+/**
+ * A footnote's own number, set upright: „<super>1</super> LGBl. für
+ * Burgenland …" behind a rule. Its text reads „1 LGBl. …" with no „)", so
+ * neither the italic test nor the „1)" form saw it (19.11.2026).
+ */
+const OPENS_FOOTNOTE_MARK_RE = /^\s*<super>\s*\d{1,2}[a-z]?\s*<\/super>/
 /**
  * An `erltext` block that is a note, not law, wherever it stands: RIS's
  * italics, its own „Anm", a footnote („*) Die Kundmachung des Abkommens …",
  * „<super>1</super>) Die Kundmachung …"), the footnote rule.
  */
 function erltextNote(inner: string, t: string): boolean {
-  return OPENS_ITALIC_RE.test(inner) || /^\(?\s*Anm\b/.test(t) || /^\*+\s*\d{0,2}\s*\)/.test(t) || /^\d{1,2}[a-z]?\s*\)\s/.test(t) || /_{5,}/.test(t)
+  return OPENS_ITALIC_RE.test(inner) || OPENS_FOOTNOTE_MARK_RE.test(inner) || /^\(?\s*Anm\b/.test(t) || /^\*+\s*\d{0,2}\s*\)/.test(t) || /^\d{1,2}[a-z]?\s*\)\s/.test(t) || /_{5,}|-{5,}/.test(t)
 }
 
 /** A line that ends no sentence, directly above a block that opens a numbered Absatz: that Absatz's heading. */
@@ -411,7 +417,7 @@ export function parseKonsParagraph(xml: string): LawNode | null {
         footnotes = true
         continue
       }
-      if (footnotes && OPENS_ITALIC_RE.test(inner)) continue
+      if (footnotes && (OPENS_ITALIC_RE.test(inner) || OPENS_FOOTNOTE_MARK_RE.test(inner))) continue
     }
     footnotes = false
     if (tag === 'table') {

@@ -484,6 +484,21 @@ describe('parseKonsParagraph', () => {
     expect(node.children[0]!.children).toEqual([])
   })
 
+  // The two shapes the italic test and the „1)" form missed (19.11.2026): a
+  // dash rule, and an upright superscript number with no „)" behind it.
+  it('keeps an upright footnote and a dash rule out of the law text', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 5</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 5.</gldsym> (1) Die Behörde entscheidet.</absatz>
+      <absatz typ="erltext" ct="text">______________________</absatz>
+      <absatz typ="erltext" ct="text"><super>1</super> LGBl. für Burgenland Nr. 12/2020</absatz>
+      <absatz typ="erltext" ct="text">-----------------------</absatz>
+      <absatz typ="erltext" ct="text"><super>2</super> Kundgemacht im Amtsblatt</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(plainText(node)).toBe('Die Behörde entscheidet.')
+  })
+
   // RIS spells the closing clause of an enumeration two ways, and which one a
   // document uses depends on the converter that produced it, not on the law:
   // `<schlussteil>` from version 4.0 on, `<schluss typ="Abs">` before it.
