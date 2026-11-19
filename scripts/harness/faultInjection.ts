@@ -337,6 +337,7 @@ import { isDivision, isSchedule, unitKey } from '../../server/utils/text/designa
 import { unitsByKey } from '../../server/utils/kons/konsGate'
 import { loadKey } from './konsJudge'
 import { installFetchCache } from '../lib/harnessCache'
+import { writeFileSync } from 'node:fs'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
@@ -397,6 +398,12 @@ interface FaultTally {
   rule2Para: number
   eitherWide: number
   eitherPara: number
+  /**
+   * What the gate as shipped withholds: the left check fails, or rule 1, or
+   * rule 2 against the §'s instructions (19.11.2026). The columns above
+   * cannot be added up to it, because they overlap.
+   */
+  shipped: number
   /** Catches that were already firing without any fault — not this fault's */
   rule1Already: number
   rule2WideAlready: number
@@ -416,7 +423,7 @@ interface FaultTally {
 }
 
 function tally(label: string): FaultTally {
-  return { label, tried: 0, leftPasses: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, rule1Already: 0, rule2WideAlready: 0, rule2ParaAlready: 0, silenced: 0 }
+  return { label, tried: 0, leftPasses: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, shipped: 0, rule1Already: 0, rule2WideAlready: 0, rule2ParaAlready: 0, silenced: 0 }
 }
 
 function record(into: FaultTally, verdict: Verdict, base: Verdict): void {
@@ -427,6 +434,7 @@ function record(into: FaultTally, verdict: Verdict, base: Verdict): void {
   if (verdict.rule2Para) into.rule2Para++
   if (verdict.rule1 || verdict.rule2Wide) into.eitherWide++
   if (verdict.rule1 || verdict.rule2Para) into.eitherPara++
+  if (!verdict.leftPasses || verdict.rule1 || verdict.rule2Para) into.shipped++
   if (verdict.rule1 && base.rule1) into.rule1Already++
   if (verdict.rule2Wide && base.rule2Wide) into.rule2WideAlready++
   if (verdict.rule2Para && base.rule2Para) into.rule2ParaAlready++
@@ -1640,10 +1648,10 @@ for (const [reason, n] of [...coverage.reasons].sort((a, b) => b[1] - a[1])) {
 }
 
 console.log(`\n  Mit Injektion, je Fehler ("nicht im Entwurf" mit beiden Bezügen)`)
-console.log(`  Fehler                                §§   linke Prüfung besteht   „bereits geltend"    n.i.E. ganz         n.i.E. je §         beide ganz          beide je §`)
+console.log(`  Fehler                                §§   linke Prüfung besteht   „bereits geltend"    n.i.E. ganz         n.i.E. je §         beide ganz          beide je §          Tor, wie ausgeliefert`)
 for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
   const cell = (n: number): string => `${String(n).padStart(6)} (${pct(n, fault.tried)})`
-  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.leftPasses)}   ${cell(fault.rule1)}   ${cell(fault.rule2Wide)}   ${cell(fault.rule2Para)}   ${cell(fault.eitherWide)}   ${cell(fault.eitherPara)}`)
+  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.leftPasses)}   ${cell(fault.rule1)}   ${cell(fault.rule2Wide)}   ${cell(fault.rule2Para)}   ${cell(fault.eitherWide)}   ${cell(fault.eitherPara)}   ${cell(fault.shipped)}`)
 }
 // A rule that was already firing on the sound § did not catch the fault; it
 // was there before it. Small by construction (the false-positive rate above),
@@ -1696,6 +1704,29 @@ if (argFlag('misses')) {
   for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses]) {
     for (const line of fault.misses) console.log(`    ${line.startsWith('        ') ? '' : `${fault.label.split(' ')[0]} durchgelassen: `}${line}`)
   }
+}
+
+/**
+ * `--json=<file>`: the tallies above as a record (19.11.2026), for
+ * `scripts/harness/genauigkeit.ts`, which writes the figures `/genauigkeit`
+ * shows. Each class with its key (the label's first word), its label, how
+ * often it was tried and caught; the annex faults with what the shipped gate
+ * catches (`shipped`). `floored` marks the classes `--mindestens` holds.
+ */
+const jsonPath = argAssigned('json')
+if (jsonPath) {
+  const keyOf = (label: string): string => label.trim().split(/\s+/)[0]!
+  const floored = new Set<object>([oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, ...flooredWordClasses])
+  const out = {
+    at: new Date().toISOString(),
+    gp,
+    path: xmlMode ? 'table' : 'pdf',
+    drafts,
+    annex: [faults.L, faults.Rold, faults.Rnew, faults.U].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.shipped })),
+    result: [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f) })),
+  }
+  writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)
+  console.log(`\nBericht geschrieben: ${jsonPath}`)
 }
 
 /**

@@ -297,6 +297,21 @@ if (against) {
   out.push(`Bewegte Vergleiche: ${moved} von ${lines.length}`)
 }
 writeFileSync(join(outDir, 'summary.md'), out.join('\n'))
+/* The figures above as a record (19.11.2026), for
+   `scripts/harness/genauigkeit.ts`, which writes what `/genauigkeit` shows. */
+writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
+  at: new Date().toISOString(),
+  pairs: lines.length,
+  compared: lines.filter((l) => l.state === 'verglichen').length,
+  units: lines.reduce((n, l) => n + (l.stats?.total ?? 0), 0),
+  hits: hits.length,
+  accepted: accepted.length,
+  stale: stale.length,
+  withheld: withheldUnits.length,
+  withheldPairs: lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length,
+  unread: unreadUnits.length,
+  unreadPairs: lines.filter((l) => l.unread.length).length,
+}, null, 1)}\n`)
 console.log(out.join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)
 process.exit(hits.length || stale.length ? 1 : 0)

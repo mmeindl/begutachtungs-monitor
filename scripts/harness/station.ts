@@ -181,6 +181,12 @@ interface Record_ {
   commencementLeftOut: number
   ceiling: { pair: string; unit: string; fromWords: number; toWords: number }[]
   residues: { kind: 'parlament-bgbl' | 'html-xml'; pair: string; residue: Residue }[]
+  /**
+   * How many units each null comparison held against each other (19.11.2026,
+   * for `/genauigkeit`): the denominator of its residues. Absent in a record
+   * written before.
+   */
+  nullUnits?: Record<'parlament-bgbl' | 'html-xml', number>
   /** Every changed unit of every pair and its badge, so two runs compare verdict by verdict. */
   verdicts: Record<string, 'geändert' | 'redaktionell' | 'ohne Wortdiff'>
   /** In a committed baseline (`stationBaseline.json`): why each residue that is not editorial stands. */
@@ -208,7 +214,7 @@ const risXmlOf = async (inr: number): Promise<string | null> => {
 const slow: { pair: string; ms: number }[] = []
 /** The pieces of every changed unit, kept in memory for the lines that moved against a baseline. */
 const piecesOf = new Map<string, string[]>()
-const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, ceiling: [], residues: [], verdicts: {} }
+const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
 for (const inr of numbers) {
   if (only && inr !== only) continue
   let d: Draft | null
@@ -254,14 +260,20 @@ for (const inr of numbers) {
   if (last && d.stations.get('bgbl')?.length) {
     const { f, t, options } = pairInput(d, last, 'bgbl')
     const diff = diffLawPackage(f, t, options)
-    if (!diff.unpaired) for (const residue of residuesOf(diff.units)) record.residues.push({ kind: 'parlament-bgbl', pair: `${inr}/ME ${last}>bgbl`, residue })
+    if (!diff.unpaired) {
+      record.nullUnits!['parlament-bgbl'] += diff.units.length
+      for (const residue of residuesOf(diff.units)) record.residues.push({ kind: 'parlament-bgbl', pair: `${inr}/ME ${last}>bgbl`, residue })
+    }
   }
   // Null comparison 2: one draft, two readers.
   const html = d.stations.get('me')
   if (html?.length && d.meFromRis?.length) {
     const diff = diffLawPackage(html, d.meFromRis, { beyondCeiling: true })
     if (diff.unpaired) record.residues.push({ kind: 'html-xml', pair: `${inr}/ME html>xml`, residue: { unit: '(ganzer Text)', change: 'changed', editorial: false, pieces: ['kein Artikel gepaart'], ceiling: false } })
-    else for (const residue of residuesOf(diff.units)) record.residues.push({ kind: 'html-xml', pair: `${inr}/ME html>xml`, residue })
+    else {
+      record.nullUnits!['html-xml'] += diff.units.length
+      for (const residue of residuesOf(diff.units)) record.residues.push({ kind: 'html-xml', pair: `${inr}/ME html>xml`, residue })
+    }
   }
 }
 process.stderr.write('\n')
@@ -279,7 +291,7 @@ for (const b of record.symmetry.slice(0, 60)) console.log(`   · ${b.pair} ${b.u
 for (const kind of ['parlament-bgbl', 'html-xml'] as const) {
   const list = record.residues.filter((r) => r.kind === kind)
   const substantive = list.filter((r) => !r.residue.editorial)
-  console.log(`\n── 3. Nullvergleich ${kind === 'parlament-bgbl' ? 'letzte parlamentarische Fassung → Kundmachung' : 'Entwurf aus Parlaments-HTML → derselbe aus RIS-XML'}: ${list.length} Reste, davon ${substantive.length} nicht redaktionell`)
+  console.log(`\n── 3. Nullvergleich ${kind === 'parlament-bgbl' ? 'letzte parlamentarische Fassung → Kundmachung' : 'Entwurf aus Parlaments-HTML → derselbe aus RIS-XML'}: ${list.length} Reste in ${record.nullUnits![kind]} Einheiten, davon ${substantive.length} nicht redaktionell`)
   for (const r of list) {
     if (r.residue.editorial && kind === 'parlament-bgbl') continue
     console.log(`   ${residueLine(r)}`)

@@ -562,5 +562,19 @@ for (const u of units.filter((x) => x.notInDraft)) {
   lines.push('')
 }
 writeFileSync(join(outDir, 'summary.md'), lines.join('\n'))
+/* The figures of the tables above as a record (19.11.2026), for
+   `scripts/harness/genauigkeit.ts`, which writes what `/genauigkeit` shows. */
+writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
+  at: new Date().toISOString(),
+  lands: LANDS,
+  documents: new Set(units.map((u) => u.draft)).size,
+  shown: units.length,
+  judged: judgedAll.length,
+  found: judgedAll.filter((u) => !u.notInDraft).length,
+  faults: (['R-neu', 'R-fremd', 'Zahl', 'Wort', 'Satz weg'] as Fault[]).map((fault) => {
+    const f = faults.filter((x) => x.fault === fault && x.applied)
+    return { key: fault, tried: f.length, caught: f.filter((x) => x.caught).length }
+  }),
+}, null, 1)}\n`)
 console.log(lines.slice(0, lines.indexOf('## Abweichende §§ (die das Produkt zurückhalten würde)')).join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)

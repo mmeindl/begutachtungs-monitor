@@ -1210,3 +1210,25 @@ for (const v of verdicts.filter((x) => x.note)) console.log(`  ? ${v.bgbl}${v.ar
     for (const [note, n] of [...notes].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${note}`)
   }
 }
+
+/**
+ * `--json=<file>`: the run's figures as a record (19.11.2026), for
+ * `scripts/harness/genauigkeit.ts`, which writes what `/genauigkeit` shows.
+ * The gate's tally whole, keyed as above — `plausibel|Orakel|Ergebnis|
+ * Verweigerung|Weg` —, so a figure the page wants is summed from it rather
+ * than parsed out of the lines printed here.
+ */
+const jsonFile = argAssigned('json')
+if (jsonFile) {
+  const record = {
+    at: new Date().toISOString(),
+    corpus: { bgbl: bgblCount, laws: scored.length, packages },
+    checked: sum((v) => v.checked),
+    identical: sum((v) => v.identical),
+    unrefused: { checked: sum((v) => v.cleanTotal), identical: sum((v) => v.cleanIdentical), divergent: sum((v) => v.cleanDivergent) },
+    gateKey: 'plausibel|orakel|ergebnis|verweigerung|weg',
+    gate: Object.fromEntries([...gateTally].sort(([a], [b]) => a.localeCompare(b))),
+  }
+  writeFileSync(jsonFile, `${JSON.stringify(record, null, 1)}\n`)
+  console.log(`\nBericht geschrieben: ${jsonFile}`)
+}
