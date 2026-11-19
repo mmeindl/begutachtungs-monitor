@@ -73,6 +73,8 @@ export interface AnnexDraftReport {
    * before the cause existed still reads; absent counts as 0.
    */
   withheldRepealUnproven?: number
+  /** Printed more than once by a column, the prints not to be joined (`ComparisonRow.ambiguous`, 19.11.2026); absent counts as 0. */
+  withheldRepeated?: number
   uncheckedParas: number
   rowsNoPara: number
   /** …of those, shown as a change — class B, see the header */
@@ -168,9 +170,9 @@ export function classAFindings(report: AnnexReport): Finding[] {
     // result claims as much in its comment (`annex/verdict.ts`,
     // `withheldCauses`), but nobody ever checked it: a fourth cause that
     // nobody adds to the sum would otherwise drop out of the page silently.
-    const causes = d.withheldStanding + d.withheldAlreadyStanding + d.withheldNotInDraft + (d.withheldRepealUnproven ?? 0)
+    const causes = d.withheldStanding + d.withheldAlreadyStanding + d.withheldNotInDraft + (d.withheldRepealUnproven ?? 0) + (d.withheldRepeated ?? 0)
     if (causes !== d.withheldParas) {
-      at(`${d.withheldParas} Paragraphen einbehalten, aber die Gründe summieren auf ${causes} (geltende Fassung ${d.withheldStanding}, Geltendes als neu ${d.withheldAlreadyStanding}, nicht angeordnet ${d.withheldNotInDraft}, Aufhebung nicht angeordnet ${d.withheldRepealUnproven ?? 0}).`)
+      at(`${d.withheldParas} Paragraphen einbehalten, aber die Gründe summieren auf ${causes} (geltende Fassung ${d.withheldStanding}, Geltendes als neu ${d.withheldAlreadyStanding}, nicht angeordnet ${d.withheldNotInDraft}, Aufhebung nicht angeordnet ${d.withheldRepealUnproven ?? 0}, mehrfach gedruckt ${d.withheldRepeated ?? 0}).`)
     }
 
     // The one figure about the document's shape that is zero on both paths

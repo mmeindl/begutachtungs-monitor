@@ -802,6 +802,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   an annex printing instructions, a renumbering paired by its old number);
   the left check confirms such a § because its left column is the law in
   force. A draft that could not be read disarms the rule, as it does rule 2.
+- **A § one column of a PDF annex prints twice is never paired by length**
+  (19.11.2026, `unitsOfColumn` in `server/utils/annex/annexPdf.ts`): a
+  print is dropped only as a contents entry, a print carrying no provision,
+  or a word-for-word repeat; a later print that re-opens the § at an
+  Absatz past the last one printed is joined to it in printed order; any
+  other second print (a variant, staged versions, another law's § of the
+  same number) makes the row `ambiguous`, and the gate withholds the §
+  (`repeated`). Keeping the longest print dropped the rest without a word:
+  FPRG 2021 § 3 was confirmed without its new Abs. 12. No § opens on a line
+  the line above runs on into („… gemäß" over „§ 19b."); that citation
+  split a § and hid its end.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

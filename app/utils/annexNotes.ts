@@ -45,7 +45,7 @@ export function annexUncheckedNote(reasons: readonly string[]): string | null {
 /**
  * What a withheld block says it found, and who might be at fault for it.
  *
- * Four findings, and the sentence has to name the one that applies to *this*
+ * Five findings, and the sentence has to name the one that applies to *this*
  * § — a single sentence for all of them would tell the reader something
  * untrue about the others.
  *
@@ -67,6 +67,7 @@ const WITHHELD_FINDING: Record<AnnexWithheldCause, string> = {
   // Not „der Entwurf hebt ihn nicht auf": that the grammar found no such
   // instruction is no proof that none is there (19.11.2026).
   repealUnproven: 'die vorgeschlagene Fassung zeigt von diesem Paragraphen nichts, und eine Anordnung des Entwurfs, die ihn aufhebt, ließ sich nicht finden.',
+  repeated: 'die Beilage druckt diesen Paragraphen mehrmals, und welche ihrer Stellen einander gegenüberstehen, ließ sich nicht entscheiden.',
 }
 /* SHORT SINCE 30.09.2026 — one clause of attribution, not the list of
  * causes. The PDF variants ran to two or three „Das kann daran liegen,
@@ -88,6 +89,8 @@ const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, string | null> = {
   alreadyStanding: 'Das kann auch daran liegen, dass derselbe Wortlaut an anderer Stelle des Paragraphen steht; unsere Prüfung unterscheidet die Absätze nicht.',
   notInDraft: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
   repealUnproven: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
+  // Only the PDF reader marks a print as ambiguous; the table has rows.
+  repeated: null,
 }
 
 /**

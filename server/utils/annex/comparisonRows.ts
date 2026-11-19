@@ -54,6 +54,15 @@ export interface ComparisonRow {
    */
   repeated?: true
   /**
+   * A column printed the designation as a provision more than once in the
+   * row's section, and the prints could be neither joined nor told apart
+   * (`unitsOfColumn`, 19.11.2026): a variant, a body line misread as a
+   * marker, or another law's § of the same number. The gate withholds the §
+   * (`repeated` cause in `annex/verdict.ts`) — which print stands opposite
+   * which is ours to guess, and a guess shows a diff that does not exist.
+   */
+  ambiguous?: true
+  /**
    * Which law of the package the row belongs to — `segmentUnits`' article key,
    * so it joins onto the diff units and onto `promulgationByArticle`. Null
    * when the draft amends one law only, and null when the annex does not mark

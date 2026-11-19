@@ -520,6 +520,72 @@ describe('what looks like a provision but is not', () => {
     expect(rows.find((r) => r.gld === '§ 1.')!.current).toContain('Die Vollziehung ist Bundessache.')
   })
 
+  // FPRG 2021 (RIS 68ACFF3F, 19.11.2026): the annex re-opens § 3 at
+  // „(10) bis (11) …" to print its new Abs. 12. Keeping the longest print
+  // showed § 3 confirmed and without it.
+  it('joins a § the annex re-opens at a later Absatz, in printed order', () => {
+    const rows = parse([page([
+      { y: 714, left: '§ 3. (1) bis (8) … (9) Anfragen des Fiskalrats sind', right: '§ 3. (1) bis (8) … (9) Anfragen des Fiskalrats sind' },
+      { y: 700, left: 'von den Gebietskörperschaften zu beantworten.', right: 'von den Gebietskörperschaften unverzüglich zu beantworten.' },
+      { y: 686, left: '§ 3. (10) bis (11) …', right: '§ 3. (10) bis (11) …' },
+      { y: 672, right: '(12) Der Fiskalrat ist alle fünf Jahre zu evaluieren.' },
+    ])])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.proposed).toContain('(9) Anfragen des Fiskalrats sind von den Gebietskörperschaften unverzüglich zu beantworten.')
+    expect(rows[0]!.proposed).toContain('(12) Der Fiskalrat ist alle fünf Jahre zu evaluieren.')
+    expect(rows[0]!.ambiguous).toBeUndefined()
+  })
+
+  // AVG § 18a (RIS 68850B92): two variants of one new §, each opening at
+  // „(1)". Neither continues the other, so neither may stand for the §.
+  it('marks a § printed twice as a provision, not a continuation, as ambiguous', () => {
+    const rows = parse([page([
+      { y: 700, right: '§ 18a. (1) Soweit nichts anderes bestimmt ist, gilt Variante A.' },
+      { y: 672, right: '§ 18a. (1) Die oberste Behörde bestimmt die Variante B.' },
+    ])])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.ambiguous).toBe(true)
+  })
+
+  // A contents line the reader did not recognise as one („§ 21. und § 21a.
+  // ...", BWG package RIS 70112EBB) carries no provision; the real § wins,
+  // and nothing is ambiguous.
+  it('drops a print of a § that carries no provision, without marking the § ambiguous', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 21. und § 21a. ...', right: '§ 21. und § 21a. ...' },
+      { y: 640, left: '§ 21. (1) Für jede Verschmelzung ist eine Bewilligung nötig.', right: '§ 21. (1) Für jede Verschmelzung ist eine Bewilligung der FMA nötig.' },
+    ])])
+    const row = rows.find((r) => r.gld === '§ 21.')!
+    expect(row.current).toContain('Für jede Verschmelzung')
+    expect(row.current).not.toContain('§ 21a.')
+    expect(row.ambiguous).toBeUndefined()
+  })
+
+  // BWG § 19a (RIS 70112EBB): „… keine qualifizierte Zweigstelle eines
+  // ausländischen Kreditinstituts gemäß" over „§ 19b.". The citation opened
+  // a § 19b, and § 19a ended at „gemäß" without its Abs. 2 and 3.
+  it('does not open a provision on a citation the line above runs on into', () => {
+    const rows = parse([page([
+      { y: 700, right: '§ 19a. (1) Die Zweigstelle ist keine qualifizierte Zweigstelle gemäß' },
+      { y: 686, right: '§ 19b.' },
+      { y: 672, right: '(2) Die FMA hat die Einstufung jährlich zu überprüfen.' },
+    ])])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.gld).toBe('§ 19a.')
+    expect(rows[0]!.proposed).toContain('(2) Die FMA hat die Einstufung jährlich zu überprüfen.')
+  })
+
+  // GAP-Strategieplan-Anwendungsverordnung (RIS C3F4E0AD): an
+  // Inkrafttretensbestimmung's list of citations wrapped to „§ 223b., § 4
+  // Abs. 6, …" and beat the real new § 223b.
+  it('does not open a provision on a designation followed by a comma', () => {
+    const rows = parse([page([
+      { y: 700, right: '§ 242. (12) Die Bestimmungen' },
+      { y: 686, right: '§ 223b., § 4 Abs. 6 und § 25 Abs. 3 treten mit 1. Jänner 2027 in Kraft.' },
+    ])])
+    expect(rows.map((r) => r.gld)).toEqual(['§ 242.'])
+  })
+
   // "Art. 92 Abs. 1 Buchstabe d der Verordnung (EU) 2024/1689" is a citation
   // inside running text. On a wrapped line it opened a provision that does
   // not exist, and the check against RIS looked it up as § 92.

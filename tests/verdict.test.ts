@@ -525,3 +525,23 @@ describe('verifyAnnex', () => {
     expect(calls).toBe(1)
   })
 })
+
+describe('verifyAnnex: a § a column prints twice over (19.11.2026)', () => {
+  // Tierarzneimittel-Anpassungsverordnung 2024 (RIS 5528F004): each column
+  // kept its longest § 2, from two different Verordnungen, and the row
+  // diffed them. The PDF reader marks such a row `ambiguous`; the gate
+  // withholds it, whatever the left check would have said.
+  it('withholds the § with its own cause, even where the left column holds', async () => {
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE, proposed: OTHER_PROSE, ambiguous: true })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.verdicts['#§ 1.']).toBe('withheld')
+    expect(check.withheldCauses['#§ 1.']).toBe('repeated')
+    expect(checkAnnexRows(rows, check).rows[0]).toMatchObject({ check: 'withheld', current: '', proposed: '' })
+  })
+
+  it('leaves a § printed once as it was', async () => {
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE, proposed: PROSE, change: 'unchanged' })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.withheldCauses['#§ 1.']).toBeUndefined()
+  })
+})

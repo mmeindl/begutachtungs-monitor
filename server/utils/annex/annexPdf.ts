@@ -690,9 +690,11 @@ const UNIT_RE = new RegExp(String.raw`^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|
  * and „Teil 2 und …" join the subdivisions. A Ziffer is cited with its
  * number, „Z 3": „Z u s ä t z l i c h e" is a heading set letter by letter
  * (the Wasserstraßen-Verkehrsordnung's „§ 3.14 Z u s ä t z l i c h e
- * Bezeichnung …", RIS 707EA278).
+ * Bezeichnung …", RIS 707EA278). „Anhang 6 Punkt 3, Anhang 7 Punkt 2 …"
+ * opened an Anhang 6 of its own in the Verordnung über Geräuschemissionen
+ * (RIS 571847EF, 19.11.2026).
  */
-const CITATION_TAIL_RE = /^\s*(?:Abs(?:\.|atz\b)|Satz\b|Z\s+\d|Ziffer\b|Buchstabe|Unterabsatz|Teil\s+\d+\s+(?:und|bis|der|des)\b|Nr\.|Nummer|,|(?!zu\b)[a-zäöüß]|[\wÄÖÜäöüß-]*(?:[Rr]ichtlinie|[Vv]erordnung|-VO)\b|\((?:EU|EG|EWG)\)|(?:EMRK|B-VG|AEUV|EUV|GRC|DSGVO|StGG)\b)/
+const CITATION_TAIL_RE = /^\s*(?:Abs(?:\.|atz\b)|Satz\b|Z\s+\d|Ziffer\b|Punkte?\s+\d|Buchstabe|Unterabsatz|Teil\s+\d+\s+(?:und|bis|der|des)\b|Nr\.|Nummer|,|(?!zu\b)[a-zäöüß]|[\wÄÖÜäöüß-]*(?:[Rr]ichtlinie|[Vv]erordnung|-VO)\b|\((?:EU|EG|EWG)\)|(?:EMRK|B-VG|AEUV|EUV|GRC|DSGVO|StGG)\b)/
 /** "Artikel 3" with nothing else on the line. */
 const BARE_ARTICLE_RE = /^Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+)$/
 /** A qualifier that stands where the law's name would, and is not one. */
@@ -1006,6 +1008,8 @@ interface ColumnUnit {
   cut?: true
   /** The column printed its designation more than once; this is the longest (`ComparisonRow.repeated`). */
   repeated?: true
+  /** …more than once as a provision, and the prints could not be joined (`ComparisonRow.ambiguous`). */
+  ambiguous?: true
 }
 
 /**
@@ -1204,6 +1208,10 @@ function markerOf(text: string): RegExpExecArray | null {
   const marker = UNIT_RE.exec(text) ?? SCHEDULE_ALONE_RE.exec(text.trim())
   if (marker === null) return null
   const paragraph = marker[1]!.startsWith('§')
+  // „§ 223b., § 4 Abs. 6, § 25 Abs. 3 … treten … in Kraft": a list of
+  // citations that wrapped to a line of its own, never a § opening (GAP-
+  // Strategieplan-Anwendungsverordnung, RIS C3F4E0AD, 19.11.2026).
+  if (paragraph && marker[1]!.endsWith('.') && /^\s*[,;]/.test(text.slice(marker[0].length))) return null
   if (paragraph && marker[1]!.endsWith('.')) return marker
   // The letter a designation may end in („§ 6.01a") is the number's, not the tail's.
   const tail = text.slice(marker[0].length).replace(paragraph ? /^[a-z]+(?=\s|$)/ : /^(?!)/, '')
@@ -1432,7 +1440,7 @@ function contentsInBoth(left: readonly ColumnLine[], right: readonly ColumnLine[
  * carried wrapped body text into the next § wherever a sentence lacked its
  * full stop or a citation began a line (41/ME § 49, 96/ME „§ 105.").
  */
-function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, layout: AnnexLayout = {}): { units: ColumnUnit[]; contents: number } {
+function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, layout: AnnexLayout = {}, options: { join: boolean } = { join: true }): { units: ColumnUnit[]; contents: number } {
   type Unit = { gld: string | null; context: string | null; parts: ColumnLine[]; opener: ColumnLine | null; cut?: true }
   const units: Unit[] = []
   let current: Unit = { gld: null, context: null, parts: [], opener: null }
@@ -1481,7 +1489,15 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
       continue
     }
     const marker = markerOf(line.text)
-    if (!marker) {
+    // „… eines ausländischen Kreditinstituts gemäß" over „§ 19b.", „… die
+    // in" over „Anlage C festgelegten …": a citation the line above runs on
+    // into, wrapped to the head of a line. Read as a marker it opened a
+    // § 19b whose text was the rest of § 19a (BWG package, RIS 70112EBB), and
+    // an Anlage C of a sentence of § 1 (AEV Verbrennungsgas, 45BB5DFC;
+    // 19.11.2026). No provision opens after a line that ends on „gemäß",
+    // „in" or „und" (`CONTINUED_RE`).
+    const above = current.parts.at(-1)?.text.trim()
+    if (!marker || (above !== undefined && !SENTENCE_END.test(above) && CONTINUED_RE.test(above))) {
       current.parts.push(line)
       continue
     }
@@ -1554,21 +1570,99 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
   // Bundesvollziehung", "§ 2. Bezugnahme auf Unionsrecht", one line each. Read
   // as provisions, a table of contents became 100+ phantom § — the
   // Gaswirtschaftsgesetz alone produced 187 rows, 22 % of the whole corpus,
-  // and 95 % of them matched nothing (2026-09-09). The substantive occurrence
-  // is the longer one; a § that only ever appears in the contents keeps its
-  // title, which is honest, rather than displacing the real text.
-  const longest = new Map<string, { id: string | null; gld: string | null; context: string | null; text: string }>()
-  const repeated = new Set<string>()
-  for (const unit of built) {
-    if (!unit.id) continue
-    const seen = longest.get(unit.id)
-    if (seen) repeated.add(unit.id)
-    if (!seen || unit.text.length > seen.text.length) longest.set(unit.id, unit)
+  // and 95 % of them matched nothing (2026-09-09). A § that only ever appears
+  // in the contents keeps its title, which is honest, rather than displacing
+  // the real text.
+  //
+  // **Not every second print is a contents entry (19.11.2026).** Keeping the
+  // longest print dropped every other one without a word: the FPRG 2021
+  // annex re-opens § 3 at „(10) bis (11) …" to print its new Abs. 12, and
+  // § 3 was shown and confirmed without it; a variant „A" lost to its
+  // variant „B" (AVG § 18a); a body line misread as a marker beat the real
+  // § (GAP § 223b); and in a package whose laws the reader could not part,
+  // each column kept the longest § 2 of a different law, so the row diffed
+  // two unrelated Verordnungen (Tierarzneimittel-Anpassungsverordnung 2024).
+  // So a print is dropped only where it is a contents entry or repeats
+  // another word for word; a later print that re-opens the § at an Absatz
+  // past the one before it („(10) bis (11) … (12) …" after „(9) …") is
+  // joined to it in printed order; and whatever is left over is marked
+  // `ambiguous`, for the gate to withhold. Never joined where the section
+  // carries no law of a package the reader could not part: two laws' § 2
+  // may each look like the other's continuation.
+  const byId = new Map<string, typeof built>()
+  for (const unit of built) if (unit.id) byId.set(unit.id, [...(byId.get(unit.id) ?? []), unit])
+  const chosen = new Map<string, (typeof built)[number] & { repeated?: true; ambiguous?: true }>()
+  for (const [id, prints] of byId) {
+    if (prints.length === 1) {
+      chosen.set(id, prints[0]!)
+      continue
+    }
+    const longest = prints.reduce((a, b) => (b.text.length > a.text.length ? b : a))
+    const provisions = prints.filter((u) => !isContentsEntry(u.gld, u.text) && printsProvision(u))
+    const distinct = provisions.filter((u) => !provisions.some((o) => o !== u && o.text.length >= u.text.length && repeats(o, u) && (o.text.length > u.text.length || provisions.indexOf(o) < provisions.indexOf(u))))
+    if (distinct.length <= 1) {
+      chosen.set(id, { ...(distinct[0] ?? longest), repeated: true })
+      continue
+    }
+    const joined = options.join ? joinReopened(distinct) : null
+    chosen.set(id, joined ? { ...joined, repeated: true } : { ...longest, repeated: true, ambiguous: true })
   }
   return {
-    units: built.filter((u) => u.id === null || longest.get(u.id) === u).map((u) => (u.id && repeated.has(u.id) ? { ...u, repeated: true as const } : u)),
+    units: built.filter((u) => u.id === null || byId.get(u.id)![0] === u).map((u) => (u.id ? chosen.get(u.id)! : u)),
     contents: contents.entries,
   }
+}
+
+/**
+ * Does this print of a § carry a provision, rather than an entry of a table
+ * of contents the reader did not recognise as one — „§ 21. und § 21a. ...",
+ * „§ 21b. Maßnahmen zur Begrenzung … (Anm.: § 21c bis § 21h aufgehoben …)"
+ * (BWG package, RIS 70112EBB)? The test `opensProvision` makes of a marker
+ * line, made of the whole print: it opens with an Absatz or a Ziffer, runs
+ * longer than an entry does, or ends a sentence.
+ */
+function printsProvision(unit: { gld: string | null; text: string }): boolean {
+  const at = unit.gld ? unit.text.indexOf(unit.gld) : -1
+  const body = (at < 0 ? unit.text : unit.text.slice(at + unit.gld!.length)).trim()
+  return /^(?:\(\d|\d+[a-z]*\.\s)/.test(body) || body.length > CONTENTS_ENTRY_CHARS || /[^.…]\.[\]"'»«›‹)“”’‘]*$/.test(body)
+}
+
+/** A print's words after its designation, letters and digits only — what `repeats` compares. */
+function bodyWords(unit: { gld: string | null; text: string }): string {
+  const at = unit.gld ? unit.text.indexOf(unit.gld) : -1
+  const body = at < 0 ? unit.text : unit.text.slice(at + unit.gld!.length)
+  return normalizeText(body).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+}
+
+/** Does `longer` print everything `shorter` does, word for word — the same § printed twice? */
+function repeats(longer: { gld: string | null; text: string }, shorter: { gld: string | null; text: string }): boolean {
+  const s = bodyWords(shorter)
+  return s === '' || ` ${bodyWords(longer)} `.includes(` ${s} `)
+}
+
+/** „(10) bis (11) …" right behind the designation — and through an omission „[…] (12)" — the first Absatz a print opens with. */
+const OPENING_ABSATZ_RE = /^\s*(?:(?:\[\s*)?(?:\.\.\.|…)(?:\s*\])?\s*)?\((\d+)[a-z]*\)/
+/** Every Absatz a print marks, „(3)", standing as a word of its own. */
+const ABSATZ_MARK_RE = /(?:^|\s)\((\d+)[a-z]*\)(?=\s|$)/g
+
+/**
+ * The prints of one § joined in printed order, where each after the first
+ * re-opens the § at an Absatz past the last one printed before it — the
+ * annex leaving the unchanged Absätze out between two changed ones (FPRG
+ * 2021 § 3: „(9) …", then „(10) bis (11) … (12) Der Fiskalrat …"). Null
+ * where any print does not, which leaves the § `ambiguous`.
+ */
+function joinReopened<T extends { gld: string | null; text: string }>(prints: readonly T[]): T | null {
+  let last = Math.max(0, ...[...prints[0]!.text.matchAll(ABSATZ_MARK_RE)].map((m) => Number(m[1])))
+  const texts = [prints[0]!.text]
+  for (const print of prints.slice(1)) {
+    const at = print.gld ? print.text.indexOf(print.gld) : -1
+    const opening = OPENING_ABSATZ_RE.exec(at < 0 ? print.text : print.text.slice(at + print.gld!.length))
+    if (!opening || Number(opening[1]) <= last) return null
+    last = Math.max(last, ...[...print.text.matchAll(ABSATZ_MARK_RE)].map((m) => Number(m[1])))
+    texts.push(print.text)
+  }
+  return { ...prints[0]!, text: texts.join(' ') }
 }
 
 /** „§ 6.01a" whole (`PARAGRAPH_NUMBER`), or a roman numeral. */
@@ -2086,8 +2180,10 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}) }))
     const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}) }))
     const toc = contentsInBoth(leftLines, rightLines)
-    const leftRead = unitsOfColumn(leftLines, toc.left, layout)
-    const rightRead = unitsOfColumn(rightLines, toc.right, layout)
+    // Two prints of a § are joined only where they are one law's (`unitsOfColumn`).
+    const join = { join: law !== null || resolution.refusal === null }
+    const leftRead = unitsOfColumn(leftLines, toc.left, layout, join)
+    const rightRead = unitsOfColumn(rightLines, toc.right, layout, join)
     const left = leftRead.units
     const right = rightRead.units
     // The reprinted tables of contents, per column (`contentsRegions`).
@@ -2120,7 +2216,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       }
       if (mate?.id) used.add(mate.id)
       const row = rowOf(law, unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.text, unit.context ?? mate?.context ?? null)
-      if (row) rows.push({ ...row, ...(unit.cut || mate?.cut ? { cut: true as const } : {}), ...(law === null && (unit.repeated || mate?.repeated) ? { repeated: true as const } : {}) })
+      if (row) rows.push({ ...row, ...(unit.cut || mate?.cut ? { cut: true as const } : {}), ...(law === null && (unit.repeated || mate?.repeated) ? { repeated: true as const } : {}), ...(unit.ambiguous || mate?.ambiguous ? { ambiguous: true as const } : {}) })
     }
     // A § the draft repeals appears only on the left. Printed in the proposed
     // column's order everything else follows, it would otherwise vanish.
@@ -2135,7 +2231,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
         continue
       }
       const row = rowOf(law, unit.gld, unit.text, '', unit.context)
-      if (row) rows.push({ ...row, ...(unit.cut ? { cut: true as const } : {}), ...(law === null && unit.repeated ? { repeated: true as const } : {}) })
+      if (row) rows.push({ ...row, ...(unit.cut ? { cut: true as const } : {}), ...(law === null && unit.repeated ? { repeated: true as const } : {}), ...(unit.ambiguous ? { ambiguous: true as const } : {}) })
     }
   }
   designateAfter(rows)

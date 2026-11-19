@@ -691,6 +691,16 @@ export async function verifyAnnex(
       verdicts[key] = 'verified'
     }
   }
+  // **A § a column prints twice over is not paired by guess** (19.11.2026):
+  // where the PDF reader could neither join the prints nor drop all but one
+  // (`ComparisonRow.ambiguous`), the row stands opposite a print chosen by
+  // length — another law's § of the same number, a variant, a body line
+  // misread as a marker — and its diff may not exist.
+  for (const [groupKey, group] of groups) {
+    if (verdicts[groupKey] === 'withheld' || !group.rows.some((r) => r.ambiguous)) continue
+    verdicts[groupKey] = 'withheld'
+    withheldCauses[groupKey] = 'repeated'
+  }
   // **A repeal the page would show is one the draft has to order**
   // (19.11.2026). A § whose proposed column is empty goes out as „entfällt",
   // and the left check confirms it: the left column IS the law in force. But

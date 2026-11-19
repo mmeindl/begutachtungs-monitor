@@ -169,6 +169,7 @@ interface GateResult {
   withheldAlreadyStanding: number
   withheldNotInDraft: number
   withheldRepealUnproven: number
+  withheldRepeated: number
   uncheckedParas: number
   /** Pair rows without any § designation, and the subset the page shows as a change */
   rowsNoPara: number
@@ -278,7 +279,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const id = String(meta?.Technisch?.ID ?? cite)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, withheldRepealUnproven: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [] }
+  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, withheldRepealUnproven: 0, withheldRepeated: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [] }
   const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
@@ -562,6 +563,7 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promi
     withheldAlreadyStanding: checked.withheldByCause.alreadyStanding,
     withheldNotInDraft: checked.withheldByCause.notInDraft,
     withheldRepealUnproven: checked.withheldByCause.repealUnproven,
+    withheldRepeated: checked.withheldByCause.repeated,
     uncheckedParas: verdicts.filter((v) => v === 'unchecked').length,
     rowsNoPara,
     changeRowsNoPara,
@@ -677,6 +679,7 @@ console.log(`    einbehalten, weil die geltende Fassung so nicht im RIS steht : 
 console.log(`    einbehalten, weil die vorgeschlagene Fassung Geltendes als neu zeigt: ${gsum((g) => g.withheldAlreadyStanding)}`)
 console.log(`    einbehalten, weil sie Text trägt, den der Entwurf für diesen Paragraphen nicht anordnet: ${gsum((g) => g.withheldNotInDraft)}`)
 console.log(`    einbehalten, weil sie den Paragraphen als aufgehoben zeigt und der Entwurf ihn nicht aufhebt: ${gsum((g) => g.withheldRepealUnproven)}`)
+console.log(`    einbehalten, weil eine Spalte den Paragraphen mehrmals druckt und die Stellen sich nicht zuordnen lassen: ${gsum((g) => g.withheldRepeated)}`)
 console.log(`    Entwürfe ohne jede Prüfung   : ${gated.filter((r) => !r.gate.ran).length}`)
 console.log(`    Zeilen ohne Paragraphenangabe: ${gsum((g) => g.rowsNoPara)}, davon als Änderung gezeigt: ${gsum((g) => g.changeRowsNoPara)}`)
 const dsum = (pick: (r: DraftResult) => number): number => gated.reduce((n, r) => n + pick(r), 0)
@@ -771,6 +774,7 @@ if (jsonPath) {
       withheldAlreadyStanding: r.gate.withheldAlreadyStanding,
       withheldNotInDraft: r.gate.withheldNotInDraft,
       withheldRepealUnproven: r.gate.withheldRepealUnproven,
+      withheldRepeated: r.gate.withheldRepeated,
       uncheckedParas: r.gate.uncheckedParas,
       rowsNoPara: r.gate.rowsNoPara,
       changeRowsNoPara: r.gate.changeRowsNoPara,

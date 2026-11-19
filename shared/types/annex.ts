@@ -137,7 +137,7 @@ export type ConsolidatedNotRun = 'zuordnung' | 'stichtag' | 'kein-xml' | 'keine-
  * Why a § of the Textgegenüberstellung is not shown
  * (`server/utils/annex/verdict.ts`).
  *
- * Four findings the page keeps apart: they mean different things to a
+ * Five findings the page keeps apart: they mean different things to a
  * reader, and two of them can just as well be *our* reading of a PDF as the
  * ministry's document — so none of them is phrased as the ministry's error.
  *
@@ -159,8 +159,12 @@ export type ConsolidatedNotRun = 'zuordnung' | 'stichtag' | 'kein-xml' | 'keine-
  *   page would say „entfällt", and no instruction of the draft for that law
  *   repeals the § whole (19.11.2026, `server/utils/annex/repeals.ts`). An empty
  *   right column is also what a reading leaves where it missed the § there.
+ * - `repeated` — a column of the PDF prints the § more than once as a
+ *   provision, and the prints could be neither joined nor told apart
+ *   (19.11.2026, `ComparisonRow.ambiguous`): which print stands opposite
+ *   which would be our guess.
  */
-export type AnnexWithheldCause = 'standing' | 'alreadyStanding' | 'notInDraft' | 'repealUnproven'
+export type AnnexWithheldCause = 'standing' | 'alreadyStanding' | 'notInDraft' | 'repealUnproven' | 'repeated'
 
 /** One row of the Ressort's Textgegenüberstellung (docs/api-exploration.md §2c). */
 export interface TextComparisonRow {
