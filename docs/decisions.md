@@ -660,6 +660,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   result, and a stretch that carries a § symbol and text after it is never
   „a group heading alone". Found anywhere, a heading or a remainder was
   found in the body, and the words in front of it went unchecked.
+- **Check 2 reads the changed rows of a § in the annex's order** (19.11.2026):
+  each row from where the one above ended, so two Ziffern swapped across
+  rows (the table path prints one per row) are a contradiction, reported as
+  text standing „an anderer Stelle".
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

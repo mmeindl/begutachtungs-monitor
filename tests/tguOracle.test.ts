@@ -996,3 +996,22 @@ describe('the heading a § opens with is where the result begins (19.11.2026)', 
     expect(oracleVerdict('106', 'Wer handelt, wird bestraft. Alt.', 'Wer handelt, wird bestraft. Neu.', rows)).toMatchObject({ verdict: 'bestätigt' })
   })
 })
+
+describe('check 2 holds the rows of a § in the order the annex prints them (19.11.2026)', () => {
+  // The table path prints each Ziffer as a row of its own; looked up each
+  // from the start of the result, a new Z 3b set before Z 3a read as right.
+  const rows = [
+    pair('(1) Wer gegen Abs. 2 verstößt, wenn er', '(1) Wer gegen Abs. 2 verstößt, wenn er', '§ 54h.'),
+    pair('', '3a. keine wirksame Kontrolle durchführt;'),
+    pair('', '3b. ein ungeeignetes System einsetzt;'),
+  ].map((r, i) => (i === 0 ? { ...r, change: 'changed' as const } : r))
+  const before = 'Wer gegen Abs. 2 verstößt, wenn er'
+  it('confirms the Ziffern in the annex\'s order', () => {
+    expect(oracleVerdict('54h', before, `${before} keine wirksame Kontrolle durchführt; ein ungeeignetes System einsetzt;`, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+  it('contradicts two Ziffern swapped, and says the row stands elsewhere', () => {
+    const swapped = oracleVerdict('54h', before, `${before} ein ungeeignetes System einsetzt; keine wirksame Kontrolle durchführt;`, rows)
+    expect(swapped).toMatchObject({ verdict: 'widersprochen' })
+    expect(swapped.note).toMatch(/^Vorgeschlagene Fassung steht im Ergebnis an anderer Stelle/)
+  })
+})

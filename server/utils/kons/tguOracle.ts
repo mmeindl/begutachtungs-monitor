@@ -787,7 +787,16 @@ function markedOmissions(cell: string): string {
  */
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function unaccountedStretch(text: string, cell: string, anchor: ((at: number, stretch: string) => boolean) | null = null): string | null {
-  let at = 0
+  return placedStretches(text, cell, 0, anchor).missing
+}
+
+/**
+ * `unaccountedStretch` from `from` on, with where the cell's last stretch
+ * ended — so check 2 can hold the rows of a § in the order the annex prints
+ * them (`oracleVerdict`).
+ */
+function placedStretches(text: string, cell: string, from: number, anchor: ((at: number, stretch: string) => boolean) | null): { missing: string | null; end: number } {
+  let at = from
   let first = true
   let anchored = anchor
   const stretches = printedStretches(markedOmissions(cell))
@@ -841,11 +850,11 @@ export function unaccountedStretch(text: string, cell: string, anchor: ((at: num
       const rescued = withoutHeadingStack(piece, text, at)
       if (rescued) ({ piece, found } = rescued)
     }
-    if (found < 0) return stretch
+    if (found < 0) return { missing: stretch, end: at }
     at = found + piece.length
     first = false
   }
-  return null
+  return { missing: null, end: at }
 }
 
 /**
@@ -1219,6 +1228,9 @@ export function keptDeletion(got: string, rows: readonly ComparisonRow[]): strin
   return null
 }
 
+/** How check 2 reports a row that stands in the result, but before the row the annex prints above it. */
+export const ROW_ORDER_NOTE = 'Vorgeschlagene Fassung steht im Ergebnis an anderer Stelle'
+
 /** How check 5's report opens — the harness counts its alarms by it. */
 export const ABSATZ_ORDER_NOTE = 'Absätze der Beilage nicht so im Ergebnis'
 
@@ -1504,6 +1516,8 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
       return { para: id, verdict: 'fremd', rows: rows.length, note: `Geltende Fassung der Gegenüberstellung nicht im Ausgangstext: "${missing.slice(0, 60)}"` }
     }
   }
+  /** Where the last changed row's proposed column ended in the result — check 2 reads the rows in order. */
+  let rowsEnd = 0
   for (const row of substantive) {
     // A row with nothing in the proposed column is the annex saying this text
     // goes away — and `row.proposed && …` skipped exactly that shape, so the
@@ -1537,10 +1551,17 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
     // its proposed column — elided by the very same ressort in the very same
     // row — contradict it, and the page would then tell the reader the annex
     // disagrees with us where in truth it simply left text out.
-    const missing = unaccountedStretch(gotKey, row.proposed, opensWithHeading(row) ? headingAnchor(row.current, beforeKey, gotKey) : null)
-    if (missing !== null) {
-      return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Vorgeschlagene Fassung nicht im Ergebnis: "${missing.slice(0, 60)}"` }
+    const anchor = opensWithHeading(row) ? headingAnchor(row.current, beforeKey, gotKey) : null
+    const placed = placedStretches(gotKey, row.proposed, rowsEnd, anchor)
+    if (placed.missing !== null) {
+      // In the result, but before the row above: the annex prints the rows of
+      // a § in its order, and on the table path each Ziffer is a row of its
+      // own, so two of them swapped read like the right order wherever every
+      // row was looked up from the start (19.11.2026).
+      const elsewhere = rowsEnd > 0 && placedStretches(gotKey, row.proposed, 0, anchor).missing === null
+      return { para: id, verdict: 'widersprochen', rows: rows.length, note: elsewhere ? `${ROW_ORDER_NOTE}: "${placed.missing.slice(0, 60)}"` : `Vorgeschlagene Fassung nicht im Ergebnis: "${placed.missing.slice(0, 60)}"` }
     }
+    rowsEnd = placed.end
   }
   // Everything the engine inserted must be a word the annex's proposed
   // column contains somewhere in this §, and everything it removed a word the

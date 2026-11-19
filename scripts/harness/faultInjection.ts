@@ -247,7 +247,7 @@ import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { applyNovelle, instructionsFromUnits, renamedOrigins, type StandingLaw } from '../../server/utils/kons/lawApply'
-import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
+import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, ROW_ORDER_NOTE, absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
 import { printedStretches } from '../../server/utils/annex/elision'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
 import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
@@ -1125,6 +1125,7 @@ function headingFault(node: LawNode, tokens: readonly string[], rows: readonly C
 function checkOf(note: string | null): string {
   if (!note) return '?'
   if (note.startsWith('Geltende Fassung')) return 'P1'
+  if (note.startsWith(ROW_ORDER_NOTE)) return 'P2r'
   if (note.startsWith('Vorgeschlagene Fassung') || note.startsWith('Gestrichene Fassung')) return 'P2'
   if (note.startsWith('Engine') || note.startsWith('Wortdiff')) return 'P3'
   if (note.startsWith(KEPT_DELETION_NOTE)) return 'P4'
@@ -1217,6 +1218,12 @@ async function injectIntoResults(
       if (gaps.length > 0) {
         results.silent.set(report.verdict, (results.silent.get(report.verdict) ?? 0) + 1)
         results.silentSites.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.verdict}, ausgelassen ${gaps.join(', ')}${report.note ? ` — ${report.note.slice(0, 90)}` : ''}`)
+      }
+      // Check 2's row order (19.11.2026): every § it speaks on would have
+      // passed check 2 with each row looked up from the start.
+      if (report.note?.startsWith(ROW_ORDER_NOTE)) {
+        results.rowOrder.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
+        if (argFlag('alarme')) results.rowOrder.push(...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => `          ${r.change.padEnd(11)}: ${r.proposed.slice(0, 160)}`), `          Ergebnis: ${got.slice(0, 400)}`)
       }
       // Check 5's false-alarm side, like check 4's below: every § it speaks
       // on had passed the other four.
@@ -1399,7 +1406,7 @@ const faults = {
   U: tally('U     fremder Satz beidspaltig gleich'),
 }
 /** The engine's result as the oracle judged it, without any fault. */
-const results = { verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[], dupAbs: [] as string[] }
+const results = { verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[], dupAbs: [] as string[], rowOrder: [] as string[] }
 const oracleFaults = {
   E: oracleTally('E     eine Einheit zu viel'),
   Ersatz: oracleTally('E-neben alter Text neben dem neuen'),
@@ -1517,6 +1524,8 @@ console.log(`    davon mit anderem Urteil als ohne diese Lesart: ${results.moved
 for (const line of results.moved) console.log(`      ± ${line}`)
 console.log(`    Prüfung 4 („Gestrichenes steht noch im Ergebnis") meldet ohne Injektion: ${results.kept}`)
 for (const line of results.keptAlarms) console.log(`      + ${line}`)
+console.log(`    Prüfung 2, Reihenfolge der Zeilen („an anderer Stelle") meldet ohne Injektion: ${results.rowOrder.filter((l) => !l.startsWith('          ')).length}`)
+for (const line of results.rowOrder) console.log(`      ${line.startsWith('          ') ? '' : '+ '}${line}`)
 console.log(`    Prüfung 5 („Absätze der Beilage nicht so im Ergebnis") meldet ohne Injektion: ${results.order}`)
 for (const line of results.orderAlarms) console.log(`      + ${line}`)
 console.log(`\n  Mit Injektion ins Ergebnis, über ${results.confirmed} bestätigte Paragraphen mit geltendem Text (Kontrolle verschob ${results.controlMoved})`)
@@ -1526,10 +1535,10 @@ for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, or
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.caught)}   ${cell(fault.byKept)}`)
 }
 console.log(`\n  Wortfehler im Ergebnis (19.11.2026), dieselben bestätigten Paragraphen — gefangen von Prüfung 1 bis 5`)
-console.log(`  Fehler                                §§   gefangen               P1     P2     P3     P4     P5`)
+console.log(`  Fehler                                §§   gefangen               P1     P2    P2r     P3     P4     P5`)
 for (const fault of wordClasses) {
   const by = (check: string): string => String(fault.byCheck.get(check) ?? 0).padStart(6)
-  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})   ${by('P1')} ${by('P2')} ${by('P3')} ${by('P4')} ${by('P5')}`)
+  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})   ${by('P1')} ${by('P2')} ${by('P2r')} ${by('P3')} ${by('P4')} ${by('P5')}`)
   for (const [kind, [tried, caught]] of fault.kinds) console.log(`      ${kind.padEnd(22)} ${String(tried).padStart(4)}   ${String(caught).padStart(6)} (${pct(caught, tried)})`)
 }
 // An Absatz number held twice: in RIS's own text, or made by the engine —
