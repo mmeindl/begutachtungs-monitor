@@ -3104,7 +3104,7 @@ export function refusedAddresses(raw: string, inherited?: NovaoAddress | null): 
   // vorangestellt; folgender Abs. 2 wird angefügt:" has no address of its own
   // and inherits the first half's — the same carry `parseInstruction` does.
   let context = inherited ?? null
-  const parts = splitCompound(line)
+  const parts = splitCompound(line).flatMap(splitMoved)
   const toc = tocClauses(parts)
   for (const [i, part] of parts.entries()) {
     const head = instructionHead(part)
@@ -3127,6 +3127,22 @@ export function refusedAddresses(raw: string, inherited?: NovaoAddress | null): 
     paras.push(...named)
   }
   return paras.length > 0 ? paras : null
+}
+
+/**
+ * „In den §§ 26 bis 43 entfallen die Paragraphenbezeichnungen; die Abs. 62
+ * bis 79 werden nach § 17a Abs. 61 (neu) eingereiht" (116/ME XXVIII, IESG
+ * and IEF-Service-GmbH-G; 20.11.2026): two clauses, the second with a verb
+ * `splitCompound` does not cut at. Read as one address the line named § 26
+ * alone, and the `§§` rule above refused it whole, so the annex filed the
+ * unit under no §. Cut here, for the address only: the engine's cut stays as
+ * it is, because the move „eingereiht" describes is not one it carries out.
+ */
+function splitMoved(part: string): string[] {
+  const masked = part.replace(/"[^"]*"/g, (m) => '\u0000'.repeat(m.length))
+  const at = masked.lastIndexOf(';')
+  if (at < 0 || !/\beingereiht\b/.test(masked.slice(at)) || !INSTRUCTION_VERB_RE.test(masked.slice(0, at))) return [part]
+  return [...splitMoved(part.slice(0, at)), part.slice(at + 1).trim()]
 }
 
 /**
@@ -3574,6 +3590,10 @@ export function addressedUnits(line: string, inherited?: NovaoAddress | null): A
   }
   // Nothing could be typed — but the address may still be readable, and a
   // refusal of the *verb* is no reason to widen the reference of a whole law.
+  // Not where only a part was typed: the refused reading of the other part
+  // would add §§ its operands cite („… wird der Verweis auf § 24 Abs. 2 …
+  // ersetzt" → § 24; 7 of the 31 §§ such a union gained over the corpus,
+  // 20.11.2026), and a wrong § is worse than a missing one.
   if (ops.length === 0) for (const para of refusedAddresses(line, inherited) ?? []) paras.add(para)
   return { paras: [...paras], aliases, reason: paras.size > 0 ? null : (reason ?? NO_PARAGRAPH_ADDRESSED) }
 }

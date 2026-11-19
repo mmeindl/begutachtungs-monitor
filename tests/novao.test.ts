@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressKey, addressesWholeText, createdParagraphs, createdUnits, expandRange, mentionedUnits, namedParagraphs, opAddress, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoAddress, type NovaoOp } from '../server/utils/kons/novao'
+import { addressKey, addressedUnits, addressesWholeText, createdParagraphs, createdUnits, expandRange, mentionedUnits, namedParagraphs, opAddress, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoAddress, type NovaoOp } from '../server/utils/kons/novao'
 
 /** The single operation of an instruction, or a failure that names the reason. */
 function op(line: string): NovaoOp {
@@ -1409,5 +1409,18 @@ describe('Roman schedules in an enumeration (19.11.2026)', () => {
     expect(arabic.target.siblings).toEqual(['3'])
     const lit = parseInstruction('In § 21c Z 1 lit. i und v entfällt das Wort „und".').ops[0] as Extract<NovaoOp, { kind: 'deletePhrase' }>
     expect([lit.target.lit, lit.target.siblings]).toEqual(['i', ['v']])
+  })
+})
+
+// „… entfallen die Paragraphenbezeichnungen; die Abs. … werden nach § 17a …
+// eingereiht" (116/ME XXVIII, IESG and IEF-Service-GmbH-G): refused as a
+// Teilstreichung, the line still names its §§ (20.11.2026).
+describe('addressedUnits — a refused line with an „eingereiht" clause', () => {
+  it('names the §§ of both clauses', () => {
+    const units = addressedUnits('In den §§ 30 bis 33 entfallen die Paragraphenbezeichnungen; die Abs. 3 bis 6 werden nach § 27 Abs. 2 (neu) eingereiht.')
+    expect(units.paras).toEqual(['§ 30', '§ 31', '§ 32', '§ 33', '§ 27'])
+    expect(units.reason).toBeNull()
+    // The engine still refuses the line.
+    expect(parseInstruction('In den §§ 30 bis 33 entfallen die Paragraphenbezeichnungen; die Abs. 3 bis 6 werden nach § 27 Abs. 2 (neu) eingereiht.').ops).toEqual([])
   })
 })
