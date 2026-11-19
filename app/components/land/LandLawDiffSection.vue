@@ -107,15 +107,21 @@ function reasonsFor(u: LawDiffUnit) {
    rule: shown where it changed, or where the two group it differently
    (`LawDiffSection.reasoningOf`). */
 const vorlageStep = props.from === 'entwurf' && props.to === 'rv'
-const reasoning: Ref<LandReasoningResponse | null | undefined> = vorlageStep
+const reasoningFetch = vorlageStep
   ? useFetch<LandReasoningResponse>(
-    () => `/api/laender/${props.land}/${props.number}/begruendung`,
-    { key: () => landReasoningKey(props.land, props.number), lazy: true, server: false, dedupe: 'defer' },
-  ).data
-  : shallowRef(null)
+      () => `/api/laender/${props.land}/${props.number}/begruendung`,
+      { key: () => landReasoningKey(props.land, props.number), lazy: true, server: false, dedupe: 'defer' },
+    )
+  : null
+const reasoning: Ref<LandReasoningResponse | null | undefined> = reasoningFetch ? reasoningFetch.data : shallowRef(null)
 /* Why no Begründung stands at any change, where the two could not be
-   compared (`landReasoningGapNote`). */
-const reasoningGap = computed(() => (vorlageStep ? landReasoningGapNote(reasoning.value) : null))
+   compared or the request failed (`landReasoningGapNote`; the failure since
+   19.11.2026, silence before). */
+const reasoningGap = computed(() => {
+  if (!vorlageStep) return null
+  const changes = data.value?.units.filter((u) => badgeOf(u) !== 'unchanged').length ?? 0
+  return landReasoningGapNote(reasoning.value, reasoningFetch?.status.value === 'error', changes)
+})
 function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
   if (!vorlageStep) return null
   const key = reasoning.value?.units?.[diffUnitKey(u)]

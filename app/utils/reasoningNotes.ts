@@ -5,7 +5,7 @@
  * Vorlage's frame: a reader asks at the Paragraph, where a changed one opens.
  */
 import { gapDe, splitGap } from '#shared/utils/gaps'
-import type { ExplanationsMissing, LandReasoningResponse, ReasoningGap } from '#shared/types'
+import type { ExplanationsMissing, LandReasoningResponse, ReasoningDiffResponse, ReasoningGap } from '#shared/types'
 
 /**
  * The line at a change whose Begründung could not be attached (14.11.2026),
@@ -52,6 +52,43 @@ export function explanationsMissingNote(missing: readonly ExplanationsMissing[] 
 }
 
 /**
+ * The one sentence above the Bund comparison about its Begründungen as a
+ * whole (19.11.2026), the first that applies:
+ *
+ *  1. a side's Erläuterungen were not read (`explanationsMissingNote`) — first,
+ *     because the service then sets a „Nicht lesbar" reason of its own too,
+ *     and the reader would get the gap twice;
+ *  2. the service's own gap sentence where it compared nothing
+ *     (`unavailableReason` with a lead word: „… weder nach Ziffern noch nach
+ *     Paragraphen gegliedert"); a reason with none is a state the comparison
+ *     says itself („noch keine Regierungsvorlage");
+ *  3. the request failed (`failed`, a 4xx/5xx or a timeout) while the list
+ *     shows changes. Before, the section then showed every change without a
+ *     Begründung and without a word — the page's grammar for „unchanged";
+ *     under Parliament's 429s 38 drafts of GP XXVII answered so.
+ *
+ * `failed` is the caller's to gate: only the step and the root a Begründung
+ * comparison exists for (`useLawDiffStep.reasoningFailed`).
+ */
+export function reasoningComparisonNote(
+  r: Pick<ReasoningDiffResponse, 'available' | 'unavailableReason' | 'explanationsMissing'> | null | undefined,
+  failed: boolean,
+  changes: number,
+): string | null {
+  return (
+    explanationsMissingNote(r?.explanationsMissing) ??
+    (r && !r.available && splitGap(r.unavailableReason) ? r.unavailableReason : null) ??
+    (failed && changes > 0 ? REASONING_FAILED_DE.ministry : null)
+  )
+}
+
+/** A Begründung request that failed: whose Begründungen, said with the lead word of a gap that passes. */
+const REASONING_FAILED_DE = {
+  ministry: gapDe('unavailable', 'die Begründungen des Ministeriums. Ob sie sich zu den Änderungen geändert haben, zeigt der Vergleich deshalb nicht.'),
+  land: gapDe('unavailable', 'die Begründungen des Landes. Ob sie sich zu den Änderungen geändert haben, zeigt der Vergleich deshalb nicht.'),
+} as const
+
+/**
  * The same for a Land's draft against its Vorlage, above that comparison
  * (`LandLawDiffSection`; the frame's row „Begründung" until 17.11.2026).
  * Not compared is said, never left out (24.10.2026): without it a change
@@ -60,10 +97,16 @@ export function explanationsMissingNote(missing: readonly ExplanationsMissing[] 
  * The service's own gap sentence where it gives one; where both texts were
  * read and share no Paragraph, that. Nothing while the comparison found
  * Begründungen to hold against each other, and nothing for a reason that is
- * no gap sentence — the comparison under it says that one itself.
+ * no gap sentence — the comparison under it says that one itself. Where the
+ * request failed and the list shows changes, that it is not to be had now
+ * (19.11.2026; before, silence).
  */
-export function landReasoningGapNote(r: Pick<LandReasoningResponse, 'available' | 'unavailableReason' | 'stats'> | null | undefined): string | null {
-  if (!r) return null
+export function landReasoningGapNote(
+  r: Pick<LandReasoningResponse, 'available' | 'unavailableReason' | 'stats'> | null | undefined,
+  failed = false,
+  changes = 0,
+): string | null {
+  if (!r) return failed && changes > 0 ? REASONING_FAILED_DE.land : null
   if (r.available) {
     return r.stats.compared
       ? null

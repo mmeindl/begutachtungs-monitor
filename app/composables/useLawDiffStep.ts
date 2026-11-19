@@ -153,6 +153,16 @@ export function useLawDiffStep(options: {
   const status = shallowRef(fetchStatus.value)
   const paraTitles = shallowRef(fetchedTitles.value)
   const reasoning = shallowRef(fetchedReasoning.value)
+  /**
+   * Whether the reasoning request of the step on screen failed (19.11.2026)
+   * — swapped with it like the rest, so a failure on one step never shows
+   * under another. Only where a Begründung comparison exists: draft →
+   * Regierungsvorlage on a draft's own root. Every other step and root is
+   * answered empty on purpose (`getReasoningDiff`, the `verfahren`
+   * endpoint), and a failed request there hides nothing.
+   */
+  const reasoningFailed = shallowRef(false)
+  const comparesReasoning = (p: LawStationPair) => !options.apiBase && p.from === 'me' && p.to === 'rv'
   const isShown = () => pair.value.from === requested.value.from && pair.value.to === requested.value.to
   watch([fetchStatus, fetchedDiff], ([s]) => {
     if (s === 'success' || s === 'error') {
@@ -160,6 +170,7 @@ export function useLawDiffStep(options: {
       data.value = fetchedDiff.value
       paraTitles.value = fetchedTitles.value
       reasoning.value = fetchedReasoning.value
+      reasoningFailed.value = comparesReasoning(pair.value) && reasoningStatus.value === 'error'
       status.value = s
     } else if (!data.value) {
       // Nothing to keep — the first load, or a step that failed: say that
@@ -172,6 +183,9 @@ export function useLawDiffStep(options: {
   })
   watch(fetchedReasoning, (v) => {
     if (isShown()) reasoning.value = v
+  })
+  watch(reasoningStatus, (s) => {
+    if (isShown()) reasoningFailed.value = comparesReasoning(pair.value) && s === 'error'
   })
 
   function enable() {
@@ -235,5 +249,5 @@ export function useLawDiffStep(options: {
     },
   })
 
-  return { steps, scopeDefault, requested, enabled, enable, pair, data, status, paraTitles, reasoning, chooseStep, stepOptions, selectedStep }
+  return { steps, scopeDefault, requested, enabled, enable, pair, data, status, paraTitles, reasoning, reasoningFailed, chooseStep, stepOptions, selectedStep }
 }

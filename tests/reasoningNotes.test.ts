@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { explanationsMissingNote, landReasoningGapNote, reasoningGapNote } from '../app/utils/reasoningNotes'
+import { explanationsMissingNote, landReasoningGapNote, reasoningComparisonNote, reasoningGapNote } from '../app/utils/reasoningNotes'
 
 const stats = (compared: number) => ({ compared, changed: 0, editorial: 0, uncompared: 0 })
 
@@ -47,5 +47,41 @@ describe('landReasoningGapNote (17.11.2026)', () => {
 
   it('leaves a reason that is no gap sentence to the comparison', () => {
     expect(landReasoningGapNote({ available: false, unavailableReason: 'Zu diesem Entwurf gibt es keine Regierungsvorlage.', stats: stats(0) })).toBeNull()
+  })
+})
+
+// Before 19.11.2026 a failed /begruendung left every change without a
+// Begründung and without a word — the page's grammar for „unchanged".
+describe('reasoningComparisonNote (19.11.2026)', () => {
+  const missing = { available: false, unavailableReason: 'Nicht lesbar: Die Erläuterungen des Entwurfs gibt es nicht als HTML; verglichen sind sie deshalb nicht.', explanationsMissing: [{ side: 'me' as const, kind: 'pdfOnly' as const }] }
+
+  it('sagt, dass die Begründungen gerade nicht abrufbar sind, wo die Anfrage scheiterte und die Liste Änderungen zeigt', () => {
+    expect(reasoningComparisonNote(undefined, true, 3)).toBe(
+      'Gerade nicht abrufbar: die Begründungen des Ministeriums. Ob sie sich zu den Änderungen geändert haben, zeigt der Vergleich deshalb nicht.',
+    )
+    // Without changes there is nothing a Begründung would stand at.
+    expect(reasoningComparisonNote(undefined, true, 0)).toBeNull()
+    expect(reasoningComparisonNote(undefined, false, 3)).toBeNull()
+  })
+
+  it('sagt eine Lücke nur einmal: die nicht gelesenen Erläuterungen vor dem Grund des Dienstes', () => {
+    expect(reasoningComparisonNote(missing, false, 3)).toBe(explanationsMissingNote(missing.explanationsMissing))
+  })
+
+  it('trägt den Lückensatz des Dienstes, nie einen Grund ohne Leitwort', () => {
+    const unaddressed = 'Nicht lesbar: Die Erläuterungen dieses Entwurfs sind weder nach Ziffern noch nach Paragraphen gegliedert; ein Vergleich an der Änderung ginge daneben.'
+    expect(reasoningComparisonNote({ available: false, unavailableReason: unaddressed }, false, 3)).toBe(unaddressed)
+    expect(reasoningComparisonNote({ available: false, unavailableReason: 'Zu diesem Entwurf gibt es noch keine Regierungsvorlage.' }, false, 3)).toBeNull()
+    expect(reasoningComparisonNote({ available: true, unavailableReason: null }, false, 3)).toBeNull()
+  })
+})
+
+describe('landReasoningGapNote — die gescheiterte Anfrage (19.11.2026)', () => {
+  it('sagt, dass die Begründungen des Landes gerade nicht abrufbar sind', () => {
+    expect(landReasoningGapNote(undefined, true, 2)).toBe(
+      'Gerade nicht abrufbar: die Begründungen des Landes. Ob sie sich zu den Änderungen geändert haben, zeigt der Vergleich deshalb nicht.',
+    )
+    expect(landReasoningGapNote(undefined, true, 0)).toBeNull()
+    expect(landReasoningGapNote(undefined)).toBeNull()
   })
 })

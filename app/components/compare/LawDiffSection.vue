@@ -28,7 +28,7 @@ import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import { lawDiffCredits } from '~/utils/lawDiffCredits'
-import { explanationsMissingNote, reasoningGapNote } from '~/utils/reasoningNotes'
+import { reasoningComparisonNote, reasoningGapNote } from '~/utils/reasoningNotes'
 import {
   OBJECTION_STEPS_NOTE_DE,
   PARLIAMENT_COMPARISON_QUESTION,
@@ -92,6 +92,7 @@ const {
   status,
   paraTitles,
   reasoning,
+  reasoningFailed,
   stepOptions,
   selectedStep,
 } = useLawDiffStep({
@@ -154,11 +155,16 @@ function gapOf(u: LawDiffUnit): string | null {
   return reasoningGapNote(reasoning.value?.gaps?.[diffUnitKey(u)])
 }
 
-/** A side's Erläuterungen were not read: said above the list, once, so a
- *  change without a Begründung does not read as one whose reasons stayed
- *  (`explanationsMissingNote`). In the Vorlage's frame until 17.11.2026; the
- *  gap is this comparison's, so it stands where the Begründungen would. */
-const explanationsNote = computed(() => explanationsMissingNote(reasoning.value?.explanationsMissing))
+/** The changes on the list — what the legend and the status announce. */
+const changeCount = computed(() => (data.value?.available ? data.value.units.filter((u) => badgeOf(u) !== 'unchanged').length : 0))
+
+/** A side's Erläuterungen were not read, the service compared nothing, or
+ *  the request failed: said above the list, once, so a change without a
+ *  Begründung does not read as one whose reasons stayed
+ *  (`reasoningComparisonNote`, the failure since 19.11.2026). In the
+ *  Vorlage's frame until 17.11.2026; the gap is this comparison's, so it
+ *  stands where the Begründungen would. */
+const reasoningNote = computed(() => reasoningComparisonNote(reasoning.value, reasoningFailed.value, changeCount.value))
 
 /* The Vorlage's Erläuterungen as cited, „ErläutRV 297 BlgNR 28. GP" — read
  * off the address of the document the reasoning came from (21.10.2026). */
@@ -241,10 +247,12 @@ const loadAnnouncement = computed(() => {
   if (status.value === 'pending' || status.value === 'idle') return ''
   if (status.value === 'error' || !data.value) return 'Gerade nicht abrufbar: der Vergleich.'
   if (!data.value.available) return data.value.unavailableReason ?? ''
-  const changes = data.value.units.filter((u) => badgeOf(u) !== 'unchanged').length
-  return changes
-    ? `Vergleich geladen, ${countLabelDe(changes, 'Änderung', 'Änderungen')}.`
-    : 'Vergleich geladen, keine Änderungen.'
+  const changes = changeCount.value
+  const loaded = changes ? `Vergleich geladen, ${countLabelDe(changes, 'Änderung', 'Änderungen')}.` : 'Vergleich geladen, keine Änderungen.'
+  // The Begründungen answer after the list: a failure is announced as it
+  // arrives, not only shown above a list the reader has already left.
+  const failed = reasoningComparisonNote(null, reasoningFailed.value, changes)
+  return failed ? `${loaded} ${failed}` : loaded
 })
 
 /**
@@ -569,7 +577,7 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
              wrong or cannot show. No count stands here since 17.11.2026 —
              the legend counts the changes, and a changed Begründung opens at
              its Paragraph. -->
-        <ComparisonCaveats :notes="[objectionNote, outsideNote, mergedNote, droppedNote, explanationsNote]" />
+        <ComparisonCaveats :notes="[objectionNote, outsideNote, mergedNote, droppedNote, reasoningNote]" />
       </template>
 
       <!-- Without a list the step toggle stands alone where the list would,
