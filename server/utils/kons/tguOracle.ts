@@ -1990,7 +1990,11 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   // Check 3 in place (19.11.2026): the bags above ask whether a word stands
   // anywhere in the annex; this asks whether each change stands there WHERE
   // the engine made it (`unplacedChange`).
-  const unplaced = unplacedEitherWay(stripMarkers(before ?? ''), stripMarkers(got), segments, rows)
+  // Not for a § the draft brings in new: every word is a change there, check
+  // 2 already pins each proposed stretch, and the lookup costs about half a
+  // second for a large new Anlage on the request path (branch review,
+  // 19.11.2026).
+  const unplaced = before === null ? null : unplacedEitherWay(stripMarkers(before), stripMarkers(got), segments, rows)
   if (unplaced !== null) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `${PLACE_NOTE}: ${unplaced}` }
   }

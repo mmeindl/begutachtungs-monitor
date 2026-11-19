@@ -238,11 +238,13 @@
  *
  * The other word classes and E stay where they were. Without injection the
  * PDF path keeps 1.543 of its 1.549 confirmations and the table path 1.151
- * of 1.153; every one withdrawn was read, and none is the oracle's noise.
- * Four are engine gaps behind a refused instruction (IESG § 20 and IEF § 29,
- * a § the draft dissolves into another, its body kept; BBG § 61 and BAO
- * § 48h, a heading the draft adds), two clean-applied results without a
- * heading the annex prints (AußWG § 70a, BD-EG § 38), and two annex errors:
+ * of 1.153; every one withdrawn was read. Four are engine gaps behind a
+ * refused instruction (IESG § 20 and IEF § 29, a § the draft dissolves into
+ * another, its body kept; BBG § 61 and BAO § 48h, a heading the draft adds),
+ * one a clean-applied result without a heading the annex prints (AußWG
+ * § 70a), and three are correct results lost to the annex (corrected by the
+ * branch review the same night): BD-EG § 38, where the annex reprints § 37's
+ * heading over the new § 38 — the enacted § 38 has none (NOR40271540) —, and
  * TDBG § 40b, where the annex leaves Z 6 out („1. bis 6. …") though the
  * draft changes it — the BGBl bench's one identical confirmation lost at
  * 60, 120 and 200 Bundesgesetzblätter —, and HSG § 7, whose proposed column
@@ -277,6 +279,14 @@
  *   headings (`konsTree.context`), and nothing here holds them.
  * - A unit missing from RIS that the annex skips silently (Lücke-beide,
  *   3 of 16), as before.
+ * - A § heading the draft adds beneath a group heading that both columns
+ *   print: where the geltende column prints the group heading in front of
+ *   the § symbol, `stackOkFor` lets any prefix go, so a result without the
+ *   new heading is still confirmed (found by the branch review, 19.11.2026;
+ *   not a regression — the BBG § 61 rule covers §§ without such a stack).
+ * - Wort-weg on the PDF path rose 99,6 → 99,9 % by its denominator, not by
+ *   catches: the misses sat in §§ whose confirmations check 3 in place
+ *   withdraws.
  *
  * Held to the `--mindestens` floor (`flooredWordClasses`): every class at
  * ≥ 95 % on both paths with ≥ 20 tries when measured — Überschrift,
