@@ -179,6 +179,12 @@
  *   prints anything: the engine touching text the draft does not touch.
  *   Check 3's ground. Broken down by whether an unchanged row prints the
  *   site or nothing does.
+ * - **Zurück / Zurück-gleich** (19.11.2026) — an Absatz the engine struck put
+ *   back under its old number, the Absätze after it renumbered back: a
+ *   deletion with its renumbering carried out by neither half (BVergGVS
+ *   § 30). „-gleich" where it opens like the Absatz after it. Before checks 4
+ *   and 5 learnt the shape: 41 of 46 caught on the PDF path and 20 of 25 on
+ *   the table path, 2 of 3 of „-gleich" on each; after: all of them.
  *
  * `checkOf` names which of the five checks caught each fault (P2r: check 2's
  * row order). 19.11.2026, GP XXVIII, 104 PDF and 137 table drafts — before
@@ -1142,6 +1148,41 @@ function headingFault(node: LawNode, tokens: readonly string[], rows: readonly C
   return heading === node.heading ? null : { node: { ...node, heading }, shows: `„${node.heading}" → „${heading}"` }
 }
 
+/**
+ * **Zurück** — the struck Absatz back in the result under the number it had,
+ * the rest of the result as the engine made it: „Abs. 8 entfällt; Abs. 9
+ * erhält die Absatzbezeichnung (8)" carried out by neither half (BVergGVS
+ * § 30, 58/ME XXVIII, 19.11.2026). Built on the tree, so the faulted result
+ * is one the engine could produce. Only where exactly one Absatz went and a
+ * changed row of the annex prints it. **Zurück-gleich** is the sub-class
+ * where the restored Absatz opens with the words of the one after it — the
+ * shape check 4 skipped until 19.11.2026, because the LCS pairs the proposed
+ * Absatz with the struck one's opening.
+ */
+function restoredAbsatz(beforeNode: LawNode, node: LawNode, rows: readonly ComparisonRow[]): { node: LawNode; shows: string; sameOpening: boolean } | null {
+  const before = beforeNode.children.filter((c) => c.level === 'abs')
+  const after = node.children.filter((c) => c.level === 'abs')
+  if (before.length !== after.length + 1 || before.some((a) => !a.id) || after.some((a) => !a.id)) return null
+  const gotKey = containmentKey(plainText(node))
+  const changedCur = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged' && r.current).flatMap((r) => printedStretches(normalizeText(r.current))).map(containmentKey).join('\u0000')
+  const opening = (n: LawNode): string => containmentKey(plainText(n).split(/\s+/).slice(0, 3).join(' '))
+  for (const [i, a] of before.entries()) {
+    const k = containmentKey(plainText(a))
+    if (k.length < 20 || gotKey.includes(k.slice(0, 60)) || !changedCur.includes(k.slice(0, 40))) continue
+    // The Absätze after it take back the numbers they had.
+    const children = node.children.map((c) => {
+      const j = after.indexOf(c)
+      return j >= i ? { ...c, id: before[j + 1]!.id, marker: before[j + 1]!.marker } : c
+    })
+    const at = i === 0 ? children.findIndex((c) => c.level === 'abs') : children.findIndex((c) => c.level === 'abs' && c.id === before[i - 1]!.id) + 1
+    if (at < 0 || (i > 0 && at === 0)) return null
+    children.splice(at, 0, a)
+    const next = before[i + 1]
+    return { node: { ...node, children }, shows: `Abs. ${a.id} samt Nummern zurück`, sameOpening: next !== undefined && opening(a) === opening(next) }
+  }
+  return null
+}
+
 /** Which of the oracle's checks a verdict's note comes from — the columns of the word table. */
 function checkOf(note: string | null): string {
   if (!note) return '?'
@@ -1387,6 +1428,13 @@ async function injectIntoResults(
           }
         }
       }
+      if (beforeNode) {
+        const restored = restoredAbsatz(beforeNode, node, paraRows)
+        if (restored) {
+          judgeWord(oracleFaults.Zurueck, plainText(restored.node), restored.node, restored.shows, null)
+          if (restored.sameOpening) judgeWord(oracleFaults.ZurueckGleich, plainText(restored.node), restored.node, restored.shows, null)
+        }
+      }
       for (const [replaced, into] of [[false, oracleFaults.E], [true, oracleFaults.Ersatz]] as const) {
         const fault = withKeptRemoval(before, got, replaced)
         if (!fault) continue
@@ -1447,11 +1495,13 @@ const oracleFaults = {
   UngedrucktWeg: oracleTally('Ungedruckt-weg Wort fehlt'),
   UngedrucktNeu: oracleTally('Ungedruckt-neu Wort zu viel'),
   UngedrucktZahl: oracleTally('Ungedruckt-Zahl Zahl geändert'),
+  Zurueck: oracleTally('Zurück Absatz samt Nummern zurück'),
+  ZurueckGleich: oracleTally('Zurück-gleich … gleicher Anfang'),
 }
 /** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
-const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl]
+const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich]
 /** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
-const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.UngedrucktZahl]
+const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck]
 
 const docs: any[] = []
 for (let page = 1; page <= 4 && docs.length < limit; page++) {

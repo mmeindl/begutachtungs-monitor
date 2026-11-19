@@ -1116,8 +1116,19 @@ function regionsOf(runs: readonly TokenRun[]): Region[] {
  * - *Inside a printed stretch* — kept words on both sides. Check 2 already
  *   answers it: it wants the stretch as one unbroken run, so text left
  *   standing in its middle breaks it. That is why three quarters of the
- *   injected faults were caught before this check existed, and nothing is
- *   asked here.
+ *   injected faults were caught before this check existed. **Except where
+ *   the region is only inside by the LCS's choice** (19.11.2026): a pure
+ *   deletion whose struck words end with the words from the stretch's start
+ *   to it, or begin with those from it to the stretch's end, is the same
+ *   deletion set at the stretch's edge — „Der Auftraggeber hat [die Vergabe
+ *   … Gesamtpreis. Der Auftraggeber hat] über jeden …" is „[Der Auftraggeber
+ *   hat die Vergabe … Gesamtpreis.] Der Auftraggeber hat über jeden …". The
+ *   LCS takes the first equal words it meets, so a struck Absatz that opens
+ *   like the next one lands in the middle, check 2 finds the stretch whole
+ *   (the next Absatz), and the struck Absatz in front of it went unasked:
+ *   BVergGVS § 30 (58/ME XXVIII against BGBl. I Nr. 8/2026) was confirmed
+ *   with the Abs. 8 the annex strikes. Such a region is read at that edge,
+ *   in the words it strikes there.
  * - *At the edge of a printed stretch* — after its last word or before its
  *   first, where the row ends or the ressort set „…". Here the proposed
  *   column is intact and the extra text merely stands beside it, which is
@@ -1200,9 +1211,24 @@ export function keptDeletion(got: string, rows: readonly ComparisonRow[]): strin
       if (!region.strikes || region.elided) continue
       const leftPrinted = region.from > 0 && proposed[region.from - 1] !== ELISION
       const rightPrinted = region.to < proposed.length && proposed[region.to] !== ELISION
-      if (leftPrinted && rightPrinted) continue
       const inserted = region.to > region.from
       const width = Math.min(PROBE, Math.max(...region.pieces.map((piece) => piece.length)))
+      if (leftPrinted && rightPrinted) {
+        const edge = slidToEdge(region, proposed, inserted)
+        const k = stretchOf[region.from - 1]!
+        const slid = (piece: readonly string[], beside: string[]): boolean => beside.length >= MIN_KEPT && runAt(piece, beside) >= 0 && runAt(shownRight, beside) < 0
+        const end = ends[k]
+        if (edge.right && end != null) {
+          const beside = gotTokens.slice(end, end + width)
+          if (slid(edge.right, beside)) return beside.join(' ')
+        }
+        const start = starts[k]
+        if (edge.left && start != null) {
+          const beside = gotTokens.slice(Math.max(0, start - width), start)
+          if (slid(edge.left, beside) && runAt(heading, beside) < 0) return beside.join(' ')
+        }
+        continue
+      }
       // The stretch the region closes: the words after it in the result.
       const end = !rightPrinted && (leftPrinted || inserted) ? ends[stretchOf[region.to - 1]!] : null
       if (end != null) {
@@ -1226,6 +1252,31 @@ export function keptDeletion(got: string, rows: readonly ComparisonRow[]): strin
     }
   }
   return null
+}
+
+/**
+ * A pure deletion inside a printed stretch, read where the LCS could equally
+ * have put it (`keptDeletion`): `left`, the words it strikes once moved to
+ * the stretch's start — where its struck words end with the words from that
+ * start to it —, `right` the same at the stretch's end. Null for a side it
+ * cannot move to, and for a region that also inserts or spans the current
+ * column's own marks: moved, those would be another change.
+ */
+function slidToEdge(region: Region, proposed: readonly string[], inserted: boolean): { left: string[] | null; right: string[] | null } {
+  if (inserted || region.pieces.length !== 1) return { left: null, right: null }
+  const struck = region.pieces[0]!
+  let s0 = region.from
+  while (s0 > 0 && proposed[s0 - 1] !== ELISION) s0--
+  let e0 = region.to
+  while (e0 < proposed.length && proposed[e0] !== ELISION) e0++
+  const before = proposed.slice(s0, region.from)
+  const after = proposed.slice(region.to, e0)
+  const left = before.length < struck.length && before.every((w, i) => struck[struck.length - before.length + i] === w)
+  const right = after.length < struck.length && after.every((w, i) => struck[i] === w)
+  return {
+    left: left ? [...before, ...struck.slice(0, struck.length - before.length)] : null,
+    right: right ? [...struck.slice(after.length), ...after] : null,
+  }
 }
 
 /** How check 2 reports a row that stands in the result, but before the row the annex prints above it. */
@@ -1252,9 +1303,7 @@ function absatzMarkers(cell: string, own: string | null = null): string[] {
   // ending a sentence („nach § 13.") is no place to cut.
   // A chain without its „…" reads as the one with it (`markedOmissions`), so
   // the marker behind it stands where a marker can stand.
-  const full = markedOmissions(cell)
-  const symbol = own ? new RegExp(`§+\\s*${own.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.\\s`).exec(full) : null
-  const text = symbol ? full.slice(symbol.index) : full
+  const text = ownPart(markedOmissions(cell), own)
   for (const m of text.matchAll(ABSATZ_RUN_RE)) {
     // „(2) Aufgehoben." is the annex's way of saying the Absatz is gone, and
     // RIS prints nothing in its place (`REPEALED_RE`).
@@ -1263,6 +1312,12 @@ function absatzMarkers(cell: string, own: string | null = null): string[] {
   }
   return out
 }
+/** The cell from its own § symbol on — `own` null or not printed: the whole cell. */
+function ownPart(cell: string, own: string | null): string {
+  const symbol = own ? new RegExp(`§+\\s*${own.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.\\s`).exec(cell) : null
+  return symbol ? cell.slice(symbol.index) : cell
+}
+
 /** A marker where one can stand, and the chain „bis"/„und" may hang on it. */
 const ABSATZ_RUN_RE = /(?:^|(?<=[.:;…]\s*)|(?<=\.\.\.\s*))\(\d{1,3}[a-z]?\)(?:\s+(?:bis|und)\s+\(\d{1,3}[a-z]?\))*(?=\s|$)/g
 
@@ -1288,6 +1343,11 @@ const ABSATZ_RUN_RE = /(?:^|(?<=[.:;…]\s*)|(?<=\.\.\.\s*))\(\d{1,3}[a-z]?\)(?:
  * what the reader sees. Not where the tree holds an Absatz without a number:
  * RIS prints some first Absätze bare, and then the annex's „(1)" has
  * nothing to meet (`absatzSequence` → undefined).
+ *
+ * **And the reverse, since 19.11.2026:** an Absatz the annex strikes —
+ * printed with its words on the left, on the right nowhere — must not stand
+ * in the result. The text checks miss it where the struck Absatz opens like
+ * the next one (`keptDeletion`); its marker does not.
  */
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function absatzOrderBroken(rows: readonly ComparisonRow[], resultAbsaetze: readonly string[], standingAbsaetze: readonly string[] | null = null, own: string | null = null): { note: string; foreign: boolean } | null {
@@ -1318,7 +1378,67 @@ export function absatzOrderBroken(rows: readonly ComparisonRow[], resultAbsaetze
     const foreign = standingAbsaetze !== null && !standingAbsaetze.includes(m) && assumed.has(m)
     return { note: `(${m}) fehlt im Ergebnis${foreign ? ' und im geltenden Text' : ''}`, foreign }
   }
+  // The other direction (19.11.2026): an Absatz the geltende column prints
+  // with its words, that no proposed column prints or chains over, struck —
+  // and still in the result. „(8) Der Auftraggeber hat die Vergabe … (9) Der
+  // Auftraggeber hat über …" against „(8) Der Auftraggeber hat über …":
+  // check 4 found no edge for the struck (8), and check 2 found the proposed
+  // stretch whole in the old (9) (BVergGVS § 30). A row that proposes
+  // nothing strikes even the Absätze it abbreviates („§ 20. (1) ... (2) …
+  // (3) …" against an empty column, IESG § 20); a row that proposes text
+  // speaks only for the markers its words follow — an omission or a chain
+  // („(1) …", „(1) bis (3) …") is printed on one side only as often as not.
+  const covered: [string, string][] = []
+  const struck: string[] = []
+  for (const row of rows) {
+    if (row.kind !== 'pair') continue
+    if (row.proposed) covered.push(...markerRuns(row.proposed))
+    if (row.current) struck.push(...(row.proposed ? markersOpeningText(row.current, own) : absatzMarkers(row.current, own)))
+  }
+  for (const m of struck) {
+    if (!resultAbsaetze.includes(m) || covered.some(([a, b]) => absatzAtMost(a, m) && absatzAtMost(m, b))) continue
+    return { note: `(${m}) steht noch im Ergebnis`, foreign: false }
+  }
   return null
+}
+
+/**
+ * Every Absatz marker a cell prints, anywhere, as [first, last] — „(4) bis
+ * (7)" as one run. Lenient on purpose, because it only ever excuses: „(3)…"
+ * glued to its mark and „[…] (5)" are markers the strict reader
+ * (`ABSATZ_RUN_RE`) does not take, and read strictly they made a struck
+ * Absatz out of one the right column merely abbreviates.
+ */
+function markerRuns(cell: string): [string, string][] {
+  const out: [string, string][] = []
+  for (const m of normalizeText(cell).matchAll(/\((\d{1,3}[a-z]?)\)(?:\s*(bis|und)\s*\((\d{1,3}[a-z]?)\))?/g)) {
+    if (m[2] === 'bis') out.push([m[1]!, m[3]!])
+    else {
+      out.push([m[1]!, m[1]!])
+      if (m[3]) out.push([m[3], m[3]])
+    }
+  }
+  return out
+}
+
+/** The Absatz markers a cell prints where one can stand AND its words follow — not a chain, not an omission, not „Aufgehoben". */
+function markersOpeningText(cell: string, own: string | null): string[] {
+  const text = ownPart(markedOmissions(cell), own)
+  const out: string[] = []
+  for (const m of text.matchAll(ABSATZ_RUN_RE)) {
+    if (/\s(?:bis|und)\s/.test(m[0])) continue
+    const rest = text.slice(m.index! + m[0].length)
+    if (!/^\s*\p{L}/u.test(rest) || /^\s*(?:Aufgehoben|\(aufgehoben\)|entfällt|bis|und)(?!\p{L})/iu.test(rest)) continue
+    out.push(/\((\d{1,3}[a-z]?)\)/.exec(m[0])![1]!)
+  }
+  return out
+}
+
+/** „2a" ≤ „3", „2" ≤ „2a": Absatz designations in their order. */
+function absatzAtMost(a: string, b: string): boolean {
+  const [, na = '0', la = ''] = /^(\d+)([a-z]*)$/.exec(a) ?? []
+  const [, nb = '0', lb = ''] = /^(\d+)([a-z]*)$/.exec(b) ?? []
+  return Number(na) < Number(nb) || (Number(na) === Number(nb) && la <= lb)
 }
 
 /**

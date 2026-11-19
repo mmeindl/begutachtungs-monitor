@@ -1049,3 +1049,47 @@ describe('check 2 holds the rows of a § in the order the annex prints them (19.
     expect(swapped.note).toMatch(/^Vorgeschlagene Fassung steht im Ergebnis an anderer Stelle/)
   })
 })
+
+describe('a struck Absatz still in the result, where it opens like the next one (BVergGVS § 30, 19.11.2026)', () => {
+  // 58/ME XXVIII against BGBl. I Nr. 8/2026: the annex strikes Abs. 8 and
+  // renumbers Abs. 9 to (8); both open „Der Auftraggeber hat". The LCS paired
+  // the proposed (8) with the struck one's opening, check 4 skipped the region
+  // as inside a printed stretch, and check 2 found the stretch whole in the old
+  // Abs. 9 — the § was confirmed with the Abs. 8 the annex strikes.
+  const abs = ['Die Behörde prüft den Antrag.', 'Sie hört die Parteien.', 'Sie entscheidet schriftlich.', 'Die Entscheidung ist zuzustellen.', 'Der Auftraggeber hat die Vergabe binnen 20 Tagen bekanntzumachen.', 'Der Auftraggeber hat über jeden Auftrag einen Vermerk anzufertigen.']
+  const before = abs.join(' ')
+  const rows = [pair(`§ 9. (1) ${abs[0]} (2) bis (4) … (5) ${abs[4]} (6) ${abs[5]}`, `§ 9. (1) ${abs[0]} (2) bis (4) … (5) ${abs[5]}`, '§ 9.')]
+  const kept = ['1', '2', '3', '4', '5', '6']
+  const right = abs.filter((_, i) => i !== 4).join(' ')
+
+  it('check 4 reads the deletion where the LCS could equally have put it: at the stretch\'s edge', () => {
+    expect(keptDeletion(before, rows)).toMatch(/die Vergabe binnen 20 Tagen/)
+    expect(keptDeletion(right, rows)).toBeNull()
+    expect(oracleVerdict('9', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })
+    expect(oracleVerdict('9', before, right, rows, ['1', '2', '3', '4', '5'], kept)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('check 5 names the struck Absatz still standing', () => {
+    expect(absatzOrderBroken(rows, kept, kept, '9')).toEqual({ note: '(6) steht noch im Ergebnis', foreign: false })
+    expect(absatzOrderBroken(rows, ['1', '2', '3', '4', '5'], kept, '9')).toBeNull()
+  })
+
+  it('a row that proposes nothing strikes even the Absätze it abbreviates (IESG § 20)', () => {
+    // The draft dissolves § 20 into § 17a; the engine refused that and kept
+    // the body, and check 2's mirror stayed silent because the heading, one
+    // stretch of the row, was gone.
+    const struck = [pair('Inkrafttreten § 20. (1) ... (2) … (3) …', '', '§ 20.')]
+    expect(absatzOrderBroken(struck, ['1', '2', '3'], ['1', '2', '3'], '20')).toEqual({ note: '(1) steht noch im Ergebnis', foreign: false })
+    expect(absatzOrderBroken(struck, [], ['1', '2', '3'], '20')).toBeNull()
+  })
+
+  it('strikes nothing the right column merely abbreviates, glues to its mark or chains over', () => {
+    // Patentamtsgebührengesetz § 26 („(3)…"), GD-VO § 12 („[…] (5)"),
+    // Bundespflegegeldgesetz § 22 („(1) …" against „…"), UG § 60 („(1) bis (3)...").
+    const seq = ['1', '2', '3', '4', '5', '6']
+    expect(absatzOrderBroken([pair('§ 26. (1) Alt eins. (2) Alt zwei. (3) … (4) Alt vier.', '§ 26. (1) Neu eins. (2) Neu zwei. (3)… (4) Neu vier.', '§ 26.')], seq.slice(0, 4), seq.slice(0, 4), '26')).toBeNull()
+    expect(absatzOrderBroken([pair('§ 12. (1) […] […]. (5) Für das Berichtsjahr gilt Abs. 4.', '§ 12. (1) […] […] (5) Für das Berichtsjahr gilt Abs. 4. (6) Neu.', '§ 12.')], seq, seq.slice(0, 5), '12')).toBeNull()
+    expect(absatzOrderBroken([pair('(1) …', '…')], ['1', '2'], ['1', '2'])).toBeNull()
+    expect(absatzOrderBroken([pair('(1) bis (3) ...', '(1) bis (3)...'), pair('(4) Alt.', '(4) Neu.')], seq, seq)).toBeNull()
+  })
+})

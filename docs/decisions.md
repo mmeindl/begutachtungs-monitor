@@ -688,6 +688,15 @@ gets an entry of its own only where it carries a reason the rule does not.
   compares `plainText`, which carries no „(2)", „3." or „b)"; the page
   shows them. A confirmed § whose designations differ from the RIS text is
   to stay at 0.
+- **A struck Absatz is looked for where the LCS could equally have put its
+  deletion, and by its marker** (19.11.2026): check 4 reads a pure deletion
+  inside a printed stretch at the stretch's edge where its struck words end
+  or begin with the words between it and that edge, and check 5 contradicts
+  a result that still holds an Absatz the geltende column prints with its
+  words and no proposed column prints or chains over. The LCS takes the
+  first equal words it meets, so a struck Absatz that opens like the next
+  one landed inside the stretch, and BVergGVS § 30 was confirmed with the
+  Abs. 8 the annex strikes (`keptDeletion`, `absatzOrderBroken`).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
