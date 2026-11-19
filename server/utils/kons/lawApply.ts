@@ -1639,12 +1639,33 @@ function levelOf(child: string): NodeLevel | null {
   return child === 'abs' || child === 'z' || child === 'lit' || child === 'para' ? (child as NodeLevel) : null
 }
 
+/**
+ * **The new text carries every designation the line announces** (19.11.2026).
+ * „Dem § 5 wird folgender Abs. 4 angefügt" over a payload printing „(5)"
+ * installed (5) and reported success; „Nach § 5 wird folgender § 5a
+ * eingefügt" over „§ 5b." installed § 5b. The replacement branch has refused
+ * a payload under another designation all along; append and insertion did
+ * not look. More printed than announced is ordinary drafting (BGBl. I Nr.
+ * 81/2026 § 81: Abs. 49–52 announced, 49–53 printed) and passes; an
+ * announced number the text does not print is the contradiction. Null where
+ * there is none or nothing was announced.
+ *
+ * An unmarked unit does not take the announced number of its place. That
+ * reads one drafting slip right (Bäderhygiene-VO, 2. Novelle, an early
+ * version printing its first new Absatz without „(6)"), but over the corpus
+ * the unmarked unit was something else seven times in ten: a dash item of
+ * the Ziffer before it with the next Ziffer nested under it („Z 23 und 24",
+ * KStG § 26c), a continuation („oder gegen …"), a lone „102." whose number
+ * would print twice. The words cannot tell them apart; refused.
+ */
+function missingAnnounced(announced: readonly string[], payload: readonly LawNode[]): string | null {
+  const printed = new Set(payload.map((p) => p.id).filter(Boolean))
+  const missing = announced.find((id) => !printed.has(id))
+  return missing === undefined ? null : `Neuer Text trägt nicht die angekündigte Bezeichnung ${missing}`
+}
+
 /** Insert `nodes` into `host.children` behind (or in front of) the anchor. */
-function spliceChildren(host: LawNode, anchor: LawNode | null, level: NodeLevel, nodes: LawNode[], where: 'after' | 'before'): boolean {
-  if (anchor === null) {
-    host.children.push(...nodes)
-    return true
-  }
+function spliceChildren(host: LawNode, anchor: LawNode, level: NodeLevel, nodes: LawNode[], where: 'after' | 'before'): boolean {
   const at = anchor.level === level ? host.children.indexOf(anchor) : -1
   if (at < 0) return false
   host.children.splice(where === 'after' ? at + 1 : at, 0, ...nodes)
@@ -2123,6 +2144,8 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // the shape whose words would vanish, since an unmarked closing line or
       // dash item keeps its words where the draft prints them.
       if (payload.some((p) => !p.id && p.heading)) return 'Angefügte Einheit ohne eigene Bezeichnung'
+      const notAnnounced = missingAnnounced(op.childIds, payload)
+      if (notAnnounced) return notAnnounced
       const nodes = payload.map((p) => ({ ...p, level }))
       for (const n of nodes) if (n.id && childById(host, level, n.id)) return `${n.marker} existiert bereits`
       // The end of the enumeration, not the end of the node. Where the Absatz
@@ -2216,6 +2239,8 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
           const holders = law.paragraphs.filter((x) => x.id === p.id && !isSchedule(x.marker))
           if (holders.length > 0 && !mayShare(law, p.id, holders, `§ ${p.id} existiert bereits`)) return `§ ${p.id} existiert bereits`
         }
+        const notAnnounced = missingAnnounced(op.childIds, blocks)
+        if (notAnnounced) return notAnnounced
         const inserted = blocks.map((p): LawNode => ({ ...p, level: 'para' as const }))
         if (!anchor) {
           if (blocks.length !== op.childIds.length || blocks.some((p, i) => p.id !== op.childIds[i])) return `${op.anchor.para} — die eingefügten Paragraphen sind nicht die angekündigten`
@@ -2232,7 +2257,13 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       if (op.anchor.siblings.length > 0) return ONE_PLACE_SIBLINGS
       const para = findParagraph(law, op.anchor)
       if (!para) return `§ nicht im geltenden Text: ${op.anchor.para}`
-      const anchorId = op.anchor.level === 'para' ? null : deepestId(op.anchor)
+      // „Nach § 18c wird folgender Abs. 1a eingefügt" names no unit inside
+      // the § to stand behind, and pushed onto the § the new Absatz read
+      // (1)(2)(3)(1a) where RIS has (1)(1a)(2)(3) (AVRAG, BGBl. I Nr.
+      // 66/2026; „Vor § 7 … Abs. 0a" went to the end as well). Its number
+      // could place it, but a § need not list its units in order
+      // (KommAustria-G § 35 reads (1h) before (1g)), so: refused (19.11.2026).
+      if (op.anchor.level === 'para') return 'Einfügung neben dem ganzen Paragraphen — Stelle der neuen Einheit nicht bestimmbar'
       // The anchor where the address puts it, and only there, once. Until
       // 22.10.2026 a null from `resolveTarget` fell back on the § itself, and
       // the search below took the FIRST unit of that number: „Nach § 5 Abs. 6
@@ -2245,9 +2276,9 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // place to guess at, and a unit the fallback found was always one
       // `resolveTarget` had refused. Over both Prüfstände (200 Entwürfe, 60
       // BGBl) it carried out no insertion at all, so nothing there moves.
-      const host = anchorId === null ? para : resolveTarget(law, op.anchor)
+      const host = resolveTarget(law, op.anchor)
       if (!host) return `${repeatedOnTheWay(para, op.anchor) ? 'Anker nicht eindeutig' : 'Anker nicht gefunden'}: ${op.anchor.raw.slice(0, 60)}`
-      const container = anchorId === null ? para : parentOf(law, host)
+      const container = parentOf(law, host)
       if (!container) return 'Elternknoten nicht gefunden'
       // A new Absatz, Ziffer or Litera prints its own designation. Without
       // one the payload line was read as something else — „nach Abs. 7
@@ -2256,6 +2287,8 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // insertion reported success (Bundesstraßengesetz 1971 § 7, 30.09.2026).
       // The Paragraph branch above refuses the same case; this one never did.
       if ((level === 'abs' || level === 'z' || level === 'lit') && payload.some((p) => !p.id || p.level !== level)) return 'Eingefügte Einheit ohne eigene Bezeichnung'
+      const notAnnounced = missingAnnounced(op.childIds, payload)
+      if (notAnnounced) return notAnnounced
       const nodes = payload.map((p) => ({ ...p, level }))
       for (const n of nodes) {
         // A number the standing unit keeps until a later line moves it on
@@ -2267,7 +2300,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       }
       // Behind the unit the address found (`resolveTarget`), not behind the
       // first of its number: while two carry it, the instruction means one.
-      if (!spliceChildren(container, anchorId === null ? null : host, level, nodes, op.where)) return `Anker nicht gefunden: ${op.anchor.raw.slice(0, 60)}`
+      if (!spliceChildren(container, host, level, nodes, op.where)) return `Anker nicht gefunden: ${op.anchor.raw.slice(0, 60)}`
       for (const n of nodes) arriveUnit(law, n)
       return null
     }

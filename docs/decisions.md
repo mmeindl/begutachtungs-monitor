@@ -838,6 +838,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   apparatus stays out: italics, „Anm", footnotes, the footnote rule and the
   italic blocks behind a numbered note, a note split over two blocks, and a
   line that heads the next numbered Absatz (`lawtext/konsTree.ts`).
+- **A new unit's text prints every number its line announces** (19.11.2026),
+  for appended and inserted Absätze, Ziffern, Literae and §§; more printed
+  than announced passes. An unmarked unit never takes the announced number
+  of its place: over the corpus it was a misread dash item or continuation
+  seven times in ten. A sub-unit anchored only to a whole § („Nach § 18c …
+  Abs. 1a") is refused, since a § need not list its units in order
+  (`kons/lawApply.ts`).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

@@ -2659,3 +2659,50 @@ describe('an appended unit whose words the payload parser could not place (19.11
     expect(refused[0]!.reason).toBe('Bild im neuen Text — nicht als Gesetzestext abbildbar')
   })
 })
+
+describe('an appended unit is the unit the line announces (19.11.2026)', () => {
+  function law(): StandingLaw {
+    const p = makeNode('para', '5', '§ 5.', '', 'Daten')
+    const a = makeNode('abs', '1', '(1)', 'Zu erfassen sind:')
+    const z1 = makeNode('z', '1', '1.', 'Name, und zwar')
+    z1.children.push(makeNode('lit', 'a', 'a)', 'Familienname;'), makeNode('lit', 'b', 'b)', 'Vorname;'))
+    a.children.push(z1, makeNode('z', '2', '2.', 'Geburtsdatum.'))
+    p.children.push(a)
+    return { paragraphs: [p] }
+  }
+  const outcome = (line: string, payload: string[]) => run(law(), instr(line, payload)).results.map((r) => (r.applied ? 'applied' : r.reason))
+
+  it('refuses a payload whose designation is not the announced one', () => {
+    expect(outcome('Dem § 5 Abs. 1 wird folgende Z 3 angefügt:', ['4. Wohnort.'])[0]).toMatch(/^Neuer Text trägt nicht die angekündigte Bezeichnung/)
+    expect(outcome('Dem § 5 Abs. 1 wird folgende Z 3 angefügt:', ['3. Wohnort.'])).toEqual(['applied'])
+    // More printed than announced is the ordinary case (Abs. 49–52 announced, 49–53 printed).
+    expect(outcome('Dem § 5 Abs. 1 wird folgende Z 3 angefügt:', ['3. Wohnort;', '4. Beruf.'])).toEqual(['applied'])
+  })
+
+  // Both went in as units with no number: a dash item of Z 23 with Z 24
+  // nested under it (KStG § 26c), and an Absatz printed without its „(6)"
+  // (Bäderhygiene-VO, 2. Novelle, early version), which a marker-blind check
+  // confirms. The words cannot tell a slip from a misread unit.
+  it('refuses an unmarked unit where the line announces a number', () => {
+    const z = run(law(), instr('In § 5 Abs. 1 werden folgende Z 3 und 4 angefügt:', ['3. Zuwendungen, und zwar', '- die vor 2011 zugewendet werden,', '4. Beruf.']))
+    expect(z.results[0]!.reason).toBe('Neuer Text trägt nicht die angekündigte Bezeichnung 4')
+    const standing = (): StandingLaw => ({ paragraphs: [para('43', 'Titel', ['Eins.', 'Zwei.', 'Drei.', 'Vier.', 'Fünf.'])] })
+    const payload = ['Ergibt eine Untersuchung den Nachweis von Legionellen, ist die Wirksamkeit der Maßnahmen zu belegen', '1. bei Pseudomonas binnen sechs Monaten;', '2. bei Legionellen unverzüglich.', '(7) Sieben.', '(8) Acht.']
+    expect(run(standing(), instr('Dem § 43 werden folgende Abs. 6 bis 8 angefügt:', payload)).results[0]!.reason).toBe('Neuer Text trägt nicht die angekündigte Bezeichnung 6')
+    expect(run(standing(), instr('Dem § 43 werden folgende Abs. 6 bis 8 angefügt:', ['(6) Sechs.', ...payload.slice(3)])).results[0]!.applied).toBe(true)
+  })
+
+  // AVRAG § 18c (BGBl. I Nr. 66/2026): „Nach § 18c wird folgender Abs. 1a
+  // eingefügt" went to the end of the §, (1)(2)(3)(1a).
+  it('refuses a sub-unit inserted behind a whole §', () => {
+    const standing = (): StandingLaw => ({ paragraphs: [para('18c', 'Titel', ['Eins.', 'Zwei.', 'Drei.'])] })
+    const { results } = run(standing(), instr('Nach § 18c wird folgender Abs. 1a eingefügt:', ['(1a) Neu.']))
+    expect(results[0]!.reason).toMatch(/^Einfügung neben dem ganzen Paragraphen/)
+    expect(run(standing(), instr('In § 18c wird nach Abs. 1 folgender Abs. 1a eingefügt:', ['(1a) Neu.'])).results[0]!.applied).toBe(true)
+  })
+
+  it('refuses a § inserted under another number than announced', () => {
+    const { results } = run({ paragraphs: [para('5', 'Titel', ['Eins.'])] }, instr('Nach § 5 wird folgender § 5a eingefügt:', ['§ 5b. Neu.']))
+    expect(results[0]!.reason).toMatch(/^Neuer Text trägt nicht die angekündigte Bezeichnung/)
+  })
+})
