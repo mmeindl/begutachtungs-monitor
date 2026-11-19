@@ -48,9 +48,7 @@ import { applyNovelle, instructionsFromUnits, renamedOrigins, resolveTarget, typ
 import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
-import { sameStammnormCited } from '../../server/utils/lawtext/bgblCitation'
 import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
-import { lawNameScore } from '../../server/utils/lawtext/lawNames'
 import { namedParagraphs, type NovaoAddress } from '../../server/utils/kons/novao'
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../../server/utils/harness/risKonsHistory'
@@ -66,8 +64,9 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { asArray } from '../lib/ris'
-import { anlageLabelKey, bareParaId, isDivision, isSchedule } from '../../server/utils/text/designation'
+import { anlageLabelKey, bareParaId, isSchedule } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
+import { harnessKey, kindKey, matchArticle, scoredKey, unchangedClass, UNCHANGED_CLASSES, type UnchangedClass } from './konsJudge'
 
 interface Verdict {
   bgbl: string
@@ -98,20 +97,6 @@ interface Verdict {
   note: string | null
 }
 
-/**
- * Why a § the engine left as it stood, while RIS changed it, stands so.
- *
- * The summary filed all of them as „ungefährlich, wird verweigert" and never
- * checked it. 28 of 189 were not refused at all (19.11.2026): five were §§
- * whose only instruction `segmentUnits` had dropped (SBBG § 5, ÄrzteG §§ 6a
- * and 7, StVfG § 1 — the line was in no unit, so it was neither applied nor
- * refused), the rest Anlagen the engine refused under a designation this
- * bench cannot key, §§ no line of the Novelle names, and §§ an applied
- * instruction touched without changing them. Only the first class is the
- * harmless one the legend promised; the others are printed by name.
- */
-const UNCHANGED_CLASSES = ['verweigert', 'angewendet', 'Anlage', 'ungenannt'] as const
-type UnchangedClass = (typeof UNCHANGED_CLASSES)[number]
 const UNCHANGED_LEGEND: Record<UnchangedClass, string> = {
   verweigert: 'verweigert — ungefährlich, die Seite hält ihn zurück',
   angewendet: 'eine Anweisung nennt ihn, nichts verweigert ihn — kein geltender Text',
@@ -124,28 +109,6 @@ const unchangedListed: string[] = []
 
 type VersionPair = { before: KonsParagraphRef | null; after: KonsParagraphRef; afters: KonsParagraphRef[] }
 
-/**
- * The bare number this Prüfstand holds its §§ under — and none for a division
- * above the § („Abschnitt 4"), which the site keys apart (`unitKey`) and
- * which locked § 4 here under its number.
- */
-const harnessKey = (label: string): string | null => (isDivision(label) ? null : bareParaId(label))
-
-/**
- * The key a RIS label's § is scored under — the engine's id for it.
- *
- * „Art. 1 § 3", a law organised in Artikel, is § 3: the first number is the
- * Artikel's. Read by the first number, the bench held the engine's § 1
- * against RIS's § 3 and booked an „eigene Abweichung" that was neither
- * (AlVG, BGBl. I Nr. 62/2026) — and every other § of such a law found no
- * engine node under its Artikel's number and was silently never scored: 45
- * §§ of six laws in the 60-BGBl run (GGG, FinStrG, AlVG, BEinstG, PreisG,
- * LMBG), 41 of them identical (19.11.2026).
- * Where two labels of one law come to the same key, neither is scored
- * (`ambiguousLabels`): which Artikel's § 3 the engine holds is a question
- * this bench does not answer for it.
- */
-const scoredKey = (label: string): string | null => harnessKey(label.replace(/^Art\.\s*\S+\s+(?=§)/, ''))
 let ambiguousLabels = 0
 
 const verbose = !argFlag('quiet')
@@ -685,48 +648,6 @@ function readAnnex(recordId: string, documents: ReturnType<NonNullable<typeof an
 }
 
 /**
- * The draft's Artikel that amends the same law as this BGBl Artikel.
- *
- * The Stammnorm decides: it is the citation both Promulgationsklauseln print
- * for the same law, and it survives everything the parliamentary stage does
- * to Artikel numbers and headings. Where it is missing on either side — the
- * UGB's Stammnorm is "dRGBl. S. 219/1897" and yields no BgblCitation — the
- * headings decide, but only when one fits clearly better than every other;
- * a tie ends the oracle for this Artikel, because the alternative is holding
- * the engine's § 5 against another law's § 5.
- *
- * **One Bundesgesetzblatt that created several laws is no tie.** The
- * Fremdenrechtspaket BGBl. I Nr. 100/2005 is the Stammnorm of the AsylG,
- * the FPG and the NAG; 107/2017 of the BörseG 2018 and the WAG 2018; 65/2018
- * of the BVergG 2018 and the BVergGKonz 2018. Where several draft Artikel cite
- * the Stammnorm, the heading decides among them, by the same rule — and only
- * among them. Until 19.11.2026 the Stammnorm tie ended the oracle for six of
- * the laws of the 60-BGBl run although each heading matched one Artikel word
- * for word. A missing Teil is no contradiction („BGBl. Nr. 87/2012" for the
- * BFA-G, `sameStammnormCited`), two different Teile still are.
- */
-function matchArticle(candidates: readonly DraftArticle[], article: DraftArticle): DraftArticle | { reason: string } {
-  let pool = candidates
-  if (article.bgbl) {
-    const byBgbl = candidates.filter((c) => c.bgbl && sameStammnormCited(c.bgbl, article.bgbl!))
-    if (byBgbl.length === 1) return byBgbl[0]!
-    if (byBgbl.length > 1) pool = byBgbl
-  }
-  if (!article.title) return { reason: 'das Bundesgesetzblatt nennt keinen Titel' }
-  let best: { article: DraftArticle; score: number } | null = null
-  let runnerUp = 0
-  for (const c of pool) {
-    const score = c.title ? lawNameScore(article.title, c.title) : 0
-    if (!best || score > best.score) {
-      runnerUp = best?.score ?? 0
-      best = { article: c, score }
-    } else if (score > runnerUp) runnerUp = score
-  }
-  if (best && best.score >= 0.6 && best.score > runnerUp) return best.article
-  return { reason: pool === candidates ? 'kein Artikel nennt das Gesetz, weder mit der Stammnorm noch im Titel' : `${pool.length} Artikel zitieren die Stammnorm, kein Titel passt eindeutig` }
-}
-
-/**
  * Every law one Bundesgesetzblatt amends, scored separately.
  *
  * The title hint is passed on only where the BGBl amends a single law; in a
@@ -893,7 +814,6 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // Which §§ a line of this Novelle names at all, by the key they are scored
   // under and their kind — „§ 1" does not name „Anl. 1" — to tell a § the
   // Novelle left alone from one it lost.
-  const kindKey = (designation: string, key: string | null | undefined): string => `${isSchedule(designation) ? 'Anl. ' : ''}${key ?? ''}`
   const namedKeys = new Set<string>()
   // A schedule the engine was told about under a designation no RIS label of
   // this law carries („Anhang I" for „Anl. 1", a bare „Anhang").
@@ -951,15 +871,9 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // the harness simply has no single text to hold it against.
     const staged = verdict === 'abweichend' && comparable && truths.length > 1 && isSubsetOfRis(beforeText ?? '', got, truths.map((t) => t.text).join(' '))
     if (staged) verdict = 'unvollständig'
-    const why: UnchangedClass | null = verdict !== 'unverändert'
+    const why = verdict !== 'unverändert'
       ? null
-      : id && refusedIds.has(id)
-        ? 'verweigert'
-        : namedKeys.has(kindKey(label, id))
-          ? 'angewendet'
-          : isSchedule(label) && unkeyedSchedule
-            ? 'Anlage'
-            : 'ungenannt'
+      : unchangedClass({ refused: Boolean(id && refusedIds.has(id)), named: namedKeys.has(kindKey(label, id)), schedule: isSchedule(label), unkeyedSchedule })
     if (id && !refusedIds.has(id)) {
       cleanTotal++
       if (verdict === 'identisch') cleanIdentical++
