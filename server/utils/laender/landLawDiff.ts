@@ -177,6 +177,14 @@ const SAME_CONTENT_SHARE = 0.5
  * the draft's single text with „Artikel I", and the comparison said the two
  * had nothing in common. An Artikel still unpaired goes to the unpaired one
  * that holds at least half of its instructions word for word, and the most.
+ *
+ * An instruction counts as word for word where its whole text is, or its
+ * instruction line without the quoted text (`heading`, 20.11.2026): the new
+ * text of a draft and its Kundmachung differ in what the Kundmachung fills
+ * in („LGBl Nr …/2025" → „126/2025") and in typesetting („–" for „-"). Sbg
+ * 33358 prints no „Artikel I"; its three instructions matched one of three
+ * by whole text and stood as removed and inserted beside an Artikel I that
+ * holds them, once the Kundmachung's Artikel II was read as well.
  */
 function landArticlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): { from: string | null; to: string | null }[] {
   const pairs: { from: string | null; to: string | null }[] = articlePairs(from, to).map((p) => ({ from: p.from, to: p.to }))
@@ -187,18 +195,24 @@ function landArticlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): { f
   const used = new Set<string | null>(pairs.map((p) => p.to).filter((a) => a !== null))
   const textsOf = (units: readonly LawUnit[], article: string | null) =>
     new Set(units.filter((u) => u.article === article).map((u) => clean(u.text).toLowerCase()))
+  const headsOf = (units: readonly LawUnit[], article: string | null) =>
+    new Set(units.filter((u) => u.article === article && u.heading).map((u) => clean(u.heading!).toLowerCase()))
+  /** Each unit's whole text and instruction line, for the share below. */
+  const linesOf = (units: readonly LawUnit[], article: string | null) =>
+    [...new Map(units.filter((u) => u.article === article).map((u) => [clean(u.text).toLowerCase(), u.heading ? clean(u.heading).toLowerCase() : null] as const))]
   const open = [...new Set(to.map((u) => u.article))].filter((a) => !used.has(a))
   for (const p of pairs) {
     if (p.to !== null) continue
-    const mine = textsOf(from, p.from)
-    if (!mine.size) continue
+    const mine = linesOf(from, p.from)
+    if (!mine.length) continue
     let best: { article: string | null; share: number } | null = null
     for (const article of open) {
       if (used.has(article)) continue
       const theirs = textsOf(to, article)
+      const theirHeads = headsOf(to, article)
       let hits = 0
-      for (const t of mine) if (theirs.has(t)) hits++
-      const share = hits / mine.size
+      for (const [text, head] of mine) if (theirs.has(text) || (head !== null && theirHeads.has(head))) hits++
+      const share = hits / mine.length
       if (share >= SAME_CONTENT_SHARE && (!best || share > best.share)) best = { article, share }
     }
     if (best) {

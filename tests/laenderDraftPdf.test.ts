@@ -265,6 +265,20 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     expect(packageChanges(single, kundmachung)).toEqual({ added: ['Artikel II Änderung des Oö. Y-Gesetzes'], dropped: [] })
   })
 
+  // Salzburg 33358 (20.11.2026): no „Artikel I" in the draft, and its new
+  // texts differ from the Kundmachung in what the Kundmachung fills in. By
+  // whole text they matched none, and stood as removed and inserted.
+  it('pairs an unnamed Artikel by its instruction lines where the quoted texts differ in what the Kundmachung fills in', () => {
+    const draftUnits = landDraftUnits([page('Verordnung der Landesregierung vom ……, mit der die X-Verordnung und die Y-Verordnung geändert werden', 'wird verordnet:',
+      'Die X-Verordnung, LGBl Nr 1/2020, wird geändert wie folgt:', '1. Im § 2 wird die Zeile „Wolf 1.1. – 31.12.“ angefügt.', '2. Im § 3 wird angefügt:', '„(10) § 2 in der Fassung LGBl Nr …/2025 tritt in Kraft.“',
+      'Artikel II', 'Die Y-Verordnung, LGBl Nr 2/2020, wird geändert wie folgt:', 'Im § 6 wird angefügt:', '„(22) Neu.“')])!
+    const kundmachung = lgblUnits(xml('1. Im § 2 wird die Zeile "Wolf 1.1. - 31.12." angefügt.', '2. Im § 3 wird angefügt: "(10) § 2 in der Fassung LGBl Nr 126/2025 tritt in Kraft."').replace('</abschnitt>',
+      '<ueberschrift typ="g1">Artikel II</ueberschrift><absatz typ="promkleinlsatz">Die Y-Verordnung, LGBl Nr 2/2020, wird geändert wie folgt:</absatz><absatz typ="novao1">Im § 6 wird angefügt: "(22) Neu."</absatz></abschnitt>'))
+    const units = diffLandDraft(draftUnits, kundmachung)
+    expect(units.filter((u) => u.change === 'inserted' || u.change === 'removed')).toEqual([])
+    expect(units.map((u) => u.id)).toEqual(['Z1', 'Z2', 'Z1'])
+  })
+
   it('reads a § whose one sentence was taken for its title, and stops at the Erläuterungen (Salzburg 33878)', () => {
     const units = landDraftUnits([page('Gesetz vom ........, mit dem das X-Gesetz 1998 aufgehoben wird', 'Der Salzburger Landtag hat beschlossen:',
       '§ 1', 'Das X-Gesetz 1998, LGBl Nr 47, wird mit Wirkung ab 1. Jänner 2027', 'aufgehoben.',
