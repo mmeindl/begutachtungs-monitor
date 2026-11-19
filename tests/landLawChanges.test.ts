@@ -1,5 +1,6 @@
 /** What a Landesgesetz changed, § by § (`landLawChanges.ts`): every doubt is a § not compared. */
 import { describe, expect, it } from 'vitest'
+import { diffLandDraft } from '../server/utils/laender/landLawDiff'
 import { instructionLawFor, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
 
 const v = (over: Partial<LandKonsVersion>): LandKonsVersion => ({ gesetzesnummer: '20001217', law: 'Salzburger Kinderbildungs- und -betreuungsgesetz 2019', key: '§5', from: null, to: null, organ: '', xmlUrl: 'x', stammnorm: '57/2019', ...over })
@@ -85,5 +86,14 @@ describe('konsUnit', () => {
       '(3) entfallen (Anm: entfallen auf Grund LGBl Nr 103/2022)',
       '(16) In der Fassung der 16. Novelle, LGBl. Nr. 103/2018, treten § 26 und § 29 in Kraft.',
     ])
+  })
+  it('keeps the Schlussteil that closes a list, so a change made only there is a change (Tirol LGBl. Nr. 39/2026 § 23, 19.11.2026)', () => {
+    const xml = (frist: string) => '<nutzdaten><absatz typ="abs" ct="text">(9) Ansprüche sind</absatz><listelem ct="text"><symbol>a)</symbol>gegenüber dem Land binnen sechs Monaten,</listelem>' +
+      `<listelem ct="text"><symbol>b)</symbol>gegenüber dem Belästiger binnen drei Jahren</listelem><schlussteil ebene="1" art="normal" ct="text">gerichtlich geltend zu machen. ${frist}</schlussteil>` +
+      '<schluss typ="Abs" ct="text">Die Frist ist gewahrt.</schluss></nutzdaten>'
+    const old = konsUnit(xml('Die Frist beginnt mit der Beendigung.'), { key: '§23', law: 'X' }, 'X')!
+    expect(old.text).toBe('(9) Ansprüche sind a) gegenüber dem Land binnen sechs Monaten, b) gegenüber dem Belästiger binnen drei Jahren gerichtlich geltend zu machen. Die Frist beginnt mit der Beendigung. Die Frist ist gewahrt.')
+    const neu = konsUnit(xml('Die Frist beginnt mit der Kenntnis.'), { key: '§23', law: 'X' }, 'X')!
+    expect(diffLandDraft([old], [neu]).map((u) => u.change)).toEqual(['changed'])
   })
 })

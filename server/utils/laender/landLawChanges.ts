@@ -162,7 +162,12 @@ export function konsUnit(xml: string, version: Pick<LandKonsVersion, 'key' | 'la
   const body = xml.slice(Math.max(0, xml.indexOf('<nutzdaten')))
   const blocks: TextBlock[] = []
   let heading: string | null = null
-  for (const m of body.matchAll(/<(ueberschrift|absatz|listelem)\b([^>]*)>([\s\S]*?)<\/\1>/g)) {
+  // And the Schlussteil that closes a list (19.11.2026), in both of RIS's
+  // spellings, as the federal reader takes it (`risXml.ts`): left out, the
+  // words after a list's last item were missing from both wordings, and a
+  // change made only there read „unverändert" (Tirol LGBl. Nr. 39/2026,
+  // § 23 Abs. 9: „… geltend zu machen. Die Frist beginnt …" gone).
+  for (const m of body.matchAll(/<(ueberschrift|absatz|listelem|schlussteil|schluss)\b([^>]*)>([\s\S]*?)<\/\1>/g)) {
     if (!/\bct="text"/.test(m[2]!)) continue
     let text = decode(m[3]!).replace(RIS_NOTE, '').trim()
     // The designation leading the first Absatz („§ 5. (1) Wer …" in Wien's records), or standing alone: the unit's id, not its text.
