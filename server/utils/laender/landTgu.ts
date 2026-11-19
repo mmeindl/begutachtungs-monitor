@@ -692,6 +692,9 @@ export function risLawText(risText: string): string | null {
   const end = rest.search(/<ueberschrift typ="titel"/)
   return (end < 0 ? rest : rest.slice(0, end))
     .replace(/<ueberschrift\b[^>]*>[\s\S]*?<\/ueberschrift>/g, ' ')
+    // Wien's records lead the first Absatz with the § itself, „<gldsym>§ 3.</gldsym>
+    // (1) …": the unit's designation, not its text (`konsUnit` drops it too).
+    .replace(/<gldsym>[\s\S]*?<\/gldsym>/g, ' ')
     .replace(/<absatz\b[^>]*\bhalign="c"[^>]*>\s*<b>[^<]*<\/b>\s*<\/absatz>/g, ' ')
     .replace(/\(\s*Anm\b\.?:?[^)<]*(?:\)|(?=<))/g, ' ')
 }
@@ -702,8 +705,9 @@ export function risLawText(risText: string): string | null {
  * stand in order in the printed text, 0 to 1. Words are compared without
  * their punctuation: „machen." is RIS's „machen ." (19.11.2026). Every
  * number counts, a citation's too („gemäß § 26", „Art. 9 der Verordnung"):
- * RIS's law text holds no designation of the § or its article, and one the
- * document prints is a word RIS lacks, which costs nothing here. Null where
+ * RIS's law text holds no designation of the § or its article (Wien's
+ * `<gldsym>` is dropped with the headings), and one the document prints is
+ * a word RIS lacks, which costs nothing here. Null where
  * RIS's law text cannot be told apart, or either side has no word.
  *
  * The whole of RIS's § counts, from its first word: anchored at the

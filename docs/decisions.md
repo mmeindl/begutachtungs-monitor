@@ -882,7 +882,8 @@ gets an entry of its own only where it carries a reason the rule does not.
   „unverändert". A share floor (0.9) saw only cuts near a §'s middle: it
   passed half of the lost last sentences and nearly every lost last line,
   first line or single number. RIS's notes, fields and headings are not its
-  law text. Not seen: a § printed with omissions, the § heading, and a new
+  law text, nor is the § designation Wien's records lead the first Absatz
+  with (`<gldsym>`). Not seen: a § printed with omissions, the § heading, and a new
   text lost only where it differs, so that both columns read as the old.
   An omission is read as the Land prints it: Salzburg
   marks an unchanged Absatz or Ziffer by its bare designation („(1) (2) …",

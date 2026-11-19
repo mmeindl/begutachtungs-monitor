@@ -336,6 +336,14 @@ describe('cutShort — a § printed unchanged and cut short in both columns (19.
     expect(cutShort(same(whole), noted)).toBe(false)
     expect(cutShort(same(whole.replace(' kundzumachen.', '')), noted)).toBe(true)
   })
+  it('is no § cut short for the designation Wien\'s records lead the first Absatz with (19.11.2026)', () => {
+    // „<gldsym>§ 3.</gldsym> (1) …": the „3" is no word of the law text, and
+    // counted as one, every Wien § printed unchanged was withheld as unsure.
+    const wien = ris(law.replace('<absatz typ="abs" ct="text" halign="j">(1)', '<absatz typ="abs" ct="text" halign="j"><gldsym>§ 3.</gldsym> (1)'))
+    expect(risLawText(wien)).not.toMatch(/§/)
+    expect(cutShort(same(whole), wien)).toBe(false)
+    expect(cutShort(same(cut), wien)).toBe(true)
+  })
   it('is no confirmation where RIS\'s law text cannot be told apart', () => {
     expect(risLawText('<nutzdaten><absatz>(1) Ein Text ohne die Überschrift „Text".</absatz></nutzdaten>')).toBeNull()
     expect(cutShort(same(whole), `<nutzdaten>${law}</nutzdaten>`)).toBe(true)
