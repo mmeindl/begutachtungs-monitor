@@ -90,6 +90,29 @@ const SIGNATURE_TABLE_RE = /<table\b(?:(?!<\/table>)[\s\S])*?(?:Präsident|Lande
 
 const DIVISION_HEAD_RE = /<ueberschrift typ="(?:g1|g1min|g2|art)"[^>]*>(?!\s*(?:<[^>]+>\s*)*Artikel\b)(?:(?!<\/ueberschrift>)[\s\S])*?\b(?:Abschnitt|Unterabschnitt|Teil|Hauptstück|ABSCHNITT|TEIL|HAUPTSTÜCK)\b(?:(?!<\/ueberschrift>)[\s\S])*<\/ueberschrift>/g
 
+/**
+ * A § heading that lost its sign (20.11.2026): Salzburg's LGBl. Nr. 82/2025
+ * sets „Spielgeheimnis" and „36" as the two headings of its § 36 — its own
+ * table of contents says „§ 36 Spielgeheimnis" — and the bare number read as
+ * no §, so § 36 ran into § 35, as on the PDF side (`draftPdfLaw`,
+ * `restoreLostSigns`). Read as „§ N" only where it is the next number after
+ * the last § heading and the § opens with „(1)" right below it.
+ */
+const PARA_NUMBER_HEAD_RE = /<ueberschrift typ="para"([^>]*)>\s*(?:§\s*(\d+)[a-z]*\.?|(\d+))\s*<\/ueberschrift>/g
+function restoreLostSigns(xml: string): string {
+  let last: number | null = null
+  return xml.replace(PARA_NUMBER_HEAD_RE, (m: string, attrs: string, signed: string | undefined, bare: string | undefined, at: number) => {
+    if (signed !== undefined) {
+      last = Number(signed)
+      return m
+    }
+    const opens = /^\s*<absatz typ="abs"[^>]*>\s*\(1\)\s/.test(xml.slice(at + m.length, at + m.length + 200))
+    if (last === null || Number(bare) !== last + 1 || !opens) return m
+    last = Number(bare)
+    return `<ueberschrift typ="para"${attrs}>§ ${bare}</ueberschrift>`
+  })
+}
+
 /** The Kundmachung's units, from the Landesgesetzblatt's RIS XML. */
 export function lgblUnits(xml: string): LawUnit[] {
   // Per Artikel, not per document: a package can enact a law in Artikel I
@@ -106,7 +129,7 @@ export function lgblUnits(xml: string): LawUnit[] {
   // Tirol sets a §'s number and its title as two headings („§ 1" |
   // „Geltungsbereich", LGBl. Nr. 39/2026, 23.10.2026) and every § read as
   // nothing; joined, they are the „§ 1<br />Geltungsbereich" the other Länder write.
-  const parts = xml
+  const parts = restoreLostSigns(xml)
     .replace(/<ueberschrift typ="para"[^>]*>\s*\((?:Verfassungsbestimmung|Grundsatzbestimmung)\)\s*<\/ueberschrift>/g, '')
     .replace(/<ueberschrift typ="para"([^>]*)>\s*(§\s*\d+[a-z]*)\.?\s*<\/ueberschrift>\s*<ueberschrift typ="para"[^>]*>(?!\s*§)((?:(?!<\/ueberschrift>)[\s\S])*?)<\/ueberschrift>/g, '<ueberschrift typ="para"$1>$2<br />$3</ueberschrift>')
     .split(/(?=<ueberschrift typ="(?:art|g1)"[^>]*>\s*(?:<[^>]+>\s*)*Artikel\b)/)

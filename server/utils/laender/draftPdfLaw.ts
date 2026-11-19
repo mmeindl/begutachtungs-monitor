@@ -185,11 +185,38 @@ function joinLines(a: string, b: string): string {
 }
 
 /**
+ * A § whose sign the PDF lost (20.11.2026): Salzburg's Glücksspielgesetz
+ * prints „Spielgeheimnis" / „§ 36" like every § around it, and the text
+ * layer holds „Spielgeheimnis" / „36". Kept as text, the heading and the
+ * number ran into § 35 („… jährlich zu berichten. Spielgeheimnis 36"), and
+ * against the Landesgesetzblatt § 35 read as changed and § 36 as inserted
+ * (sbg-31605). A bare number is the lost „§ N" only where all three say so:
+ * it is the next number after the last § the text set, the line above is a
+ * title (no closing punctuation), and the § opens below it with „(1)". A
+ * table cell meets none of these by itself.
+ */
+function restoreLostSigns(lines: string[]): string[] {
+  let last: number | null = null
+  return lines.map((line, k) => {
+    const sign = BARE_PARAGRAPH_RE.exec(line)
+    if (sign) {
+      last = Number.parseInt(sign[1]!, 10)
+      return line
+    }
+    if (!BARE_NUMBER_RE.test(line) || last === null || Number(line) !== last + 1) return line
+    const above = lines[k - 1] ?? ''
+    if (!above || /[.,;:)]$/.test(above) || !/^\(1\)\s/.test(lines[k + 1] ?? '')) return line
+    last = Number(line)
+    return `§ ${line}`
+  })
+}
+
+/**
  * The legal text of a draft PDF as blocks, or null where no enacting clause
  * marks it — then the PDF is not a draft law this reader can take apart.
  */
 export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | null {
-  const lines = pages.flatMap(pageLines)
+  const lines = restoreLostSigns(pages.flatMap(pageLines))
   // Where a draft leaves out the enacting clause (Salzburg's S.WFG 2025),
   // its title „Gesetz vom …… über/, mit dem …" marks the start instead.
   const enacting = lines.findIndex((l) => ENACTING_RE.test(l))
@@ -211,6 +238,11 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
      can be its title rather than the end of the § before. */
   let lastLine: string | null = null
   let lastLineAt = -1
+  /* The paragraph as it stood before its last line was joined on, and that
+     line's predecessor — a title can run over two lines (below). */
+  let beforeLast: string | null = null
+  let beforePrev: string | null = null
+  let prevLine: string | null = null
   /* A NEW law (no amending clause): „§ 2" opens a §, the line after it is
      its title, the paragraph after that carries the symbol — the shape the
      Landesgesetzblatt's XML has once its heading is taken apart
@@ -372,6 +404,9 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
          swallowed the law's real §§ (two Salzburg Grundverkehrsgesetz
          drafts). Measured over 922 cached law PDFs: 34234 alone changes. */
       if (bare && para !== null && lastLineAt === i - 1 && lastLine !== null && RUNS_ON_RE.test(lastLine)) {
+        beforePrev = beforeLast
+        beforeLast = para
+        prevLine = lastLine
         para = joinLines(para, line)
         lastLine = line
         lastLineAt = i
@@ -394,7 +429,20 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
         // division and its title), the last contents entry is no title
         // („Anlage 4 Datenübermittlung" over § 1 of 16110).
         const adjacent = lastLineAt === i - 1
-        if (adjacent && para !== null && lastLine && para !== lastLine && para.endsWith(lastLine) && titleLike(lastLine)) {
+        // A title over two lines (20.11.2026): „Verarbeitung personenbezogener
+        // Daten durch den Konzessionsinhaber, Beschränkung des Zu-" / „gangs zu
+        // personenbezogenen Daten" / „§ 38" (sbg-31605). Taken back by its
+        // last line alone, the § before ended in „… Beschränkung des Zu" and
+        // § 38's title read „gangs zu …". Both lines, where the text before
+        // them ends a sentence and the two read as one wrapped line: the
+        // first broken at a hyphen, or the second going on in lower case.
+        const twoLines = adjacent && para !== null && lastLine !== null && prevLine !== null && beforePrev !== null && titleLike(lastLine) &&
+          prevLine.length <= 90 && !/[.;:,)]$/.test(prevLine) && !OPENS_RE.test(prevLine) && /^\p{Lu}/u.test(prevLine) &&
+          (prevLine.endsWith('-') || /^\p{Ll}/u.test(lastLine)) && /[.;:]$/.test(beforePrev) && para === joinLines(joinLines(beforePrev, prevLine), lastLine)
+        if (twoLines) {
+          titleAbove = joinLines(prevLine!, lastLine!)
+          para = beforePrev
+        } else if (adjacent && para !== null && lastLine && para !== lastLine && para.endsWith(lastLine) && titleLike(lastLine)) {
           titleAbove = lastLine
           para = para.slice(0, -lastLine.length).trimEnd()
         } else if (adjacent && para !== null && para === lastLine && titleLike(para) && pendingGld === null) {
@@ -447,8 +495,14 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
       para = line
       lastLine = line
       lastLineAt = i
+      beforeLast = null
+      beforePrev = null
+      prevLine = null
       continue
     }
+    beforePrev = beforeLast
+    beforeLast = para
+    prevLine = lastLine
     para = joinLines(para, line)
     lastLine = line
     lastLineAt = i

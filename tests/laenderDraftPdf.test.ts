@@ -419,3 +419,36 @@ describe('draftByContent — the draft among several, by what it holds (14.11.20
     await expect(draftByContent(docs, failing)).rejects.toThrow('503')
   })
 })
+
+// sbg-31605, Salzburg's Glücksspielgesetz (20.11.2026): both the PDFs and
+// the Landesgesetzblatt's RIS XML lost the „§" of § 36, and § 38's title
+// runs over two lines. Every one read as a change of the § before.
+describe('a § whose sign is lost, and a title over two lines', () => {
+  const law = (...lines: string[]) => [page('Der Salzburger Landtag hat beschlossen:', ...lines)]
+  const ids = (pages: string[]) => landDraftUnits(pages)!.map((u) => u.id)
+  const headings = (pages: string[]) => lawBlocksFromPdfPages(pages)!.filter((b) => b.kind === 'para_head').map((b) => b.text)
+
+  it('reads a bare number as the next § where a title stands above it and „(1)" opens below', () => {
+    const pages = law('Werbung', '§ 35', '(1) Werbung ist maßvoll.', 'Spielgeheimnis', '36', '(1) Alle Organe haben Verschwiegenheit zu bewahren.')
+    expect(ids(pages)).toEqual(['§35', '§36'])
+    expect(headings(pages)).toEqual(['Werbung', 'Spielgeheimnis'])
+    // Not the next number, or no „(1)" below it: a value, as before.
+    expect(ids(law('Werbung', '§ 35', '(1) Werbung ist maßvoll.', 'Höchstbetrag', '37', '(1) Alle Organe.'))).toEqual(['§35'])
+    expect(ids(law('Werbung', '§ 35', '(1) Der Betrag beträgt in Euro', '36', 'für jedes Jahr.'))).toEqual(['§35'])
+  })
+
+  it('takes back a title over two lines, where the text before them ends a sentence', () => {
+    const pages = law('Hinweisgeber', '§ 37', '(1) Meldungen sind vertraulich zu behandeln.', 'Verarbeitung personenbezogener Daten durch den Konzessionsinhaber, Beschränkung des Zu-', 'gangs zu personenbezogenen Daten', '§ 38', '(1) Der Konzessionsinhaber ist ermächtigt.')
+    expect(headings(pages)).toEqual(['Hinweisgeber', 'Verarbeitung personenbezogener Daten durch den Konzessionsinhaber, Beschränkung des Zugangs zu personenbezogenen Daten'])
+    expect(landDraftUnits(pages)![0]!.text).toMatch(/vertraulich zu behandeln\.$/)
+    expect(headings(law('Ziel', '§ 3', '(1) Text eins.', 'Arten, Geltungsbereich', 'und Umfang der Bewilligung', '§ 4', '(1) Text vier.'))).toEqual(['Ziel', 'Arten, Geltungsbereich und Umfang der Bewilligung'])
+  })
+
+  it('reads the Landesgesetzblatt’s bare „36" heading as § 36 too', () => {
+    const lgbl = '<?xml version="1.0" encoding="utf-8"?><risdok xmlns="http://www.bka.gv.at"><nutzdaten><abschnitt>' +
+      '<ueberschrift typ="para">Werbung</ueberschrift><ueberschrift typ="para">§ 35</ueberschrift><absatz typ="abs">(1) Werbung ist maßvoll.</absatz>' +
+      '<ueberschrift typ="para">Spielgeheimnis</ueberschrift><ueberschrift typ="para">36</ueberschrift><absatz typ="abs">(1) Alle Organe haben Verschwiegenheit zu bewahren.</absatz>' +
+      '</abschnitt></nutzdaten></risdok>'
+    expect(lgblUnits(lgbl).map((u) => u.id)).toEqual(['§35', '§36'])
+  })
+})
