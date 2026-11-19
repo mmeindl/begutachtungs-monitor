@@ -1269,6 +1269,13 @@ describe('a deletion that names a part of the unit (19.11.2026)', () => {
   // unit — a § or an Anlage the consolidation then reported as repealed.
   it('refuses a struck part the address does not read, whatever the noun', () => {
     expect(refusal('In der Anlage 2 entfallen die Zeilen betreffend den Lehrberuf Karosseriebautechnik.')).toMatch(/^Teilstreichung \(„Zeilen"\)/)
+    // A time phrase says when, not what (19.11.2026): the whole unit goes, and
+    // the struck part behind the phrase is still what the refusal names.
+    for (const line of ['§ 8 Abs. 2 entfällt mit Ablauf des 31. Dezember 2026.', '§ 8 Abs. 2 wird mit Ablauf des 31. Dezember 2026 aufgehoben.']) {
+      expect(refusal(line)).toBe('')
+      expect(parseInstruction(line).ops.map((o) => o.kind)).toEqual(['delete'])
+    }
+    expect(refusal('Im § 1 entfällt mit Wirksamkeit ab dem 1. Jänner 2024 die Gemeinde Goldegg.')).toMatch(/^Teilstreichung \(„Gemeinde"\)/)
     expect(refusal('In Anlage 1 werden folgende Aufzählungen gestrichen: "73-07 – Sonstiges"')).toMatch(/„Aufzählungen"/)
     expect(refusal('In § 5 entfällt die Überschrift.')).toMatch(/„Überschrift"/)
     expect(refusal('Vor § 16 entfällt die Abschnittsüberschrift.')).toMatch(/„Abschnittsüberschrift"/)

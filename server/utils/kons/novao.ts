@@ -1861,6 +1861,15 @@ const DELETION_DESIGNATOR: Record<string, 'para' | 'abs' | 'z' | 'lit'> = {
   '§': 'para', '§§': 'para', art: 'para', 'art.': 'para', artikel: 'para', anlage: 'para', anlagen: 'para', anhang: 'para', anhänge: 'para',
   abs: 'abs', 'abs.': 'abs', absatz: 'abs', absätze: 'abs', z: 'z', ziffer: 'z', ziffern: 'z', lit: 'lit', 'lit.': 'lit', litera: 'lit',
 }
+/**
+ * The words of a time phrase: „mit Ablauf des 31. Dezember 2026", „mit
+ * Wirksamkeit ab dem 1. Jänner 2024". They say when, not what goes, so a
+ * timed deletion of a whole unit is no partial one (19.11.2026: „§ 8 Abs. 2
+ * entfällt mit Ablauf …" was refused as „Teilstreichung („Ablauf")").
+ */
+const TIME_OPENER_RE = /^(?:mit|ab|zum|am|bis|vor|nach)$/i
+const TIME_WORD_RE = /^(?:Ablauf|Beginn|Ende|Wirksamkeit|Inkrafttreten|Tag|Tages|Zeitpunkt|Kundmachung|Jänner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)$/
+
 function partStruck(head: string, target: NovaoAddress): string | null {
   const masked = maskQuotes(head)
   const verb = DELETION_VERB_RE.exec(masked)
@@ -1870,9 +1879,15 @@ function partStruck(head: string, target: NovaoAddress): string | null {
   const regions = [masked.slice(verb.index + verb[0].length), ...(aux ? [before.slice(aux.index + aux[0].length)] : [])]
   for (const region of regions) {
     const words = region.split(/[\s,;]+/).map((w) => w.replace(/^[(„]+|[).„“]+$/g, '')).filter(Boolean)
+    let inTime = false
     for (let i = 0; i < words.length; i++) {
       const w = words[i]!
       if (/^(?:samt|mitsamt|einschließlich)$/i.test(w)) break
+      // Inside a time phrase its nouns and months are passed over; the first
+      // other capitalised word ends it and is judged as any other.
+      if (TIME_OPENER_RE.test(w)) inTime = true
+      if (inTime && TIME_WORD_RE.test(w)) continue
+      if (/^\p{Lu}/u.test(w)) inTime = false
       const level = DELETION_DESIGNATOR[w.toLowerCase()]
       if (level && /^(?:\d|[IVXLC]+$|[a-z]{1,2}$)/.test(words[i + 1] ?? '')) {
         if (level !== 'para' && target[level] === null) return w
