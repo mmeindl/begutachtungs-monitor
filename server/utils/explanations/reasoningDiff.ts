@@ -391,7 +391,7 @@ function textsByNumber(before: Texts, after: Texts, byArticle: { before: Texts; 
  * the draft's Artikel in `articleKey` too (`toUnit`), and a Sammelvorlage
  * renumbers — 20/ME XXVIII's Artikel 16 is 129 d.B.'s Artikel 42.
  */
-function articleOn(unit: LawDiffUnit, side: Side, units: readonly LawDiffUnit[]): string | null {
+function articleOn(unit: LawDiffUnit, side: Side, units: readonly LawDiffUnit[], doc?: HtmlExplanations): string | null {
   const own = (u: LawDiffUnit) => (side === 'after' ? u.articleKey : u.fromArticleKey)
   if (existsOn(unit, side)) return own(unit)
   const otherKey = (u: LawDiffUnit) => (side === 'after' ? u.fromArticleKey : u.articleKey)
@@ -403,7 +403,14 @@ function articleOn(unit: LawDiffUnit, side: Side, units: readonly LawDiffUnit[])
   // inserted in the Vorlage (149/ME XXVII: the BAO is Artikel 3 there and 1
   // here): the Artikel its units carry on that side, where they agree.
   const keys = new Set(units.flatMap((u) => (existsOn(u, side) && own(u) && unit.article !== null && u.article === unit.article ? [own(u)!] : [])))
-  return keys.size === 1 ? [...keys][0]! : null
+  if (keys.size === 1) return [...keys][0]!
+  if (keys.size > 1 || !doc) return null
+  // Nor a unit of the law on that side: the Artikel the document itself
+  // heads with the law's title („Zu Artikel 2 (Änderung des …)", 57/ME XXVI,
+  // whose two laws the comparison paired no change of), where exactly one.
+  const titles = new Set([unit.article, unit.fromArticle].flatMap((t) => (t ? [lawTitleKey(t)] : [])))
+  const headed = new Set(doc.special.flatMap((p) => (p.law && p.section?.length === 1 && titles.has(lawTitleKey(p.law)) ? p.section : [])))
+  return headed.size === 1 ? [...headed][0]! : null
 }
 
 /**
@@ -442,8 +449,8 @@ function textsByLaw(units: readonly LawDiffUnit[], before: HtmlExplanations, aft
   const me = side(before, 'before')
   const rv = side(after, 'after')
   return (unit, para, id, ambiguous) => {
-    const a = articleOn(unit, 'before', units)
-    const b = articleOn(unit, 'after', units)
+    const a = articleOn(unit, 'before', units, before)
+    const b = articleOn(unit, 'after', units, after)
     // As before only for a unit that carries an Artikel on both sides
     // (an inserted one does not) — but each side looked up under its own.
     if (ambiguous) return unit.fromArticleKey && unit.articleKey && a && b ? { key: `Art. ${b} ${para}`, a: me.article(id, a), b: rv.article(id, b) } : null

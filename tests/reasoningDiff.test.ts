@@ -1073,6 +1073,19 @@ describe('compareReasoning — keine Passage eines anderen Gesetzes am §', () =
     expect(out.entries[out.units[`${BAO}|Z4|removed`]!]).toMatchObject({ basis: 'paragraph', label: '§ 323', changed: true })
   })
 
+  it('liest den Artikel eines Gesetzes ohne Einheit auf der Seite aus der Artikelüberschrift des Dokuments (57/ME XXVI)', () => {
+    const X = 'Änderung des Bundes-Verfassungsgesetzes'
+    const Y = 'Änderung des Bezügegesetzes'
+    // Every change of X is removed; `toUnit` gives it the draft's Artikel on both keys.
+    const units = [unit(X, 'Z2', 'In § 8 Abs. 8 entfällt der Ausdruck "c und".', 'removed', { from: '2', to: '2' }), unit(Y, 'Z1', 'In § 1 wird "a" durch "b" ersetzt.', 'changed', { from: '1', to: '1' })]
+    const before = erl(`Zu Artikel 1 (${Y}):`, 'Zu Z 1 (§ 1):', 'Anpassung.', `Zu Artikel 2 (${X}):`, 'Zu Z 2 (§ 8 Abs. 8):', 'Redaktionell.')
+    const after = erl(`Zu Artikel 1 (${Y}):`, 'Zu Z 1 (§ 1):', 'Anpassung.', `Zu Artikel 2 (${X}):`, 'Zu Z 3 (§ 8 Abs. 8):', 'Redaktionell, nach der Begutachtung.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units[`${X}|Z2|removed`]!]).toMatchObject({ basis: 'paragraph', changed: true })
+  })
+
   it('nimmt auch an der Ziffer keine nach § betitelte Passage eines anderen Gesetzes', () => {
     // The Vorlage titles its Ziffern, but explains this change only under
     // another law's Artikel by § alone.
