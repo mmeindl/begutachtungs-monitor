@@ -1208,6 +1208,17 @@ describe('Anlagen sind keine Paragraphen (26.09.2026)', () => {
   })
 })
 
+describe('Wegfall der Absatzbezeichnung eines Paragraphen (19.11.2026)', () => {
+  // Lebensmittelbewirtschaftungsgesetz 1997, BGBl. I Nr. 11/2026, Art. II § 8.
+  it('unnumbers the one Absatz, and the Satz appended next lands in it', () => {
+    const l: StandingLaw = { paragraphs: [para('8', 'Acht', ['Erster Satz.'])] }
+    const { law: out, results } = run(l, instr('In Art. II § 8 entfällt die Absatzbezeichnung "(1)" .'), instr('In § 8 wird folgender Satz angefügt:', ['Dies gilt auch in den Fällen des § 12.']))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs[0]!.children.map((c) => `${c.level}:${c.id}:${c.marker}`)).toEqual(['abs::'])
+    expect(plainText(out.paragraphs[0]!)).toBe('Acht Erster Satz. Dies gilt auch in den Fällen des § 12.')
+  })
+})
+
 describe('Ein römisch nummerierter Anhang ist die Anlage seiner Zahl (19.11.2026)', () => {
   /** RIS files every schedule as „Anl." with an Arabic number — the BVergG 2018's Anhänge too. */
   function withAnhaenge(): StandingLaw {

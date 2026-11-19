@@ -2224,6 +2224,13 @@ function paragraphNumbers(list: string): string[] | null {
   return out
 }
 
+/**
+ * „In § 8 entfällt die Absatzbezeichnung ‚(1)'", „In Art. II § 8 entfällt …",
+ * quotes masked (`maskQuotes`): the whole clause, a § and one Absatz
+ * designation and nothing else — no Absatz, no „sowie", no second unit.
+ */
+const PARA_ABSATZ_DROPPED_RE = new RegExp(String.raw`^(?:In\s+)?(?:Art(?:\.|ikel)\s*(?:\d+[a-z]*|[IVXLCDM]+)\s+)?§\s*${PARAGRAPH_NUMBER}\s+entfällt\s+die\s+Absatzbezeichnung\s*""\s*\.?\s*$`, 'i')
+
 function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole: string): ParsedInstruction {
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
   const head = instructionHead(line)
@@ -2562,6 +2569,16 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // Read as a unit deletion this removed the Absatz (Tierschutzgesetz,
   // BGBl. I Nr. 124/2024, 2026-09-09). A renumbering to the empty designation.
   if (/\w*bezeichnung\b/i.test(head) && /\bentfäll[te]\b|\bentfallen\b/i.test(head)) {
+    // „In Art. II § 8 entfällt die Absatzbezeichnung ‚(1)'" names the Absatz
+    // by its quote alone, the address stops at the § (Lebensmittel-
+    // bewirtschaftungsgesetz 1997, BGBl. I Nr. 11/2026). Refused as a §-level
+    // target, the line left „(1)" standing over a § of one Absatz. Read as
+    // the Absatz the quote names — only in exactly this shape: one §, one
+    // Absatz designation, nothing else in the clause.
+    const absatz = PARA_ABSATZ_DROPPED_RE.test(maskQuotes(head)) && quotes.length === 1 ? /^\((\d+[a-z]*)\)$/.exec(quotes[0]!.replace(/\s/g, '')) : null
+    if (absatz && targets.length === 1 && target.level === 'para' && target.siblings.length === 0 && !target.heading && target.para?.startsWith('§')) {
+      return ok({ kind: 'renumber', target: { ...target, abs: absatz[1]!, level: 'abs' }, to: '', toLast: null })
+    }
     if (targets.length > 1 || target.level === 'para' || target.level === 'satz') return fail('Wegfall einer Bezeichnung — Ziel nicht eindeutig')
     // The designation that goes is the quoted one, and it has to be the
     // unit's own. „In § 6 entfallen die Absatzbezeichnung ‚(1)' sowie Abs. 2"

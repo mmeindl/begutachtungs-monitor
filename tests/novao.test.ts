@@ -450,6 +450,21 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
     expect(op('In § 7 Z 3 entfällt die Ziffernbezeichnung "3.".')).toMatchObject({ kind: 'renumber', to: '', target: { z: '3' } })
   })
 
+  // Lebensmittelbewirtschaftungsgesetz 1997, BGBl. I Nr. 11/2026: the address
+  // stops at the §, and the quote names the Absatz. Refused, the result kept
+  // „(1)" over a § of one Absatz.
+  it('reads „In § 8 entfällt die Absatzbezeichnung ‚(1)‘" as the Absatz the quote names (19.11.2026)', () => {
+    expect(op('In Art. II § 8 entfällt die Absatzbezeichnung "(1)" .')).toMatchObject({ kind: 'renumber', to: '', target: { artikel: '2', para: '§ 8', abs: '1', level: 'abs' } })
+    expect(op('In § 33 entfällt die Absatzbezeichnung "(1)".')).toMatchObject({ kind: 'renumber', to: '', target: { para: '§ 33', abs: '1', level: 'abs' } })
+    // Any other shape stays refused: a second unit, a designation of another kind.
+    for (const line of [
+      'In § 6 entfallen die Absatzbezeichnung "(1)" sowie Abs. 2.',
+      'In § 8 entfällt die Ziffernbezeichnung "1.".',
+      'In den §§ 8 und 9 entfällt jeweils die Absatzbezeichnung "(1)".',
+      'In § 8 entfällt die Absatzbezeichnung "1.".',
+    ]) expect(parseInstruction(line).ops, line).toEqual([])
+  })
+
   it('places a § appended "nach § X" behind it, not inside it', () => {
     expect(op('Nach § 408a wird folgender § 408b samt Überschrift angefügt:')).toMatchObject({ kind: 'insertAfter', child: 'para', childIds: ['408b'], where: 'after' })
   })
