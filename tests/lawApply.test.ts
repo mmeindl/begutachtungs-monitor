@@ -1239,6 +1239,26 @@ describe('Ein römisch nummerierter Anhang ist die Anlage seiner Zahl (19.11.202
     expect(out.paragraphs.map((p) => p.marker)).toEqual(['§ 8.', 'Anl. 8'])
   })
 
+  // BVergG 2018 Anl. 3 (BGBl. I Nr. 8/2026): RIS keeps „Anhang III" above
+  // the schedule, and the payload's first line is that designation again.
+  it('keeps the payload\'s own designation out of the heading', () => {
+    const l = withAnhaenge()
+    l.paragraphs[1]!.heading = null
+    l.paragraphs[1]!.context = ['Anhang VIII', 'Liste']
+    const { law: out, results } = run(l, instr('Anhang VIII lautet:', ['Anhang VIII', '1. Bundeskanzleramt']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[1]).toMatchObject({ marker: 'Anl. 8', heading: null, context: ['Anhang VIII', 'Liste'] })
+    expect(plainText(out.paragraphs[1]!)).toBe('Bundeskanzleramt')
+  })
+
+  // BVergG Konzessionen 2018 Anl. 8 (BGBl. I Nr. 8/2026): two schedules in
+  // one block, Anhang IX's text installed inside Anl. 8.
+  it('refuses a replacement that announces more schedules than its text has blocks', () => {
+    const { law: out, results } = run(withAnhaenge(), instr('Anhang VIII wird durch folgende Anhänge VIII und IX ersetzt:', ['Anhang VIII', '1. Bundeskanzleramt', 'Anhang IX', 'Bei der Vergabe gilt:']))
+    expect(results[0]!.reason).toBe('2 Anlagen angekündigt, 1 Textblöcke')
+    expect(out.paragraphs[1]!.text).toBe('Anhang acht alt.')
+  })
+
   it('refuses a Roman Anhang the law does not carry', () => {
     const { results } = run(withAnhaenge(), instr('Im Anhang III wird das Wort "alt" durch das Wort "neu" ersetzt.'))
     expect(results[0]!.applied).toBe(false)

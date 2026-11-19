@@ -1756,6 +1756,15 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         const outgoing = paras as LawNode[]
         const single = outgoing.length === 1 && blocks.length === 0 && payload.length > 0
+        // „Anhang VIII wird durch folgende Anhänge VIII und IX ersetzt": the
+        // payload reader opens no block at a schedule's designation, so the
+        // two schedules arrived as ONE block — Anhang IX's text inside Anl. 8,
+        // its designation run into the last sentence, reported applied
+        // (Bundesvergabegesetz Konzessionen 2018, BGBl. I Nr. 8/2026;
+        // unreachable until the lookup read Roman schedules, 19.11.2026).
+        // As many schedules as the line announces, or none.
+        const announced = isSchedule(op.target.para) ? createdUnits(line).filter((u) => isSchedule(u)) : []
+        if (announced.length > 0 && announced.length !== (single ? 1 : blocks.length)) return `${announced.length} Anlagen angekündigt, ${single ? 1 : blocks.length} Textblöcke`
         // Taking the first block and dropping the rest looked like a success
         // and deleted seven §§ of the IVS-Gesetz (2026-09-09). A run that
         // changes length is spliced; only a 1:1 replacement keeps the old
@@ -1850,9 +1859,19 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
           // text, as one unnumbered Absatz, and the Überschrift stays. With
           // „samt Überschrift" the one line cannot be both. Not for a
           // schedule, whose one line is as often its new title.
+          // A schedule's payload opens with its own designation („Anhang
+          // III"), which the payload reader carries as a heading. RIS keeps
+          // that line above the schedule (`context`, where a replacement
+          // leaves it), never as its heading: installed, „Anhang III" was a
+          // word the page would print as new (BVergG 2018 Anl. 3, BGBl. I
+          // Nr. 8/2026; 19.11.2026).
+          const ownDesignation = isSchedule(para.marker) && isSchedule(replacement.heading) && paraNumber(replacement.heading) === para.id
+          if (ownDesignation && replacement.children.length === 0 && !replacement.text) return 'Neufassung ohne Text'
           const restated: LawNode = isLoneLine(replacement, para)
             ? { ...para, level: 'para' as const, children: [makeNode('abs', '', '', replacement.heading ?? '')] }
-            : { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: replacement.heading ?? para.heading }
+            : ownDesignation
+              ? { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: para.heading, context: para.context }
+              : { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: replacement.heading ?? para.heading }
           if (isLoneLine(replacement, para) && op.withHeading) return 'samt Überschrift, aber nur eine Zeile im neuen Text'
           // A heading read off a bare line, replacing the standing one where
           // the instruction does not say „samt Überschrift": RIS marks a
