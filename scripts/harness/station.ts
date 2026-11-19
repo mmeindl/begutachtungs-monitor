@@ -5,7 +5,7 @@
  * says what each check means).
  *
  * Usage:  npx vite-node -c vitest.config.ts scripts/harness/station.ts [--gp=XXVIII] [--only=80] [--cache]
- *                                                                     [--json=<file>] [--baseline=<file>]
+ *                                                                     [--json=<file>] [--baseline=<file>] [--zeige=<text>]
  *
  * Every station text of every draft of the period that reached a
  * Regierungsvorlage, read through the page's own parsers, and every pair the
@@ -38,7 +38,14 @@
  * thereby accepted: it is a line still to be explained or fixed.
  *
  * Reads through the offline cache with `--cache` (`HARNESS_CACHE`, default
- * `.harness-cache`); a miss is fetched and stored.
+ * `.harness-cache`); a miss is fetched and stored. A hit is as old as the
+ * cache: on 19.11.2026 it held the records of 104/ME to 110/ME XXVIII from
+ * before their Vorlage, so a run over GP XXVIII read 91 drafts, not every
+ * draft the page compares.
+ *
+ * With `--baseline`, every changed unit whose badge moved („geändert",
+ * „redaktionell", „ohne Wortdiff") is printed with its pieces, in both
+ * directions — the line-by-line reading a rate cannot replace.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { LawStationId } from '../../shared/types'
@@ -63,6 +70,8 @@ const gp = argAssigned('gp') ?? 'XXVIII'
 const only = Number(argAssigned('only')) || 0
 const jsonPath = argAssigned('json')
 const baselinePath = argAssigned('baseline')
+/** `--zeige=<text>`: the pieces of every changed unit whose line contains the text, to read one case. */
+const show = argAssigned('zeige')
 const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) => 1_200 * retry, timeoutMs: 60_000, retryOnHttpError: true }
 const getJson = <T = unknown>(url: string): Promise<T> => fetchJson<T>(url, { ...PATIENT, onExhausted: (u) => new Error(`nicht erreichbar: ${u}`) })
 const getText = (url: string): Promise<string> => fetchText(url, { script: SCRIPT, timeoutMs: 60_000 })
@@ -169,6 +178,8 @@ interface Record_ {
   commencementLeftOut: number
   ceiling: { pair: string; unit: string; fromWords: number; toWords: number }[]
   residues: { kind: 'parlament-bgbl' | 'html-xml'; pair: string; residue: Residue }[]
+  /** Every changed unit of every pair and its badge, so two runs compare verdict by verdict. */
+  verdicts: Record<string, 'geändert' | 'redaktionell' | 'ohne Wortdiff'>
 }
 
 const rows = await list81()
@@ -188,7 +199,9 @@ const risXmlOf = async (inr: number): Promise<string | null> => {
   return risMap.get(inr) ?? null
 }
 
-const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, ceiling: [], residues: [] }
+/** The pieces of every changed unit, kept in memory for the lines that moved against a baseline. */
+const piecesOf = new Map<string, string[]>()
+const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, ceiling: [], residues: [], verdicts: {} }
 for (const inr of numbers) {
   if (only && inr !== only) continue
   let d: Draft | null
@@ -215,6 +228,12 @@ for (const inr of numbers) {
       const back = diffLawPackage(t, f, { keepAddedLaws: options.keepDroppedLaws, keepDroppedLaws: options.keepAddedLaws })
       for (const b of symmetryBreaches(diff, back)) record.symmetry.push({ ...b, pair })
       for (const u of diff.units) {
+        if (u.change === 'changed') {
+          const key = `${pair} ${(u.article ?? '—').slice(0, 50)} · ${u.fromId}→${u.id}`
+          record.verdicts[key] = !u.segments ? 'ohne Wortdiff' : u.editorial ? 'redaktionell' : 'geändert'
+          piecesOf.set(key, residuesOf([u])[0]!.pieces)
+          if (show && key.includes(show)) console.log(`\n   ${record.verdicts[key]}: ${key}\n${piecesOf.get(key)!.map((p) => `        ${p}`).join('\n')}`)
+        }
         if (u.change === 'changed' && !u.segments) {
           record.ceiling.push({ pair, unit: `${(u.article ?? '—').slice(0, 50)} · ${u.fromId}→${u.id}`, fromWords: compareWords(u.fromText ?? '').length, toWords: compareWords(u.toText ?? '').length })
         }
@@ -269,6 +288,15 @@ if (jsonPath) {
 let failed = record.breaches.length > 0
 if (baselinePath) {
   const before = JSON.parse(readFileSync(baselinePath, 'utf8')) as Record_
+  // The badges first: a verdict that moved, in either direction, is a line to read.
+  const moved = Object.entries(record.verdicts).filter(([key, v]) => before.verdicts?.[key] !== undefined && before.verdicts[key] !== v)
+  const tally = new Map<string, number>()
+  for (const [key, v] of moved) tally.set(`${before.verdicts[key]} → ${v}`, (tally.get(`${before.verdicts[key]} → ${v}`) ?? 0) + 1)
+  console.log(`\n── Badges gegen die Baseline: ${moved.length} bewegt${[...tally].map(([k, n]) => ` · ${k} ${n}`).join('')}`)
+  for (const [key, v] of moved) {
+    console.log(`   ${before.verdicts[key]} → ${v}: ${key}`)
+    for (const p of piecesOf.get(key)?.slice(0, 6) ?? []) console.log(`        ${p}`)
+  }
   const lines = (r: Record_) => new Set(r.residues.map((x) => `${x.kind} ${residueLine(x)}`))
   const was = lines(before)
   const now = lines(record)
