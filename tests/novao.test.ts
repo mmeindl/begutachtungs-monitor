@@ -1449,3 +1449,14 @@ describe('the siblings of a Roman Artikel (20.11.2026)', () => {
     expect(namedParagraphs(parseAddressList('Anhang VIII und IX lauten:')![0]!)).toEqual(['Anhang VIII', 'Anhang IX'])
   })
 })
+
+describe('the heading of a division named by the § above it (20.11.2026)', () => {
+  // 22e95d18: read as § 11, the heading replaced the §'s text.
+  it('refuses „Die Abschnittsüberschrift nach § 11 lautet:" instead of replacing § 11', () => {
+    for (const line of ['Die Abschnittsüberschrift nach § 11 lautet:', 'Die Abschnittsüberschrift nach § 11 „5. Abschnitt Durchführung“ lautet:']) {
+      const r = parseInstruction(line)
+      expect(r.ops).toEqual([])
+      expect(r.reason).toMatch(/Gliederungseinheit/)
+    }
+  })
+})

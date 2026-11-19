@@ -325,9 +325,12 @@ const HEADING_TARGET_RE = /Überschrift(?:en)?\s+(?:zu|des|der|von|zum|im|dieses
 
 /**
  * „die Überschrift vor § 3", „die Zwischenüberschrift vor § 48a" — a heading
- * named by the § below it. Group 1 is set for the heading of a group of §§.
+ * named by the § below it. Group 1 is set for the heading of a group of §§,
+ * which may also be named by the § above it: „Die Abschnittsüberschrift nach
+ * § 11 lautet:" read as § 11 and replaced its text by the heading (22e95d18,
+ * 20.11.2026).
  */
-const HEADING_ABOVE_RE = /(?:(Zwischen|Abschnitts|Unterabschnitts|Gliederungs|Teil|Hauptstück)(?:überschrift|bezeichnung)|(?<![\p{L}])Überschrift)(?:en)?\s+vor\s+(?:dem\s+)?§/iu
+const HEADING_ABOVE_RE = /(?:(Zwischen|Abschnitts|Unterabschnitts|Gliederungs|Teil|Hauptstück)(?:überschrift|bezeichnung)(?:en)?\s+(?:vor|nach)|(?<![\p{L}])Überschrift(?:en)?\s+vor)\s+(?:dem\s+)?§/iu
 
 /**
  * "samt Überschrift" *inside an address* — the heading comes along, the text
