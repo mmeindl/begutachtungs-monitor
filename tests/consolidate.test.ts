@@ -182,6 +182,30 @@ describe('consolidate — a Verordnung numbered by Kapitel (26.10.2026)', () => 
   })
 })
 
+describe('consolidate — a law RIS files by Artikel (20.11.2026)', () => {
+  // The Finanzstrafgesetz is „Art. 1 § 99" in RIS; 97/ME XXVIII says „In § 99
+  // Abs. 3a …", and every line on it was refused against an empty stock.
+  const I = 'Änderung des Testgesetzes'
+  const blocks = draft(artikel('1', I, '<absatz typ="novao1">1. In &sect; 5 Abs. 2 wird das Wort &bdquo;Zwei&ldquo; durch das Wort &bdquo;Drei&ldquo; ersetzt.</absatz>'))
+  const ref = (label: string, nor: string) => ({ nor, label, id: '5', inkrafttreten: null, ausserkrafttreten: null, kundmachungsorgan: null, stammnorm: null, gesetzesnummer: '10000001', xmlUrl: `https://www.ris.bka.gv.at/${nor}.xml` })
+  const rows = [pair(I, '§ 5. (1) … (2) Zwei gilt.', '§ 5. (1) … (2) Drei gilt.', '§ 5.')]
+
+  it('takes „Art. 1 § 5" for a bare § 5 where it is the law\'s only § 5', async () => {
+    const law: KonsLawAtDate = { ...LAW, paragraphs: { 'Art. 1 § 5': ref('Art. 1 § 5', 'NOR5') } }
+    const r = await consolidate(who, blocks, '2026-01-01', { ...sources(rows), resolveLaw: async () => law })
+    expect(r.paragraphs.map((p) => p.id)).toEqual(['5'])
+    expect(r.paragraphs[0]!.segments.filter((s) => s.type !== 'removed').map((s) => s.text).join(' ')).toMatch(/Drei gilt/)
+    expect(consolidationBalance(r).balanced).toBe(true)
+  })
+
+  it('never guesses between two Artikel that both hold a § 5', async () => {
+    const law: KonsLawAtDate = { ...LAW, paragraphs: { 'Art. 1 § 5': ref('Art. 1 § 5', 'NOR5'), 'Art. 2 § 5': ref('Art. 2 § 5', 'NOR6') } }
+    const r = await consolidate(who, blocks, '2026-01-01', { ...sources(rows), resolveLaw: async () => law })
+    expect(r.paragraphs).toEqual([])
+    expect(r.withheld.map((w) => [w.id, w.cause])).toEqual([['5', 'verweigert']])
+  })
+})
+
 describe('consolidate — a repeal held against the annex (19.11.2026)', () => {
   const T = 'Änderung des Testgesetzes'
   const blocks = draft(artikel('1', T, '<absatz typ="novao1">1. &sect; 5 entf&auml;llt.</absatz>'))

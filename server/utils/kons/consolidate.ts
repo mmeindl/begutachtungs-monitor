@@ -432,6 +432,15 @@ export async function consolidate(
       labelOf.set(id, dotless)
       joined.set(dotless, id)
     }
+    // A law RIS files by Artikel answers a bare „§ 99" under „Art. 1 § 99"
+    // (Finanzstrafgesetz, Datenschutzgesetz, Arbeitslosenversicherungsgesetz
+    // 1977), and the drafts cite it without the Artikel. Joined only where
+    // exactly one Artikel of the law holds that number (`artikelLabelOf`).
+    for (const [id, label] of labelOf) {
+      const artikel = inRis.has(label) ? null : artikelLabelOf(label, inRis)
+      if (artikel === null || [...labelOf.values()].includes(artikel)) continue
+      labelOf.set(id, artikel)
+    }
     const wanted = new Map(w.addressed.map((id) => [labelOf.get(id)!, covered(id)]))
     const refs = Object.entries(law.paragraphs)
       .filter(([label]) => wanted.has(anlageLabelKey(label)))
@@ -659,6 +668,30 @@ const REPEAL_ONLY_RE = /^(?:[^.()[\]]{0,80}?\s)?(?:(?:§+\s*[\w.]+|(?:Anlage|Anh
 export function annexKeepsUnit(rows: readonly Pick<ComparisonRow, 'proposed' | 'paraAfter'>[]): boolean {
   const text = rows.filter((r) => r.paraAfter !== null).map((r) => r.proposed).join(' ').replace(/\s+/g, ' ').trim()
   return text !== '' && !REPEAL_ONLY_RE.test(text)
+}
+
+/**
+ * The label a law RIS files by Artikel carries a bare „§ 99" under — „Art. 1
+ * § 99" — or null (20.11.2026).
+ *
+ * The drafts cite such a law's §§ without its Artikel („In § 99 Abs. 3a
+ * lautet …", 97/ME XXVIII on the Finanzstrafgesetz), and under „§ 99" RIS
+ * holds no document there: the stock came out without the §, and every line
+ * on it was refused — 52 §§ of GP XXVIII's drafts in the FinStrG, the GGG,
+ * the BEinstG, the AlVG, the DSG, the PreisG and the NBG. Taken only where
+ * exactly one Artikel of the law holds the number: the DSG's „§ 1" is
+ * „Art. 1 § 1" because Art. 2 starts at § 4, and where two Artikel hold
+ * „§ 1" (Lebensmittelbewirtschaftungsgesetz Art. II § 1 beside Art. I) the
+ * bare number names neither and is refused as before.
+ */
+export function artikelLabelOf(label: string, inRis: ReadonlySet<string>): string | null {
+  const m = /^§ (\S+)$/.exec(label)
+  if (!m) return null
+  const found = [...inRis].filter((l) => {
+    const art = /^Art\. \S+ § (\S+)$/.exec(l)
+    return art !== null && art[1] === m[1]
+  })
+  return found.length === 1 ? found[0]! : null
 }
 
 /** The key `unitsByKey` holds a node under — a schedule as „Anl. 1", a § by its number. */
