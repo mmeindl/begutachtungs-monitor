@@ -536,12 +536,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   is editorial only if every inserted or removed piece is a citation, a
   number, a date, a single letter or punctuation; „und" → „oder" is not.
 - **The comparison key may fold typography; the displayed text never does**
-  (§12.33).
+  (§12.33). A minus sign is not typography (19.11.2026, `isSign` in
+  `server/utils/lawtext/normalize.ts`): a hyphen right before a number that
+  opens the text, follows a space or a bracket stays in the key, so „-18 °C"
+  against „18 °C" is a change; folded with the hyphens of „Covid-19" and
+  „BT-06", it read „unverändert". Station, annex and fault-injection
+  harnesses moved nothing. A dash standing free („- 18") still folds.
 - **What the unit key forgives, the badge forgives** (19.11.2026,
   `spacingOnly` in `server/utils/diff/wordDiff.ts`): a removed and an
   inserted run that differ only in spaces and hyphens are no changed word for
   „redaktionell", except a separator between two digits („1 3" is not
-  „13"). The runs stay shown as they are; folding them to `equal` would print
+  „13") and a minus sign. The runs stay shown as they are; folding them to `equal` would print
   the earlier spelling as agreed.
 - **A changed text without a word diff says so and stands unmarked**
   (19.11.2026, `NO_WORD_DIFF_DE` in `app/utils/diffSides.ts`, `DiffBody`):

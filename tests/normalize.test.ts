@@ -98,6 +98,19 @@ describe('compareKey', () => {
   it('still separates texts that differ in a word', () => {
     expect(compareKey('OTC-Derivaten')).not.toBe(compareKey('OTC-Kontrakten'))
   })
+
+  it('keeps a minus sign: „-18" is not „18" (19.11.2026)', () => {
+    // Folded with every other hyphen, a lost sign read „unverändert".
+    expect(compareKey('bei -18 °C')).not.toBe(compareKey('bei 18 °C'))
+    expect(compareKey('-5 %')).not.toBe(compareKey('5 %'))
+    expect(compareKey('(-5 %)')).not.toBe(compareKey('(5 %)'))
+    // Not seen: a dash standing free, „bei - 18 °C", reads as spacing — a
+    // dash and a sign look alike there.
+    // A hyphen inside a word or between two numbers is still typography.
+    expect(compareKey('Covid-19')).toBe(compareKey('Covid 19'))
+    expect(compareKey('BT-06')).toBe(compareKey('BT06'))
+    expect(compareKey('§§ 3-5')).toBe(compareKey('§§ 3 - 5'))
+  })
 })
 
 describe('compareKey and the leader dots', () => {

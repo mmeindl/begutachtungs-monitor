@@ -13,7 +13,7 @@
  * are measured decisions.
  */
 import type { LawDiffSegment } from '../../../shared/types'
-import { compareToken, displayTokens } from '../lawtext/normalize'
+import { compareToken, displayTokens, isSign } from '../lawtext/normalize'
 import { bareParaId } from '../text/designation'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
@@ -623,7 +623,7 @@ export function isEditorialChange(segments: readonly LawDiffSegment[] | null, co
 function spacingKey(text: string): string {
   // Whole runs, decided by their two neighbours: a lookbehind pattern would
   // backtrack into „1 - 3" and take it apart piece by piece.
-  return text.replace(/[\s-]+/g, (run, at: number) => (DIGIT_RE.test(text[at - 1] ?? '') && DIGIT_RE.test(text[at + run.length] ?? '') ? run : ''))
+  return text.replace(/[\s-]+/g, (run, at: number) => (DIGIT_RE.test(text[at - 1] ?? '') && DIGIT_RE.test(text[at + run.length] ?? '') ? run : isSign(text, run, at) ? '-' : ''))
 }
 
 /**

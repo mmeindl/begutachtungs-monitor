@@ -235,6 +235,8 @@ describe('editorial vs substantive', () => {
     // But never a space between two digits: „1 3" is not „13".
     expect(isEditorialChange(seg('binnen 1 3 Wochen', 'binnen 13 Wochen'))).toBe(false)
     expect(isEditorialChange(seg('gemäß Z 1 - 3 Wochen', 'gemäß Z 13 Wochen'))).toBe(false)
+    // Nor a minus sign: „-18" is not „18" spaced differently (19.11.2026).
+    expect(isEditorialChange(seg('des Börseunternehmensgemäß bei -18 °C', 'des Börseunternehmens gemäß bei 18 °C'))).toBe(false)
     // And a real word beside a spacing difference keeps the unit substantive.
     expect(isEditorialChange(seg('sechs Wochen in Kraft. "', 'acht Wochen in Kraft."'))).toBe(false)
   })

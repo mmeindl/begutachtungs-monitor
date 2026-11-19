@@ -154,7 +154,20 @@ const SPACE_BEFORE_PUNCT_RE = /\s+([.,;:])(?![.…])/g
  * word diff is.
  */
 export function compareKey(t: string): string {
-  return foldDotRuns(normalizeText(t)).replace(/[\s-]+/g, '')
+  const s = foldDotRuns(normalizeText(t))
+  // A minus sign is no spacing: „-18" against „18" is a change (19.11.2026).
+  return s.replace(/[\s-]+/g, (run, at: number) => (isSign(s, run, at) ? '-' : ''))
+}
+
+/**
+ * Is this run of spaces and hyphens a sign before a number — a hyphen at the
+ * run's end, a digit after it, and the run opening the text, set off by a
+ * space or standing after a bracket („von -18 °C", „(-5 %)")? A hyphen inside a word or between two
+ * numbers („Covid-19", „1-3") is not.
+ */
+export function isSign(text: string, run: string, at: number): boolean {
+  const before = text[at - 1] ?? ''
+  return run.endsWith('-') && /\d/.test(text[at + run.length] ?? '') && (at === 0 || /\s/.test(run) || !/[\p{L}\p{N}]/u.test(before)) && !/\d/.test(before)
 }
 
 /**
