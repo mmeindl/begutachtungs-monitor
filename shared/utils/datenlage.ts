@@ -759,12 +759,14 @@ export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
     date: '18.11.2026',
   },
   {
-    // decisions.md, „The consolidated reading and the annex" (`pnpm harness:kons -- --discover=60 --sammel --oracle`).
+    // decisions.md, „The consolidated reading and the annex" (`pnpm harness:kons -- --discover=60 --sammel --oracle`),
+    // the line „beide Wege: plausibel, Orakel bestätigt" — the Textgegenüberstellung read from the RIS table
+    // and from the PDF, as the page reads it; until 18.11.2026 the table alone (106 of 106).
     source: 'bund',
     step: 'tgu',
-    text: 'Die Lesefassung, an kundgemachten Gesetzen geprüft: Alle 106 Paragraphen, die der Monitor zeigen würde, sind wortgleich mit dem geltenden Text im RIS. Ohne die Bestätigung durch die Textgegenüberstellung wären es 1.370 von 1.435.',
-    population: '1.752 Paragraphen aus 60 Bundesgesetzblättern',
-    date: '18.11.2026',
+    text: 'Die Lesefassung, an kundgemachten Gesetzen geprüft: Von 429 Paragraphen, die der Monitor zeigen würde, sind 428 wortgleich mit dem geltenden Text im RIS. Dem übrigen fehlt ein Teil; ein Wort, das nicht im Gesetz steht, hat keiner. Ohne die Bestätigung durch die Textgegenüberstellung wären es 1.422 von 1.470.',
+    population: '1.796 Paragraphen aus 60 Bundesgesetzblättern',
+    date: '19.11.2026',
   },
   {
     // decisions.md, same table (`scripts/harness/accounting.ts --gp=XXVIII`).
