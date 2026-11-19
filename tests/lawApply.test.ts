@@ -1270,6 +1270,17 @@ describe('Ein römisch nummerierter Anhang ist die Anlage seiner Zahl (19.11.202
     expect(out.paragraphs[1]!.text).toBe('Anhang acht alt.')
   })
 
+  // BVergG 2018 Anl. 7 → 8 (BGBl. I Nr. 8/2026): the new designation was read
+  // through `bareParaId`, which finds no number in „VIII", and refused.
+  it('renumbers an Anhang to the Roman designation its line gives', () => {
+    const { law: out, results, renamed } = run(withAnhaenge(), instr('Anhang IX entfällt; der bisherige Anhang VIII erhält die Bezeichnung "Anhang IX" .'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs.map((p) => `${p.marker}:${p.id}:${p.text}`)).toEqual(['§ 8.:8:', 'Anl. 9:9:Anhang acht alt.'])
+    expect(renamed).toMatchObject([{ level: 'para', from: 'Anl. 8', to: 'Anl. 9' }])
+    // A letter stays no number.
+    expect(run(withAnhaenge(), instr('Der bisherige Anhang VIII erhält die Bezeichnung "Anhang B".')).results[0]!.reason).toBe('Neue Bezeichnung nicht lesbar')
+  })
+
   it('refuses a Roman Anhang the law does not carry', () => {
     const { results } = run(withAnhaenge(), instr('Im Anhang III wird das Wort "alt" durch das Wort "neu" ersetzt.'))
     expect(results[0]!.applied).toBe(false)

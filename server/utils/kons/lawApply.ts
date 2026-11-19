@@ -2551,7 +2551,13 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     // through `bareParaId` alone, which finds no number in a letter: every
     // run of Litterae was refused as „nicht aufzählbar" (five lines of the
     // GP-XXVIII drafts, 26.10.2026).
-    const designation = (to: string): string => bareParaId(to) ?? (schedule ? '' : to.replace(/[^\w]/g, ''))
+    // A schedule's new number is read as its old one is (`paraNumber`):
+    // „der bisherige Anhang VII erhält die Bezeichnung ‚Anhang VIII'" is
+    // Anl. 8, where `bareParaId` found no number in a Roman numeral and
+    // refused the line (BVergG 2018 and BVergG Konzessionen 2018, BGBl. I
+    // Nr. 8/2026). Still a number or nothing: a letter („Anlage B") is no
+    // number a run could count on.
+    const designation = (to: string): string => schedule ? scheduleTo(to) : (bareParaId(to) ?? to.replace(/[^\w]/g, ''))
     const first = op.to === '' ? '' : designation(op.to)
     if (!first && op.to !== '') return 'Neue Bezeichnung nicht lesbar'
     if (first === '' && (op.toLast || nodes.length !== 1)) return 'Wegfall einer Bezeichnung nur für eine Einheit'
@@ -2742,6 +2748,15 @@ function deepestId(a: NovaoAddress): string {
  */
 function paraNumber(para: string | null): string | null {
   return isSchedule(para) ? scheduleNumber(para!) : bareParaId(para)
+}
+
+/**
+ * The number a schedule is renumbered to — „Anhang VIII", „Anlage 3" or a
+ * bare „3" — or '' where it carries none that counts (`renumberBatch`).
+ */
+function scheduleTo(to: string): string {
+  const id = scheduleNumber(isSchedule(to) ? to : `Anlage ${to.trim()}`)
+  return id !== null && /^\d/.test(id) ? id : ''
 }
 
 /**
