@@ -155,6 +155,19 @@ describe('a Novellierungsanordnung with no number at all', () => {
     expect(units[0]!.text).toContain('(108) Neuer Text.')
   })
 
+  // 20.11.2026: the clause in the other word orders of the corpus — the
+  // instruction under it opened no unit and stood nowhere (17bb816d,
+  // 39e33ba8, 405bbd6b; four Salzburger Landesgesetzblätter).
+  it.each([
+    'Das X-Gesetz, BGBl. I Nr. 1/2000, zuletzt ge&auml;ndert durch BGBl. I Nr. 2/2001 wird ge&auml;ndert wie folgt:',
+    'Auf Grund des Y-Gesetzes wird die X-Verordnung, BGBl. II Nr. 1/2000, wie folgt ge&auml;ndert:',
+    'Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt ge&auml;ndert (X-Novelle 2011):',
+  ])('opens it under „%s"', (text) => {
+    const units = parseLawUnitsFromRis(ris(`<absatz typ="promkleinlsatz">${text}</absatz>`, '<absatz typ="novao1">&sect; 5 Abs. 1 lautet:</absatz>', '<absatz typ="abs">"(1) Neuer Text."</absatz>'))
+    expect(units.map((u) => u.id)).toEqual(['Z1'])
+    expect(units[0]!.text).toContain('(1) Neuer Text.')
+  })
+
   it('refuses a line that continues the instruction above it', () => {
     // 123/ME: "Im Inhaltsverzeichnis wird der Eintrag …" / "durch folgenden
     // Eintrag ersetzt:" — one instruction over two blocks, no clause above.

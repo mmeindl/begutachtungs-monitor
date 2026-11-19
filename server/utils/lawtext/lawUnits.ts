@@ -157,7 +157,15 @@ const NUMBER_THEN_NUMBER_RE = /^\d{1,3}[a-z]?\.\d/
  * clause itself where RIS mistags it as an instruction (92/ME) all follow
  * something else.
  */
-const PROMULGATION_RE = /\bwird\s+(?:wie\s+folgt\s+)?geändert\s*:\s*$|\bwerden\s+wie\s+folgt\s+geändert\s*:\s*$/
+// Also the word orders the corpus carries beside it (20.11.2026, `harness/units.ts`
+// listing the unnumbered lines it exempts): „wird geändert wie folgt:", the
+// law named between „wird" and „wie folgt geändert:" („wird die
+// Tierschutz-Veranstaltungsverordnung, BGBl. II Nr. 493/2004, wie folgt
+// geändert:"), and a short title before the colon („wird wie folgt geändert
+// (BFG-Novelle 2011):"). Unmatched, the law's only instruction opened no unit
+// and was compared, applied and listed nowhere — 15 instruction lines in 12
+// texts of the harness cache; the census exempts such a line by design.
+const PROMULGATION_RE = /\bwird\s+(?:wie\s+folgt\s+)?geändert\s*:\s*$|\bwerden\s+wie\s+folgt\s+geändert\s*:\s*$|\bwird\s+geändert\s+wie\s+folgt\s*:\s*$|\bwird\s[^:]*\bwie\s+folgt\s+geändert\s*(?:\([^()]*\)\s*)?:\s*$/
 
 /**
  * A litera sub-instruction — "a) In Abs. 3 lautet der erste Satz:". It
