@@ -519,6 +519,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   Bundesgesetzblätter and 21 over 595 Parliament texts, and showed a kept
   line as „entfallen" (95/ME, 58/ME, 15/ME). The table-of-contents echo rule
   drops only a unit that holds no instruction. Gate: `pnpm harness:units`.
+- **`#dup` is a key, never a designation** (19.11.2026). It marks a number the
+  source gives twice under one law's key: printed twice („82." in the
+  Waffengesetz), one law amended in two Artikel of one title, an old draft
+  whose Artikel no reader splits. Pages print the number alone
+  (`displayId`); the census counts the marks by cause and does not fail on
+  them, since a gate would fail on the source's own numbering. Its class
+  „ohne Nummer" is a reader fault, not a reading.
 - **A schedule's designation is text on both readers, in a Novelle and in a
   law the draft enacts** (19.11.2026, `lawUnits.ts`): Parliament keeps
   `71Anlagenbez`, so the RIS reader keeps `<ueberschrift typ="anlage">` and

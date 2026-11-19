@@ -26,10 +26,27 @@
  * copies the opener). Units come out in input order, so one forward pass
  * pairs them.
  *
- * Reported beside it, not asserted: ids that carry `#dup` (a number recurring
- * in one law's key: two Artikel of the same title, or a line the source
- * numbered twice) and ids that occur twice in one law — keys a join cannot
- * use, which the consumers refuse rather than pair (`lawDiff.uniqueIndex`).
+ * Reported beside it, not asserted: ids that carry `#dup` and ids that occur
+ * twice in one law. **A `#dup` is a reading, not a loss** (decided
+ * 19.11.2026): it marks a number the source gives twice under one law's key,
+ * and every consumer is built for it — the page prints the number without
+ * the mark (`displayId`), the citation names no place for it
+ * (`lawUnitCiteDe`), the § comparison pairs it by heading and similarity and
+ * takes it for a sign of several laws in one Artikel (`lawDiff`). Each one is
+ * counted by its cause, read from the unit before it:
+ *   · wiederholt — the source prints the number twice (Waffengesetz, two
+ *     instructions „82." in one Bundesgesetzblatt);
+ *   · neu gezählt — the numbering starts over: one law amended in two Artikel
+ *     of the same title (VBG 1948, Artikel 7 and 11), or an old draft whose
+ *     Artikel no reader can split;
+ *   · Folge — the units after such a restart;
+ *   · ohne Nummer — the id carries no number at all: a reader fault, not a
+ *     reading (Parliament's Word export that cuts „§ 27." into a symbol span
+ *     „§" and the number outside it, TKG 2021, `lawtext/parliamentHtml.ts`).
+ * A gate on the count would fail on the source's own numbering; a rise in a
+ * class is what to read. Ids that occur twice in one law are the third
+ * occurrence of a number („Z1#dup" again) — the comparison pairs those by
+ * similarity (`lawDiff.uniqueIndex` leaves them out of the id step).
  *
  * THE CORPUS IS WHAT IS ON DISK — the harness cache (`HARNESS_CACHE`, as the
  * other harnesses fill it), read on every path production reads it:
@@ -65,10 +82,28 @@ interface Census {
   lost: TextBlock[]
   /** Instruction lines in more than one unit */
   doubled: TextBlock[]
-  /** Unit ids marked `#dup` */
-  dupIds: number
+  /** Unit ids marked `#dup`, by cause (see the header) */
+  dupIds: DupCauses
   /** Ids that occur twice under one law key */
   sameIds: number
+}
+
+interface DupCauses { wiederholt: number; neu: number; folge: number; ohneNummer: number }
+const noDups = (): DupCauses => ({ wiederholt: 0, neu: 0, folge: 0, ohneNummer: 0 })
+
+/** Each `#dup` unit's cause, read from the unit before it in the same law. */
+function dupCauses(units: readonly LawUnit[]): DupCauses {
+  const out = noDups()
+  for (const [i, u] of units.entries()) {
+    if (!u.id.includes('#dup')) continue
+    const base = u.id.replace(/(?:#dup)+$/, '')
+    const prev = units[i - 1]
+    if (!/\d/.test(base)) out.ohneNummer++
+    else if (prev && prev.article === u.article && prev.id.replace(/(?:#dup)+$/, '') === base) out.wiederholt++
+    else if (prev && prev.article === u.article && prev.id.includes('#dup')) out.folge++
+    else out.neu++
+  }
+  return out
 }
 
 /** Census of one `segmentUnits` run: `units` must be `segmentUnits(blocks)`. */
@@ -116,7 +151,7 @@ function instructionCensus(blocks: readonly TextBlock[], units: readonly LawUnit
     if (seen.has(key)) sameIds++
     seen.add(key)
   }
-  return { lines, lost, doubled, dupIds: units.filter((u) => u.id.includes('#dup')).length, sameIds }
+  return { lines, lost, doubled, dupIds: dupCauses(units), sameIds }
 }
 
 // --- CLI ----------------------------------------------------------------------
@@ -124,17 +159,17 @@ const cacheDir = process.env.HARNESS_CACHE ?? '.harness-cache'
 const extraDir = argAssigned('dir')
 const list = argFlag('list')
 
-interface Tally { docs: number; lines: number; lost: number; doubled: number; dupIds: number; sameIds: number; hit: Set<string> }
+interface Tally { docs: number; lines: number; lost: number; doubled: number; dupIds: DupCauses; sameIds: number; hit: Set<string> }
 const tallies = new Map<string, Tally>()
 const report: string[] = []
 const add = (path: string, doc: string, blocks: readonly TextBlock[], scope: string | null): void => {
   const c = instructionCensus(blocks, segmentUnits(blocks))
-  const t = tallies.get(path) ?? { docs: 0, lines: 0, lost: 0, doubled: 0, dupIds: 0, sameIds: 0, hit: new Set<string>() }
+  const t = tallies.get(path) ?? { docs: 0, lines: 0, lost: 0, doubled: 0, dupIds: noDups(), sameIds: 0, hit: new Set<string>() }
   tallies.set(path, t)
   t.lines += c.lines
   t.lost += c.lost.length
   t.doubled += c.doubled.length
-  t.dupIds += c.dupIds
+  for (const k of Object.keys(t.dupIds) as (keyof DupCauses)[]) t.dupIds[k] += c.dupIds[k]
   t.sameIds += c.sameIds
   if (c.lost.length + c.doubled.length > 0) t.hit.add(doc)
   for (const b of c.lost) report.push(`LOST    ${path.padEnd(18)} ${doc.slice(0, 12)} ${(scope ?? '').slice(0, 40).padEnd(40)} :: ${normalizeText(b.text).slice(0, 110)}`)
@@ -204,7 +239,9 @@ let failed = 0
 console.log('Zählung der Anweisungen — jede Anweisungszeile in genau einer Einheit')
 for (const [path, t] of [...tallies].sort()) {
   failed += t.lost + t.doubled
-  console.log(`  ${path.padEnd(16)} Dokumente ${String(docsOf.get(path) ?? 0).padStart(5)}  Zeilen ${String(t.lines).padStart(6)}  verloren ${String(t.lost).padStart(4)}  doppelt ${String(t.doubled).padStart(3)}  betroffen ${String(t.hit.size).padStart(3)}   | #dup ${t.dupIds}, gleiche Id ${t.sameIds}`)
+  const d = t.dupIds
+  const dups = d.wiederholt + d.neu + d.folge + d.ohneNummer
+  console.log(`  ${path.padEnd(16)} Dokumente ${String(docsOf.get(path) ?? 0).padStart(5)}  Zeilen ${String(t.lines).padStart(6)}  verloren ${String(t.lost).padStart(4)}  doppelt ${String(t.doubled).padStart(3)}  betroffen ${String(t.hit.size).padStart(3)}   | #dup ${dups} (wiederholt ${d.wiederholt}, neu gezählt ${d.neu}, Folge ${d.folge}, ohne Nummer ${d.ohneNummer}), gleiche Id ${t.sameIds}`)
 }
 if (list || failed > 0) for (const line of report) console.log(line)
 if (failed > 0) {
