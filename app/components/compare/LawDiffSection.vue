@@ -24,7 +24,7 @@ import { diffUnitKey } from '#shared/utils/diffKey'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { readsSideBySide, splitSegments } from '~/utils/diffSides'
+import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import { lawDiffCredits } from '~/utils/lawDiffCredits'
@@ -739,7 +739,7 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
                            reasoning is a different one is the finding, and the
                            ceiling is ours, not the Ressort's. -->
                         <div v-else class="pb-2 pl-6">
-                          <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
+                          <GapNote class="mb-2 text-xs text-ink-secondary" :text="NO_WORD_DIFF_DE" />
                           <SideBySide :from-label="fromLabel" :to-label="toLabel">
                             <template #from>
                               <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>

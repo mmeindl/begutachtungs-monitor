@@ -12,7 +12,7 @@ import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGrou
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
 import { landReasoningGapNote } from '~/utils/reasoningNotes'
 import { citeLineDe, dividedText, landTextCiteDe, lawUnitCiteDe } from '#shared/utils/citations'
-import { readsSideBySide, splitSegments } from '~/utils/diffSides'
+import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
 import LandWithheldNotes from '~/components/land/LandWithheldNotes.vue'
 
@@ -500,9 +500,10 @@ const hasUnits = computed(() => units.value.length > 0)
                     </template>
                   </template>
                   <div v-if="!b.reasoning.comparable || !b.reasoning.segments" class="pb-2 pl-6">
-                    <p class="mb-2 text-xs text-ink-muted">
-                      {{ b.reasoning.comparable ? 'Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.' : 'Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.' }}
-                    </p>
+                    <!-- The word diff's ceiling is a gap of the monitor's, said as the
+                         comparison above says it (`DiffBody`, 20.11.2026). -->
+                    <GapNote v-if="b.reasoning.comparable" class="mb-2 text-xs text-ink-secondary" :text="NO_WORD_DIFF_DE" />
+                    <p v-else class="mb-2 text-xs text-ink-muted">Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.</p>
                     <SideBySide :from-label="FROM_LABEL" :to-label="TO_LABEL">
                       <template v-if="b.reasoning.fromText" #from>
                         <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
