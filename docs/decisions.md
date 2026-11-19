@@ -649,13 +649,21 @@ gets an entry of its own only where it carries a reason the rule does not.
   that titles by neither Ziffer nor § proves nothing, and a passage on the
   other side whose words this side has under another number withholds the
   reason too (`provesAbsence`: 49/ME XXVIII heads its Inkrafttreten „Zu § 10:").
-  Otherwise the line is „Begründung: nicht zuzuordnen." with no reason: an
-  unproven „nicht gefunden" would have been false on most such changes.
+  Otherwise the line gives no reason: an unproven „nicht gefunden" would
+  have been false on most such changes. **Whose gap the line names**
+  (maintainer, 20.11.2026; until then every line opened „Begründung: nicht
+  zuzuordnen", an exception to the lead words): where the join failed, it is
+  ours — „Nicht lesbar: die Begründung zu dieser Änderung – die
+  Erläuterungen zählen die Ziffern anders." and, without a proven reason,
+  „… – wo die Erläuterungen sie führen, liest der Monitor nicht sicher
+  heraus."; where absence is proven, it is a fact about the document and
+  takes no lead word — „Begründung: Die Erläuterungen des Entwurfs haben zu
+  dieser Änderung keinen Abschnitt." (der Regierungsvorlage, beider Texte),
+  never „Nicht veröffentlicht", because prose elsewhere may still touch it.
   An inserted or removed change (20.11.2026) gets the line only where the
-  one document it stands in proves the absence — „in der
-  Regierungsvorlage nicht gefunden" at an inserted one, „im Entwurf nicht
-  gefunden" at a removed one; 15 changes of GP XXVIII, silent before. Not
-  „nicht zuzuordnen." at the 857 others: its own document mostly explains
+  one document it stands in proves the absence — the Regierungsvorlage's
+  line at an inserted one, the Entwurf's at a removed one; 15 changes of GP XXVIII, silent before. Not
+  the unproven line at the 857 others: its own document mostly explains
   such a change, and there was only nothing to hold that against. The §
   join reads a § inside an Artikel of the law („In Artikel II § 9 …"),
   which the § name does not (`addressedParagraph(line, 'join')`): the
@@ -2319,8 +2327,8 @@ the reasoning in full stands in that component's header comment.
   deshalb auch nicht …"). A record that lists no document
   proves no absence: a missing Erläuterungen document is „Nicht lesbar",
   never „Nicht veröffentlicht". Kept apart on purpose: the verification
-  check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the per-change
-  „Begründung: nicht zuzuordnen", the Lesefassung's per-§ reasons, and the
+  check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the Lesefassung's
+  per-§ reasons, and the
   list's count line, whose clauses already say „gerade nicht abrufbar".
   Before the rule, 192 strings of the site were read and sorted by it.
 - **A door lands in the form** (15.11.2026). A button that sends the reader

@@ -760,7 +760,7 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
                     <!-- No Begründung could be attached: said in the
                          disclosure's place and size, without its weight or
                          chevron — there is nothing to open (14.11.2026). -->
-                    <p v-else-if="b.gap" class="mt-2 text-xs text-ink-secondary">{{ b.gap }}</p>
+                    <GapNote v-else-if="b.gap" class="mt-2 text-xs text-ink-secondary" :text="b.gap" />
                   </DiffBody>
                 </div>
               </template>
