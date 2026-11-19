@@ -2430,6 +2430,13 @@ circular of 10.12.2015).
   (§12.12).
 - **Withholding a whole law when deviant §§ cluster.** It discarded §§ that
   each passed; it became a note (§12.13).
+- **Reading a § the right column quotes („„§ 1. …“") as a unit of the PDF
+  annex** (measured 19.11.2026). It turns four withheld false repeals into
+  confirmed changes, but in annexes that print instructions it glues the
+  next instruction („§ 4 lautet:") into the § as new text, confirmed, and in
+  a renumbering chain it pairs the old § 68i MSchG with the new one by
+  number, also confirmed. The repeal rule withholds those §§ with a true
+  reason instead (`annex/repeals.ts`).
 - **A health endpoint, a dead man's switch, a status page.** Stale data is
   labelled on the page, and a failed prewarm costs seconds (§12.7).
 
