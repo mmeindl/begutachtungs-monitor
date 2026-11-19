@@ -521,6 +521,12 @@ const oracleNotes = new Map<string, number>()
 const sameTally = new Map<string, number>()
 /** oracle verdict × harness verdict × refusal */
 const oracleTally = new Map<string, number>()
+/** identical §§ × whether their designations are too × oracle verdict × plausible */
+const markerTally = new Map<string, number>()
+/** Every designation below the §, in printed order: „abs (2)", „z 3.", „lit b)". */
+function markerSequence(node: LawNode): string[] {
+  return node.children.flatMap((c) => [`${c.level} ${c.marker.replace(/\s+/g, '')}`, ...markerSequence(c)])
+}
 const gateTally = new Map<string, number>()
 const tally = (map: Map<string, number>, key: string): void => {
   map.set(key, (map.get(key) ?? 0) + 1)
@@ -885,6 +891,21 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // silently reprinted the plausible subset and the guard looked like it
     // filtered nothing (2026-09-09).
     tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}|${annexPath}`)
+    // The designations, as the page shows them (`bodyText`): „identisch"
+    // compares `plainText`, which leaves out every „(2)", „3." and „b)", so a
+    // result whose text is the law under the wrong numbers counted as the
+    // law (19.11.2026).
+    if (verdict === 'identisch') {
+      const mine = markerSequence(node)
+      const theirs = markerSequence(best.tree)
+      const at = mine.findIndex((m, i) => m !== theirs[i])
+      const differs = at >= 0 || mine.length !== theirs.length
+      tally(markerTally, `${differs ? 'abweichend' : 'gleich'}|${oracleKey}|${plausible ? 'plausibel' : 'unplausibel'}`)
+      if (differs && (verbose || oracleKey === 'bestätigt')) {
+        const i = at >= 0 ? at : Math.min(mine.length, theirs.length)
+        console.log(`        ↳ Gliederung § ${id} [Orakel: ${oracleKey}${plausible ? ', plausibel' : ''}]: Engine ${mine.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'} — RIS ${theirs.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'}`)
+      }
+    }
     // A confirmed § that is not the RIS text is the row the gate table sums
     // away („identisch 105" of 108, „abweichend 0"): print it, so the rest
     // can be read and not only counted (18.11.2026).
@@ -1091,6 +1112,9 @@ console.log(`    kein geltender Text  : ${sum((v) => v.cleanNotLaw)} (${pct(sum(
     line('plausibel, Orakel bestätigt', (p) => p[0] === 'plausibel' && p[1] === 'bestätigt')
     line('plausibel, kein Orakel für die Novelle', (p) => p[0] === 'plausibel' && p[1] === 'kein Orakel')
     line('Orakel bestätigt, egal ob plausibel', (p) => p[1] === 'bestätigt')
+    const marked = (pred: (parts: string[]) => boolean): number => sumKeys(markerTally, pred)
+    console.log(`\n  Gliederung der identischen Paragraphen (Absatz-, Ziffer-, Literabezeichnungen, wie die Seite sie zeigt):`)
+    console.log(`    gleich ${marked((p) => p[0] === 'gleich')}, abweichend ${marked((p) => p[0] === 'abweichend')}; abweichend und Orakel bestätigt: ${marked((p) => p[0] === 'abweichend' && p[1] === 'bestätigt')} (muss 0 sein)`)
     console.log(`\n  Orakel nach Herkunft der Anweisungen (identische Anweisungen im ME und im BGBl → ein Widerspruch ist ein Fehler des Orakels):`)
     const sameLine = (name: string, pred: (parts: string[]) => boolean) => {
       const total = sumKeys(sameTally, pred)
