@@ -610,7 +610,9 @@ gets an entry of its own only where it carries a reason the rule does not.
   (`ReasoningDiffResponse.gaps`). Without the line it looked like a change
   whose Begründung was found and left unchanged. The reason is given only
   where it is proven: „die Erläuterungen zählen die Ziffern anders" where
-  one side's passage to the Ziffer is about another § (`misnumbered`);
+  one side's passage to the Ziffer is about another § (`misnumbered`; a §
+  another change of the same law amends is another §, never a slip of the
+  heading);
   „nicht gefunden" only where that document names neither the Ziffer nor one
   of the change's §§ in any „Zu …" line or passage heading (`namesChange`).
   Otherwise the line is „Begründung: nicht zuzuordnen." with no reason: an

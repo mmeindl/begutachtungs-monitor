@@ -712,10 +712,25 @@ describe('compareReasoning — eine Seite zählt ihre Ziffern versetzt (02.10.20
     const toc = [z('Z1', 'Z1', 'Im Inhaltsverzeichnis wird nach dem den § 78a betreffenden Eintrag folgender Eintrag eingefügt: …')]
     const tocDoc = () => erl('Zu Z 1 (Der den § 78b betreffende Eintrag im Inhaltsverzeichnis):', 'Anpassung.')
     expect(compareReasoning(toc, tocDoc(), tocDoc()).units['Gesetz|Z1|changed']).toBeDefined()
-    // „§ 124" for § 124b is a slip of the heading, not another § (61/ME XXVIII).
-    const slip = [z('Z23', 'Z24', '§ 124b wird wie folgt geändert: …')]
-    const out = compareReasoning(slip, erl('Zu Z 24 (§ 124b):', 'Text.'), erl('Zu Z 23 (§ 124):', 'Text.'))
-    expect(out.units['Gesetz|Z23|changed']).toBeDefined()
+    // „§ 17" for § 17c is a slip of the heading, not another § (295/ME XXVII)
+    // — where no other change of the law amends § 17.
+    const slip = [z('Z2', 'Z2', '§ 17c lautet: …')]
+    const out = compareReasoning(slip, erl('Zu Z 2 (§ 17c):', 'Text.'), erl('Zu Z 2 (§ 17):', 'Text.'))
+    expect(out.units['Gesetz|Z2|changed']).toBeDefined()
+  })
+
+  it('nimmt keinen § als Verschreiber, den eine andere Änderung des Gesetzes ändert (61/ME XXVIII Z 23)', () => {
+    // The Vorlage keeps the draft's Ziffern: its „Zu Z 23 (§ 124):" explains
+    // its Z 22 on § 124, not its Z 23 on § 124b.
+    const units = [z('Z22', 'Z23', 'In § 124 entfällt die Z 5.'), z('Z23', 'Z24', '§ 124b wird wie folgt geändert: a) In Z 451 …')]
+    const before = erl('Zu Z 23 (§ 124):', 'Die Pensionskassen.', 'Zu Z 24 (§ 124b):', 'Die Gebäude-AfA.')
+    const after = erl('Zu Z 23 (§ 124):', 'Die Pensionskassen.', 'Zu Z 24 lit. a (§ 124b Z 451):', 'Die Gebäude-AfA, nach der Begutachtung.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.units['Gesetz|Z23|changed']).toBeUndefined()
+    expect(out.fallbacks['Gesetz|Z23|changed']).toBe('misnumbered')
+    expect(out.gaps['Gesetz|Z23|changed']).toBe('numbering')
   })
 })
 

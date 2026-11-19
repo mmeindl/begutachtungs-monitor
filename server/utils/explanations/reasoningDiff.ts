@@ -921,11 +921,17 @@ interface FoundPassages {
  * inserted Abschnitt, „§§82h" without a space. So it judges only where the
  * fault can be the document's alone: the misfit passage names this one Ziffer
  * and §§, none of which the instruction amends or shares a number with
- * („§ 124" for § 124b is a slip, not another §); the instruction reads the
- * same §§ on both sides, so our reading of it is not what differs; and the
- * other side's passages all name a § it does amend.
+ * („§ 17" for § 17c is a slip, not another §, 295/ME XXVII); the instruction
+ * reads the same §§ on both sides, so our reading of it is not what differs;
+ * and the other side's passages all name a § it does amend.
+ *
+ * A number another change of the same law amends is no slip (19.11.2026,
+ * `amendedByOthers`): 61/ME XXVIII's Vorlage keeps the draft's Ziffern from
+ * about its Z 17 on, so „Zu Z 23 (§ 124):" is the passage of its Z 22 („In
+ * § 124 entfällt die Z 5"), not a slip at its Z 23 on § 124b — read as one,
+ * the § 124 Begründung stood at the change to § 124b.
  */
-function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages, read: Readings): Side | null {
+function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages, read: Readings, amendedByOthers: (side: Side) => ReadonlySet<string>): Side | null {
   const own = read.paragraphIds(unit, 'before')
   const ownAfter = read.paragraphIds(unit, 'after')
   if (own.size === 0 || own.size !== ownAfter.size || [...own].some((x) => !ownAfter.has(x))) return null
@@ -933,7 +939,12 @@ function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages, re
   const misfit = (f: FoundPassages, side: Side) => {
     if (f.byParagraph || f.passages.length !== 1) return false
     const p = f.doc.special[f.passages[0]!]!
-    return p.ziffern.length === 1 && p.paragraphs.length > 0 && !fitsParagraphs(p, unit, side, read) && !p.paragraphs.some((x) => slip(explanationParaId(x) ?? ''))
+    const others = amendedByOthers(side)
+    const isSlip = (x: string) => {
+      const id = explanationParaId(x) ?? ''
+      return slip(id) && !others.has(id)
+    }
+    return p.ziffern.length === 1 && p.paragraphs.length > 0 && !fitsParagraphs(p, unit, side, read) && !p.paragraphs.some(isSlip)
   }
   if (misfit(me, 'before') && fitsAll(rv, unit, 'after', read)) return 'before'
   if (misfit(rv, 'after') && fitsAll(me, unit, 'before', read)) return 'after'
@@ -943,7 +954,7 @@ function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages, re
 /**
  * Whether a § a heading names is a slip for one the instruction amends —
  * read the same by `misnumbered` and `offsetPassage`. A slip drops a letter
- * („§ 124" for § 124b, 61/ME XXVIII); one that adds a letter to the § the
+ * („§ 17" for § 17c, 295/ME XXVII); one that adds a letter to the § the
  * instruction amends names another §: „Zu Z 13 (§ 82j samt Überschrift):" in
  * 54/ME XXVIII's Vorlage is the passage of its Z 14, which inserts § 82j,
  * not of Z 13 on § 82 Abs. 29 (02.10.2026).
@@ -986,13 +997,11 @@ function fitsAll(f: FoundPassages, unit: LawDiffUnit, side: Side, read: Readings
  * keeps no Begründung, as before.
  */
 function offsetPassage(side: ZifferSide, unit: LawDiffUnit, used: ReadonlySet<number>, units: readonly LawDiffUnit[], read: Readings): number | null {
-  const { ziffer, article } = unitZiffer(unit, side.side)
+  const { ziffer } = unitZiffer(unit, side.side)
   if (!ziffer || !/^\d+$/.test(ziffer)) return null
   const own = read.paragraphIds(unit, side.side)
   if (own.size === 0) return null
-  const sameLawAs = (u: LawDiffUnit) =>
-    side.mode === 'title' ? unitTitle(u, side.side) === unitTitle(unit, side.side) : side.mode === 'single' || unitZiffer(u, side.side).article === article
-  const others = units.filter((u) => u !== unit && existsOn(u, side.side) && sameLawAs(u))
+  const others = sameLawUnits(side, unit, units)
   const found: number[] = []
   for (const n of [Number(ziffer) - 1, Number(ziffer) + 1]) {
     if (n < 1) continue
@@ -1014,6 +1023,19 @@ function offsetPassage(side: ZifferSide, unit: LawDiffUnit, used: ReadonlySet<nu
     }
   }
   return found.length === 1 ? found[0]! : null
+}
+
+/** The other units of the unit's law present on a side — by Artikel, or the single law's, or its title's. */
+function sameLawUnits(side: ZifferSide, unit: LawDiffUnit, units: readonly LawDiffUnit[]): LawDiffUnit[] {
+  const { article } = unitZiffer(unit, side.side)
+  const sameLawAs = (u: LawDiffUnit) =>
+    side.mode === 'title' ? unitTitle(u, side.side) === unitTitle(unit, side.side) : side.mode === 'single' || unitZiffer(u, side.side).article === article
+  return units.filter((u) => u !== unit && existsOn(u, side.side) && sameLawAs(u))
+}
+
+/** Every § the other changes of the unit's law amend on a side (`sameLawUnits`, `unitParagraphIds`). */
+function amendedByOthers(side: ZifferSide, unit: LawDiffUnit, units: readonly LawDiffUnit[], read: Readings): Set<string> {
+  return new Set(sameLawUnits(side, unit, units).flatMap((u) => [...read.paragraphIds(u, side.side)]))
 }
 
 /** The unit's first key on a side, at another Ziffer — by Artikel, or the single law's, or its title's. */
@@ -1277,7 +1299,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     // One side's own passage is about another § than the other side's: that
     // document numbers its Ziffern off its own text (`misnumbered`) — and
     // perhaps explains this change under the neighbouring number, below.
-    const misfit = misnumbered(unit, { doc: before, ...me }, { doc: after, ...rv }, read)
+    const misfit = misnumbered(unit, { doc: before, ...me }, { doc: after, ...rv }, read, (side) => amendedByOthers(z[side], unit, units, read))
     if (misfit) {
       fallbacks[diffUnitKey(unit)] = 'misnumbered'
       gapOf[diffUnitKey(unit)] = 'numbering'
