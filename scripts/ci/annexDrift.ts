@@ -67,7 +67,7 @@ const lines: string[] = []
 const all: Finding[] = []
 
 for (const report of reports) {
-  const findings = [...classAFindings(report), ...(baseline ? classBFindings(report, baseline) : [])]
+  const findings = [...classAFindings(report, baseline), ...(baseline ? classBFindings(report, baseline) : [])]
   total += findings.length
   all.push(...findings)
 

@@ -104,6 +104,16 @@ describe('die Gestalt des Dokuments', () => {
     expect(found[0]!.text).toContain('2 Seiten')
   })
 
+  // 20.11.2026: the Methodenverordnung Wasser's 72 pages, known and said on
+  // the page, held the weekly issue open for good.
+  it('schweigt zu einer Gestalt, die die Grundlinie mit genau diesen Seiten kennt', () => {
+    const r = report([sound({ cite: 'Z/ME', droppedPages: 72 })])
+    const known = toBaseline([r])
+    expect(classAFindings(r, known)).toEqual([])
+    const more = report([sound({ cite: 'Z/ME', droppedPages: 80 })])
+    expect(classAFindings(more, known)[0]).toMatchObject({ kind: 'form', draft: 'Z/ME' })
+  })
+
   it('beugt die Einzahl', () => {
     expect(classAFindings(report([sound({ droppedPages: 1 })]))[0]!.text).toContain('1 Seite der Beilage wurde')
   })

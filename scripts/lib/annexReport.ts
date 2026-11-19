@@ -144,7 +144,7 @@ export const MIN_DRAFTS_WITH_ANNEX = 60
  * report „0 Zusicherungen verletzt", because zero out of nothing is no
  * all-clear.
  */
-export function classAFindings(report: AnnexReport): Finding[] {
+export function classAFindings(report: AnnexReport, baseline: AnnexBaseline | null = null): Finding[] {
   const out: Finding[] = []
   const run = (kind: Finding['kind'], text: string) => out.push({ kind, draft: null, text })
 
@@ -184,7 +184,15 @@ export function classAFindings(report: AnnexReport): Finding[] {
     // today. It is what this alarm is actually for: a page typeset unlike
     // the rest is not read, and what stands on it is missing from the page —
     // visible only here.
-    if (d.droppedPages > 0) {
+    //
+    // A shape is new once. Where the baseline already holds this draft with
+    // exactly these pages, they are known, and the page says they are not
+    // read; any change of the count is class B's (`droppedPages` is one of
+    // its fields). Firing on every count, the Methodenverordnung Wasser's 72
+    // pages, counted since 19.11.2026, would have held the weekly issue open
+    // for good — an alarm that always rings is no alarm (20.11.2026).
+    const knownShape = baseline?.paths[report.path]?.[d.id]?.droppedPages === d.droppedPages
+    if (d.droppedPages > 0 && !knownShape) {
       at(`${d.droppedPages} Seite${d.droppedPages === 1 ? '' : 'n'} der Beilage ${d.droppedPages === 1 ? 'wurde' : 'wurden'} nicht gelesen, weil die Seitengeometrie sich nicht belegen ließ. Am 16.09.2026 war das über GP XXVIII auf beiden Pfaden null — hier steht also eine Gestalt, die der Korpus bis dahin nicht hatte.`, 'form')
     }
   }
