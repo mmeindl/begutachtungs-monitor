@@ -892,6 +892,14 @@ describe('a row whose two columns carry different designations', () => {
     expect(rows[0]!.proposed).toBe('(1) Neuer Text.')
   })
 
+  // TSch-SV § 27 → § 37 (RIS E3707CED) and four more: the page said
+  // „Nicht der Paragraph ändert sich, sondern der Bereich, den die Beilage
+  // auslässt" under a renumbering (19.11.2026).
+  it('does not call a renumbering a difference in what the annex leaves out', () => {
+    const rows = parse(annex([renumbered('§ 27.', '§ 37.', '(1) bis (3) …')]))
+    expect(rows[0]).toMatchObject({ gld: '§ 27.', change: 'changed', elisionRange: false })
+  })
+
   it('reads a designation from the proposed column where the left has none', () => {
     // An inserted § — the left cell is empty, and the row is still that §'s.
     const rows = parse(annex([pair('<nbsp />', '<absatz typ="abs"><gldsym>§ 7.</gldsym> Neu.</absatz>')]))
@@ -909,6 +917,18 @@ describe('a row whose two columns carry different designations', () => {
 // Privatschulgesetz (95BA094D) at the head of both columns. With no
 // `<gldsym>`, the rows went to the § above — withheld, „steht so nicht im
 // RIS" — or to no § at all.
+describe('a column heading alone in its row (GuKG-Novelle 2024, 19.11.2026)', () => {
+  it('is chrome, not a new provision', () => {
+    const rows = parse(annex([pair('', 'Vorgeschlagene Fassung'), pair('<absatz typ="abs"><gldsym>§ 5.</gldsym> Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 5.</gldsym> Neu.</absatz>')]))
+    expect(rows.map((r) => r.proposed)).toEqual(['Neu.'])
+  })
+
+  it('stays text where the cell says more than the heading', () => {
+    const rows = parse(annex([pair('', 'Vorgeschlagene Fassung des Anhangs: Neu.')]))
+    expect(rows).toHaveLength(1)
+  })
+})
+
 describe('a designation typed as text', () => {
   const open = pair('<absatz typ="abs"><gldsym>§ 21c.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 21c.</gldsym> (1) Neu.</absatz>')
 

@@ -35,6 +35,9 @@ import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 import { cellText, headingOnly, paraHeading, stripGld, stripParaHeading, HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
 import { COLSPAN_RE, columnSpans, columnsOf, coversTheWidth, headerPairSpans, itemsInOrder, liftTables, outermost, type ComparisonItem } from './tableElements'
 
+/** A column heading and nothing else in its cell. */
+const HEADER_ALONE_RE = /^(?:geltende|vorgeschlagene)[rn]?\s+(?:fassung|text)$/i
+
 /** How one row of the comparison differs. */
 export type ComparisonChange = 'unchanged' | 'changed' | 'inserted' | 'removed'
 
@@ -417,8 +420,12 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     const { currentHtml, proposedHtml } = columnsOf(cells, span)
     const current = cellText(currentHtml)
     const proposed = cellText(proposedHtml)
-    // The mandated column headings repeat on every page; they are chrome.
+    // The mandated column headings repeat on every page; they are chrome —
+    // and so is one of them alone beside an empty cell, which went out as a
+    // new provision „Vorgeschlagene Fassung" (GuKG-Novelle 2024, RIS
+    // 2542818B, 19.11.2026, audit A6).
     if (HEADER_CURRENT_RE.test(current) && HEADER_PROPOSED_RE.test(proposed)) continue
+    if ((!current && HEADER_ALONE_RE.test(proposed)) || (!proposed && HEADER_ALONE_RE.test(current))) continue
     if (!current && !proposed) continue
     // An Artikel line is often printed once per column rather than across
     // both, and read as an ordinary pair row it left the boundary invisible.
@@ -652,7 +659,11 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
       segments,
       // Notation alone („(Anm.: …)", „[Kommentar: …]") is no change of the law (`notationOnly`).
       editorial: isEditorialChange(segments) || (change !== 'unchanged' && notationOnly(current, proposed)),
-      elisionRange: change === 'changed' && !elided && isElisionRangeOnly(current, proposed),
+      // Not where the row renumbers its §: „(1) bis (3) …" beside „§ 37. (1)
+      // bis (3) …" under § 27 is the new number, which the page called a
+      // difference in what the annex leaves out (TSch-SV § 27 → § 37, and four
+      // more, 19.11.2026, audit A6).
+      elisionRange: change === 'changed' && !elided && !renumberedTo && isElisionRangeOnly(current, proposed),
     }
     if (renumberedTo) renamed.set(row, renumberedTo)
     pendingHeading = []
