@@ -922,6 +922,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   up by the same number, its Roman siblings included („Anhang VIII und
   IX"): through `bareParaId` a Roman schedule had none, and in a law with
   several every line on one was refused (`findParagraph`, `paraNumber`).
+  A schedule replaced whole keeps its designation where RIS keeps it (above
+  the schedule, not as its heading), and a line that announces more
+  schedules than its new text has blocks is refused: the payload reader
+  opens no block at a schedule's designation, so „durch folgende Anhänge
+  VIII und IX" put both into Anl. 8 (BGBl. I Nr. 8/2026).
 - **One outcome stands at one block** (19.11.2026): where a unit is printed
   as two blocks (a table of contents with § symbols, a schedule in two
   parts), at the one that prints most of it, the later on a tie; the other
