@@ -99,7 +99,7 @@ const copy = computed(() => COPY[props.kind])
     <div>
       <dt>Geprüft gegen das geltende Recht im RIS</dt>
       <dd>
-        Einen Paragraphen zeigen wir nur, wenn drei Dinge stimmen:
+        Einen Paragraphen zeigen wir nur, wenn diese Dinge stimmen:
         <ul>
           <li>
             Die linke Spalte entspricht dem Gesetzestext im RIS, wie er am
@@ -107,6 +107,7 @@ const copy = computed(() => COPY[props.kind])
           </li>
           <li>Was rechts als neu markiert ist, steht nicht schon im Gesetz.</li>
           <li>Was rechts als neu markiert ist, steht auch im Gesetzestext {{ copy.item }}.</li>
+          <li>Zeigt die rechte Spalte von einem Paragraphen nichts, hebt der Gesetzestext {{ copy.item }} ihn auch auf.</li>
         </ul>
       </dd>
     </div>
