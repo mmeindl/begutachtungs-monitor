@@ -511,6 +511,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   one chain the Regierungsvorlage inserted two paragraphs, and a comparison
   by number marked 41 of 45 merely shifted paragraphs as changed. The number
   stays out of the compared text, so a renumbered § compares as unchanged.
+- **Every instruction line lands in exactly one unit** (19.11.2026,
+  `lawUnits.ts`): „25a." keeps its letter, „10.1." stays in instruction 10,
+  and a number that recurs is kept as `#dup`, never dropped. A dropped line
+  is on neither side of a comparison and in neither the engine's applied nor
+  its refused list: „25a." read as „25" lost 21 lines over 275
+  Bundesgesetzblätter and 21 over 595 Parliament texts, and showed a kept
+  line as „entfallen" (95/ME, 58/ME, 15/ME). The table-of-contents echo rule
+  drops only a unit that holds no instruction. Gate: `pnpm harness:units`.
 - **„Redaktionell" is decided by what changed, never by how much.** A change
   is editorial only if every inserted or removed piece is a citation, a
   number, a date, a single letter or punctuation; „und" → „oder" is not.
@@ -2267,10 +2275,10 @@ Ministerialentwurf, RV = Regierungsvorlage.
 
 | What | Value | Sample, date |
 |---|---|---|
-| Engine against RIS after entry into force: identical | 79.5 % (1,392); 77.9 % on 04.10.2026 | 60 BGBl, 1,752 §§ · 18.11.2026 (§12.12) |
+| Engine against RIS after entry into force: identical | 79.7 % (1,397); 79.5 % (1,392) before the lettered Ziffern were read (five §§ whose only line was lost now identical); 77.9 % on 04.10.2026 | 60 BGBl, 1,752 §§ · 19.11.2026 (§12.12) |
 | Engine's own deviations | 1.3 % (0.7 % among unrefused §§) | same |
-| Unrefused but not the law in force | 1.4 % (20) of 1,435 §§; 3.0 % (46 of 1,519) on 04.10.2026. Of the 26 that left, 21 are refused now with the same text and 4 became identical: bookkeeping, not accuracy. The 26th was Privatschulgesetz § 30, never wrong (next row) | same |
-| Annex-confirmed §§ against the enacted text | 108 confirmed: 106 identical, 2 incomplete and withheld as implausible, 0 deviating. So all 106 the gate shows are identical. „0 of 108 deviate" (26.10.2026) counted the class „abweichend" alone and summed three §§ away; the third, Privatschulgesetz § 30, was word for word the law and read as „halb angewendet" because RIS gives the designation once as `<ueberschrift typ="para">` and once as `<gldsym>` (`konsTree.ts`) | 18.11.2026 (§12.12c) |
+| Unrefused but not the law in force | 1.3 % (19) of 1,435 §§ (BVergGVS § 30 identical since its lost line is read, 19.11.2026); 1.4 % (20) on 18.11.2026; 3.0 % (46 of 1,519) on 04.10.2026. Of the 26 that left, 21 are refused now with the same text and 4 became identical: bookkeeping, not accuracy. The 26th was Privatschulgesetz § 30, never wrong (next row) | same |
+| Annex-confirmed §§ against the enacted text | 109 confirmed: 107 identical, 2 incomplete and withheld as implausible, 0 deviating. So all 107 the gate shows are identical (108 and 106 on 18.11.2026, before the lettered Ziffern were read). „0 of 108 deviate" (26.10.2026) counted the class „abweichend" alone and summed three §§ away; the third, Privatschulgesetz § 30, was word for word the law and read as „halb angewendet" because RIS gives the designation once as `<ueberschrift typ="para">` and once as `<gldsym>` (`konsTree.ts`) | 19.11.2026 (§12.12c) |
 | Fault injection: known error classes caught | ≥ 95 % each | 26.10.2026 (§12.12c) |
 | Fault injection, one word, figure or place in a printed stretch (word dropped, added, swapped, figure, citation, two Ziffern swapped) | 99.3–100 % on both paths; § heading 99.9 % (PDF, 94.8 % before the heading-area fix) and 100 % (table) | GP XXVIII · 19.11.2026 |
 | The same where no changed row prints anything (word dropped / added / figure changed) | 99.0 / 99.7 / 99.6 % (PDF), 99.5 / 99.9 / 99.7 % (table), floored; 65.0 / 23.8 / 95.8 % and 66.7 / 28.0 / 97.1 % while check 3 asked only whether a word stands anywhere in the annex. Withdrawn without injection: 6 of 1,549 PDF and 2 of 1,153 table confirmations, each read (four engine gaps behind a refusal, one result without a heading the annex prints, three correct results the annex prints wrongly: TDBG § 40b, HSG § 7, BD-EG § 38) | GP XXVIII · 19.11.2026 |

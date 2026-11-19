@@ -99,13 +99,37 @@ const OPENER = '(?:§|Art\\b|Abs\\b|Z\\b|In\\b|Im\\b|Dem\\b|Den\\b|Der\\b|Die\\b
  * A number is capped at three digits, and one whose separator is not a
  * period must be followed by a legistic opener, so that "20 000 Euro" or
  * "2,5 Millionen" at the head of a line stays text.
+ *
+ * **The letter is part of the number.** „25a." is the instruction a later
+ * stage slotted in behind „25.", and both stand: „25. § 30 Abs. 8 entfällt"
+ * and „25a. In den §§ 32 …" (BGBl. I Nr. 8/2026 Art. 3). Read as „25", the
+ * second opened another Z25, and the first — short, one block — was dropped
+ * as a table-of-contents echo: neither applied nor refused, and missing on
+ * both sides of every station comparison. 21 lines over 275 cached
+ * Bundesgesetzblätter, 21 over 595 Parliament texts, among them whole runs
+ * of a committee text („1." and „1a." both gone under „1b.", 95/ME),
+ * measured 19.11.2026 (`scripts/harness/units.ts`).
  */
-const NOVAO_NUMBER_RE = new RegExp(`^(\\d{1,3})[a-z]?(?:\\s*\\.\\s*(?=\\S)|\\s*[-,:]\\s+(?=${OPENER})|\\s+(?=${OPENER}))`)
+const NOVAO_NUMBER_RE = new RegExp(`^(\\d{1,3}[a-z]?)(?:\\s*\\.\\s*(?=\\S)|\\s*[-,:]\\s+(?=${OPENER})|\\s+(?=${OPENER}))`)
 
-/** The instruction number at the head of `text`, or null. Exported for the census (`scripts/harness/units.ts`). */
+/** The instruction number at the head of `text`, letter included („25a"), or null. Exported for the census (`scripts/harness/units.ts`). */
 export function novaoNumber(text: string): string | null {
   return NOVAO_NUMBER_RE.exec(normalizeText(text))?.[1] ?? null
 }
+
+/** „25a" → 25: the place of an instruction in its law's sequence, for the promotion test below. */
+const sequenceOf = (n: string): number => Number.parseInt(n, 10)
+
+/**
+ * A sub-instruction numbered under its instruction — „10.1. In der Z 1 …",
+ * „12.2.1. Nach der Wendung …", „21.1 Im Abs 1 …", „1a.1. In der lit a …"
+ * (Salzburg's Landesgesetzblatt numbers so). It is part of instruction 10
+ * the way a litera („a)") is, and only of the instruction that is open: the
+ * leading number must be that one's, letter and all. Read as „10.", it
+ * opened a second Z10 and pushed the first out of the list, or stood beside
+ * it as a fragment under the same key (`#dup`) that no join could use.
+ */
+const SUB_INSTRUCTION_RE = new RegExp(`^(\\d{1,3}[a-z]?)\\s*\\.\\s?\\d{1,3}(?:\\s*\\.|\\s+(?=${OPENER}))`)
 
 /**
  * The promulgation clause that opens a Novelle for one law — "Das
@@ -216,6 +240,8 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
   let quoted = false
   let guillemets = 0
   let lastNovao = 0
+  /** The open instruction's number as printed („25a"), for its sub-instructions. */
+  let openNumber: string | null = null
   let afterPromulgation = false
   let prev: TextBlock | null = null
 
@@ -226,7 +252,16 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
     let finalId = id
     if (existing) {
       const existingLength = existing.blocks.map((x) => x.text).join(' ').length
-      if (existingLength < 120 && existing.blocks.length <= 1) {
+      // **An instruction is never an echo.** The rule was written for the §
+      // units a Word table of contents leaves behind („§ 5. Anwendungsbereich"
+      // before the § itself, a2f48f4); a unit an instruction opened is law,
+      // however short. Dropped, it took „25. § 30 Abs. 8 entfällt" with it
+      // whenever another unit took the same key — a „25a." read as „25", or
+      // the Z 1 of a second Artikel of the same title (RV 69 d.B. amends the
+      // VBG 1948 in Artikel 7 and 11). It stays as `#dup`, the mark a number
+      // recurring in one law already carries (`namesSeveralLaws`).
+      const holdsInstruction = existing.blocks.some((x) => x.kind === 'novao')
+      if (!holdsInstruction && existingLength < 120 && existing.blocks.length <= 1) {
         // The earlier one was a table-of-contents echo — drop it.
         units.splice(units.indexOf(existing), 1)
         byKey.delete(key)
@@ -264,6 +299,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         quoted = false
         guillemets = 0
         lastNovao = 0
+        openNumber = null
         continue
       case 'section':
         // **An Anlage's own designation is law text, not a heading of ours.**
@@ -375,12 +411,20 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
     // stood in the annex as „Anweisung nicht gefunden" (26.10.2026).
     const openNovao = (n: string): void => {
       novelleMode = true
-      lastNovao = Number(n)
+      // By the digits: Number("25a") is NaN, and after it no line would ever
+      // continue the sequence again.
+      lastNovao = sequenceOf(n)
+      openNumber = n
       current = push(`Z${n}`, novaoHeading(b.text), { ...b, kind: 'novao', text: b.text.replace(NOVAO_NUMBER_RE, '') })
       pendingHeading = null
     }
 
     if (b.kind === 'novao') {
+      const sub = novelleMode && current ? SUB_INSTRUCTION_RE.exec(normalizeText(b.text)) : null
+      if (sub && sub[1] === openNumber) {
+        current!.blocks.push(b)
+        continue
+      }
       const n = novaoNumber(b.text)
       if (n) {
         openNovao(n)
@@ -410,7 +454,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       // list items of Mineralrohstoffgesetz § 156 (27/ME) and one of
       // Markenschutzgesetz § 68j (83/ME) as instructions.
       const n = novelleMode ? novaoNumber(b.text) : null
-      if (n && Number(n) === lastNovao + 1) {
+      if (n && sequenceOf(n) === lastNovao + 1) {
         openNovao(n)
         continue
       }

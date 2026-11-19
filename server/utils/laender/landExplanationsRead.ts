@@ -51,7 +51,8 @@ function romanValue(r: string): number {
 export function explainedParagraphs(parse: LandExplanationsParse, units: readonly LawUnit[] | null, laws: readonly string[]): LandExplanationsResponse['particular'] {
   const byZiffer = new Map<string, string>()
   for (const u of units ?? []) {
-    const n = /^Z(\d+)$/.exec(u.id)?.[1]
+    // „Z11a" under „11a", never under „11": a lettered instruction is its own (`segmentUnits`, 19.11.2026).
+    const n = /^Z(\d+[a-z]?)$/.exec(u.id)?.[1]
     const para = /^§(\d+[a-z]*)/.exec(addressOf(u.heading) ?? '')?.[1]
     // „Artikel II" or — in the Land's own PDFs — „Artikel 2".
     const numbered = /Artikel\s+([IVXL]+|\d+)/.exec(u.articleNumber ?? '')?.[1] ?? 'I'
