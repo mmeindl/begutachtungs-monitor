@@ -1143,3 +1143,63 @@ describe('compareReasoning — keine Passage eines anderen Gesetzes am §', () =
     expect(out.units[`${GEN}|Z1|changed`]).toBeUndefined()
   })
 })
+
+// Until 19.11.2026 only the Ziffer join said why a change had no
+// Begründung; 134 of 1.808 paired changes of GP XXVIII stood silent, which
+// read as „Begründung unverändert".
+describe('compareReasoning — die Zeile auch außerhalb des Ziffer-Joins (19.11.2026)', () => {
+  it('nennt am §-Join die Seite, deren Text die Änderung nirgends nennt (49/ME XXVIII PolWG § 11)', () => {
+    const units = [z('Z1', 'Z1', 'In § 3 Abs. 1 wird "a" durch "b" ersetzt.'), z('Z2', 'Z2', 'Dem § 9 wird folgender Abs. 4 angefügt: "(4) …"')]
+    const before = erl('Zu § 3:', 'Klarstellung.')
+    const after = erl('Zu § 3:', 'Klarstellung.', 'Zu § 9:', 'Inkrafttreten.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.routes.paragraph).toBe(2)
+    expect(out.gaps).toEqual({ 'Gesetz|Z2|changed': 'missingBefore' })
+  })
+
+  it('sucht den § eines neuen Gesetzes unter seiner eigenen Bezeichnung, nicht unter den §§, die sein Text nennt (1/ME XXVIII RKEG § 30)', () => {
+    // § 30's text cites § 1, which both documents explain: read as an
+    // instruction, „nicht gefunden" could not be said, and for a § whose
+    // text cites nothing it would be said without looking.
+    const units = [para('§1', '§1', 'Dieses Bundesgesetz regelt …'), para('§30', '§30', '(1) Die §§ 1, 4 Abs. 2 und § 24 dieses Bundesgesetzes treten in Kraft.')]
+    const before = erl('Zu § 1 (Kompetenzdeckung):', 'Die Kompetenz.')
+    const after = erl('Zu § 1 (Kompetenzdeckung):', 'Die Kompetenz, genauer.')
+
+    expect(compareReasoning(units, before, after).gaps).toEqual({ 'Neues Gesetz|§30|changed': 'missingBoth' })
+  })
+
+  it('behauptet kein Fehlen, wo die eine Seite die Passage der anderen unter einer anderen Nummer führt (49/ME XXVIII PolWG § 11)', () => {
+    const units = [para('§10', '§10', 'Mit der Vollziehung dieses Bundesgesetzes ist … betraut.'), para('§11', '§11', 'Die §§ 1 bis 10 treten mit 10. Oktober 2025 in Kraft.')]
+    const before = erl('Zu § 10:', 'Die Verordnung gilt vollumfänglich ab dem 10. Oktober 2025 unmittelbar in jedem Mitgliedstaat.')
+    const after = erl('Zu § 11:', 'Die Verordnung gilt vollumfänglich seit dem 10. Oktober 2025 unmittelbar in jedem Mitgliedstaat. Das Inkrafttreten folgt ihr.')
+
+    expect(compareReasoning(units, before, after).gaps['Neues Gesetz|§11|changed']).toBe('unread')
+  })
+
+  it('behauptet kein Fehlen in einem Dokument, das weder nach Ziffern noch nach Paragraphen gliedert', () => {
+    const units = [z('Z1', 'Z1', 'In § 3 Abs. 1 wird "a" durch "b" ersetzt.')]
+    const prose = parseExplanationsHtml('<html><body><p class=MsoNormal>Besonderer Teil</p><p class=MsoNormal>Die Änderungen dienen der Klarstellung.</p></body></html>')
+
+    expect(compareReasoning(units, prose, erl('Zu § 3:', 'Klarstellung.')).gaps).toEqual({ 'Gesetz|Z1|changed': 'unread' })
+  })
+
+  it('behauptet kein Fehlen, wo nichts zu suchen ist (eine Anordnung ohne §, Dokumente nach § betitelt)', () => {
+    const units = [z('Z1', 'Z1', 'Das Inhaltsverzeichnis wird wie folgt geändert: …'), z('Z2', 'Z2', 'In § 3 Abs. 1 wird "a" durch "b" ersetzt.')]
+    const doc = erl('Zu § 3:', 'Klarstellung.')
+
+    expect(compareReasoning(units, doc, doc).gaps).toEqual({ 'Gesetz|Z1|changed': 'unread' })
+  })
+
+  it('sagt nichts, wo die Obergrenze der Einträge den Eintrag abwies', () => {
+    const n = 352
+    const units = Array.from({ length: n }, (_, i) => para(`§${i + 1}`, `§${i + 1}`, `Bestimmung ${i + 1} …`))
+    const doc = (suffix: string) => erl(...units.flatMap((_, i) => [`Zu § ${i + 1}:`, `Die Begründung ${i + 1}${suffix}`]))
+
+    const out = compareReasoning(units, doc('.'), doc(', nach der Begutachtung.'))
+
+    expect(Object.keys(out.entries)).toHaveLength(350)
+    expect(out.gaps).toEqual({})
+  })
+})

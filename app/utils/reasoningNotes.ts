@@ -11,9 +11,10 @@ import type { ExplanationsMissing, LandReasoningResponse, ReasoningGap } from '#
  * The line at a change whose Begründung could not be attached (14.11.2026),
  * in place of the disclosure a found one opens. Without it, a change with no
  * disclosure read like one whose Begründung was found and left unchanged —
- * „kept" where the truth is „we could not tell". Only for changes where both
- * documents carry Erläuterungen (`ReasoningDiffResponse.gaps`); where one has
- * none, nothing at the change could be attached in the first place.
+ * „kept" where the truth is „we could not tell". For every change present on
+ * both sides where both documents carry Erläuterungen, whichever join it
+ * took (`ReasoningDiffResponse.gaps`, 19.11.2026); where one has none,
+ * nothing at the change could be attached in the first place.
  */
 const REASONING_GAP_DE: Record<ReasoningGap, string> = {
   numbering: 'Begründung: nicht zuzuordnen – die Erläuterungen zählen die Ziffern anders.',

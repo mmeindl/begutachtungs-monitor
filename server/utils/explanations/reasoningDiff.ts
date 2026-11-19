@@ -281,6 +281,8 @@ function entryOf(basis: ReasoningDiffEntry['basis'], label: string, a: string, b
 interface Filling {
   out: ReasoningComparison
   skipped: Set<string>
+  /** `diffUnitKey` of every unit the ceiling (`MAX_ENTRIES`) turned away: its Begründung was found, so no gap line may say otherwise. */
+  capped: Set<string>
   /**
    * The renumbering of §§ the law comparison of the same pair established,
    * per later Artikel title (`renumberingOf`, read off its units by
@@ -332,7 +334,10 @@ interface EntryInput {
 function fill(f: Filling, unit: LawDiffUnit, key: string, make: () => EntryInput): void {
   if (f.skipped.has(key)) return
   if (!f.out.entries[key]) {
-    if (Object.keys(f.out.entries).length >= MAX_ENTRIES) return
+    if (Object.keys(f.out.entries).length >= MAX_ENTRIES) {
+      f.capped.add(diffUnitKey(unit))
+      return
+    }
     const { label, basis, a, b, uncompared } = make()
     if (!b || (!a && !uncompared)) {
       f.skipped.add(key)
@@ -532,7 +537,7 @@ function finish(out: ReasoningComparison): ReasoningComparison {
 
 /** An empty result for `units`, with the renumbering their comparison established. */
 function filling(units: readonly LawDiffUnit[]): Filling {
-  return { out: { units: {}, entries: {}, stats: { compared: 0, changed: 0, editorial: 0, uncompared: 0 } }, skipped: new Set(), renumbered: renumberingOfUnits(units) }
+  return { out: { units: {}, entries: {}, stats: { compared: 0, changed: 0, editorial: 0, uncompared: 0 } }, skipped: new Set(), capped: new Set(), renumbered: renumberingOfUnits(units) }
 }
 
 /**
@@ -1187,10 +1192,11 @@ export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
   /** For every unit the scope rule left without a verdict, the units each side's passages cover. */
   scopes: { unit: string; before: string[]; after: string[] }[]
   /**
-   * For the page: every unit of the Ziffer join that ended with no entry,
-   * and why (`ReasoningGap`) — `misnumbered` and the offset without
-   * witnesses as `numbering`, `none` by the side that has nothing, where
-   * that side's text proves it (`namesChange`), else `unread`. A unit the
+   * For the page: every unit present on both sides that ended with no
+   * entry, and why (`ReasoningGap`) — in the Ziffer join `misnumbered` and
+   * the offset without witnesses as `numbering`, `none` by the side that has
+   * nothing, where that side's text proves it (`namesChange`), else
+   * `unread`; outside it the same proof (`provesAbsence`, 19.11.2026). A unit the
    * ceiling (`MAX_ENTRIES`) kept out is not here: its Begründung was found,
    * and the line would say otherwise.
    */
@@ -1537,6 +1543,20 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     const notAfter = gap !== 'missingBefore' && absent('after')
     gaps[key] = notBefore || notAfter ? missingGap(notBefore, notAfter) : 'unread'
   }
+  // Every other change present on both sides that ended without an entry
+  // (19.11.2026): the § join, a new law's § by its own designation, a §
+  // two laws of the draft share. Until then only the Ziffer join said so,
+  // and 134 of 1.808 such changes of GP XXVIII stood silent — read as
+  // „Begründung unverändert" beside the changes that showed one, also where
+  // one document added or dropped its Begründung (49/ME PolWG § 11). The
+  // same proof as above, with three guards of its own (`provesAbsence`).
+  for (const unit of units) {
+    const key = diffUnitKey(unit)
+    if (!isPaired(unit) || f.out.units[key] || gaps[key] || f.capped.has(key)) continue
+    const notBefore = provesAbsence(before, after, unit, 'before', read)
+    const notAfter = provesAbsence(after, before, unit, 'after', read)
+    gaps[key] = notBefore || notAfter ? missingGap(notBefore, notAfter) : 'unread'
+  }
   return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length, ownParagraph: ownParagraph.length }, guarded: [...guarded.values()], scopes, gaps }
 }
 
@@ -1570,6 +1590,81 @@ function namesChange(doc: HtmlExplanations, ziffer: string | null, paras: Readon
     }
   }
   return false
+}
+
+/**
+ * Whether one side's document proves that it has no Begründung for a change
+ * outside the Ziffer join (19.11.2026) — `namesChange`, with what that join
+ * has by construction made explicit:
+ *
+ *  - a new law's § is looked up by its own designation (`unitParagraph`);
+ *    read as an instruction, its text gives the §§ it cites, and 32/ME
+ *    XXVIII's ElWG § 83 would have been „nicht gefunden" without § 83 ever
+ *    being looked for;
+ *  - something must be looked for: a § the change amends, or its Ziffer in
+ *    a document that titles by Ziffer. „Das Inhaltsverzeichnis wird wie
+ *    folgt geändert" in a document titled by § names nothing to search;
+ *  - the document must title its passages by Ziffer or by § at all. The
+ *    service compares where one side does (`reasoningDiffService.ts`); the
+ *    other may explain everything in prose, and „nicht gefunden" at each of
+ *    its changes would be false.
+ *
+ * And a witness the Ziffer join gets from the § in its headings: where the
+ * other document's passage on the change has its words in a passage of this
+ * one, this one explains it under another number. 49/ME XXVIII's draft
+ * heads the Inkrafttreten of its § 11 „Zu § 10:" — the Vorlage's „Zu § 11:"
+ * carries the same sentences —, and „§ 11 – im Entwurf nicht gefunden"
+ * would have been false.
+ */
+function provesAbsence(doc: HtmlExplanations, other: HtmlExplanations, unit: LawDiffUnit, side: Side, read: Readings): boolean {
+  if (!doc.special.some((p) => p.paragraphs.length > 0 || p.ziffern.length > 0)) return false
+  const paras = changeParagraphs(unit, side, read)
+  const ziffer = unitZiffer(unit, side).ziffer
+  // The Ziffer is something to look for only where the document titles by
+  // Ziffer; searched for, it is looked for everywhere — 115/ME XXVI's draft
+  // writes „Zu Art. x1 Z 2 und Art. x2 Z 2: Inkrafttretensbestimmungen.", a
+  // heading the reader cannot take, and a hit only withholds the reason.
+  if (paras.size === 0 && !(ziffer && doc.special.some((p) => p.ziffern.length > 0))) return false
+  if (namesChange(doc, ziffer, paras, unitArticle(unit, side))) return false
+  const theirs = changeParagraphs(unit, side === 'before' ? 'after' : 'before', read)
+  const witnesses = other.special.filter((p) => p.paragraphs.some((x) => theirs.has(explanationParaId(x) ?? ''))).map((p) => passageWords(p.text))
+  return !witnesses.some((w) => doc.special.some((p) => sharesWords(w, passageWords(p.text))))
+}
+
+/** The §§ a change is about on one side: a new law's § by its own designation (`unitParagraph`), an instruction's by what it amends. */
+function changeParagraphs(unit: LawDiffUnit, side: Side, read: Readings): ReadonlySet<string> {
+  if (!isParagraphUnit(unit)) return read.paragraphIds(unit, side)
+  const own = unitParagraph(unit, side).para
+  return new Set(own ? [own] : [])
+}
+
+/** A passage's words, lower-cased, for `sharesWords`. */
+function passageWords(text: readonly string[]): string[] {
+  return text.join(' ').toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []
+}
+
+/**
+ * Whether two passages are the same Begründung however long either grew:
+ * 70 % of the shorter one's words stand in the longer one, and the shorter
+ * has a sentence's worth of them (8). A Vorlage often adds to the draft's
+ * passage (49/ME PolWG: 334 → 851 characters), so the share is of the
+ * shorter text, not of both. Used only to withhold „nicht gefunden": a
+ * wrong hit costs a line its reason, never its truth.
+ */
+function sharesWords(a: readonly string[], b: readonly string[]): boolean {
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
+  if (short.length < 8) return false
+  const count = new Map<string, number>()
+  for (const t of long) count.set(t, (count.get(t) ?? 0) + 1)
+  let common = 0
+  for (const t of short) {
+    const c = count.get(t) ?? 0
+    if (c > 0) {
+      common++
+      count.set(t, c - 1)
+    }
+  }
+  return common / short.length >= 0.7
 }
 
 /**

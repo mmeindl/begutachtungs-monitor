@@ -180,8 +180,9 @@ export interface ReasoningDiffEntry {
  */
 /**
  * Why a change has no Begründung although both documents carry Erläuterungen
- * titled by Ziffer (14.11.2026) — said at the change, because without it the
- * change looked like one whose Begründung was found and left unchanged:
+ * (14.11.2026; only where both title by Ziffer until 19.11.2026) — said at
+ * the change, because without it the change looked like one whose
+ * Begründung was found and left unchanged:
  * `numbering` — one document's passage to the change's Ziffer is about
  * another § (it counts its Ziffern off, `misnumbered`), and no neighbouring
  * passage could be taken with witnesses (`offsetPassage`); `missingBefore`,
@@ -232,9 +233,11 @@ export interface ReasoningDiffResponse {
    */
   stats: { compared: number; changed: number; editorial: number; uncompared: number }
   /**
-   * `diffUnitKey` → why that change got no Begründung (`ReasoningGap`). Only
-   * changes of the Ziffer join with no entry in `units`: never one whose
-   * Begründung was found. Absent in an answer cached before 14.11.2026.
+   * `diffUnitKey` → why that change got no Begründung (`ReasoningGap`):
+   * every change present on both sides with no entry in `units` (only the
+   * Ziffer join's until 19.11.2026), but none the entry ceiling turned away —
+   * never one whose Begründung was found. Absent in an answer cached before
+   * 14.11.2026.
    */
   gaps?: Record<string, ReasoningGap>
   /** The side(s) whose Erläuterungen could not be read, and why; absent where both were read. */

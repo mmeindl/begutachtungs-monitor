@@ -617,9 +617,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   Ziffer heading of which stands in such a run (`ownedPassages`, 67/ME
   XXVIII; 145/ME XXVII heads its Ziffern „Zu Z 1:" and keeps them).
 - **A change whose Begründung could not be attached says so, at the
-  change,** where both documents carry Erläuterungen titled by Ziffer
-  (`ReasoningDiffResponse.gaps`). Without the line it looked like a change
-  whose Begründung was found and left unchanged. The reason is given only
+  change,** wherever both documents carry Erläuterungen and the change
+  stands on both sides — the Ziffer join, the § join, a new law's § by its
+  own designation (`ReasoningDiffResponse.gaps`; outside the Ziffer join
+  since 19.11.2026, when 134 of 1.808 paired changes of GP XXVIII stood
+  silent). Without the line it looked like a change whose Begründung was
+  found and left unchanged. Only a change the entry ceiling turned away
+  keeps silent: its Begründung was found. The reason is given only
   where it is proven: „die Erläuterungen zählen die Ziffern anders" where
   one side's passage to the Ziffer is about another § (`misnumbered`; a §
   another change of the same law amends is another §, never a slip of the
@@ -631,7 +635,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   it into a passage's text), or as the introduction above its passages
   (`explainsLawWhole`: 96/ME XXVIII explains the EStG's § 105a
   in one block under „Zu Art. 7 (…)"; 226/ME XXVII's introduction says the
-  Novelle „im Übrigen" adjusts the Geschlechterbezeichnungen).
+  Novelle „im Übrigen" adjusts the Geschlechterbezeichnungen). Outside the
+  Ziffer join a new law's § is looked up by its own designation, a document
+  that titles by neither Ziffer nor § proves nothing, and a passage on the
+  other side whose words this side has under another number withholds the
+  reason too (`provesAbsence`: 49/ME XXVIII heads its Inkrafttreten „Zu § 10:").
   Otherwise the line is „Begründung: nicht zuzuordnen." with no reason: an
   unproven „nicht gefunden" would have been false on most such changes.
 - **The reasoning comparison runs only ME → RV, and only where both sides

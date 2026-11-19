@@ -42,7 +42,9 @@
         Verglichen werden nur Begründungen, die in beiden Fassungen zur selben
         Änderung stehen. Gezeigt wird eine Begründung an dieser Änderung, wenn
         das Ministerium sie geändert hat; Unterschiede nur in Satzzeichen,
-        Leerzeichen oder Bindestrichen gelten nicht als Änderung.
+        Leerzeichen oder Bindestrichen gelten nicht als Änderung. Steht eine
+        Änderung in beiden Fassungen und können wir ihr keine Begründung
+        sicher zuordnen, sagt das eine Zeile an der Änderung.
       </dd>
     </div>
     <div>
