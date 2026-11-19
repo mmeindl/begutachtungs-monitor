@@ -117,6 +117,16 @@ describe('addressedLabels — unter welchem Etikett das RIS den § führt', () =
     expect(labels?.get('3')).toBe('Art. 2 § 3')
   })
 
+  // 127/ME XXVIII: every line on the B-VG was refused against an empty stock,
+  // because „Art. 52" was looked up as „§ 52"; in the UStG, „Art. 25a" of the
+  // Binnenmarkt-Anhang fetched the UStG's own § 25a (148/ME).
+  it('files an Artikel addressed as the unit itself as „Art. N", never as „§ N" (20.11.2026)', () => {
+    expect(addressedLabels(instr('Art. 90a entfällt.'), [])?.get('90a')).toBe('Art. 90a')
+    expect(addressedLabels(instr('Nach Art. VI Abs. 1 Z 17 wird folgende Z 18 angefügt:', ['18. Neu.']), [])?.get('6')).toBe('Art. 6')
+    expect(addressedLabels(instr('Nach Art. 52 wird folgender Art. 52a eingefügt:', ['Artikel 52a. Neu.']), [])?.get('52a')).toBe('Art. 52a')
+    expect(addressedLabels([], ['Die Art. 52a und 52b erhalten die Bezeichnungen "Artikel 52b." und "Artikel 52c." .'])?.get('52b')).toBe('Art. 52b')
+  })
+
   it('files a § an instruction creates under the Artikel that instruction addresses', () => {
     const labels = addressedLabels(instr('Nach Art. II § 12 wird folgender § 12a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 12a. (1) Neu.']), [])
     expect(labels?.get('12a')).toBe('Art. 2 § 12a')
