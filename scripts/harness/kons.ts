@@ -48,7 +48,7 @@ import { applyNovelle, instructionsFromUnits, renamedOrigins, resolveTarget, typ
 import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
-import { sameBgbl } from '../../server/utils/lawtext/bgblCitation'
+import { sameStammnormCited } from '../../server/utils/lawtext/bgblCitation'
 import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { lawNameScore } from '../../server/utils/lawtext/lawNames'
 import { namedParagraphs, type NovaoAddress } from '../../server/utils/kons/novao'
@@ -169,17 +169,19 @@ const dumpFile = argAssigned('dump') ?? null
  *
  * **Both annex paths since 19.11.2026**, and the tables say which path each
  * figure is from. Over `--discover=60 --sammel`, 207 laws, 1.796 §§: the
- * oracle loads for 132 laws, 43 from the XML table and 89 from the PDF; until
+ * oracle loads for 138 laws, 43 from the XML table and 95 from the PDF; until
  * that day the 99 rasterised ones dropped out as „ist ein Scan". The XML lines
  * are the table as it stood: 109 confirmed, 107 identical, 0 deviating, and
- * the 2 others implausible, so withheld. The PDF path: 192 confirmed, 188
+ * the 2 others implausible, so withheld. The PDF path: 322 confirmed, 318
  * identical, 0 deviating, 4 others — and 2 of those 4 plausible, so they are
- * what the gate would SHOW. Over `--discover=120`, 426 laws, 3.508 §§: 216
- * laws with an oracle (66 XML, 150 PDF); XML 136 confirmed, 133 identical,
- * 3 others, none shown; PDF 312 confirmed, 306 identical, 6 others, 4 shown.
- * (Measured 19.11.2026 after `segmentUnits` kept „25." beside „25a." and the
- * §§ of laws filed as „Art. 1 § 3" were scored at all; the same morning's
- * figures were 1.752 and 3.423 §§, with BVergGVS § 30 among the shown.)
+ * what the gate would SHOW. Over `--discover=120`, 426 laws, 3.508 §§: 228
+ * laws with an oracle (66 XML, 162 PDF); XML 136 confirmed, 133 identical,
+ * 3 others, none shown; PDF 445 confirmed, 439 identical, 6 others, 4 shown.
+ * (Measured 19.11.2026 after `segmentUnits` kept „25." beside „25a.", the §§
+ * of laws filed as „Art. 1 § 3" were scored at all, and a draft Artikel was
+ * found by its heading among several citing one Stammnorm (`matchArticle`);
+ * the same morning's figures were 1.752 and 3.423 §§, 132 and 216 laws with
+ * an oracle, with BVergGVS § 30 among the shown.)
  * Read by hand (`--oracle-dump`), the 4 shown at 120 are two things, and the
  * fifth of that morning a third:
  *
@@ -655,7 +657,12 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
   if (!article) return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(draftBlocks), lawKey: undefined, path }
   const parts = articleBlocks(draftBlocks).filter((p) => p.article.amends)
   const match = matchArticle(parts.map((p) => p.article), article)
-  if (!match) return { note: `Artikel des Entwurfs zu ${article.title ?? article.number ?? '?'} nicht gefunden` }
+  if ('reason' in match) {
+    // Both sides, so a failed join can be read and not only counted (19.11.2026).
+    const cite = (a: DraftArticle) => `${a.number ?? '—'} „${(a.title ?? '').slice(0, 60)}" ${a.bgbl ? `${a.bgbl.organ} ${a.bgbl.nummer}` : 'ohne Stammnorm'}`
+    if (verbose) console.log(`        ↳ Orakel-Join: BGBl ${cite(article)} — Entwurf (${parts.length} Artikel): ${parts.map((p) => cite(p.article)).join(' | ').slice(0, 900)}`)
+    return { note: `Artikel des Entwurfs zu ${article.title ?? article.number ?? '?'} nicht gefunden — ${match.reason}` }
+  }
   const part = parts.find((p) => p.article === match)!
   return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(part.blocks), lawKey: match.key, path }
 }
@@ -687,24 +694,36 @@ function readAnnex(recordId: string, documents: ReturnType<NonNullable<typeof an
  * headings decide, but only when one fits clearly better than every other;
  * a tie ends the oracle for this Artikel, because the alternative is holding
  * the engine's § 5 against another law's § 5.
+ *
+ * **One Bundesgesetzblatt that created several laws is no tie.** The
+ * Fremdenrechtspaket BGBl. I Nr. 100/2005 is the Stammnorm of the AsylG,
+ * the FPG and the NAG; 107/2017 of the BörseG 2018 and the WAG 2018; 65/2018
+ * of the BVergG 2018 and the BVergGKonz 2018. Where several draft Artikel cite
+ * the Stammnorm, the heading decides among them, by the same rule — and only
+ * among them. Until 19.11.2026 the Stammnorm tie ended the oracle for six of
+ * the laws of the 60-BGBl run although each heading matched one Artikel word
+ * for word. A missing Teil is no contradiction („BGBl. Nr. 87/2012" for the
+ * BFA-G, `sameStammnormCited`), two different Teile still are.
  */
-function matchArticle(candidates: readonly DraftArticle[], article: DraftArticle): DraftArticle | null {
+function matchArticle(candidates: readonly DraftArticle[], article: DraftArticle): DraftArticle | { reason: string } {
+  let pool = candidates
   if (article.bgbl) {
-    const byBgbl = candidates.filter((c) => c.bgbl && sameBgbl(c.bgbl, article.bgbl!))
+    const byBgbl = candidates.filter((c) => c.bgbl && sameStammnormCited(c.bgbl, article.bgbl!))
     if (byBgbl.length === 1) return byBgbl[0]!
-    if (byBgbl.length > 1) return null
+    if (byBgbl.length > 1) pool = byBgbl
   }
-  if (!article.title) return null
+  if (!article.title) return { reason: 'das Bundesgesetzblatt nennt keinen Titel' }
   let best: { article: DraftArticle; score: number } | null = null
   let runnerUp = 0
-  for (const c of candidates) {
+  for (const c of pool) {
     const score = c.title ? lawNameScore(article.title, c.title) : 0
     if (!best || score > best.score) {
       runnerUp = best?.score ?? 0
       best = { article: c, score }
     } else if (score > runnerUp) runnerUp = score
   }
-  return best && best.score >= 0.6 && best.score > runnerUp ? best.article : null
+  if (best && best.score >= 0.6 && best.score > runnerUp) return best.article
+  return { reason: pool === candidates ? 'kein Artikel nennt das Gesetz, weder mit der Stammnorm noch im Titel' : `${pool.length} Artikel zitieren die Stammnorm, kein Titel passt eindeutig` }
 }
 
 /**
