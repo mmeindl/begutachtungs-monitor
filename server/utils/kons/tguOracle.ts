@@ -1516,7 +1516,7 @@ function unplacedEitherWay(before: string, got: string, forward: readonly { type
   const unplaced = unplacedChange(forward, rows)
   if (unplaced === null) return null
   const reversed = (t: string): string => t.split(/\s+/).filter(Boolean).reverse().join(' ')
-  const backward = diffTokens(reversed(before), reversed(got)).segments
+  const backward = diffTokens(reversed(before), reversed(got), { beyondCeiling: true }).segments
   if (backward === null) return unplaced
   return unplacedChange(backward.reverse().map((g) => ({ type: g.type, text: g.text.split(' ').reverse().join(' ') })), rows) === null ? null : unplaced
 }
@@ -1966,7 +1966,11 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   // word at all, so it passed every check here and `gateParagraph` published
   // it. The standing text the engine dropped beyond what the annex shows as
   // dropped is the signal, and it needs no diff of the annex either.
-  const { segments } = diffTokens(stripMarkers(before ?? ''), stripMarkers(got))
+  //
+  // Past the matrix's ceiling too (`beyondCeiling`, 20.11.2026): the bags
+  // read the same words whichever path aligned them, and above the ceiling a
+  // long § with a small change was „widersprochen" for its length alone.
+  const { segments } = diffTokens(stripMarkers(before ?? ''), stripMarkers(got), { beyondCeiling: true })
   if (segments === null) return { para: id, verdict: 'widersprochen', rows: rows.length, note: 'Wortdiff zu groß für den Abgleich' }
   const pairs = rows.filter((r) => r.kind === 'pair')
   const insertedRaw = segments.filter((s) => s.type === 'inserted').flatMap((s) => words(s.text))

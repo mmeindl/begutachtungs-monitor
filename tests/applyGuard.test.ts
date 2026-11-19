@@ -91,10 +91,27 @@ describe('guardParagraph', () => {
     expect(r.flags).toEqual([])
   })
 
-  it('never passes what it could not diff', () => {
+  it('judges a long § past the matrix ceiling by its changed words (20.11.2026)', () => {
+    // 1,700 words a side and one changed: 2.9 million token pairs, past the
+    // matrix, and „unprüfbar" until the guard went past it.
     const long = Array.from({ length: 1700 }, (_, i) => `w${i}`).join(' ')
-    const l: StandingLaw = { paragraphs: [para('6', 'Z', [long])] }
-    const r = guard(l, instr('Dem § 6 wird folgender Abs. 2 angefügt:', [`(2) ${long}`]))
+    const l: StandingLaw = { paragraphs: [para('6', 'Z', [`Zuständig ist die Behörde. ${long}`])] }
+    const clean = guard(l, instr('In § 6 Abs. 1 wird das Wort "Behörde" durch das Wort "Bezirksverwaltungsbehörde" ersetzt.'))
+    expect(clean.flags).toEqual([])
+    const invented = guard(l, instr('In § 6 Abs. 1 wird das Wort "Behörde" durch das Wort "Bezirksverwaltungsbehörde" ersetzt.'), (after) => {
+      after.children[0]!.text = after.children[0]!.text.replace('w900', 'erfunden')
+    })
+    expect(invented.flags).toContain('unerklärt')
+    expect(invented.unexplained.inserted).toEqual(['erfunden'])
+  })
+
+  it('never passes what it could not diff', () => {
+    // A middle of 6,000 × 6,000 words that share nothing: 36 million token
+    // pairs once the common start and end are off, past `MAX_LINEAR_CELLS`.
+    const old = Array.from({ length: 6000 }, (_, i) => `a${i}`).join(' ')
+    const neu = Array.from({ length: 6000 }, (_, i) => `b${i}`).join(' ')
+    const l: StandingLaw = { paragraphs: [para('6', 'Z', [old])] }
+    const r = guard(l, instr('§ 6 lautet:', [`§ 6. ${neu}`]))
     expect(r.flags).toContain('unprüfbar')
     expect(r.plausible).toBe(false)
   })

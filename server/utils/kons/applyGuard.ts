@@ -264,8 +264,12 @@ export function guardParagraph(
   const leaks = (n: LawNode): number => lawTextNodes(n).filter((x) => startsWithMarker(x.text)).length
   if (leaks(after) > (beforeTree ? leaks(beforeTree) : 0)) flags.add('marker')
 
-  // Unexplained: words the engine changed that no operand names.
-  const { segments } = diffTokens(beforeText, afterText)
+  // Unexplained: words the engine changed that no operand names. Past the
+  // matrix's ceiling too (`beyondCeiling`, 20.11.2026): a long § whose
+  // change is small was „unprüfbar" for its length alone, 213 of the 251
+  // implausible §§ of GP XXVIII. „unprüfbar" is left for a middle past
+  // `MAX_LINEAR_CELLS`, which no § of the corpus reaches.
+  const { segments } = diffTokens(beforeText, afterText, { beyondCeiling: true })
   let unexplained = { inserted: [] as string[], removed: [] as string[] }
   if (segments === null) {
     flags.add('unprüfbar')

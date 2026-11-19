@@ -589,10 +589,16 @@ export async function consolidate(
           continue
         }
         // `diffTokens` returns null where the comparison is too long to
-        // compute. Barely reachable here — the guard sets „unprüfbar" in the
-        // same case and the gate has closed above already — but a § without
-        // markings would be a claim without evidence.
-        const segments: LawDiffSegment[] | null = bodyBefore === null ? [{ type: 'inserted', text: bodyAfter }] : diffTokens(bodyBefore, bodyAfter).segments
+        // compute, past `MAX_LINEAR_CELLS` since guard, oracle and this
+        // display go past the matrix's ceiling (20.11.2026). Barely reachable
+        // here — the guard sets „unprüfbar" in the same case and the gate has
+        // closed above already — but a § without markings would be a claim
+        // without evidence. Five §§ of GP XXVIII stood here as „zu-lang"
+        // while the matrix was the only path: guard and oracle diff the text
+        // without its markers (`plainText`), this display with them, and the
+        // two fell on either side of the ceiling (2.40–2.47 against 2.53–2.67
+        // million token pairs).
+        const segments: LawDiffSegment[] | null = bodyBefore === null ? [{ type: 'inserted', text: bodyAfter }] : diffTokens(bodyBefore, bodyAfter, { beyondCeiling: true }).segments
         if (!segments) {
           hold(id, 'zu-lang')
           continue
@@ -600,7 +606,7 @@ export async function consolidate(
         const headingBefore = beforeNode?.heading ?? ''
         const headingAfter = node.heading ?? ''
         const headingSegments: LawDiffSegment[] | null = headingAfter || headingBefore
-          ? (headingBefore ? diffTokens(headingBefore, headingAfter).segments : [{ type: 'inserted', text: headingAfter }])
+          ? (headingBefore ? diffTokens(headingBefore, headingAfter, { beyondCeiling: true }).segments : [{ type: 'inserted', text: headingAfter }])
           : null
         found.push({
           id,

@@ -126,12 +126,21 @@ export interface DiffOptions {
    * did, and the second one pinned that rewrite on the Plenum. 33 changed
    * units over the station pairs of GP XXVIII (`scripts/harness/station.ts`).
    *
-   * Off for every caller that DECIDES on the segments — the oracle, the
-   * plausibility guard, the Lesefassung, the annex rows, the Länder's §
-   * comparison, whose guard runs the annex's rule on its units: there a
-   * missing diff is a refusal („Wortdiff zu groß", `unprüfbar`,
-   * `REASON_TOO_LONG`), and turning it into a diff would open their gates on
-   * units nobody has measured them on.
+   * **And for the Lesefassung's guard, oracle and display (20.11.2026),**
+   * measured over the 4,798 changed §§ of GP XXVIII: 161 §§ that were
+   * „unprüfbar" for their length alone and 5 „zu-lang" became guard-clean
+   * and oracle-confirmed, none was lost, and fault injection on both annex
+   * paths caught every class as often as before. The cost on the request
+   * path: 464 diffs past the matrix in 162 drafts, 984 ms together, 67 ms
+   * the slowest (12.3 million cells in the middle, Hirschberg), 130 ms the
+   * most for one draft, and at most 1.8 MB of resident memory above the run
+   * (the matrix is capped at `MAX_DP_CELLS`, 5 MB; Hirschberg keeps two
+   * rows). None reached `MAX_LINEAR_CELLS`.
+   *
+   * Still off for the callers nobody has measured on it: the annex rows and
+   * the Länder's § comparison, whose guard runs the annex's rule on its
+   * units. There a missing diff stays a refusal („Wortdiff zu groß",
+   * `REASON_TOO_LONG`).
    */
   beyondCeiling?: boolean
 }

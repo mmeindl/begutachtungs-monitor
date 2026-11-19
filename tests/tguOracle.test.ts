@@ -138,6 +138,19 @@ describe('oracleVerdict', () => {
     expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
   })
 
+  it('judges a long § past the matrix ceiling (20.11.2026)', () => {
+    // 1,700 words behind the changed sentence: past the 2.5 million token
+    // pairs of the matrix, where the oracle answered „Wortdiff zu groß".
+    const tail = Array.from({ length: 1700 }, (_, i) => `w${i}`).join(' ')
+    const got = `Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. ${tail}`
+    const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.'), pair(tail, tail)]
+    expect(oracleVerdict('6', `${before.split('.')[0]}. ${tail}`, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    const wrong = got.replace('w900', 'erfunden')
+    const r = oracleVerdict('6', `${before.split('.')[0]}. ${tail}`, wrong, rows)
+    expect(r.verdict).toBe('widersprochen')
+    expect(r.note).toMatch(/erfunden/)
+  })
+
   it('contradicts a result that lacks the change the annex shows', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })
