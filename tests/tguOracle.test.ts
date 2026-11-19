@@ -160,6 +160,19 @@ describe('oracleVerdict', () => {
     expect(oracleVerdict('18', before, got.replace('xxx/2025', '12/2025'), rows).verdict).toBe('widersprochen')
   })
 
+  it('reads „(entfällt)" as the placeholder of a struck unit (20.11.2026)', () => {
+    // 141/ME XXVIII, ZDG § 6b: „2. (entfällt)" where the draft strikes Z 2.
+    const before = 'Dienst als Organ des Sicherheitsdienstes oder Bediensteter des Bundesamtes oder Soldat versehen.'
+    const got = 'Dienst als Organ des Sicherheitsdienstes oder Soldat versehen.'
+    const rows = [pair('§ 6b. (1) Dienst als 1. Organ des Sicherheitsdienstes oder 2. Bediensteter des Bundesamtes oder 3. Soldat versehen.', '§ 6b. (1) Dienst als 1. Organ des Sicherheitsdienstes oder 2. (entfällt) 3. Soldat versehen.', '§ 6b.')]
+    expect(oracleVerdict('6b', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // The struck Ziffer still has to be gone.
+    expect(oracleVerdict('6b', before, before, rows).verdict).toBe('widersprochen')
+    // And a struck Absatz is no Absatz check 5 looks for (§ 12a).
+    const abs = [pair('§ 12a. (1) Erster Satz. (2) …', '§ 12a. (1) (entfällt) (2) …', '§ 12a.')]
+    expect(oracleVerdict('12a', 'Erster Satz. Zweiter Satz.', 'Zweiter Satz.', abs, ['2'], ['1', '2'])).toMatchObject({ verdict: 'bestätigt' })
+  })
+
   it('contradicts a result that lacks the change the annex shows', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })

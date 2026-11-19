@@ -545,8 +545,15 @@ const RIS_NOTE_RE = /\(Anm\.?:[^()]*\)/g
  * writes „xxx/2025", and the § stood contradicted for it.
  */
 const PLACEHOLDER_RE = /(?<![\p{L}\d#])(?=[\dxXyY#]*\/?[\dxXyY#]*[xXyY#])[\dxXyY#]+\s*\/\s*[\dxXyY#]+(?![\p{L}\d#])/gu
-/** „Aufgehoben" where a repealed Absatz stood — the annex prints it, RIS's text does not. */
-const REPEALED_RE = /(?<!\p{L})(?:Aufgehoben|\(aufgehoben\))(?!\p{L})/gu
+/**
+ * „Aufgehoben" where a repealed Absatz stood — the annex prints it, RIS's
+ * text does not. „(entfällt)" in brackets is the same placeholder
+ * (20.11.2026): 141/ME XXVIII prints „3. (entfällt)" and „(1) (entfällt)"
+ * for the units it strikes, and two §§ of the Zivildienstgesetz stood
+ * contradicted by their own placeholder. Only in brackets: a bare
+ * „entfällt" is a word of the law („die Pflicht entfällt").
+ */
+const REPEALED_RE = /(?<!\p{L})(?:Aufgehoben|\((?:aufgehoben|entfällt)\))(?!\p{L})/gu
 
 // --- Measured surface: the harness asks `unaccountedStretch` in this form. ---
 export const containmentKey = key
@@ -1575,8 +1582,8 @@ function absatzMarkers(cell: string, own: string | null = null): string[] {
   const text = ownPart(markedOmissions(cell), own)
   for (const m of text.matchAll(ABSATZ_RUN_RE)) {
     // „(2) Aufgehoben." is the annex's way of saying the Absatz is gone, and
-    // RIS prints nothing in its place (`REPEALED_RE`).
-    if (/^\s*(?:Aufgehoben|\(aufgehoben\)|entfällt)/i.test(text.slice(m.index! + m[0].length))) continue
+    // RIS prints nothing in its place (`REPEALED_RE`), „(2) (entfällt)" too.
+    if (/^\s*(?:Aufgehoben|\((?:aufgehoben|entfällt)\)|entfällt)/i.test(text.slice(m.index! + m[0].length))) continue
     for (const n of m[0].matchAll(/\((\d{1,3}[a-z]?)\)/g)) out.push(n[1]!)
   }
   return out
