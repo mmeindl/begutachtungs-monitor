@@ -1,0 +1,5103 @@
+{
+ "gp": "XXVIII",
+ "drafts": 91,
+ "pairs": 453,
+ "note": "Reste der beiden Nullvergleiche (scripts/harness/station.ts) am 19.11.2026 über den Offline-Cache. Ein Rest hier ist nicht hingenommen: reasons sagt für jeden nicht redaktionellen, warum er steht; die redaktionellen der Kundmachung sind die eingesetzte Fundstelle und Zeichen, nicht einzeln gelesen.",
+ "reasons": {
+  "html-xml 2/ME html>xml changed Änderung des Bundesgesetzes über die justizielle Zusammenarb · Z73→Z73": "Leser: der zitierte Titel der Vereinbarung steht im Parlaments-HTML, im RIS-XML nicht als lesbarer Block — offen",
+  "parlament-bgbl 32/ME plenum>bgbl changed Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §190→§190": "Leser: die Überschriften der Anlagen („Anlage I (zu § …)\", „Anhang 1\") bleiben beim Parlament im Text des letzten §, das RIS führt sie als Gliederung (lawtext/lawUnits.ts) — offen, gemeldet",
+  "html-xml 32/ME html>xml changed (redaktionell) Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §151→§151": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
+  "html-xml 32/ME html>xml changed (redaktionell) Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §153→§153": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
+  "html-xml 32/ME html>xml changed Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §182→§182": "Leser: die Überschriften der Anlagen („Anlage I (zu § …)\", „Anhang 1\") bleiben beim Parlament im Text des letzten §, das RIS führt sie als Gliederung (lawtext/lawUnits.ts) — offen, gemeldet",
+  "parlament-bgbl 43/ME plenum>bgbl changed Bundesgesetz über die Beschleunigung des Ausbaus von Anlagen · §63→§63": "Leser: die Überschriften der Anlagen („Anlage I (zu § …)\", „Anhang 1\") bleiben beim Parlament im Text des letzten §, das RIS führt sie als Gliederung (lawtext/lawUnits.ts) — offen, gemeldet",
+  "html-xml 43/ME html>xml changed Bundesgesetz über die Beschleunigung des Ausbaus von Anlagen · §59→§59": "Leser: die Überschriften der Anlagen („Anlage I (zu § …)\", „Anhang 1\") bleiben beim Parlament im Text des letzten §, das RIS führt sie als Gliederung (lawtext/lawUnits.ts) — offen, gemeldet",
+  "html-xml 47/ME html>xml changed Änderungen des Rechtsanwaltstarifgesetzes · Z2→Z2": "Quellen verschieden: das RIS-XML schreibt „kommt,.\" (Tippfehler der Quelle)",
+  "html-xml 101/ME html>xml changed (redaktionell) Bundesgesetz über die Errichtung eines Unterstützungsfonds f · §7→§7": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
+  "parlament-bgbl 116/ME plenum>bgbl changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)",
+  "html-xml 116/ME html>xml changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)"
+ },
+ "residues": [
+  {
+   "kind": "parlament-bgbl",
+   "pair": "1/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Tilgungsgesetzes 1972 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "html-xml",
+   "pair": "2/ME html>xml",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über die justizielle Zusammenarb · Z73→Z73",
+    "change": "changed",
+    "editorial": false,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "3/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Güterbeförderungsgesetzes 1995 · Z21→Z21",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "3/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Güterbeförderungsgesetzes 1995 · Z23→Z23",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "3/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gelegenheitsverkehrs-Gesetzes 1996 · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "3/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kraftfahrliniengesetzes · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Unternehmensgesetzbuchs · Z61→Z61",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Aktiengesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des GmbH-Gesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Genossenschaftsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Genossenschaftsrevisionsgesetzes 1997 · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des SE-Gesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des SCE-Gesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsverfassungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wirtschaftstreuhandberufsgesetzes 2017 · Z25→Z25",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wirtschaftstreuhandberufsgesetzes 2017 · Z26→Z26",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wirtschaftstreuhandberufsgesetzes 2017 · Z27→Z27",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wirtschaftstreuhandberufsgesetzes 2017 · Z28→Z28",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Rechtspflegergesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Rechtspflegergesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des CBCR-Veröffentlichungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Abschlussprüfer-Aufsichtsgesetzes · Z90→Z90",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Alternative Investmentfonds Manager-Gesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z16→Z16",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Sparkassengesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Versicherungsaufsichtsgesetzes 2016 · Z38→Z38",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Versicherungsaufsichtsgesetzes 2016 · Z39→Z39",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "4/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Versicherungsaufsichtsgesetzes 2016 · Z41→Z41",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "7/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Aktiengesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "7/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des SE-Gesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "7/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsverfassungsgesetzes · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "8/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Staatsschutz- und Nachrichtendienst-Gesetzes · Z22→Z22",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "8/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Staatsschutz- und Nachrichtendienst-Gesetzes · Z22#dup→Z22#dup",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "8/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Staatsschutz- und Nachrichtendienst-Gesetzes · Z23→Z23",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "8/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Sicherheitspolizeigesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "8/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Sicherheitspolizeigesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "8/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Telekommunikationsgesetzes 2021 · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "8/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesverwaltungsgerichtsgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "8/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Richter- und Staatsanwaltschaftsdienstgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "9/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "9/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "9/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapierfirmengesetzes · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "9/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapierfirmengesetzes · Z15→Z15",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "9/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Zentrale Gegenparteien-Vollzugsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "9/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Zentralverwahrer-Vollzugsgesetzes · Z18→Z18",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "9/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Zentralverwahrer-Vollzugsgesetzes · Z19→Z19",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "10/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z48→Z48",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "10/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z49→Z49",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "10/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapieraufsichtsgesetzes 2018 · Z28→Z28",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "10/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapieraufsichtsgesetzes 2018 · Z29→Z29",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "11/ME rv>bgbl",
+   "residue": {
+    "unit": "Inkrafttreten · Art.1in→Art.1in",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "12/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wehrgesetzes 2001 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "12/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Heeresdisziplinargesetzes 2014 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "12/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Militärbefugnisgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "13/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulunterrichtsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "14/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Universitätsgesetzes 2002 · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "14/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Bildungsdokumentationsgesetzes 2020 · Z24→Z24",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Landeslehrer-Dienstrechtsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Beamten-Dienstrechtsgesetzes 1979 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Richter- und Staatsanwaltschaftsdienstgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen Sozialversicherungsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gewerblichen Sozialversicherungsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen Pensionsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Beamten-Dienstrechtsgesetzes 1979 · Z2#dup→Z2#dup",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Beamten-Dienstrechtsgesetzes 1979 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Richter- und Staatsanwaltschaftsdienstgesetzes · Z2#dup→Z2#dup",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Richter- und Staatsanwaltschaftsdienstgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Landeslehrer-Dienstrechtsgesetzes · Z2#dup→Z2#dup",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Landeslehrer-Dienstrechtsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Land- und forstwirtschaftlichen Landeslehrperso · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Land- und forstwirtschaftlichen Landeslehrperso · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pensionsgesetzes 1965 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundestheaterpensionsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundestheaterpensionsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesbahn-Pensionsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "15/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesbahn-Pensionsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "16/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Einkommensteuergesetzes 1988 · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "16/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Stiftungseingangssteuergesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "16/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Umsatzsteuergesetzes 1994 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "16/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Grunderwerbsteuergesetzes 1987 · Z19→Z19",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "16/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Bundesabgabenordnung · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "16/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Glücksspielgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "16/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über den Energiekrisenbeitrag-St · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "16/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über den Energiekrisenbeitrag-fo · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Sicherheitspolizeigesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Staatsschutz- und Nachrichtendienst-Gesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gesetzes über das Bundesamt zur Korruptionspräv · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundes-Krisensicherheitsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Passgesetzes 1992 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Niederlassungs- und Aufenthaltsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Staatsbürgerschaftsgesetzes 1985 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des BFA-Verfahrensgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Fremdenpolizeigesetzes 2005 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Grenzkontrollgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "17/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des BBU-Errichtungsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Außerstreitgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über die justizielle Zusammenarb · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Datenschutzgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Disziplinarstatuts für Rechtsanwälte und Rechts · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Jugendgerichtsgesetzes 1988 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Jurisdiktionsnorm · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Notariatsordnung · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Rechtsanwaltsordnung · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Rechtspraktikantengesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Staatsanwaltschaftsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Strafprozeßordnung 1975 · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "18/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Zivilprozessordnung · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "19/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Preisgesetzes 1992 · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen Sozialversicherungsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Beamten-Kranken- und Unfallversicherungsgesetze · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Selbständigen-Sozialversicherungsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Notarversorgungsgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Künstler-Sozialversicherungsfondsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Lebensmittelsicherheits- und Verbraucherschutzg · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kontroll- und Digitalisierungs-Durchführungsges · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des EU-Qualitätsregelungen-Durchführungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Tiergesundheitsgesetzes 2024 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Zoonosengesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Tierärztegesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Tierärztekammergesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Tierarzneimittelgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesbehindertengesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Behinderteneinstellungsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundes-Seniorengesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Musiktherapiegesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Psychologengesetzes 2013 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Psychotherapiegesetzes 2024 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Ärztegesetzes 1998 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Apothekerkammergesetzes 2001 · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arzneimittelgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Epidemiegesetzes 1950 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gehaltskassengesetzes 2002 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über Krankenanstalten und Kurans · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Medizinproduktegesetzes 2021 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gesundheits- und Ernährungssicherheitsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeiterkammergesetzes 1992 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Zahnärztekammergesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Hebammengesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "20/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gesundheitsberuferegister-Gesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "21/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Eisenbahngesetzes 1957 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "21/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kraftfahrgesetzes 1967 · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "21/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Unfalluntersuchungsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "22/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über die Einrichtung einer Dokum · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "22/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über die Errichtung der Gesellsc · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "22/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Zivildienstgesetzes 1986 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Beamten-Dienstrechtsgesetzes 1979 · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Vertragsbedienstetengesetzes 1948 · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Richter- und Staatsanwaltschaftsdienstgesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Landeslehrer-Dienstrechtsgesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Land- und forstwirtschaftlichen Landeslehrperso · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Landesvertragslehrpersonengesetzes 1966 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Land- und forstwirtschaftlichen Landesvertragsl · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundes-Personalvertretungsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "23/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundes-Gleichbehandlungsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "24/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des KommAustria-Gesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "24/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des ORF-Gesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "24/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundes-Sportförderungsgesetzes 2017 · Z49→Z49",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "24/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Anti-Doping-Bundesgesetzes 2021 · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "25/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen Verwaltungsverfahrensgesetzes 1991 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "25/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Verwaltungsstrafgesetzes 1991 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "25/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Amtshaftungsgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "25/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Organhaftpflichtgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "25/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Rechnungshofgesetzes 1948 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "25/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Verwaltungsgerichtshofgesetzes 1985 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "25/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Verfassungsgerichtshofgesetzes 1953 · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "25/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Volksanwaltschaftsgesetzes 1982 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "26/ME rv>bgbl",
+   "residue": {
+    "unit": "53. Bundesgesetz, mit dem das Bildungsdirektionen-Einrichtun · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "27/ME rv>bgbl",
+   "residue": {
+    "unit": "37. Bundesgesetz, mit dem das Bankwesengesetz geändert wird · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "28/ME rv>bgbl",
+   "residue": {
+    "unit": "66. Bundesgesetz, mit dem die Gewerbeordnung geändert wird ( · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "29/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "85. Bundesgesetz, mit dem das Bundesgesetz über Eisenbahn-Ho · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "29/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "85. Bundesgesetz, mit dem das Bundesgesetz über Eisenbahn-Ho · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz über das Wirksamwerden der Verordnung (EU) 2023 · §17→§17",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Abschlussprüfer-Aufsichtsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Alternative Investmentfonds Manager-Gesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Alternative Investmentfonds Manager-Gesetzes · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z28→Z28",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z29→Z29",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Finalitätsgesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzkonglomerategesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzmarktaufsichtsbehördengesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzmarktaufsichtsbehördengesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z15→Z15",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z16→Z16",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kapitalmarktgesetzes 2019 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des MiCA-Verordnung-Vollzugsgesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des MiCA-Verordnung-Vollzugsgesetzes · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pensionskassengesetzes · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pensionskassengesetzes · Z15→Z15",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des PEPP-Vollzugsgesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pfandbriefgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pfandbriefgesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des PRIIP-Vollzugsgesetzes · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Ratingagenturenvollzugsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Referenzwerte-Vollzugsgesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Referenzwerte-Vollzugsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Sanierungs- und Abwicklungsgesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Sanierungs- und Abwicklungsgesetzes · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des SFT-Vollzugsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Versicherungsaufsichtsgesetzes 2016 · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Versicherungsaufsichtsgesetzes 2016 · Z15→Z15",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapieraufsichtsgesetzes 2018 · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapieraufsichtsgesetzes 2018 · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapierfirmengesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapierfirmengesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Zahlungsdienstegesetzes 2018 · Z16→Z16",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "30/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Zahlungsdienstegesetzes 2018 · Z17→Z17",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "32/ME plenum>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §6→§6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "32/ME plenum>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §159→§159",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "32/ME plenum>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §161→§161",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "32/ME plenum>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §190→§190",
+    "change": "changed",
+    "editorial": false,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "32/ME plenum>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz zur Definition des Begriffs der Energiearmut fü · §12→§12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "32/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Energie-Control-Gesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "32/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Energie-Control-Gesetzes · Z99→Z99",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "html-xml",
+   "pair": "32/ME html>xml",
+   "residue": {
+    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §151→§151",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "html-xml",
+   "pair": "32/ME html>xml",
+   "residue": {
+    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §153→§153",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "html-xml",
+   "pair": "32/ME html>xml",
+   "residue": {
+    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §182→§182",
+    "change": "changed",
+    "editorial": false,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "33/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen bürgerlichen Gesetzbuches · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "33/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsvertragsrechts-Anpassungsgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "33/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Landarbeitsgesetzes 2021 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "34/ME rv>bgbl",
+   "residue": {
+    "unit": "10. Bundesgesetz, mit dem das Kulturgüterrückgabegesetz geän · Z18→Z18",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "35/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "82. Bundesgesetz, mit dem das Allgemeine Verwaltungsverfahre · Z21→Z21",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "36/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen bürgerlichen Gesetzbuches · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "36/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsverfassungsgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "36/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Landarbeitsgesetzes 2021 · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "37/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen Sozialversicherungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "37/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsvertragsrechts-Anpassungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "40/ME plenum>bgbl",
+   "residue": {
+    "unit": "11. Bundesgesetz, mit dem das Lebensmittelbewirtschaftungsge · Z24→Z24",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "41/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z52→Z52",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "41/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z53→Z53",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "41/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Kapitalmarktgesetzes 2019 · Z34→Z34",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "41/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Referenzwerte-Vollzugsgesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "41/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Referenzwerte-Vollzugsgesetzes · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "41/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapieraufsichtsgesetzes 2018 · Z18→Z18",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "41/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapieraufsichtsgesetzes 2018 · Z19→Z19",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "43/ME plenum>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz über die Beschleunigung des Ausbaus von Anlagen · §63→§63",
+    "change": "changed",
+    "editorial": false,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "43/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Erneuerbaren-Ausbau-Gesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "43/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Erneuerbaren-Ausbau-Gesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "43/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Erneuerbaren-Ausbau-Gesetzes · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "html-xml",
+   "pair": "43/ME html>xml",
+   "residue": {
+    "unit": "Bundesgesetz über die Beschleunigung des Ausbaus von Anlagen · §59→§59",
+    "change": "changed",
+    "editorial": false,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "45/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Niederlassungs- und Aufenthaltsgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "45/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Ausländerbeschäftigungsgesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "46/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsmarktservicegesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "46/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsmarktpolitik-Finanzierungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "46/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsvertragsrechts-Anpassungsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "46/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Landarbeitsgesetzes 2021 · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "47/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Gerichtsgebührengesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "47/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderungen des Rechtsanwaltstarifgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "47/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderungen der Zivilprozessordnung · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "html-xml",
+   "pair": "47/ME html>xml",
+   "residue": {
+    "unit": "Änderungen des Rechtsanwaltstarifgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": false,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "48/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des ORF-Gesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "48/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Audiovisuelle Mediendienste-Gesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "48/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Privatradiogesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "48/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Mediengesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "48/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des KommAustria-Gesetzes · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "48/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Medienkooperations- und -förderungs-Transparenz · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "48/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kartellgesetzes 2005 · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "48/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wettbewerbsgesetzes · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "49/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des KommAustria-Gesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "49/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des KommAustria-Gesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "49/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Mediengesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "50/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Mietrechtsgesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "50/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Richtwertgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "51/ME rv>bgbl",
+   "residue": {
+    "unit": "24. Bundesgesetz, mit dem das IVS-Gesetz geändert wird · Z21→Z21",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "52/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen bürgerlichen Gesetzbuchs · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "52/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Konsumentenschutzgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "54/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulunterrichtsgesetzes · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "54/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Pflichtschulerhaltungs-Grundsatzgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "54/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulpflichtgesetzes 1985 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "54/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Privatschulgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "55/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung der Gewerbeordnung 1994 · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "55/ME rv>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz, mit dem das Emissionsschutzgesetz für Kesselan · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "56/ME rv>bgbl",
+   "residue": {
+    "unit": "90. Bundesgesetz, mit dem das Mineralrohstoffgesetz geändert · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "57/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsmarktpolitik-Finanzierungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "58/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesvergabegesetzes 2018 · Z184→Z184",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "58/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesvergabegesetzes Konzessionen 2018 · Z82→Z82",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "58/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesvergabegesetzes Verteidigung und Sicherhe · Z66→Z66",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "58/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über die Errichtung der Gesellsc · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "58/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Straßenfahrzeug-Beschaffungsgesetzes · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "59/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "78. Bundesgesetz, mit dem das Bundesstraßengesetz 1971 geänd · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "60/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des eEltern-Kind-Pass-Gesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "60/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Kinderbetreuungsgeldgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "60/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Familienlastenausgleichsgesetzes 1967 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Einkommensteuergesetzes 1988 · Z23→Z23",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Körperschaftsteuergesetzes 1988 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Mindestbesteuerungsgesetzes · Z26→Z26",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Umsatzsteuergesetzes 1994 · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Grunderwerbsteuergesetzes 1987 · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gebührengesetzes 1957 · Z46→Z46",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Konsulargebührengesetzes 1992 · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Versicherungssteuergesetzes 1953 · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kraftfahrzeugsteuergesetzes 1992 · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Feuerschutzsteuergesetzes 1952 · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bodenschätzungsgesetzes 1970 · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bewertungsgesetzes 1955 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Bundesabgabenordnung · Z30→Z30",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des EU-Amtshilfegesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kommunalsteuergesetzes 1993 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Tabakmonopolgesetzes 1996 · Z58→Z58",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Tabaksteuergesetzes 2022 · Z33→Z33",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Alkoholsteuergesetzes 2022 · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "61/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Transparenzdatenbankgesetzes 2012 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "62/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Straßenverkehrsordnung 1960 · Z24→Z24",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "62/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Straßenverkehrsordnung 1960 · Z25→Z25",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "62/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kraftfahrgesetzes 1967 · Z21→Z21",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "62/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Führerscheingesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "63/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzmarktaufsichtsbehördengesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "63/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzmarktaufsichtsbehördengesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "64/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "116. Bundesgesetz, mit dem das Bundesgesetz über die Dokumen · Z30→Z30",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "65/ME rv>bgbl",
+   "residue": {
+    "unit": "32. Bundesgesetz, mit dem das Bundespflegegeldgesetz geänder · Z22→Z22",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "66/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulorganisationsgesetzes · Z21→Z21",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "66/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulorganisationsgesetzes · Z23→Z23",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "66/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulunterrichtsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "66/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulunterrichtsgesetzes · Z25→Z25",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "66/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulunterrichtsgesetzes · Z26→Z26",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "66/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulunterrichtsgesetzes für Berufstätige, Koll · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "66/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Land- und forstwirtschaftlichen Bundesschulgese · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "66/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Berufsreifeprüfungsgesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "67/ME rv>bgbl",
+   "residue": {
+    "unit": "29. Bundesgesetz, mit dem das Fiskalrat- und Produktivitätsr · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "68/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "18. Bundesgesetz, mit dem das Führerscheingesetz geändert wi · Z43→Z43",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "69/ME rv>bgbl",
+   "residue": {
+    "unit": "31. Bundesgesetz, mit dem das Privatschulgesetz geändert wir · Z29→Z29",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "69/ME rv>bgbl",
+   "residue": {
+    "unit": "31. Bundesgesetz, mit dem das Privatschulgesetz geändert wir · Z30→Z30",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "70/ME rv>bgbl",
+   "residue": {
+    "unit": "75. Bundesgesetz, mit dem das Lebensmittelsicherheits- und V · Z24→Z24",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "71/ME plenum>bgbl",
+   "residue": {
+    "unit": "68. Bundesgesetz, mit dem das Bundesgesetz über das Herstell · Z51→Z51",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "72/ME rv>bgbl",
+   "residue": {
+    "unit": "42. Bundesgesetz, mit dem das Organtransplantationsgesetz ge · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Asylgesetzes 2005 · Z141→Z141",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Asylgesetzes 2005 · Z143→Z143",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des BBU-Errichtungsgesetzes · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des BFA-Einrichtungsgesetzes · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des BFA-Verfahrensgesetzes · Z124→Z124",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Fremdenpolizeigesetzes 2005 · Z130→Z130",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Fremdenpolizeigesetzes 2005 · Z131→Z131",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Grundversorgungsgesetzes - Bund 2005 · Z44→Z44",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Grundversorgungsgesetzes - Bund 2005 · Z45→Z45",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Staatsbürgerschaftsgesetzes 1985 · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "74/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Ausländerbeschäftigungsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "76/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Alternative Investmentfonds Manager-Gesetzes · Z63→Z63",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "76/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Alternative Investmentfonds Manager-Gesetzes · Z64→Z64",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "76/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Immobilien-Investmentfondsgesetzes · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "76/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z56→Z56",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "76/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z59→Z59",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "76/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z61→Z61",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "76/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapieraufsichtsgesetzes 2018 · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "77/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "77/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "77/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "77/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "78/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "38. Bundesgesetz, mit dem das Energieausweis-Vorlage-Gesetz  · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "78/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "38. Bundesgesetz, mit dem das Energieausweis-Vorlage-Gesetz  · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "79/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Maklergesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "79/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Maklergesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "79/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Konsumentenschutzgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "79/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Verbraucherbehördenkooperationsgesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "80/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Fern- und Auswärtsgeschäfte-Gesetzes · Z16→Z16",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "80/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Konsumentenschutzgesetzes · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "80/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Versicherungsvertragsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "80/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Zahlungsdienstegesetzes 2018 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "80/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Verbraucherbehördenkooperationsgesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "84/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen bürgerlichen Gesetzbuchs · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "84/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Außerstreitgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "86/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Konsumentenschutzgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "86/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Verbrauchergewährleistungsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "86/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Verbraucherbehördenkooperationsgesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "87/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Pflichtschulabschluss-Prüfungs-Gesetzes · Z17→Z17",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "87/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulorganisationsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "87/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Schulorganisationsgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "88/ME rv>bgbl",
+   "residue": {
+    "unit": "37. Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geände · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "92/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "30. Bundesgesetz, mit dem das Lebenshaltungs- und Wohnkosten · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "92/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "30. Bundesgesetz, mit dem das Lebenshaltungs- und Wohnkosten · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "95/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Ärztegesetzes 1998 · Z28→Z28",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "97/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Einkommensteuergesetzes 1988 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "97/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Umsatzsteuergesetzes 1994 · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "97/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Gebührengesetzes 1957 · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "97/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Strafvollzugsgesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "97/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung der Reisegebührenvorschrift 1955 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "97/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Preisauszeichnungsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "100/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Unternehmensgesetzbuchs · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "100/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Aktiengesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "100/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Übernahmegesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "html-xml",
+   "pair": "101/ME html>xml",
+   "residue": {
+    "unit": "Bundesgesetz über die Errichtung eines Unterstützungsfonds f · §7→§7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "112/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung der Rechtsanwaltsordnung · Z63→Z63",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "112/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung der Notariatsordnung · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "112/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Notariatsprüfungsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "112/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Rechtsanwaltsprüfungsgesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "115/ME plenum>bgbl",
+   "residue": {
+    "unit": "69. Bundesgesetz, mit dem das Sterbeverfügungsgesetz geänder · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Familienlastenausgleichsgesetzes 1967 · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kinderbetreuungsgeldgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kinderbetreuungsgeldgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Familienzeitbonusgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Universitätsgesetzes 2002 · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pensionsgesetzes 1965 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pensionsgesetzes 1965 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundestheaterpensionsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesbahn-Pensionsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Parteiengesetzes 2012 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Parteien-Förderungsgesetzes 2012 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des ORF-Gesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundes-Sportförderungsgesetzes 2017 · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen bürgerlichen Gesetzbuchs · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Exekutionsordnung · Z2→Z2",
+    "change": "changed",
+    "editorial": false,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Exekutionsordnung · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gerichtsgebührengesetzes · Z22→Z22",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gerichtlichen Einbringungsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Hypothekar- und Immobilienkreditgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Unterhaltsvorschußgesetzes 1985 · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Jurisdiktionsnorm · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Notariatsordnung · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Zivilprozessordnung · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gerichtsorganisationsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Strafprozeßordnung 1975 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Sicherheitspolizeigesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Einkommensteuergesetzes 1988 · Z20→Z20",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Körperschaftsteuergesetzes 1988 · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Umgründungssteuergesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Normverbrauchsabgabegesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Alkoholsteuergesetzes 2022 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Stabilitätsabgabegesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Umsatzsteuergesetzes 1994 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bewertungsgesetzes 1955 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Bundesabgabenordnung · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzstrafgesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Transparenzdatenbankgesetzes 2012 · Z30→Z30",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Börsegesetzes 2018 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesfinanzierungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Glücksspielgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Haftungsgesetzes-Kärnten · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des ABBAG-Gesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Ermächtigung zur Veräußerung und Belastung sowi · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des COVID-19-FondsG · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzausgleichsgesetzes 2024 · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Nationalen Emissionszertifikatehandelsgesetzes  · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des BFW-Gesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des BVWG-Gesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Altlastensanierungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Waldfondsgesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Umweltförderungsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Umweltförderungsgesetzes · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Wasserstoffförderungsgesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Schieneninfrastrukturfinanzierungsgesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung der Straßenverkehrsordnung 1960 · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen Sozialversicherungsgesetzes · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gewerblichen Sozialversicherungsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bauern-Sozialversicherungsgesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Beamten-Kranken- und Unfallversicherungsgesetze · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Sozialbetrugsbekämpfungsgesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Insolvenz-Entgeltsicherungsgesetzes · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des IEF-Service-GmbH-Gesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bundesgesetzes über die Schaffung eines Amtes f · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Freiwilligengesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des eEltern-Kind-Pass-Gesetzes · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsmarktpolitik-Finanzierungsgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsmarktservicegesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitslosenversicherungsgesetzes 1977 · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "116/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitslosenversicherungsgesetzes 1977 · Z12→Z12",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "html-xml",
+   "pair": "116/ME html>xml",
+   "residue": {
+    "unit": "Änderung der Exekutionsordnung · Z2→Z2",
+    "change": "changed",
+    "editorial": false,
+    "pieces": [],
+    "ceiling": false
+   }
+  }
+ ]
+}

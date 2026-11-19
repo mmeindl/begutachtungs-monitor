@@ -522,6 +522,23 @@ gets an entry of its own only where it carries a reason the rule does not.
   „redaktionell", except a separator between two digits („1 3" is not
   „13"). The runs stay shown as they are; folding them to `equal` would print
   the earlier spelling as agreed.
+- **A changed text without a word diff says so and stands unmarked**
+  (19.11.2026, `NO_WORD_DIFF_DE` in `app/utils/diffSides.ts`, `DiffBody`):
+  „Nicht im Monitor: Texte dieser Länge …", never both versions marked as
+  wholly changed. The § comparison computes the word diff past the matrix's
+  ceiling (`beyondCeiling` in `server/utils/diff/wordDiff.ts`); every caller
+  that decides on segments (oracle, guard, Lesefassung, annex rows, the
+  Länder's guard) keeps the ceiling as a refusal.
+- **Both readers name an image „[Abbildung]", and the verdict covers the
+  words only** (19.11.2026, `shared/utils/figureMark.ts`): RIS's `<binary>`
+  path and Parliament's `<img>` become the same mark, and every change whose
+  text carries it says „Nicht im Monitor: Abbildungen vergleicht der Monitor
+  nicht …". RIS's `<gt/>`/`<lt/>` and `<gs>` are read in `stripMarkup`, the
+  one function all three RIS readers share, so draft, standing law and
+  annex read them alike.
+- **A text that parses into no § is „Nicht lesbar" for that text**
+  (19.11.2026, `lawDiffService.ts`), asked before the cut to the draft's
+  laws, which may rightly empty a side.
 - **Erläuterungen a side has not given us are said, above the comparison**
   (14.11.2026, `explanationsMissingNote`; in the frame's Begründung row
   until 17.11.2026), instead of the Begründungen going missing silently. Parliament's record proves only what it lists, so the sentence
@@ -740,6 +757,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   IVS-Gesetz that matched the RIS were refused for four days unseen.
 - **Before a parser change, compare old against new over the whole corpus and
   read every item that moves.** Zeros measured on tuning data are in-sample.
+- **The § comparison is held by `scripts/harness/station.ts`** (19.11.2026):
+  reconstruction, completeness, a visible change and the own heading must
+  hold for every pair (exit 1 on a breach); the last parliamentary text
+  against the Kundmachung and one draft read as HTML and as XML are null
+  comparisons, and every residue that is not editorial carries its reason in
+  `scripts/harness/stationBaseline.json`. A residue there is a line to
+  explain or fix, never an accepted one.
 - **Report per-draft figures (median, share of drafts)** over pooled
   percentages, which a few large laws dominate (§12.12).
 - **Figures about windows, claims and joins are measured on a production

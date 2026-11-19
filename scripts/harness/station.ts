@@ -36,7 +36,9 @@
  * record written before and fails on any line that came or went, so a
  * change that moves the reading has to move the record in the same commit
  * (as `ci/annexDrift.ts` does for the annex). A residue in the record is not
- * thereby accepted: it is a line still to be explained or fixed.
+ * thereby accepted: `scripts/harness/stationBaseline.json` names for each
+ * one that is not editorial why it stands (`reasons`) — a source that
+ * differs, or a reader asymmetry still open.
  *
  * Reads through the offline cache with `--cache` (`HARNESS_CACHE`, default
  * `.harness-cache`); a miss is fetched and stored. A hit is as old as the
@@ -181,6 +183,8 @@ interface Record_ {
   residues: { kind: 'parlament-bgbl' | 'html-xml'; pair: string; residue: Residue }[]
   /** Every changed unit of every pair and its badge, so two runs compare verdict by verdict. */
   verdicts: Record<string, 'geändert' | 'redaktionell' | 'ohne Wortdiff'>
+  /** In a committed baseline (`stationBaseline.json`): why each residue that is not editorial stands. */
+  reasons?: Record<string, string>
 }
 
 const rows = await list81()
@@ -311,7 +315,7 @@ if (baselinePath) {
   const went = [...was].filter((l) => !now.has(l))
   console.log(`\n── Gegen die Baseline ${baselinePath}: ${came.length} neu, ${went.length} weg`)
   for (const l of came) console.log(`   + ${l}`)
-  for (const l of went) console.log(`   − ${l}`)
+  for (const l of went) console.log(`   − ${l}${before.reasons?.[l.replace(/^\S+ /, '')] ? ` (war: ${before.reasons[l.replace(/^\S+ /, '')]})` : ''}`)
   if (came.length || went.length) failed = true
 }
 process.exit(failed ? 1 : 0)
