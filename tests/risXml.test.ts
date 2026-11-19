@@ -72,3 +72,11 @@ describe('a quotation cut into Novellentext around a dash (26.09.2026)', () => {
     expect(read('der Ausdruck <n>„A“</n> durch den Ausdruck <n>„B“</n> ersetzt.')).toEqual(['der Ausdruck "A" durch den Ausdruck "B" ersetzt.'])
   })
 })
+
+describe('an image in the RIS XML is named, not spelt out (19.11.2026)', () => {
+  it('reads „[Abbildung]" where RIS puts the file path in a text node', () => {
+    // 62/ME StVO Z 6 and 61/ME Z 25 on ME → Kundmachung: the path came through as law words.
+    const blocks = parseRisXml('<risdok><nutzdaten><absatz typ="abs">Zusatztafel <binary alt="Kamera"><src>/Dokumente/BgblAuth/BGBLA_2026_I_17/x.img1is.png</src></binary> wie abgebildet</absatz></nutzdaten></risdok>')
+    expect(blocks.map((b) => b.text)).toEqual(['Zusatztafel [Abbildung] wie abgebildet'])
+  })
+})

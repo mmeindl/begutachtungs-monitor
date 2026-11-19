@@ -16,6 +16,13 @@ describe('decodeEntities', () => {
     expect(decodeEntities('a&#99999999;b')).toBe('ab')
   })
 
+  it('decodes the names Parliament’s Gesetzestexte carry, a digit in the name included (19.11.2026)', () => {
+    // 116/ME BVWG-Gesetz Z 5, 71/ME Z 32, 43/ME: printed literally until then.
+    expect(decodeEntities('[m&sup2;] &plusmn; 100 &micro;T 2 &times; 3 &sup3; &middot; &copy;')).toBe('[m²] ± 100 µT 2 × 3 ³ · ©')
+    // An unknown name stays as it is — no guess.
+    expect(decodeEntities('&frobnicate1;')).toBe('&frobnicate1;')
+  })
+
   it('drops control characters and surrogates instead of synthesizing them', () => {
     expect(decodeEntities('a&#8;b')).toBe('ab')
     expect(decodeEntities('a&#xD800;b')).toBe('ab')

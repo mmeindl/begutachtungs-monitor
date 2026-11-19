@@ -17,6 +17,7 @@
  * cannot follow a renumbering, in the § comparison it can.
  */
 import type { LawDiffSegment, LawUnitChange } from '#shared/types'
+import { FIGURE_NOT_COMPARED_DE, hasFigure } from '#shared/utils/figureMark'
 import { absaetze } from '~/utils/absaetze'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, PILL_CLASS } from '~/utils/diffBadges'
 import type { TermKey } from '~/utils/terms'
@@ -43,6 +44,13 @@ const props = defineProps<{
 }>()
 
 const term = computed(() => props.terms?.[props.badge])
+
+/*
+ * Either text sets an image (`FIGURE_MARK`, 19.11.2026): the comparison read
+ * the words around it, and the sentence says so wherever the change is
+ * shown — „unverändert" beside an image is a claim about the words only.
+ */
+const figure = computed(() => hasFigure(props.fromText) || hasFigure(props.toText) || hasFigure(props.unchangedText))
 
 /*
  * Every text here in its Absätze, Ziffern and Litera, not as one wall
@@ -115,6 +123,7 @@ const removedBlocks = computed(() => plain(props.fromText))
     <div v-else-if="change === 'removed'" class="space-y-1.5 hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">
       <p v-for="(block, i) in removedBlocks" :key="i">{{ block }}</p>
     </div>
+    <GapNote v-if="figure" class="mt-1 text-xs text-ink-secondary" :text="FIGURE_NOT_COMPARED_DE" />
 
     <slot />
   </div>

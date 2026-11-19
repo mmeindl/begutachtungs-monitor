@@ -48,6 +48,38 @@ const NAMED_ENTITIES: Record<string, string> = {
   rsquo: '’',
   laquo: '«',
   raquo: '»',
+  // The names Parliament's Gesetzestexte carry beyond the ones above,
+  // measured over the 1.244 cached Parliament documents (19.11.2026): each
+  // printed literally until then — „[m&sup2;]" against RIS's „[m²]" made
+  // 116/ME's BVWG-Gesetz Z 5 „geändert" on ME → Kundmachung, „&plusmn;"
+  // 71/ME's Z 32, and on ME → RV both columns read „100 &micro;T" (43/ME).
+  // A few Latin-1 neighbours of the measured ones come along, so the next
+  // ressort's „&Eacute;" is not the next defect.
+  sup1: '¹',
+  sup2: '²',
+  sup3: '³',
+  plusmn: '±',
+  micro: 'µ',
+  times: '×',
+  divide: '÷',
+  middot: '·',
+  copy: '©',
+  reg: '®',
+  acute: '´',
+  aacute: 'á',
+  Aacute: 'Á',
+  ccedil: 'ç',
+  Ccedil: 'Ç',
+  iacute: 'í',
+  Iacute: 'Í',
+  oacute: 'ó',
+  Oacute: 'Ó',
+  uacute: 'ú',
+  Uacute: 'Ú',
+  Eacute: 'É',
+  frac12: '½',
+  frac14: '¼',
+  frac34: '¾',
 }
 
 /**
@@ -67,7 +99,9 @@ export function decodeEntities(s: string): string {
   return s
     .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => safeFromCodePoint(Number.parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_, dec: string) => safeFromCodePoint(Number.parseInt(dec, 10)))
-    .replace(/&([a-z]+);/gi, (match, name: string) => NAMED_ENTITIES[name] ?? match)
+    // A digit after the first letter: „&sup2;" is a name too, and `[a-z]+`
+    // never matched it, whatever the table held.
+    .replace(/&([a-z][a-z0-9]*);/gi, (match, name: string) => NAMED_ENTITIES[name] ?? match)
 }
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---

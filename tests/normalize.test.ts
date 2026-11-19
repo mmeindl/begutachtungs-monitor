@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareKey, compareToken, displayTokens, stripMarkup, stripQuotes } from '../server/utils/lawtext/normalize'
+import { compareKey, compareToken, displayTokens, normalizeText, stripMarkup, stripQuotes, stripTags } from '../server/utils/lawtext/normalize'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 
@@ -13,6 +13,16 @@ import { parseRisXml } from '../server/utils/lawtext/risXml'
  * missing (2026-09-11).
  */
 describe('stripMarkup', () => {
+  it('keeps the sign RIS writes as an empty element, as an entity the decode reads (19.11.2026)', () => {
+    // 60/ME, BGBl. I Nr. 115/2025: „Hypertonie (<gt /> 140/90mmHg)".
+    expect(stripMarkup('Hypertonie (<gt /> 140/90mmHg) und <lt/> 5')).toBe('Hypertonie (&gt; 140/90mmHg) und &lt; 5')
+  })
+
+  it('makes nothing of RIS letter-spacing, which sits on letters inside a word (19.11.2026)', () => {
+    // 61/ME, BGBl. I Nr. 97/2025: „beträ g t 2 0 Prozent".
+    expect(stripMarkup('beträ<gs>g</gs>t 2<gs>0 </gs>Prozent')).toBe('beträgt 20 Prozent')
+  })
+
   it('makes a space of a block tag, because that is where one sentence ends', () => {
     expect(stripMarkup('<absatz>Erster Satz.</absatz><absatz>Zweiter Satz.</absatz>')).toBe(' Erster Satz.  Zweiter Satz. ')
     expect(stripMarkup('<td>links</td><td>rechts</td>')).toBe(' links  rechts ')
@@ -190,5 +200,16 @@ describe('stripQuotes — the pair of the instruction, and not a mark more (27.0
     expect(stripQuotes('„Landesausspielungen“')).toBe('Landesausspielungen')
     expect(stripQuotes('„Aufbau und Zuständigkeit')).toBe('Aufbau und Zuständigkeit')
     expect(stripQuotes('der Staatsanwaltschaften“')).toBe('der Staatsanwaltschaften')
+  })
+})
+
+describe('format characters and images (19.11.2026)', () => {
+  it('drops the format characters, and makes a space of the zero-width one', () => {
+    // 16/ME, BGBl. I Nr. 25/2025: U+202C after „25 200"; U+200C after „elastomer-/".
+    expect(normalizeText('25 200\u202c" und elastomer-/\u200cmetall und a\u200bb und un\u00adteilbar')).toBe('25 200" und elastomer-/metall und a b und unteilbar')
+  })
+
+  it('names an image in Parliament\'s HTML instead of dropping it', () => {
+    expect(stripTags('<p>Zusatztafel <img width=40 src="image001.png"> wie abgebildet</p>')).toBe('Zusatztafel [Abbildung] wie abgebildet')
   })
 })

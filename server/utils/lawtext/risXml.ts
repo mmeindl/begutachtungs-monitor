@@ -7,6 +7,7 @@
 import type { BlockKind, TextBlock } from './lawUnits'
 import { ARTICLE_RE, refineArticleHeadings } from './articleHeadings'
 import { stripTags } from './normalize'
+import { FIGURE_MARK } from '../../../shared/utils/figureMark'
 
 // ---------------------------------------------------------------------------
 // RIS layout XML (Applikation=Begut main document) → the same blocks
@@ -67,8 +68,25 @@ const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
  */
 const N_AT_DASH_RE = /<\/n>((?:<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>)*)(?=<gdash\s*\/>)|(<gdash\s*\/>(?:<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>)*)<n>/g
 
+/**
+ * RIS's image element, `<binary …><src>/Dokumente/…/….img1is.png</src></binary>`.
+ * Its `<src>` is a text node, so the file path came through as the law's
+ * words: the § comparison inserted „/Dokumente/BgblAuth/…img1is.png" into
+ * 61/ME's Z 25 and 62/ME's StVO Z 6 on ME → Kundmachung (19.11.2026). Named
+ * instead (`FIGURE_MARK`), as Parliament's `<img>` is (`stripTags`) and as
+ * the annex's cells have been since 25.10.2026 (`annex/tableCells.ts`).
+ */
+const BINARY_RE = /<binary\b[^>]*?(?:\/>|>[\s\S]*?<\/binary\s*>)/g
+
 function risText(inner: string): string {
-  return stripTags(inner.replace(N_AT_DASH_RE, '$1$2').replace(/<gdash\s*\/>/g, '-').replace(/<nbsp\s*\/>/g, ' ').replace(/<amp\s*\/>/g, '&amp;'))
+  return stripTags(
+    inner
+      .replace(BINARY_RE, ` ${FIGURE_MARK} `)
+      .replace(N_AT_DASH_RE, '$1$2')
+      .replace(/<gdash\s*\/>/g, '-')
+      .replace(/<nbsp\s*\/>/g, ' ')
+      .replace(/<amp\s*\/>/g, '&amp;'),
+  )
 }
 
 /**

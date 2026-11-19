@@ -5,18 +5,32 @@
  * PURE MODULE — relative imports only, so vitest runs it directly.
  */
 import { decodeEntities } from '../parliament/htmlText'
+import { FIGURE_MARK } from '../../../shared/utils/figureMark'
 
 // ---------------------------------------------------------------------------
 // Text normalisation
 // ---------------------------------------------------------------------------
 
-/** Typographic normalisation; keeps words, drops layout noise. */
+/**
+ * Typographic normalisation; keeps words, drops layout noise.
+ *
+ * **The format characters go, since 19.11.2026** (`\p{Cf}`: the soft
+ * hyphen, which this line always dropped, and the bidi controls and joiners
+ * Word leaves behind). Invisible on the page and different under every
+ * comparison: RIS writes „25 200" with a U+202C after it where Parliament
+ * writes the number alone (16/ME, the Einkommensteuergesetz), and the word
+ * diff marked the two as a change nobody can see. Over the cached RIS and
+ * Parliament documents the class holds U+202C (26 times), U+200E (6) and
+ * U+200C (2), each inside or beside a word, none of them a word boundary. The
+ * zero-width space is the one that is a boundary, so it becomes a space.
+ */
 export function normalizeText(t: string): string {
   return t
     // eslint-disable-next-line no-irregular-whitespace -- the NBSP in the class is what this line replaces
     .replace(/ /g, ' ')
     .replace(/[‑–‒]/g, '-')
-    .replace(/­/g, '')
+    .replace(/\u200b/g, ' ')
+    .replace(/\p{Cf}/gu, '')
     .replace(/[„“”]/g, '"')
     .replace(/[‚‘’]/g, "'")
     .replace(/\s+/g, ' ')
@@ -217,8 +231,32 @@ export function compareToken(word: string): string {
  *
  * `<sub>` is here since 30.09.2026, `<sup>`/`<super>` deliberately are not —
  * a measurement, not an oversight: see `stripMarkup`.
+ *
+ * `<gs>` since 19.11.2026: RIS's letter-spacing („gesperrt"), set on single
+ * letters inside a word — „beträ<gs>g</gs>t 2<gs>0 </gs>Prozent" in the
+ * promulgated Mindestbesteuerungsgesetz (61/ME, BGBl. I Nr. 97/2025), which
+ * the page printed as „beträ g t 2 0 Prozent". 2.565 of them stand in 130
+ * cached RIS documents; the 55 that weld two pieces, read by sample, all give
+ * the word („Sachkonten", „in 60 Minuten").
  */
-const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font|sub)\b[^>]*>/gi
+const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font|sub|gs)\b[^>]*>/gi
+
+/**
+ * RIS's two empty elements for a character that would break its markup:
+ * „Hypertonie (<gt /> 140/90mmHg)". Every other empty element is a word
+ * boundary, so the sign vanished — from the promulgated Anlage of 60/ME
+ * (BGBl. I Nr. 115/2025), whose page read „Hypertonie ( 140/90mmHg)" and
+ * marked the dropped „>" as a change. 1.576 of them stand in 158 cached RIS
+ * documents, with meaning attached („Frauen <gt /> 50 a").
+ *
+ * As an entity and not as the character: the decode runs after the tags are
+ * stripped (`stripTags`), and a literal „<" would open a tag that eats the
+ * text up to the next „>". Here, in the function all three RIS readers share
+ * (`cellText`, `konsTree`'s `text`, `stripTags`), so the draft, the standing
+ * law and the annex read the sign alike — `<amp/>` is mapped by each reader
+ * itself, before this, and this pair joins it at the one common place.
+ */
+const RIS_SIGN_RE = /<(gt|lt)\s*\/>/g
 
 /**
  * Markup → text, with the one distinction the comparison depends on: a block
@@ -263,9 +301,18 @@ const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font|sub)\b[^>]*>/gi
  * joins it, and the footnote stays apart.
  */
 export function stripMarkup(html: string): string {
-  return html.replace(INLINE_MARKUP_RE, '').replace(/<[^>]*>/g, ' ')
+  return html.replace(RIS_SIGN_RE, '&$1;').replace(INLINE_MARKUP_RE, '').replace(/<[^>]*>/g, ' ')
 }
 
+/** Parliament's image element — inside a law text a figure, a formula or a traffic sign. */
+const IMG_RE = /<img\b[^>]*>/gi
+
+/**
+ * The text of the § comparison's two readers, Parliament's HTML and RIS's
+ * XML (`risText` in `lawtext/risXml.ts`). An image is named (`FIGURE_MARK`):
+ * RIS's `<binary>` arrives named from `risText`, Parliament's `<img>` is
+ * named here, so both sides carry the same mark where they set an image.
+ */
 export function stripTags(html: string): string {
-  return normalizeText(decodeEntities(stripMarkup(html)))
+  return normalizeText(decodeEntities(stripMarkup(html.replace(IMG_RE, ` ${FIGURE_MARK} `))))
 }
