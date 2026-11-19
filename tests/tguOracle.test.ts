@@ -946,3 +946,53 @@ describe('an omission the annex makes without its „…" (silentOmissions, 14.1
     expect(absatzOrderBroken(rows, ['1', '2', '3', '4'])).toBeNull()
   })
 })
+
+describe('the heading a § opens with is where the result begins (19.11.2026)', () => {
+  // LFG § 68: „Zivilflugplatz-Bewilligung" opens the § and stands again in
+  // brackets in its first sentence. Found there, everything in front of the
+  // bracket was dropped as a heading stack — law text included.
+  it('drops a heading stack only where the remainder opens the result', () => {
+    const standing = 'Zivilflugplatz-Bewilligung Zivilflugplätze dürfen nur mit einer Bewilligung errichtet werden (Zivilflugplatz-Bewilligung). Das gleiche gilt.'
+    const rows = [pair('Zivilflugplatz-Bewilligung § 68. (1) Zivilflugplätze dürfen nur mit einer Bewilligung errichtet werden (Zivilflugplatz-Bewilligung). Das gleiche gilt.', 'Zivilflugplatz-Bewilligung § 68. (1) Zivilflugplätze dürfen nur mit einer Bewilligung errichtet werden (Zivilflugplatz-Bewilligung). Das Gleiche gilt.', '§ 68.')]
+    const got = standing.replace('Das gleiche', 'Das Gleiche')
+    expect(oracleVerdict('68', standing, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('68', standing, got.replace('dürfen nur mit', 'dürfen mit'), rows)).toMatchObject({ verdict: 'widersprochen' })
+  })
+
+  // A group heading with the § and its text after it is no group heading alone.
+  it('reads the § heading and text that follow a group heading in one stretch', () => {
+    const standing = 'Form und Wirkung der Visa D Visa D werden erteilt als Visum für einen Aufenthalt.'
+    const rows = [pair('3. Abschnitt Bestimmungen zur Visumpflicht Form und Wirkung der Visa D § 20. (1) Visa D werden erteilt als (2) …', '3. Abschnitt Bestimmungen zur Visumpflicht Form und Wirkung der Visa D § 20. (1) Visa D werden erteilt als (2) … (3) Neu.', '§ 20.')]
+    expect(oracleVerdict('20', standing, `${standing} Neu.`, rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('20', standing, `${standing.replace('Form und Wirkung', 'Form Wirkung')} Neu.`, rows)).toMatchObject({ verdict: 'widersprochen' })
+  })
+
+  // A heading row is the heading, not a word of the body: „Bundesstaatsanwaltschaft"
+  // in „Die Bundesstaatsanwaltschaft wirkt …".
+  it('does not find a changed heading row in the body', () => {
+    const rows = [pair('Generalprokuratur', 'Bundesstaatsanwaltschaft'), pair('Die Generalprokuratur wirkt mit.', 'Die Bundesstaatsanwaltschaft wirkt mit.', '§ 22.')]
+    const before = 'Generalprokuratur Die Generalprokuratur wirkt mit.'
+    expect(oracleVerdict('22', before, 'Bundesstaatsanwaltschaft Die Bundesstaatsanwaltschaft wirkt mit.', rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('22', before, 'Generalprokuratur Die Bundesstaatsanwaltschaft wirkt mit.', rows)).toMatchObject({ verdict: 'widersprochen' })
+  })
+
+  // The PDF path wraps a long heading and leaves its first line in the row
+  // above: the § opens with the tail (SPG § 83, BHG § 73).
+  it('accepts the tail of a wrapped heading where the standing text puts it', () => {
+    const heading = 'Stundung und Nachlass bei Forderungen des Bundes'
+    const standing = `${heading} Erstens gilt. Zweitens gilt.`
+    const rows = [pair('Forderungen des Bundes § 73. (1) ... (2) Zweitens gilt.', 'Forderungen des Bundes § 73. (1) ... (2) Zweitens gilt neu.', '§ 73.')]
+    expect(oracleVerdict('73', standing, `${heading} Erstens gilt. Zweitens gilt neu.`, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // The same tail found in the body of a result whose heading is another.
+    expect(oracleVerdict('73', standing, 'Waldfonds Erstens gilt bei Forderungen des Bundes. Zweitens gilt neu.', rows)).toMatchObject({ verdict: 'widersprochen' })
+    const lower = [pair('ausschließenden Rauschzustand § 83. (1) Wer sich berauscht.', 'ausschließenden Rauschzustand § 83. (1) Wer sich betrinkt.', '§ 83.')]
+    const tail = 'Begehung in einem die Zurechnungsfähigkeit ausschließenden Rauschzustand'
+    expect(oracleVerdict('83', `${tail} Wer sich berauscht.`, `${tail} Wer sich betrinkt.`, lower)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  // „2. Unterabschnitt … 7. Abschnitt Sanktionen § 106. (1) Wer" leaves „Wer".
+  it('drops a stack down to a short remainder only below a group unit', () => {
+    const rows = [pair('2. Unterabschnitt Internationale Zusammenarbeit 7. Abschnitt Sanktionen § 106. (1) Wer … (2) Alt.', '2. Unterabschnitt Internationale Zusammenarbeit 7. Abschnitt Sanktionen § 106. (1) Wer … (2) Neu.', '§ 106.')]
+    expect(oracleVerdict('106', 'Wer handelt, wird bestraft. Alt.', 'Wer handelt, wird bestraft. Neu.', rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+})

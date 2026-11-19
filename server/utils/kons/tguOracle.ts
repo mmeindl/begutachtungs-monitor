@@ -627,22 +627,36 @@ function withoutHeadingStack(piece: string, text: string, from: number): { piece
   // des Asylberechtigten § 3." — and cutting at the first copy leaves a
   // remainder that starts with the heading and still is not the standing
   // text (05.10.2026).
-  for (let cut = 1; cut <= piece.length - MIN_HEAD_REST; cut++) {
+  for (let cut = 1; cut < piece.length; cut++) {
     const rest = piece.slice(cut)
+    // A remainder shorter than a heading only below a group unit: „2.
+    // Unterabschnitt Internationale Zusammenarbeit 7. Abschnitt Sanktionen
+    // § 106. (1) Wer …" leaves „Wer" (BörseG § 106). Without one, „f)
+    // ‚Gefilterter Honig'" left „Honig", which the result opens with by
+    // chance (Honigverordnung § 3).
+    if (rest.length < MIN_HEAD_REST && !GROUP_UNIT_RE.test(piece.slice(0, cut))) continue
     // The §'s own heading may be all the stretch has left — „2. Abschnitt
     // Umstellungsförderung (58-01) Fördervoraussetzungen" before the marks of
     // „§ 209. (1) bis (5) …" — so a remainder shorter than the probe has to
     // open the standing text whole.
     if (!text.startsWith(rest.slice(0, HEAD_PROBE))) continue
     if (!isStack(piece.slice(0, cut))) continue
-    const found = text.indexOf(rest, from)
-    if (found >= 0) return { piece: rest, found }
+    // Where the standing text begins, and nowhere else (19.11.2026). Found
+    // anywhere, a remainder whose first words merely recur further down
+    // passed: „Zivilflugplatz-Bewilligung" opens LFG § 68 and stands again in
+    // brackets in its first sentence, so everything before that bracket —
+    // law text, commas and all — was dropped as a „stack", and a word lost
+    // from it went unseen. Fault classes Wort-weg and Überschrift found 31
+    // and 130 such misses on the PDF path.
+    if (text.startsWith(rest, from)) return { piece: rest, found: from }
   }
   return null
 }
 
 /** The fewest characters a remainder must keep to count as the §'s own heading. */
 const MIN_HEAD_REST = 8
+/** A group unit's name, as the comparison form keeps it (its number stripped). */
+const GROUP_UNIT_RE = /(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)/i
 /** „3. TEIL: SCHLUSSBESTIMMUNGEN" — a colon after the unit is a heading's, not a sentence's. */
 const UNIT_COLON_RE = /(Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel):/gi
 
@@ -674,6 +688,16 @@ const NUMBERED_UNIT_RE = /^\s*(?:(?:(?:\d+[a-z]*|[IVXLCDM]+)\.|(?:Erst|Zweit|Dri
  */
 function isGroupHeadingOnly(stretch: string): boolean {
   if (!NUMBERED_UNIT_RE.test(stretch)) return false
+  // A stretch that carries a § symbol and text after it opens that §
+  // (19.11.2026): „3. Abschnitt Bestimmungen zur Visumpflicht Form und
+  // Wirkung der Visa D § 20. (1) Visa D werden erteilt als" has no full stop
+  // of its own up to the omission mark, and read as a heading alone its §
+  // heading and its law text were never held against the result. The
+  // heading stack above a § is `withoutHeadingStack`'s to drop. Nothing
+  // after the symbol („15. Teil … 1. Abschnitt Behörden § 148. (…)") and it
+  // is the stack alone.
+  const symbol = PARAGRAPH_SYMBOL_RE.exec(stretch)
+  if (symbol && /\p{L}/u.test(stretch.slice(symbol.index + symbol[0].length))) return false
   return !/[.;:!?]/.test(oldStyleDotsOff(stretch).replace(DESIGNATION_DOT_RE, '').replace(UNIT_COLON_RE, '$1'))
 }
 
@@ -762,9 +786,10 @@ function markedOmissions(cell: string): string {
  * costs no strictness anywhere the old test already had an answer.
  */
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
-export function unaccountedStretch(text: string, cell: string): string | null {
+export function unaccountedStretch(text: string, cell: string, anchor: ((at: number, stretch: string) => boolean) | null = null): string | null {
   let at = 0
   let first = true
+  let anchored = anchor
   const stretches = printedStretches(markedOmissions(cell))
   for (const [index, stretch] of stretches.entries()) {
     let piece = key(stretch)
@@ -774,6 +799,21 @@ export function unaccountedStretch(text: string, cell: string): string | null {
     // no digit, nothing it could say about the §.
     if (piece === '' || !/[\p{L}\d]/u.test(piece)) continue
     let found = text.indexOf(piece, at)
+    // `anchor`: the cell opens the § with its heading, and the result opens
+    // with it too (`plainText` puts the heading first) — at a place the
+    // predicate accepts (`headingAnchor`), never merely anywhere. Found
+    // anywhere, a heading the result does not carry was found in its body:
+    // „Vollziehung" in „Mit der Vollziehung … ist betraut", a heading row
+    // „Bundesstaatsanwaltschaft" in „Die Bundesstaatsanwaltschaft wirkt …"
+    // (19.11.2026). Only the stack rescue below may still place it, and only
+    // at the start.
+    if (anchored) {
+      const accept = anchored
+      let p = found
+      while (p >= 0 && !accept(p, stretch)) p = text.indexOf(piece, p + 1)
+      found = p
+    }
+    anchored = null
     // Nor does a stretch that is nothing but a group heading — wherever it
     // stands, since the next group's heading comes at the foot of a §.
     if (found < 0 && isGroupHeadingOnly(stretch)) continue
@@ -806,6 +846,54 @@ export function unaccountedStretch(text: string, cell: string): string | null {
     first = false
   }
   return null
+}
+
+/**
+ * Where the heading a changed row opens the § with may stand in the result
+ * (19.11.2026) — at the start, or after the part of the heading the row does
+ * not print.
+ *
+ * The PDF path wraps a long heading over two rows and leaves its first line
+ * at the foot of the § above (`NEXT_HEADING_RE`), so the § opens with the
+ * tail: „ausschließenden Rauschzustand § 83. (1) Wer …" under „Begehung einer
+ * Verwaltungsübertretung in einem die Zurechnungsfähigkeit ausschließenden
+ * Rauschzustand", „Forderungen des Bundes § 73." under „Stundung, … bei
+ * Forderungen des Bundes" — and the two columns wrap differently, one
+ * printing the heading whole where the other prints its tail (SPG § 57,
+ * MinBestG § 69). The result cannot say where its heading ends, so the
+ * standing text has to:
+ *
+ * - at `at` = 0, the heading is where the result begins;
+ * - right after the head the row's GELTENDE column implies: its first
+ *   stretch stands that far into the standing text, behind heading words
+ *   only. A result whose heading the engine did not change against a draft
+ *   that does fails here, because the old heading opens both texts;
+ * - after a head the result shares with the standing text word for word,
+ *   heading words only, where the stretch shows it is a tail — it opens in
+ *   lower case, as no heading does, or it carries the §'s text after its
+ *   symbol, so that tail and body stand together right where the shared
+ *   head ends — or the head is designations alone („G. Verwendung
+ *   technischer Einrichtungen …", BAO § 48j).
+ *
+ * „Heading words only": no full stop, colon or question mark — a heading
+ * carries commas and semicolons („Zentrale Informationssammlung; Zulässigkeit
+ * der Ermittlung, Verarbeitung und Übermittlung"), and designation dots are
+ * a heading's too.
+ */
+function headingAnchor(current: string, beforeKey: string, gotKey: string): (at: number, stretch: string) => boolean {
+  const headingWords = (head: string): boolean => !/[.:!?]/.test(head.replace(DESIGNATION_DOT_RE, ''))
+  const firstStretch = printedStretches(markedOmissions(current)).map(key).find((k) => k !== '' && /[\p{L}\d]/u.test(k))
+  const standingAt = firstStretch ? beforeKey.indexOf(firstStretch) : -1
+  const head = standingAt > 0 && headingWords(beforeKey.slice(0, standingAt)) ? beforeKey.slice(0, standingAt) : ''
+  return (at, stretch) => {
+    if (at === 0) return true
+    if (head !== '' && at === head.length && gotKey.startsWith(head)) return true
+    const shared = gotKey.slice(0, at)
+    if (shared !== beforeKey.slice(0, at) || !headingWords(shared)) return false
+    const symbol = PARAGRAPH_SYMBOL_RE.exec(stretch)
+    const carriesBody = symbol !== null && /\p{L}/u.test(stretch.slice(symbol.index + symbol[0].length))
+    return /^\s*\p{Ll}/u.test(stretch) || shared.replace(DESIGNATION_DOT_RE, '') === '' || carriesBody
+  }
 }
 
 /** How check 4's report opens — the harness counts its alarms by it. */
@@ -1404,6 +1492,12 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
 
   const beforeKey = key(before ?? '')
   const gotKey = key(got)
+  // The row that opens the § and prints its heading: words ahead of the §
+  // symbol (the PDF path), or a heading row of its own (the table path).
+  // Its first stretch is where the result begins (`unaccountedStretch`).
+  const opener = rows.find((r) => r.kind === 'pair')
+  const opensWithHeading = (row: ComparisonRow): boolean =>
+    row === opener && (headingOf(row.proposed).some((w) => /\p{L}/u.test(w)) || (!row.gld && isHeadingRow(row)))
   for (const row of substantive) {
     const missing = row.current ? unaccountedStretch(beforeKey, row.current) : null
     if (missing !== null) {
@@ -1443,7 +1537,7 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
     // its proposed column — elided by the very same ressort in the very same
     // row — contradict it, and the page would then tell the reader the annex
     // disagrees with us where in truth it simply left text out.
-    const missing = unaccountedStretch(gotKey, row.proposed)
+    const missing = unaccountedStretch(gotKey, row.proposed, opensWithHeading(row) ? headingAnchor(row.current, beforeKey, gotKey) : null)
     if (missing !== null) {
       return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Vorgeschlagene Fassung nicht im Ergebnis: "${missing.slice(0, 60)}"` }
     }

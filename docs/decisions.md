@@ -653,6 +653,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   Official Journal page („S. 1."). Rules read only the words before the
   number: the annex prints markers that RIS's text does not, so whatever
   follows differs between the two sides of one sentence.
+- **The heading a changed row opens the § with is held where the result
+  begins, never found just anywhere** (19.11.2026): at the start, or after
+  the part of a wrapped heading the row does not print, as the standing text
+  places it. A heading stack is dropped only where the remainder opens the
+  result, and a stretch that carries a § symbol and text after it is never
+  „a group heading alone". Found anywhere, a heading or a remainder was
+  found in the body, and the words in front of it went unchecked.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
