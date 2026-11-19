@@ -48,6 +48,7 @@ import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/u
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
 import { addressedParagraphs, refusedLineUnits, refusedUnits, touchedKey, unitsByKey } from '../../server/utils/kons/konsGate'
+import { loadKey } from './konsJudge'
 import { createdUnits, namedParagraphs, opAddress } from '../../server/utils/kons/novao'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
@@ -62,7 +63,6 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, getJson, risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickExplanations, pickTextComparisons } from '../lib/ris'
-import { anlageLabelKey } from '../../server/utils/text/designation'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 
 const SCRIPT = 'harness/me'
@@ -240,8 +240,8 @@ async function parliamentAnnexHtml(risId: string): Promise<string | null> {
   return await getText(link.startsWith('http') ? link : `${PARLIAMENT}${link}`)
 }
 
-/** RIS prints an Anlage as "Anl. 2"; an instruction says "Anlage 2" (or "Anhang 2"). */
-const labelKey = anlageLabelKey
+/** RIS prints an Anlage as "Anl. 2"; an instruction says "Anlage 2", "Anhang 2" or "Anhang II" (`loadKey`). */
+const labelKey = loadKey
 
 interface LawResult {
   draft: string

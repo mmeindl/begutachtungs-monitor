@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kindKey, matchArticle, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
+import { kindKey, loadKey, matchArticle, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 
 // The BGBl bench's own bookkeeping (19.11.2026): what it got wrong is how a
@@ -72,5 +72,17 @@ describe('matchArticle: the draft Artikel of the same law', () => {
   it('a shared Stammnorm with no clear heading stays refused', () => {
     const got = matchArticle(fremdenrecht, art(0, 'Änderung des Bundesgesetzes über die Gewährung von Asyl', 'BGBl. I Nr.', '100/2005'))
     expect(got).toEqual({ reason: '3 Artikel zitieren die Stammnorm, kein Titel passt eindeutig' })
+  })
+})
+
+describe('loadKey', () => {
+  // 20.11.2026: folded alone, „Anhang VIII" was „Anl. VIII", a label RIS
+  // never carries — the ME bench and the fault injection loaded no Roman schedule.
+  it('meets RIS’s label for a Roman Anhang, and leaves the rest as anlageLabelKey', () => {
+    expect(loadKey('Anhang VIII')).toBe(loadKey('Anl. 8'))
+    expect(loadKey('Anlage 2')).toBe('Anl. 2')
+    expect(loadKey('Anhang')).toBe('Anl.')
+    expect(loadKey('§ 8')).toBe('§ 8')
+    expect(loadKey('Art. 2 § 3')).toBe('Art. 2 § 3')
   })
 })

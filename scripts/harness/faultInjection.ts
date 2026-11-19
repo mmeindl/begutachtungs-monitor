@@ -333,7 +333,9 @@ import { applyNovelle, instructionsFromUnits, renamedOrigins, type StandingLaw }
 import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, PLACE_NOTE, ROW_ORDER_NOTE, absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
 import { printedStretches } from '../../server/utils/annex/elision'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
-import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
+import { isDivision, isSchedule, unitKey } from '../../server/utils/text/designation'
+import { unitsByKey } from '../../server/utils/kons/konsGate'
+import { loadKey } from './konsJudge'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
@@ -1252,6 +1254,9 @@ function checkOf(note: string | null): string {
   return '?'
 }
 
+/** A unit as the report names it: „§ 5", or a schedule's own key („Anl. 8"). */
+const unitLabel = (id: string): string => (id.startsWith('Anl.') ? id : `§ ${id}`)
+
 /**
  * The engine on this draft, and the oracle on its result — once as computed,
  * once per fault.
@@ -1283,15 +1288,18 @@ async function injectIntoResults(
       const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
       if (address?.level === 'document') wholeText = true
       if (address?.para) {
-        wanted.add(anlageLabelKey(address.para))
-        const id = bareParaId(address.para)
+        wanted.add(loadKey(address.para))
+        // Keyed as the page keys it (`unitKey`): „Anhang VIII" is „Anl. 8",
+        // never § 8. By the bare number a schedule was scored against the §
+        // of its number, and a Roman one not at all (20.11.2026).
+        const id = isDivision(address.para) ? null : unitKey(address.para)
         if (id) touched.add(id)
       }
-      if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') for (const p of payload) if (p.id) touched.add(p.id)
+      if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') for (const p of payload) if (p.id) touched.add(isSchedule(p.marker) ? (unitKey(p.marker) ?? p.id) : p.id)
     }
     const paragraphs: LawNode[] = []
     for (const [label, ref] of Object.entries(resolved.paragraphs)) {
-      if (!wholeText && !wanted.has(anlageLabelKey(label))) continue
+      if (!wholeText && !wanted.has(loadKey(label))) continue
       const tree = await fetchParagraphTree(ref)
       if (tree) paragraphs.push(tree)
     }
@@ -1302,11 +1310,14 @@ async function injectIntoResults(
     // against the standing § it came from.
     const originOf = renamedOrigins(renamed)
     const lawKey = amendingCount > 1 ? article.key : undefined
+    // Held under the unit key, as the page holds them (`unitsByKey`).
+    const afterById = unitsByKey(after.paragraphs)
+    const beforeById = unitsByKey(law.paragraphs)
     for (const id of [...touched].sort()) {
-      const node = after.paragraphs.find((p) => p.id === id)
+      const node = afterById.get(id)
       if (!node) continue
       const origin = originOf(id)
-      const beforeNode = origin === null ? null : (law.paragraphs.find((p) => p.id === origin) ?? null)
+      const beforeNode = origin === null ? null : (beforeById.get(origin) ?? null)
       const before = beforeNode ? plainText(beforeNode) : null
       const got = plainText(node)
       const paraRows = paragraphRows(byParagraph, id, lawKey, origin)
@@ -1315,7 +1326,7 @@ async function injectIntoResults(
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
       // `--urteile`: every verdict on a line of its own, so two runs of an
       // oracle change can be compared § by § (`diff`), not by their totals.
-      if (argFlag('urteile')) console.log(`URTEIL ${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 40)}]` : ''} — ${report.verdict}${report.note ? ` — ${report.note.slice(0, 120)}` : ''}`)
+      if (argFlag('urteile')) console.log(`URTEIL ${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 40)}]` : ''} — ${report.verdict}${report.note ? ` — ${report.note.slice(0, 120)}` : ''}`)
       // An Absatz number the result holds twice — and whether the standing §
       // already held it twice (RIS's text) or the engine made the second one.
       const twice = (n: LawNode | null): string[] => (n ? absOf(n).filter((a, i, all) => a && all.indexOf(a) !== i) : [])
@@ -1323,7 +1334,7 @@ async function injectIntoResults(
       if (dup.length > 0) {
         const standingDup = twice(beforeNode)
         const engineMade = dup.filter((a) => !standingDup.includes(a))
-        results.dupAbs.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.verdict}, doppelt (${dup.join(', ')}) ${engineMade.length === 0 ? 'schon im geltenden Text' : `ERST IM ERGEBNIS (${engineMade.join(', ')})`}; geltend: ${beforeNode ? absOf(beforeNode).join(', ') : '—'}; Ergebnis: ${absOf(node).join(', ')}`)
+        results.dupAbs.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.verdict}, doppelt (${dup.join(', ')}) ${engineMade.length === 0 ? 'schon im geltenden Text' : `ERST IM ERGEBNIS (${engineMade.join(', ')})`}; geltend: ${beforeNode ? absOf(beforeNode).join(', ') : '—'}; Ergebnis: ${absOf(node).join(', ')}`)
       }
       // Every § with a row the annex prints with a silent omission, whatever
       // its verdict — what the reading can reach at all.
@@ -1331,30 +1342,30 @@ async function injectIntoResults(
       // Every verdict the reading moves, named — a count cannot be read.
       const unread = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
       if (unread.verdict !== report.verdict) {
-        results.moved.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${unread.verdict} → ${report.verdict}${report.note ? ` — ${report.note.slice(0, 100)}` : ''}`)
+        results.moved.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${unread.verdict} → ${report.verdict}${report.note ? ` — ${report.note.slice(0, 100)}` : ''}`)
         if (argFlag('alarme')) results.moved.push(...silentOmissions(paraRows, standingUnits).rows.filter((r) => r.kind === 'pair').flatMap((r) => [`          geltend      : ${r.current.slice(0, 400)}`, `          vorgeschlagen: ${r.proposed.slice(0, 400)}`]), `          Ergebnis     : ${got.slice(0, 400)}`)
       }
       if (gaps.length > 0) {
         results.silent.set(report.verdict, (results.silent.get(report.verdict) ?? 0) + 1)
-        results.silentSites.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.verdict}, ausgelassen ${gaps.join(', ')}${report.note ? ` — ${report.note.slice(0, 90)}` : ''}`)
+        results.silentSites.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.verdict}, ausgelassen ${gaps.join(', ')}${report.note ? ` — ${report.note.slice(0, 90)}` : ''}`)
       }
       // Check 2's row order (19.11.2026): every § it speaks on would have
       // passed check 2 with each row looked up from the start.
       if (report.note?.startsWith(ROW_ORDER_NOTE)) {
-        results.rowOrder.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
+        results.rowOrder.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
         if (argFlag('alarme')) results.rowOrder.push(...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => `          ${r.change.padEnd(11)}: ${r.proposed.slice(0, 160)}`), `          Ergebnis: ${got.slice(0, 400)}`)
       }
       // Check 3 in place (19.11.2026): every § it speaks on had passed the
       // bags of check 3, so its alarms are the confirmations it withdraws.
       if (report.note?.startsWith(PLACE_NOTE)) {
-        results.placeAlarms.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
+        results.placeAlarms.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
         if (argFlag('alarme')) results.placeAlarms.push(...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').flatMap((r) => [`          geltend      : ${r.current.slice(0, 300)}`, `          vorgeschlagen: ${r.proposed.slice(0, 300)}`]), `          geltend (RIS): ${(before ?? '').slice(0, 300)}`, `          Ergebnis     : ${got.slice(0, 300)}`)
       }
       // Check 5's false-alarm side, like check 4's below: every § it speaks
       // on had passed the other four.
       if (report.note?.startsWith(ABSATZ_ORDER_NOTE)) {
         results.order++
-        results.orderAlarms.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
+        results.orderAlarms.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
         if (argFlag('alarme')) {
           results.orderAlarms.push(...paraRows.filter((r) => r.kind === 'pair').map((r) => `          ${r.elided ? 'ausgelassen' : r.change.padEnd(11)}: ${r.proposed.slice(0, 160)}`), `          Ergebnis-Absätze: ${(absatzSequence(node) ?? []).join(', ')}`)
         }
@@ -1363,7 +1374,7 @@ async function injectIntoResults(
       // speaks on had passed the other three — confirmed until 01.10.2026.
       if (report.note?.startsWith(KEPT_DELETION_NOTE)) {
         results.kept++
-        results.keptAlarms.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
+        results.keptAlarms.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
         // An alarm withholds a § from the page, so it has to be readable
         // against its annex rows, not just counted (`--alarme`).
         if (argFlag('alarme')) {
@@ -1373,7 +1384,7 @@ async function injectIntoResults(
       }
       // `--zeige=18` (with `--only`): one § as the oracle sees it, to read a miss.
       if (argAssigned('zeige') === id) {
-        console.log(`\n  ── § ${id}${lawKey ? ` [${lawKey}]` : ''}: ${report.verdict}${report.note ? ` — ${report.note}` : ''}`)
+        console.log(`\n  ── ${unitLabel(id)}${lawKey ? ` [${lawKey}]` : ''}: ${report.verdict}${report.note ? ` — ${report.note}` : ''}`)
         console.log(`     Überschrift: ${node.heading ?? '—'}`)
         for (const r of paraRows.filter((r) => r.kind === 'pair')) console.log(`     ${r.elided ? 'ausgelassen' : r.change.padEnd(11)}${r.editorial ? ' (red.)' : ''} gld=${r.gld ?? '—'}\n        geltend      : ${r.current.slice(0, argFlag('voll') ? undefined : 600)}\n        vorgeschlagen: ${r.proposed.slice(0, argFlag('voll') ? undefined : 600)}`)
         console.log(`     geltend : ${(before ?? '—').slice(0, 900)}\n     Ergebnis: ${got.slice(0, 900)}\n`)
@@ -1418,7 +1429,7 @@ async function injectIntoResults(
         const judged = oracleVerdict(id, faultedBefore, plainText(faulted), paraRows, absatzSequence(faulted), beforeNode ? (absatzSequence(dropped ? withoutAbsatz(beforeNode, dropped) : beforeNode) ?? null) : null)
         if (judged.verdict !== 'bestätigt') into.caught++
         if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
-        else if (judged.verdict === 'bestätigt') into.misses.push(`${cite} § ${id} — Absätze ${(absatzSequence(faulted) ?? []).join(', ')}`)
+        else if (judged.verdict === 'bestätigt') into.misses.push(`${cite} ${unitLabel(id)} — Absätze ${(absatzSequence(faulted) ?? []).join(', ')}`)
       }
       if (gaps.length > 0 && beforeNode && standingUnits) {
         const gap = gaps[Math.floor(gaps.length / 2)]!
@@ -1432,7 +1443,7 @@ async function injectIntoResults(
           // The same fault without the reading: a miss it shares was a miss
           // before the reading existed, and is not the reading's.
           const without = oracleVerdict(id, plainText(faultedBeforeNode), plainText(faulted), paraRows, absatzSequence(faulted), absatzSequence(faultedBeforeNode) ?? null).verdict
-          if (judged.verdict === 'bestätigt') into.misses.push(`${cite} § ${id} — ohne ${standingUnits.style === 'abs' ? `(${gap})` : `${gap}.`} von ${gaps.join(', ')}; ohne die Lesart: ${without}`)
+          if (judged.verdict === 'bestätigt') into.misses.push(`${cite} ${unitLabel(id)} — ohne ${standingUnits.style === 'abs' ? `(${gap})` : `${gap}.`} von ${gaps.join(', ')}; ohne die Lesart: ${without}`)
         }
       }
       // The word classes, judged as production judges (`kons/consolidate.ts`):
@@ -1448,7 +1459,7 @@ async function injectIntoResults(
           into.byCheck.set(check, (into.byCheck.get(check) ?? 0) + 1)
           return
         }
-        into.misses.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''}${kind ? ` (${kind})` : ''} — ${shows.slice(0, 220)}`)
+        into.misses.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''}${kind ? ` (${kind})` : ''} — ${shows.slice(0, 220)}`)
         if (argFlag('alarme')) {
           if (stretch) into.misses.push(`        Beilage, geänderte Zeile: ${stretch.slice(0, 500)}`)
           else into.misses.push(...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => `        vorgeschlagen (${r.change}): ${r.proposed.slice(0, 300)}`))
@@ -1484,7 +1495,7 @@ async function injectIntoResults(
         const judged = oracleVerdict(id, before, dated, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
         if (judged.verdict !== 'bestätigt') oracleFaults.Datum.caught++
         else {
-          oracleFaults.Datum.misses.push(`${cite} § ${id}`)
+          oracleFaults.Datum.misses.push(`${cite} ${unitLabel(id)}`)
           if (argFlag('alarme')) {
             const at = dated.split('').findIndex((ch, i) => ch !== got[i])
             oracleFaults.Datum.misses.push(`        Ergebnis mit Fehler: …${dated.slice(Math.max(0, at - 60), at + 40)}…`, ...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => `        vorgeschlagen: ${r.proposed.slice(0, 200)}`))
@@ -1510,7 +1521,7 @@ async function injectIntoResults(
         if (judged.verdict !== 'bestätigt') into.caught++
         if (judged.note?.startsWith(KEPT_DELETION_NOTE)) into.byKept++
         if (judged.verdict === 'bestätigt') {
-          into.misses.push(`${cite} § ${id} — ${paraRows.length} Zeilen, behalten: "${fault.kept.slice(0, 90)}"`)
+          into.misses.push(`${cite} ${unitLabel(id)} — ${paraRows.length} Zeilen, behalten: "${fault.kept.slice(0, 90)}"`)
           if (argFlag('alarme')) {
             const changed = paraRows.filter((r) => r.kind === 'pair' && r.change !== 'unchanged' && !r.elided)
             into.misses.push(...changed.flatMap((r) => [`    geltend      : ${r.current}`, `    vorgeschlagen: ${r.proposed}`]), `    Ergebnis mit Fehler: ${fault.faulted}`)

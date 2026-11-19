@@ -8,7 +8,7 @@
 import { sameStammnormCited } from '../../server/utils/lawtext/bgblCitation'
 import type { DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { lawNameScore } from '../../server/utils/lawtext/lawNames'
-import { bareParaId, isDivision, isSchedule } from '../../server/utils/text/designation'
+import { anlageLabelKey, bareParaId, isDivision, isSchedule, unitKey } from '../../server/utils/text/designation'
 
 /**
  * The bare number this Prüfstand holds its §§ under — and none for a division
@@ -32,6 +32,16 @@ export const harnessKey = (label: string): string | null => (isDivision(label) ?
  * this bench does not answer for it.
  */
 export const scoredKey = (label: string): string | null => harnessKey(label.replace(/^Art\.\s*\S+\s+(?=§)/, ''))
+/**
+ * The key a Prüfstand's loader matches an address against the law's RIS
+ * labels by — the label with „Anlage"/„Anhang" folded to „Anl."
+ * (`anlageLabelKey`), and a schedule by its number as the page fetches it
+ * (`addressedLabels`, `unitKey`): „Anhang VIII" is RIS's „Anl. 8". Folded
+ * alone it was „Anl. VIII", a label RIS never carries, and the ME bench and
+ * the fault injection loaded no Roman schedule (20.11.2026).
+ */
+export const loadKey = (label: string): string => (isSchedule(label) ? (unitKey(label) ?? anlageLabelKey(label)) : anlageLabelKey(label))
+
 /** A key with its kind: „§ 1" and „Anl. 1" share the number, not the unit. */
 export const kindKey = (designation: string, key: string | null | undefined): string => `${isSchedule(designation) ? 'Anl. ' : ''}${key ?? ''}`
 
