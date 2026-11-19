@@ -997,6 +997,16 @@ function likeStanding(text: string, needle: string, found: string, standing: str
   return text.replace(new RegExp(`\\s*(${DASH})\\s*`, 'g'), '$1')
 }
 
+/**
+ * How often a phrase operation finds its operand in a text, as the engine
+ * counts it (word bounds, numbers): what the guard charges a „jeweils" line
+ * with per unit (`kons/applyGuard.ts`), since a unit may carry it more than
+ * once (`everyInUnit`).
+ */
+export function phraseOccurrences(haystack: string, needle: string, wordBound: boolean): number {
+  return needle ? exactSpans(haystack, needle, wordBound).length : 0
+}
+
 /** Every place the text stands, spelled exactly — the offsets and their length. */
 function exactSpans(haystack: string, needle: string, wordBound: boolean): Span[] {
   const out: Span[] = []
@@ -1570,14 +1580,104 @@ function phraseUnits(law: StandingLaw, a: NovaoAddress, eachUnit: boolean): Slot
  * The units cannot overlap, so the offsets stay valid until the writes:
  * `scopeOf` reads one level, and its nodes are siblings.
  */
-function locateInUnits(units: readonly (readonly Slot[])[], needle: string, wordBound: boolean): { hits: (Span & { slot: Slot })[] } | { error: string } {
+function locateInUnits(units: readonly (readonly Slot[])[], needle: string, wordBound: boolean, every?: EveryOccurrence): { hits: (Span & { slot: Slot })[] } | { error: string } {
   const hits: (Span & { slot: Slot })[] = []
   for (const slots of units) {
     const found = uniqueSlot(slots, needle, wordBound)
-    if ('error' in found) return { error: found.error }
+    if ('error' in found) {
+      const all = every && /nicht eindeutig/.test(found.error) ? everyInUnit(slots, needle, wordBound, every) : null
+      if (!all) return { error: found.error }
+      if ('error' in all) return all
+      hits.push(...all.hits)
+      continue
+    }
     hits.push(found.hit)
   }
   return { hits }
+}
+
+/**
+ * Writes every hit, each slot once: its text read once, the hits applied to
+ * that string last first, so no edit moves the offset of one still to come,
+ * and the result written back once (20.11.2026). A slot need not read back
+ * what was written to it — a run of sentences (`partsSlot`) reads the
+ * sentences it was cut from — so two writes to one slot lost the first:
+ * „§ 182 erster und zweiter Satz entfällt jeweils … ‚Verfassung, Reformen,
+ * Deregulierung und'" (121/ME XXVIII) came out changed in one sentence and
+ * reported as carried out. `finish` runs once per slot after its edits.
+ */
+function writeHits(hits: readonly (Span & { slot: Slot })[], edit: (text: string, at: number, len: number) => string, finish: (text: string) => string = (t) => t): void {
+  const bySlot = new Map<Slot, Span[]>()
+  for (const { slot, at, len } of hits) {
+    const spans = bySlot.get(slot) ?? []
+    spans.push({ at, len })
+    bySlot.set(slot, spans)
+  }
+  for (const [slot, spans] of bySlot) {
+    let text = slot.read()
+    for (const { at, len } of [...spans].sort((x, y) => y.at - x.at)) text = edit(text, at, len)
+    slot.write(finish(text))
+  }
+}
+
+/**
+ * **„jeweils" over a list: every occurrence in each unit** (20.11.2026). „In
+ * § 8 Abs. 13 und 14 wird jeweils das Wort ‚Versorgung' durch das Wort
+ * ‚Grundversorgung' ersetzt" over an Abs. 13 that carries the word twice was
+ * refused as „2× gefunden". „jeweils" with ONE place has meant every
+ * occurrence there all along (`everywhere`, `everyOccurrence` in
+ * `kons/novao.ts`); over a list it hands the change to each place, and a
+ * place that carries the phrase twice is read the same way as the one place:
+ * every occurrence in it. 40 §§ of the 164 drafts of period XXVIII were
+ * refused for exactly this.
+ *
+ * Three readings stay refused, each with its own reason:
+ *
+ * - **A list word or a mark** („sowie", „und", „oder", „,"). „In § 27a Abs. 2
+ *   und § 27b Abs. 2 wird in Z 16 jeweils das Wort ‚sowie' durch einen
+ *   Beistrich ersetzt" means the „sowie" that closes Z 16 (Ärztegesetz 1998,
+ *   95/ME XXVIII): the Ziffer carries one more inside its own text, and the
+ *   word that joins two Ziffern is a place, not a word to be changed
+ *   wherever it stands.
+ * - **A hit glued into another word** where the operand was not announced
+ *   as a „Wort": „Wortfolge ‚Bundesminister für Finanzen'" inside a longer
+ *   word is not an occurrence of the Wortfolge.
+ * - **A hit the change already stands at**: „vor dem Wort ‚Arbeitnehmer' die
+ *   Worte ‚Arbeitnehmerinnen und' eingefügt" over a text that already reads
+ *   „Arbeitnehmerinnen und Arbeitnehmer" once would write the pair twice;
+ *   „‚Versorgung' durch ‚Grundversorgung'" where a hit already sits inside
+ *   „Grundversorgung" likewise.
+ */
+export interface EveryOccurrence {
+  /** True where the text around a hit already reads what the change writes there. */
+  alreadyThere: (text: string, at: number, len: number) => boolean
+}
+
+const LIST_WORD_RE = /^[\s.,;:]*(?:und|oder|sowie|bzw\.?|beziehungsweise|als\s+auch|weiters)?[\s.,;:]*$/i
+
+function everyInUnit(slots: readonly Slot[], needle: string, wordBound: boolean, every: EveryOccurrence): { hits: (Span & { slot: Slot })[] } | { error: string } {
+  if (LIST_WORD_RE.test(needle)) return { error: `„${needle.trim()}" mehrfach in der Einheit — „jeweils" sagt bei einem Bindewort oder Zeichen nicht, welches gemeint ist` }
+  const hits = slots.flatMap((slot) => exactSpans(slot.read(), needle, wordBound).map((s) => ({ ...s, slot })))
+  for (const h of hits) {
+    const text = h.slot.read()
+    if (!atWordBoundary(text, needle, h.at)) return { error: `„${needle.slice(0, 40)}" steht in der Einheit auch als Teil eines Wortes — jede Fundstelle nicht eindeutig` }
+    if (every.alreadyThere(text, h.at, h.len)) return { error: `„${needle.slice(0, 40)}" mehrfach in der Einheit, an einer Fundstelle steht die Änderung schon` }
+  }
+  return { hits }
+}
+
+/** A replacement already stands where `to` is written around the hit. */
+function replacedAlready(from: string, to: string): EveryOccurrence {
+  const k = to.indexOf(from)
+  return { alreadyThere: (text, at) => k >= 0 && text.slice(at - k, at - k + to.length) === to }
+}
+
+/** An insertion already stands where its text is written beside the hit. */
+function insertedAlready(text: string, where: 'before' | 'after'): EveryOccurrence {
+  const t = text.trim()
+  return {
+    alreadyThere: (hay, at, len) => (t === '' ? false : where === 'before' ? hay.slice(0, at).trimEnd().endsWith(t) : hay.slice(at + len).trimStart().startsWith(t)),
+  }
 }
 
 /**
@@ -1591,8 +1691,8 @@ function locateInUnits(units: readonly (readonly Slot[])[], needle: string, word
  * phrase stands in one of them — found once, applied once, as before. A unit
  * without the phrase, or with it twice, still refuses the whole instruction.
  */
-function locatePhrase(law: StandingLaw, a: NovaoAddress, units: readonly (readonly Slot[])[], eachUnit: boolean, needle: string, wordBound: boolean): ReturnType<typeof locateInUnits> {
-  const located = locateInUnits(units, needle, wordBound)
+function locatePhrase(law: StandingLaw, a: NovaoAddress, units: readonly (readonly Slot[])[], eachUnit: boolean, needle: string, wordBound: boolean, every?: EveryOccurrence): ReturnType<typeof locateInUnits> {
+  const located = locateInUnits(units, needle, wordBound, eachUnit ? every : undefined)
   if (!('error' in located) || eachUnit || !/nicht eindeutig/.test(located.error)) return located
   const groups = phraseSlotGroups(law, a)
   if ('error' in groups || groups.length < 2) return located
@@ -2411,7 +2511,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // „jeweils" is the ressort saying every one of them carries it, so a
       // unit that does not is a disagreement about the standing text and not
       // a place to skip quietly.
-      const located = locatePhrase(law, op.target, units, op.eachUnit, op.from, op.wordBound)
+      const located = locatePhrase(law, op.target, units, op.eachUnit, op.from, op.wordBound, op.beside ? undefined : replacedAlready(op.from, op.to))
       if ('error' in located) {
         // „vor der Wortfolge ‚des Sachverständigen' das Wort ‚oder'": where
         // the operand recurs, the anchor says which one — the operand and
@@ -2428,10 +2528,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         return null
       }
-      for (const { slot, at, len } of located.hits) {
-        const current = slot.read()
-        slot.write(joinPhrase(current.slice(0, at), likeStanding(op.to, op.from, current.slice(at, at + len), current), current.slice(at + len)))
-      }
+      writeHits(located.hits, (current, at, len) => joinPhrase(current.slice(0, at), likeStanding(op.to, op.from, current.slice(at, at + len), current), current.slice(at + len)))
       return null
     }
 
@@ -2457,35 +2554,35 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         return null
       }
-      const located = locatePhrase(law, op.target, units, op.eachUnit, op.anchor, op.wordBound)
+      const located = locatePhrase(law, op.target, units, op.eachUnit, op.anchor, op.wordBound, insertedAlready(op.text, op.where))
       if ('error' in located) return located.error
-      for (const { slot, at, len } of located.hits) {
-        const current = slot.read()
+      writeHits(located.hits, (current, at, len) => {
         const text = likeStanding(op.text, op.anchor, current.slice(at, at + len), current)
-        slot.write(
-          op.where === 'after'
-            ? joinPhrase(current.slice(0, at + len), text, current.slice(at + len))
-            : joinPhrase(current.slice(0, at), text, current.slice(at)),
-        )
-      }
+        return op.where === 'after'
+          ? joinPhrase(current.slice(0, at + len), text, current.slice(at + len))
+          : joinPhrase(current.slice(0, at), text, current.slice(at))
+      })
       return null
     }
 
     case 'deletePhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
       if ('error' in units) return units.error
-      const located = locatePhrase(law, op.target, units, op.eachUnit, op.text, op.wordBound)
+      const located = locatePhrase(law, op.target, units, op.eachUnit, op.text, op.wordBound, { alreadyThere: () => false })
       if ('error' in located) return located.error
-      for (const { slot, at, len } of located.hits) {
-        const current = slot.read()
-        // „(§ 43 BFA-VG)" without „ BFA-VG" is „(§ 43)", not „(§ 43 )" — the
-        // space goes where the cut meets a parenthesis (BFA-VG § 10, 28.09.2026).
-        let left = current.slice(0, at)
-        let right = current.slice(at + len)
-        if (right.startsWith(')')) left = left.trimEnd()
-        if (left.endsWith('(')) right = right.trimStart()
-        slot.write(`${left}${right}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
-      }
+      writeHits(
+        located.hits,
+        (current, at, len) => {
+          // „(§ 43 BFA-VG)" without „ BFA-VG" is „(§ 43)", not „(§ 43 )" — the
+          // space goes where the cut meets a parenthesis (BFA-VG § 10, 28.09.2026).
+          let left = current.slice(0, at)
+          let right = current.slice(at + len)
+          if (right.startsWith(')')) left = left.trimEnd()
+          if (left.endsWith('(')) right = right.trimStart()
+          return `${left}${right}`
+        },
+        (text) => text.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim(),
+      )
       return null
     }
   }

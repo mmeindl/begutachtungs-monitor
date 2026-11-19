@@ -1594,6 +1594,65 @@ describe('„jeweils" über mehrere Einheiten einer Adresse (26.09.2026)', () =>
   })
 })
 
+describe('„jeweils" über eine Liste: jede Fundstelle in jeder Einheit (20.11.2026)', () => {
+  // „In § 8 Abs. 13 und 14 wird jeweils das Wort ‚Versorgung' durch das Wort
+  // ‚Grundversorgung' ersetzt" over an Abs. 13 that carries the word twice
+  // (74/ME XXVIII) was refused as „2× gefunden". With one place „jeweils"
+  // has meant every occurrence all along; a place of a list reads the same.
+  const gvg = (): StandingLaw => ({
+    paragraphs: [para('8', 'Daten', ['Nach Ende der Versorgung ist zu löschen, die Versorgung endet.', 'Für die Versorgung sind zu übermitteln.'])],
+  })
+
+  it('changes every occurrence in each addressed unit', () => {
+    const { law: out, results } = run(gvg(), instr('In § 8 Abs. 1 und 2 wird jeweils das Wort "Versorgung" durch das Wort "Grundversorgung" ersetzt.'))
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Nach Ende der Grundversorgung ist zu löschen, die Grundversorgung endet.')
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Für die Grundversorgung sind zu übermitteln.')
+  })
+
+  it('inserts and deletes at every occurrence too', () => {
+    const l: StandingLaw = { paragraphs: [para('36', 'Handel', ['Der Handel mit Tabakerzeugnissen und der Versand von Tabakerzeugnissen.', 'Vorrat an Tabakerzeugnissen.'])] }
+    const { law: ins, results } = run(l, instr('In § 36 Abs. 1 und 2 wird nach dem Wort "Tabakerzeugnissen" jeweils die Wortfolge "und E-Liquids" eingefügt.'))
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(plainText(ins.paragraphs[0]!.children[0]!)).toBe('Der Handel mit Tabakerzeugnissen und E-Liquids und der Versand von Tabakerzeugnissen und E-Liquids.')
+    const l2: StandingLaw = { paragraphs: [para('9', 'V', ['Der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz und der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz.', 'Der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz.'])] }
+    const { law: del } = run(l2, instr('In § 9 Abs. 1 und 2 entfällt jeweils die Wortfolge "Verfassung, Reformen, Deregulierung und".'))
+    expect(plainText(del.paragraphs[0]!.children[0]!)).toBe('Der Bundesminister für Justiz und der Bundesminister für Justiz.')
+  })
+
+  // „In § 27a Abs. 2 und § 27b Abs. 2 wird in Z 16 jeweils das Wort ‚sowie'
+  // durch einen Beistrich ersetzt" means the „sowie" that closes Z 16; the
+  // Ziffer carries one more inside its own text (95/ME XXVIII).
+  it('keeps refusing a list word that stands twice', () => {
+    const l: StandingLaw = { paragraphs: [para('27', 'L', ['Gruppenpraxen sowie Beginn und Ende der Beteiligung sowie', 'Weiteres sowie'])] }
+    const { law: out, results } = run(l, instr('In § 27 Abs. 1 und 2 wird jeweils das Wort "sowie" durch das Wort "und" ersetzt.'))
+    expect(results[0]!.reason).toMatch(/Bindewort/)
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Weiteres sowie')
+  })
+
+  it('refuses where the change already stands at one occurrence', () => {
+    const l: StandingLaw = { paragraphs: [para('29', 'P', ['Die Arbeitnehmerinnen und Arbeitnehmer und die Arbeitnehmer.', 'Ihre Arbeitnehmer.'])] }
+    const { results } = run(l, instr('In § 29 Abs. 1 und 2 werden jeweils vor dem Wort "Arbeitnehmer" die Worte "Arbeitnehmerinnen und" eingefügt.'))
+    expect(results[0]!.reason).toMatch(/steht die Änderung schon/)
+  })
+
+  it('refuses where a Wortfolge stands inside another word', () => {
+    const l: StandingLaw = { paragraphs: [para('4', 'G', ['Die Gemeinschaft und die Gemeinschaftsorgane.', 'Die Gemeinschaft.'])] }
+    const { results } = run(l, instr('In § 4 Abs. 1 und 2 wird die Wortfolge "Gemeinschaft" jeweils durch die Wortfolge "Union" ersetzt.'))
+    expect(results[0]!.reason).toMatch(/Teil eines Wortes/)
+  })
+
+  // Two sentences named in one address are one slot that does not read back
+  // what was written to it (`partsSlot`): written hit by hit, the second
+  // write restored the first sentence (121/ME XXVIII, StVG § 182).
+  it('changes both sentences of „erster und zweiter Satz"', () => {
+    const l: StandingLaw = { paragraphs: [para('182', 'Vollziehung', ['Betraut ist der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz. Der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz pflegt das Einvernehmen. Dritter Satz.'])] }
+    const { law: out, results } = run(l, instr('In § 182 Abs. 1 erster und zweiter Satz entfällt jeweils vor dem Wort "Justiz" die Wendung "Verfassung, Reformen, Deregulierung und".'))
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Betraut ist der Bundesminister für Justiz. Der Bundesminister für Justiz pflegt das Einvernehmen. Dritter Satz.')
+  })
+})
+
 describe('an Abschnitt is not the § of its number (02.10.2026)', () => {
   // The standing text holds no Abschnitt. Looked up by the number, every one
   // of these wrote into § 4 and reported success.

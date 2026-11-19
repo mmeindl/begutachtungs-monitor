@@ -41,6 +41,16 @@ describe('parseAddress', () => {
     expect(parsed.ops).toHaveLength(4)
   })
 
+  // „jeweils" inside the quoted old text is the law's word, not the
+  // instruction's (148/ME XXVIII, VersStG § 12 Abs. 3 Z 36): since „jeweils"
+  // takes every occurrence in each unit, it must not be read there (20.11.2026).
+  it('reads „jeweils" outside the quotations only', () => {
+    const quoted = parseInstruction('In § 12 Abs. 3 und 4 wird die Wortfolge "§ 7, jeweils in der Fassung BGBl. I Nr. 97/2025" durch die Wortfolge "§ 8" ersetzt.')
+    expect(quoted.ops[0]).toMatchObject({ kind: 'replacePhrase', eachUnit: false })
+    const own = parseInstruction('In § 12 Abs. 3 und 4 wird jeweils die Wortfolge "§ 7" durch die Wortfolge "§ 8" ersetzt.')
+    expect(own.ops[0]).toMatchObject({ kind: 'replacePhrase', eachUnit: true })
+  })
+
   it('expands "und" lists and integer ranges', () => {
     expect(parseAddress('§ 5 Abs. 2 und 3')!.siblings).toEqual(['3'])
     expect(parseAddress('§ 5 Z 4 bis 7')!.siblings).toEqual(['5', '6', '7'])

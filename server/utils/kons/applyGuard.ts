@@ -28,7 +28,7 @@
 import { diffTokens } from '../diff/wordDiff'
 import { lawTextNodes, plainText, type LawNode } from '../lawtext/konsTree'
 import type { ApplyResult, Instruction, StandingLaw } from './lawApply'
-import { addressedHalbsatz, addressedHalbsatzHost, addressedSentence, isLoneLine, resolveTarget } from './lawApply'
+import { addressedHalbsatz, addressedHalbsatzHost, addressedSentence, isLoneLine, phraseOccurrences, resolveTarget } from './lawApply'
 import { punctuationTokens } from '../text/punctuationTokens'
 
 export type GuardFlag =
@@ -158,6 +158,19 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
     const hit = scopes.filter((scope) => scope === null || scope.includes(needle))
     return hit.length > 0 ? hit : scopes.slice(0, 1)
   }
+  // „In § 8 Abs. 13 und 14 wird jeweils das Wort ‚Versorgung' …": with
+  // „jeweils" the engine writes every occurrence in each unit
+  // (`everyInUnit` in `kons/lawApply.ts`), so each one weighs (20.11.2026).
+  // Without it, or where the unit cannot be read, once.
+  // Counted where the engine looks: a heading address in the heading alone,
+  // a whole § in its body, below the § in the unit or sentence `carrying`
+  // read.
+  const times = (op: Extract<Instruction['op'], { kind: 'replacePhrase' | 'insertPhrase' | 'deletePhrase' }>, scope: string | null, needle: string): number => {
+    if (!op.eachUnit || ('atEnd' in op && op.atEnd) || ('beside' in op && op.beside) || !scope) return 1
+    const t = op.target
+    const where = t.heading ? (beforeTree?.heading ?? null) : t.level === 'para' && !t.satz && !t.halbsatz && beforeTree ? plainText({ ...beforeTree, heading: null }) : scope
+    return where ? Math.max(1, phraseOccurrences(where, needle, op.wordBound)) : 1
+  }
   for (const { instruction: { op, payload }, result } of ops) {
     units = result.units
     // A payload of several §§ ("folgende §§ 10h und 10i") is charged to the §
@@ -169,7 +182,7 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
       case 'replacePhrase': {
         for (const scope of carrying(op, op.from)) {
           // "jeweils" replaces every occurrence in the scope; each one weighs.
-          const n = op.everywhere && scope ? Math.max(1, scope.split(op.from).length - 1) : 1
+          const n = op.everywhere && scope ? Math.max(1, scope.split(op.from).length - 1) : times(op, scope, op.from)
           for (let k = 0; k < n; k++) {
             gain(op.to)
             loss(op.from)
@@ -180,10 +193,10 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
         break
       }
       case 'insertPhrase':
-        for (const _ of carrying(op, op.anchor)) gain(op.text)
+        for (const scope of carrying(op, op.anchor)) for (let k = times(op, scope, op.anchor); k > 0; k--) gain(op.text)
         break
       case 'deletePhrase':
-        for (const _ of carrying(op, op.text)) loss(op.text)
+        for (const scope of carrying(op, op.text)) for (let k = times(op, scope, op.text); k > 0; k--) loss(op.text)
         break
       case 'replaceHeading':
         gain(payloadText)

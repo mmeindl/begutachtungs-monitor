@@ -1835,8 +1835,14 @@ const JEWEILS_RE = /\bjeweils\b|\bjedes Mal\b/i
  * §§ and means one of them must not write into both.
  */
 function eachUnitOccurrence(head: string): boolean {
-  return JEWEILS_RE.test(head)
+  // Read outside the quotations only (20.11.2026): since „jeweils" over a
+  // list also takes every occurrence inside each unit (`everyInUnit` in
+  // `kons/lawApply.ts`), a „jeweils in der Fassung" inside the quoted old
+  // text (148/ME XXVIII, VersStG § 12) must not make one replacement many.
+  return JEWEILS_OUTSIDE_RE.test(maskQuotes(head))
 }
+
+const JEWEILS_OUTSIDE_RE = /\bjeweils\b(?!\s+(?:geltend|gültig|in\s+der\s+Fassung|grammatikalisch))|\bjedes Mal\b/i
 
 /**
  * The places of an operation the engine carries out at ONE place — a
