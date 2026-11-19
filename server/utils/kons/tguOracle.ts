@@ -13,8 +13,8 @@
  * verification available at draft time.
  *
  * The annex abbreviates unchanged text ("(2) bis (4) …") and prints markers
- * the tree does not carry, so the comparison is not text equality but four
- * containments over the rows of one §:
+ * the tree does not carry, so the comparison is not text equality but five
+ * checks over the rows of one §:
  *
  *   1. every changed row's *current* text is in the standing § — the annex
  *      talks about the same law version the engine started from;
@@ -22,12 +22,20 @@
  *      row that proposes nothing — the annex's way of writing a deletion —
  *      is gone from it: the engine did what the ministry says the draft does;
  *   3. every word the engine inserted is one the annex's proposed column
- *      shows, and every word it removed one the geltende column shows — the
- *      engine did nothing the ministry does not show;
+ *      shows, and every word it removed one the geltende column shows — and,
+ *      since 19.11.2026, shows *there*, with the words around it
+ *      (`unplacedChange`): the engine did nothing the ministry does not show;
  *   4. what a changed row strikes does not still stand in the result where
  *      the row took it out — the result holds no more than the annex
  *      proposes (`keptDeletion`, since 01.10.2026; checks 1 to 3 only ever
- *      asked whether the proposed text is IN the result).
+ *      asked whether the proposed text is IN the result);
+ *   5. the Absätze the annex prints stand in the result in its order, and
+ *      none it strikes still stands there (`absatzOrderBroken`).
+ *
+ * Their reach and their blind spots are measured by fault injection
+ * (`scripts/harness/faultInjection.ts`, whose doc comment carries the
+ * table) and held against the enacted law by the BGBl bench
+ * (`scripts/harness/kons.ts --oracle`).
  *
  * A § the annex does not mention, or mentions only in elided rows, gets no
  * verdict: the oracle is silent, not positive.
@@ -43,7 +51,7 @@ import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 import { expandRange } from './novao'
 
 export type OracleVerdict =
-  /** All four containments hold */
+  /** All five checks hold */
   | 'bestätigt'
   /** The annex shows a change the engine's text does not contain, or vice versa */
   | 'widersprochen'
@@ -1315,6 +1323,204 @@ export function keptDeletion(got: string, rows: readonly ComparisonRow[]): strin
   return null
 }
 
+/** How check 3 reports a change the annex shows nowhere near where the engine made it. */
+export const PLACE_NOTE = 'Engine änderte, wo die Gegenüberstellung nichts ändert'
+
+/** How many consecutive words place a changed word in the annex — fewer only at the edge of a printed stretch. */
+const PLACE_WINDOW = 4
+
+/**
+ * Check 3 in place: every change the engine made — a run of words its diff
+ * inserts, or a run it removes — stands in the annex with the words beside
+ * it, the inserted ones in a row's proposed column, the removed ones in a
+ * changed row's geltende column. The first run that does not, or null.
+ *
+ * **The bags of check 3 ask a vocabulary question** (19.11.2026). A word
+ * the engine dropped from an Absatz the annex leaves out passed wherever the
+ * same word stands in any changed row — „der", „und", „für" always do —, and
+ * a word it put in passed wherever the annex prints it anywhere: fault class
+ * „Ungedruckt" got 35 % of dropped words and 76 % of inserted ones past the
+ * oracle. A „jeweils" replacement carried into one Absatz too many is that
+ * shape exactly: every word of it is in the annex, only not there.
+ *
+ * **In place means two things.** Every changed word stands in the annex
+ * inside a window of `PLACE_WINDOW` consecutive words of the text around it —
+ * fewer only where a printed stretch begins or ends, or the text does, and
+ * two at least unless the window is a stretch whole; and every run of
+ * changed words is tied at one side to the unchanged words beside it, or
+ * begins or ends where a printed stretch does (an omission mark, a row of
+ * its own). Words, not a run, are covered, because one run often spans two
+ * rows — two new Ziffern on the table path, a struck Absatz and the next
+ * one; the anchor keeps a whole sentence set one place off from passing on
+ * its own words. Four words, because one is a coincidence: „der Behörde"
+ * stands in every other annex. The anchor is tried wherever the diff could
+ * equally have put the run — an LCS chooses between equal words by chance,
+ * and „bestimmten X bestimmten" is the same change one word to the left.
+ *
+ * **And under both of the LCS's tie-breaks** (`unplacedEitherWay`): sliding
+ * reaches a run that the LCS shifted, not one it cut. A new Absatz that
+ * repeats words of the next one („… ist das Gericht zuständig, an dessen
+ * Sitz …" before „Für das Hauptverfahren ist das Gericht zuständig …", StPO
+ * § 36) comes out of the forward LCS in pieces whose ends belong to the old
+ * text, and seventeen correct results of the corpus read as changed out of
+ * place. The diff of the reversed texts takes the last equal words instead
+ * of the first; a change is reported only where neither diff places it.
+ */
+function unplacedChange(segments: readonly { type: string; text: string }[], rows: readonly ComparisonRow[]): string | null {
+  const pairs = rows.filter((r) => r.kind === 'pair' && !r.elided)
+  // Each cell twice: cut at its marks as checks 1 and 2 cut it, and cut at
+  // the marks alone. The first cut takes the designations that announce a
+  // mark with it, and a citation's last number can go too — „S. 66. (3) und
+  // (4) …", „WAG 2018. 11. bis 17. …" ended their stretch without the 66 or
+  // the 2018, and a correct result read as changed there.
+  const keysOf = (cells: readonly string[]): string[] => {
+    const own = cells.map((c) => c.replace(GLUED_ELLIPSIS_RE, ''))
+    return [...own.flatMap((c) => printedStretches(markedOmissions(c))), ...own.flatMap((c) => normalizeText(c).split(/\s*(?:\[…\]|…|\.{3,})\s*/))].map(placeKey).filter((k) => k !== '')
+  }
+  // The proposed column of every row, as check 3's bag reads it; the
+  // geltende column of the changed ones only — an unchanged row says its
+  // words stay.
+  const proposed = keysOf(pairs.map((r) => r.proposed).filter(Boolean))
+  const current = keysOf(pairs.filter((r) => r.change !== 'unchanged').map((r) => r.current).filter(Boolean))
+  const got: { word: string; changed: boolean }[] = []
+  const was: { word: string; changed: boolean }[] = []
+  // Per change — the removed and inserted segments between two equal ones —
+  // the words it removes and puts back alike are no change at all: a
+  // punctuation mark moved („(§ 56)." → „(§ 56), …" where a Ziffer is
+  // appended) or a word the LCS took out and put back beside an insertion,
+  // which check 3's bags cancel the same way (`bagMinus`).
+  for (let i = 0; i < segments.length;) {
+    if (segments[i]!.type === 'equal') {
+      for (const word of segments[i]!.text.split(' ').filter(Boolean)) {
+        got.push({ word, changed: false })
+        was.push({ word, changed: false })
+      }
+      i++
+      continue
+    }
+    const removed: string[] = []
+    const inserted: string[] = []
+    for (; i < segments.length && segments[i]!.type !== 'equal'; i++) (segments[i]!.type === 'removed' ? removed : inserted).push(...segments[i]!.text.split(' ').filter(Boolean))
+    const back = new Map<string, number>()
+    for (const w of inserted) back.set(placeKey(w), (back.get(placeKey(w)) ?? 0) + 1)
+    const gone = new Map<string, number>()
+    for (const w of removed) gone.set(placeKey(w), (gone.get(placeKey(w)) ?? 0) + 1)
+    const take = (counts: Map<string, number>, w: string): boolean => {
+      const n = counts.get(placeKey(w)) ?? 0
+      if (n > 0) counts.set(placeKey(w), n - 1)
+      return n > 0
+    }
+    for (const word of removed) was.push({ word, changed: !take(back, word) })
+    for (const word of inserted) got.push({ word, changed: !take(gone, word) })
+  }
+  const inserted = unplacedRun(got, proposed)
+  if (inserted !== null) return `eingefügt „${inserted}"`
+  const removed = unplacedRun(was, current)
+  return removed === null ? null : `entfernt „${removed}"`
+}
+
+/**
+ * Check 3 in place compares words, not their punctuation: check 2 has held
+ * every printed stretch against the result character for character, and a
+ * copy that ends a Ziffer without its „;" (AWG § 68) is no change in place.
+ */
+function placeKey(t: string): string {
+  return key(t.replace(GLUED_ELLIPSIS_RE, '')).replace(/[.,;:!?()[\]]/g, '')
+}
+/**
+ * „des …gesetzes", „Fachkolloquium…": a placeholder of the text, glued to its
+ * word — no omission mark. Read as one, it cut the stretch in two, and the
+ * new Absatz around it stood nowhere whole (Sektenfragen-Gesetz § 14, a new
+ * § 57k of the Prüfungsordnung, 19.11.2026).
+ */
+const GLUED_ELLIPSIS_RE = /(?<=\p{L})…|…(?=\p{L})/gu
+
+function unplacedRun(stream: readonly { word: string; changed: boolean }[], keys: readonly string[]): string | null {
+  const words = stream.map((t) => t.word)
+  const n = words.length
+  const seen = new Map<string, { any: boolean; edge: boolean; whole: boolean }>()
+  /** Where the words [x, y) stand in the annex: anywhere, at a stretch's edge, as a stretch whole. */
+  const found = (x: number, y: number): { any: boolean; edge: boolean; whole: boolean } => {
+    const id = `${x}:${y}`
+    let f = seen.get(id)
+    if (!f) {
+      const k = placeKey(words.slice(x, y).join(' '))
+      f = { any: k === '', edge: k === '', whole: k === '' }
+      if (k !== '') {
+        for (const stretch of keys) {
+          if (!stretch.includes(k)) continue
+          f.any = true
+          if (stretch.startsWith(k) || stretch.endsWith(k)) f.edge = true
+          if (stretch === k) f.whole = true
+        }
+      }
+      seen.set(id, f)
+    }
+    return f
+  }
+  /** A window that places the words in it: `PLACE_WINDOW` of them anywhere, two or more at a stretch's or the text's edge, or a stretch whole. */
+  const places = (x: number, y: number): boolean => {
+    if (x < 0 || y > n || y - x < 1) return false
+    const f = found(x, y)
+    if (!f.any) return false
+    return y - x >= PLACE_WINDOW || f.whole || (y - x >= 2 && (f.edge || x === 0 || y === n))
+  }
+  const covered = (i: number): boolean => {
+    for (let size = PLACE_WINDOW; size >= 1; size--) {
+      for (let x = i - size + 1; x <= i; x++) if (places(x, x + size)) return true
+    }
+    return false
+  }
+  /** One side of the run tied to the words beside it, or its end at a stretch's edge. */
+  const anchored = (a: number, b: number): boolean => {
+    // A run that is a printed stretch whole — a row of its own — is placed by being one.
+    if (a === 0 || b === n || found(a, b).whole) return true
+    for (let size = PLACE_WINDOW; size >= 2; size--) {
+      for (let x = a - size + 1; x <= a - 1; x++) if (places(x, x + size)) return true
+      for (let x = b - size + 1; x <= b - 1; x++) if (places(x, x + size)) return true
+    }
+    for (let y = a + 2; y <= Math.min(b, a + PLACE_WINDOW); y++) if (found(a, y).edge && places(a, y)) return true
+    for (let x = Math.max(a, b - PLACE_WINDOW); x <= b - 2; x++) if (found(x, b).edge && places(x, b)) return true
+    return false
+  }
+  for (let a = 0; a < n;) {
+    if (!stream[a]!.changed) {
+      a++
+      continue
+    }
+    let b = a
+    while (b < n && stream[b]!.changed) b++
+    // Every place the same run could stand: slid over words equal to its
+    // own last (to the left) or first (to the right) — an LCS chooses
+    // between equal words by chance, and which words it marks changed with
+    // them.
+    const spots: [number, number][] = [[a, b]]
+    for (let s = a, e = b; s > 0 && words[s - 1] === words[e - 1] && spots.length < 12;) spots.push([--s, --e])
+    for (let s = a, e = b; e < n && words[s] === words[e] && spots.length < 24;) spots.push([++s, ++e])
+    const placedAt = ([s, e]: [number, number]): boolean => {
+      for (let i = s; i < e; i++) if (!covered(i)) return false
+      return anchored(s, e)
+    }
+    if (!spots.some(placedAt)) return words.slice(a, b).join(' ').slice(0, 60)
+    a = b
+  }
+  return null
+}
+
+/**
+ * `unplacedChange` under the LCS's other tie-break as well: the same diff of
+ * both texts read backwards, which pairs equal words from the end. Null where
+ * either reading places every change.
+ */
+function unplacedEitherWay(before: string, got: string, forward: readonly { type: string; text: string }[], rows: readonly ComparisonRow[]): string | null {
+  const unplaced = unplacedChange(forward, rows)
+  if (unplaced === null) return null
+  const reversed = (t: string): string => t.split(/\s+/).filter(Boolean).reverse().join(' ')
+  const backward = diffTokens(reversed(before), reversed(got)).segments
+  if (backward === null) return unplaced
+  return unplacedChange(backward.reverse().map((g) => ({ type: g.type, text: g.text.split(' ').reverse().join(' ') })), rows) === null ? null : unplaced
+}
+
 /**
  * A pure deletion inside a printed stretch, read where the LCS could equally
  * have put it (`keptDeletion`): `left`, the words it strikes once moved to
@@ -1780,6 +1986,13 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   const unshownRemoved = removed.filter((w) => !dropped.has(w))
   if (unshownRemoved.length > 0) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine entfernte, was die Gegenüberstellung nicht zeigt: ${unshownRemoved.slice(0, 6).join(' ')}` }
+  }
+  // Check 3 in place (19.11.2026): the bags above ask whether a word stands
+  // anywhere in the annex; this asks whether each change stands there WHERE
+  // the engine made it (`unplacedChange`).
+  const unplaced = unplacedEitherWay(stripMarkers(before ?? ''), stripMarkers(got), segments, rows)
+  if (unplaced !== null) {
+    return { para: id, verdict: 'widersprochen', rows: rows.length, note: `${PLACE_NOTE}: ${unplaced}` }
   }
   // Check 4, last on purpose: every § it speaks on passed the other three,
   // so its alarms are exactly the confirmations it withdraws (`keptDeletion`).

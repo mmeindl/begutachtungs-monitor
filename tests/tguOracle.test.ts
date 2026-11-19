@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KEPT_DELETION_NOTE, absatzOrderBroken, absatzSequence, annexChangedUnits, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, silentOmissions, someDrawers, standingUnitsOf, stripMarkers } from '../server/utils/kons/tguOracle'
+import { KEPT_DELETION_NOTE, PLACE_NOTE, absatzOrderBroken, absatzSequence, annexChangedUnits, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, silentOmissions, someDrawers, standingUnitsOf, stripMarkers } from '../server/utils/kons/tguOracle'
 import type { LawNode } from '../server/utils/lawtext/konsTree'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
@@ -1139,5 +1139,54 @@ describe('the § heading in the heading area of a cell is checked (19.11.2026)',
     }
     const shared = [pair('Erster Titel Meldungen § 14. (1) Die FMA ist zuständig.', 'Meldungen und Sammelstelle Meldungen § 14. (1) Die FMA ist zuständig. (2) Sie ist Sammelstelle.', '§ 14.')]
     expect(oracleVerdict('14', before, got, shared)).toMatchObject({ verdict: 'bestätigt' })
+  })
+})
+
+describe('check 3 in place: a change stands in the annex where the engine made it (19.11.2026)', () => {
+  it('sees the lead-in of „§ 26 lautet" turned into the heading (14/ME XXVIII, BilDokG 2020 § 26)', () => {
+    // The engine made „Mit der Vollziehung dieses Bundesgesetzes ist" the
+    // heading and lost „Vollziehung". plainText joins heading and body, so
+    // checks 1 and 2 read the same text, and the lost word stands in the
+    // body — check 3's bags excused it. Fixed in the engine since; this is
+    // the oracle's side, should the engine regress.
+    const cur = 'Mit der Vollziehung dieses Bundesgesetzes ist 1. hinsichtlich der in § 2 Z 1 lit. a, c, e und f sowie Z 4 genannten Bildungseinrichtungen die Bundesministerin oder der Bundesminister für Bildung, Wissenschaft und Forschung, 2. hinsichtlich der in § 2 Z 3 genannten Bildungseinrichtungen die Bundesministerin oder der Bundesminister für Soziales, Gesundheit, Pflege und Konsumentenschutz, 3. im Übrigen die jeweils zuständige Bundesministerin oder der jeweils zuständige Bundesminister betraut.'
+    const pro = 'Mit der Vollziehung dieses Bundesgesetzes ist 1. hinsichtlich der in § 2 Z 1 lit. a, c, e, f und Z 4 lit. b genannten Bildungseinrichtungen die für das Schulwesen zuständige Bundesministerin bzw. der für das Schulwesen zuständige Bundesminister, 2. hinsichtlich der in § 2 Z 3 genannten Bildungseinrichtungen die Bundesministerin oder der Bundesminister für Arbeit, Soziales, Gesundheit, Pflege und Konsumentenschutz, 3. im Übrigen die jeweils zuständige Bundesministerin oder der jeweils zuständige Bundesminister betraut.'
+    const rows = [pair(cur, pro, '§ 26.')]
+    const text = (cell: string): string => cell.replace(/ \d\. /g, ' ')
+    const before = `Vollziehung ${text(cur)}`
+    expect(oracleVerdict('26', before, `Vollziehung ${text(pro)}`, rows)).toMatchObject({ verdict: 'bestätigt' })
+    const regressed = oracleVerdict('26', before, text(pro), rows)
+    expect(regressed).toMatchObject({ verdict: 'widersprochen' })
+    expect(regressed.note).toBe(`${PLACE_NOTE}: entfernt „Vollziehung"`)
+  })
+
+  it('sees a word dropped, or one carried in, where no changed row prints anything', () => {
+    // Abs. 1 is left out („(1) …"); the bags excused „der" and „jeweils",
+    // which the changed Abs. 2 prints — fault classes Ungedruckt-weg/-neu
+    // got 65 and 24 % past the oracle on the PDF path.
+    const rows = [pair('(1) …', '(1) …', '§ 5.', true), pair('(2) Der Bescheid ist der Behörde alt vorzulegen.', '(2) Der Bescheid ist jeweils der Behörde neu vorzulegen.')]
+    const before = 'Die Stelle hat den Antrag der Partei zuzustellen. Der Bescheid ist der Behörde alt vorzulegen.'
+    expect(oracleVerdict('5', before, 'Die Stelle hat den Antrag der Partei zuzustellen. Der Bescheid ist jeweils der Behörde neu vorzulegen.', rows)).toMatchObject({ verdict: 'bestätigt' })
+    for (const faulted of ['Die Stelle hat den Antrag Partei zuzustellen. Der Bescheid ist jeweils der Behörde neu vorzulegen.', 'Die Stelle hat jeweils den Antrag der Partei zuzustellen. Der Bescheid ist jeweils der Behörde neu vorzulegen.']) {
+      const report = oracleVerdict('5', before, faulted, rows)
+      expect(report).toMatchObject({ verdict: 'widersprochen' })
+      expect(report.note).toMatch(new RegExp(`^${PLACE_NOTE}`))
+    }
+  })
+
+  it('places a new Absatz the LCS cuts at words it shares with the next one (StPO § 36)', () => {
+    const rows = [pair('', '(2a) Für Anträge des Opfers ist das Gericht zuständig, an dessen Sitz das Opfer wohnt.')]
+    const before = 'Örtliche Zuständigkeit Im Ermittlungsverfahren entscheidet das Landesgericht. Für das Hauptverfahren ist das Gericht zuständig, in dessen Sprengel die Tat begangen wurde.'
+    const got = 'Örtliche Zuständigkeit Im Ermittlungsverfahren entscheidet das Landesgericht. Für Anträge des Opfers ist das Gericht zuständig, an dessen Sitz das Opfer wohnt. Für das Hauptverfahren ist das Gericht zuständig, in dessen Sprengel die Tat begangen wurde.'
+    expect(oracleVerdict('36', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('reads a placeholder glued to its word as text, and keeps the number a chain\'s cut takes', () => {
+    // Sektenfragen-Gesetz § 14 („des …gesetzes"); Börsegesetz § 1 („WAG 2018. 11. bis 17. …").
+    const glued = [pair('', '(3) § 6 in der Fassung des …gesetzes BGBl. I Nr. xxx/2025 tritt mit 1. September 2025 in Kraft.')]
+    expect(oracleVerdict('14', 'Inkrafttreten Dieses Gesetz tritt in Kraft.', 'Inkrafttreten Dieses Gesetz tritt in Kraft. § 6 in der Fassung des …gesetzes BGBl. I Nr. xxx/2025 tritt mit 1. September 2025 in Kraft.', glued)).toMatchObject({ verdict: 'bestätigt' })
+    const chained = [pair('§ 1. Begriffe: 1. bis 9. … 10. MTF: ein multilaterales Handelssystem. 11. bis 17. …', '§ 1. Begriffe: 1. bis 9. … 10. MTF: ein multilaterales Handelssystem gemäß § 1 Z 24 WAG 2018. 11. bis 17. …', '§ 1.')]
+    const before = 'Begriffe: Börse: ein Markt. MTF: ein multilaterales Handelssystem. OTF: ein organisiertes Handelssystem.'
+    expect(oracleVerdict('1', before, 'Begriffe: Börse: ein Markt. MTF: ein multilaterales Handelssystem gemäß § 1 Z 24 WAG 2018. OTF: ein organisiertes Handelssystem.', chained)).toMatchObject({ verdict: 'bestätigt' })
   })
 })

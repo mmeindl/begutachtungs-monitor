@@ -705,6 +705,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   first equal words it meets, so a struck Absatz that opens like the next
   one landed inside the stretch, and BVergGVS § 30 was confirmed with the
   Abs. 8 the annex strikes (`keptDeletion`, `absatzOrderBroken`).
+- **Every change the engine made has to stand in the annex where it made
+  it** (19.11.2026, check 3 in place, `unplacedChange`): each changed word
+  inside a four-word window of the annex, each run tied at one side to the
+  unchanged words beside it or to the edge of a printed stretch, read under
+  both tie-breaks of the LCS. Asked only whether a word stands anywhere in
+  the annex, „der", „und" or a „jeweils" carried into one Absatz too many
+  passed, and 14/ME BilDokG § 26 came out confirmed with a heading made of
+  the lead-in „Mit der Vollziehung dieses Bundesgesetzes ist". A change the
+  annex leaves out (TDBG § 40b: „1. bis 6. …" where the draft changes Z 6)
+  costs a correct confirmation; the oracle does not vouch for what the
+  ministry does not print.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
@@ -2198,8 +2209,9 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | Unrefused but not the law in force | 1.4 % (20) of 1,435 §§; 3.0 % (46 of 1,519) on 04.10.2026. Of the 26 that left, 21 are refused now with the same text and 4 became identical: bookkeeping, not accuracy. The 26th was Privatschulgesetz § 30, never wrong (next row) | same |
 | Annex-confirmed §§ against the enacted text | 108 confirmed: 106 identical, 2 incomplete and withheld as implausible, 0 deviating. So all 106 the gate shows are identical. „0 of 108 deviate" (26.10.2026) counted the class „abweichend" alone and summed three §§ away; the third, Privatschulgesetz § 30, was word for word the law and read as „halb angewendet" because RIS gives the designation once as `<ueberschrift typ="para">` and once as `<gldsym>` (`konsTree.ts`) | 18.11.2026 (§12.12c) |
 | Fault injection: known error classes caught | ≥ 95 % each | 26.10.2026 (§12.12c) |
-| Fault injection, one word, figure or place in a printed stretch (word dropped, added, swapped, figure, citation, two Ziffern swapped) | 99.3–100 % on both paths; § heading 94.8 % (PDF) and 100 % (table) | GP XXVIII · 19.11.2026 |
-| The same where no changed row prints anything (word dropped / added / figure changed) | 65.0 / 23.8 / 95.8 % (PDF), 66.7 / 28.0 / 97.1 % (table): check 3 asks whether a word stands anywhere in the annex, not where. Open, printed, not floored | GP XXVIII · 19.11.2026 |
+| Fault injection, one word, figure or place in a printed stretch (word dropped, added, swapped, figure, citation, two Ziffern swapped) | 99.3–100 % on both paths; § heading 99.9 % (PDF, 94.8 % before the heading-area fix) and 100 % (table) | GP XXVIII · 19.11.2026 |
+| The same where no changed row prints anything (word dropped / added / figure changed) | 99.0 / 99.7 / 99.6 % (PDF), 99.5 / 99.9 / 99.7 % (table), floored; 65.0 / 23.8 / 95.8 % and 66.7 / 28.0 / 97.1 % while check 3 asked only whether a word stands anywhere in the annex. Withdrawn without injection: 6 of 1,549 PDF and 2 of 1,153 table confirmations, each read (four engine gaps behind a refusal, two results without a heading the annex prints, two annex errors) | GP XXVIII · 19.11.2026 |
+| A struck Absatz put back under its old number (fault class Zurück) | 45 of 45 (PDF), 25 of 25 (table); 41 of 46 and 20 of 25 before checks 4 and 5 read a struck Absatz that opens like the next | GP XXVIII · 19.11.2026 |
 | Silent omission read (`silentOmissions`) under fault injection | a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16 | GP XXVIII · 14.11.2026 |
 | Changed §§ with an outcome on the page | all 4,701 in 163 drafts (ME) and 1,490 in 219 (without Gegenstand); 4,463 and 1,541 on 27.10.2026. The second fell although five drafts came, and none of it is the engine: six drafts left the set (−89; four got a Parliament page as 150/ME to 153/ME, two were lost by the corpus read, next table), eleven came (+38), and on the 208 in both the count stayed 1,452. Reconstructed by running the code of 27.10. offline on the same inputs: 214 drafts, 1,541, 630, the recorded figures. The JSON of an `accounting.ts` run is the per-draft record from now on | GP XXVIII · 18.11.2026 (§12.12c) |
 | Of those shown | 2,267 and 623; 2,167 and 630 on 27.10.2026. Without Gegenstand: −33 with the six that left, +11 with the eleven that came, +15 on the 208 in both (7262426, omissions without „…": 14; 14984f1, letter-spaced words: 1) | same |
@@ -2290,6 +2302,14 @@ circular of 10.12.2015).
   missing words (§12.13).
 - **More tolerance when matching against the annex** (ignoring commas and
   brackets, a counted check): masks real contradictions (§12.12).
+- **A word balance as check 6** (19.11.2026): the result less the standing
+  text must change every word's count by exactly as much as the annex's
+  changed rows. It caught every unprinted word fault, and withdrew 50
+  confirmations on the PDF path and 6 on the table path, about 44 of them
+  noise: group titles and a neighbouring §'s heading carried into a cell,
+  abbreviations spelt two ways, rows the table path pairs differently from
+  the draft. Check 3 in place catches 99.0–99.9 % of the same faults with
+  none (`scripts/harness/faultInjection.ts`).
 - **Showing repealed §§ as „entfällt" in the reading version,** or the
   reading version as a section of its own: a duplicate of the line above
   (§12.12, §12.12a).

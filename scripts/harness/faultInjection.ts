@@ -220,22 +220,68 @@
  * ending a sentence) on both sides alike, and on the table path the ORDER of
  * rows, since every row was looked up from the start of the result.
  *
- * **What is still open.** Outside a printed stretch only check 3 reads, and
- * its bags ask whether a word stands anywhere in the annex, not where: a
- * dropped „der" or an added word of the same § passes. That is real, not
- * hypothetical — 14/ME XXVIII BilDokG § 26 („§ 26 lautet: Mit der Vollziehung
- * dieses Bundesgesetzes ist 1. …") came out of the engine with that line as
- * its heading and the heading „Vollziehung" gone, and was confirmed, because
- * the only word lost stands in the body. A check that holds every change
- * with three words of context (prototyped the same night) catches 99,5 to
- * 99,9 % of both Ungedruckt classes and that §, and withdraws 22 PDF and 8
- * table confirmations nobody has read yet; it is not in. Überschrift misses
- * on the PDF path are mostly a § heading printed in one stretch with its
- * group heading and no § symbol, which `isGroupHeadingOnly` still skips.
+ * **The second round of 19.11.2026** — check 3 in place (`unplacedChange`),
+ * the § heading in the heading area of a cell, a struck Absatz that opens
+ * like the next one (checks 4 and 5) —, from the base of that night to the
+ * last of the three commits:
  *
- * Only the classes at ≥ 95 % on both paths with ≥ 20 tries are held to the
- * `--mindestens` floor (`flooredWordClasses`); Überschrift and Ungedruckt-weg
- * / -neu are printed, not floored.
+ * | | PDF vorher | PDF nachher | Tabelle vorher | Tabelle nachher |
+ * |---|---:|---:|---:|---:|
+ * | Wort-weg        | 1374/1379 (99,6 %) | 1374/1376 (99,9 %) | 988/988 (100 %)  | 988/988 (100 %) |
+ * | Wort-weg-Sinn   | 1221/1226 (99,6 %) | 1223/1223 (100 %)  | 859/860 (99,9 %) | 859/860 (99,9 %) |
+ * | Überschrift     | 1031/1088 (94,8 %) | 1086/1087 (99,9 %) |  57/57 (100 %)   |  57/57 (100 %) |
+ * | Ungedruckt-weg  |  676/1037 (65,2 %) | 1023/1033 (99,0 %) | 567/850 (66,7 %) | 845/849 (99,5 %) |
+ * | Ungedruckt-neu  |  248/1037 (23,9 %) | 1030/1033 (99,7 %) | 238/850 (28,0 %) | 848/849 (99,9 %) |
+ * | Ungedruckt-Zahl |  500/522 (95,8 %)  |  518/520 (99,6 %)  | 374/385 (97,1 %) | 383/384 (99,7 %) |
+ * | Zurück          |   41/46 (89,1 %)   |   45/45 (100 %)    |  20/25 (80,0 %)  |  25/25 (100 %) |
+ * | Reihe           | 1114/1128 (98,8 %) | 1121/1127 (99,5 %) | 814/820 (99,3 %) | 814/819 (99,4 %) |
+ *
+ * The other word classes and E stay where they were. Without injection the
+ * PDF path keeps 1.543 of its 1.549 confirmations and the table path 1.151
+ * of 1.153; every one withdrawn was read, and none is the oracle's noise.
+ * Four are engine gaps behind a refused instruction (IESG § 20 and IEF § 29,
+ * a § the draft dissolves into another, its body kept; BBG § 61 and BAO
+ * § 48h, a heading the draft adds), two clean-applied results without a
+ * heading the annex prints (AußWG § 70a, BD-EG § 38), and two annex errors:
+ * TDBG § 40b, where the annex leaves Z 6 out („1. bis 6. …") though the
+ * draft changes it — the BGBl bench's one identical confirmation lost at
+ * 60, 120 and 200 Bundesgesetzblätter —, and HSG § 7, whose proposed column
+ * numbers an Absatz (2) no instruction renumbers. The bench withdraws two
+ * wrong confirmations besides (BVergGVS § 30, GSpG § 61) and moves nothing
+ * on the XML path.
+ *
+ * **What check 3 in place was chosen over.** A count-based check 6 (the
+ * engine's result less the standing text must change every word's count by
+ * exactly as much as the annex's changed rows) caught every Ungedruckt fault
+ * too, and withdrew 50 confirmations on the PDF path and 6 on the table
+ * path: about 44 of them noise — group titles and a neighbouring §'s heading
+ * carried into a cell, abbreviations spelt two ways („EKB-InvestitionsV"),
+ * rows the table path pairs differently from the draft. Check 3 in place as
+ * first prototyped withdrew 11 and 7, the LCS cutting a correct new Absatz
+ * at words it shares with the next one, a placeholder „…" read as an
+ * omission, a citation's last number lost to a chain's cut. All three are
+ * read correctly now (`unplacedEitherWay`, `GLUED_ELLIPSIS_RE`, the second
+ * cut of `keysOf`); `docs/decisions.md` keeps check 6 among the rejected.
+ *
+ * **What the oracle still cannot see.**
+ * - A change whose four-word window also stands where the annex shows a
+ *   change: the 10, 3 and 2 Ungedruckt misses on the PDF path, 4, 1 and 1 on
+ *   the table path („Innen- [und] Außenbereich"). Reading a change under
+ *   both tie-breaks of the LCS costs 0.7 points of Ungedruckt-weg on the PDF
+ *   path (99,7 → 99,0 %) and none on the table path, for ten alarms on
+ *   correct results that it removes.
+ * - A change the annex itself leaves out is a contradiction, not a
+ *   confirmation (TDBG § 40b): correct results the annex does not show are
+ *   lost, by design.
+ * - A group heading the draft changes: the result carries no group
+ *   headings (`konsTree.context`), and nothing here holds them.
+ * - A unit missing from RIS that the annex skips silently (Lücke-beide,
+ *   3 of 16), as before.
+ *
+ * Held to the `--mindestens` floor (`flooredWordClasses`): every class at
+ * ≥ 95 % on both paths with ≥ 20 tries when measured — Überschrift,
+ * Ungedruckt-weg/-neu and Zurück since 19.11.2026. Zurück-gleich has 3
+ * tries per path and is printed, not floored.
  *
  * **Duplicate Absatz numbers are RIS's, not the engine's** (19.11.2026). The
  * Reihe fault used to swap two Absätze of the same number — Listing Act
@@ -274,7 +320,7 @@ import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { applyNovelle, instructionsFromUnits, renamedOrigins, type StandingLaw } from '../../server/utils/kons/lawApply'
-import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, ROW_ORDER_NOTE, absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
+import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, PLACE_NOTE, ROW_ORDER_NOTE, absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
 import { printedStretches } from '../../server/utils/annex/elision'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
 import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
@@ -1188,6 +1234,7 @@ function checkOf(note: string | null): string {
   if (!note) return '?'
   if (note.startsWith('Geltende Fassung')) return 'P1'
   if (note.startsWith(ROW_ORDER_NOTE)) return 'P2r'
+  if (note.startsWith(PLACE_NOTE)) return 'P3o'
   if (note.startsWith('Vorgeschlagene Fassung') || note.startsWith('Gestrichene Fassung')) return 'P2'
   if (note.startsWith('Engine') || note.startsWith('Wortdiff')) return 'P3'
   if (note.startsWith(KEPT_DELETION_NOTE)) return 'P4'
@@ -1286,6 +1333,12 @@ async function injectIntoResults(
       if (report.note?.startsWith(ROW_ORDER_NOTE)) {
         results.rowOrder.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
         if (argFlag('alarme')) results.rowOrder.push(...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => `          ${r.change.padEnd(11)}: ${r.proposed.slice(0, 160)}`), `          Ergebnis: ${got.slice(0, 400)}`)
+      }
+      // Check 3 in place (19.11.2026): every § it speaks on had passed the
+      // bags of check 3, so its alarms are the confirmations it withdraws.
+      if (report.note?.startsWith(PLACE_NOTE)) {
+        results.placeAlarms.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
+        if (argFlag('alarme')) results.placeAlarms.push(...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').flatMap((r) => [`          geltend      : ${r.current.slice(0, 300)}`, `          vorgeschlagen: ${r.proposed.slice(0, 300)}`]), `          geltend (RIS): ${(before ?? '').slice(0, 300)}`, `          Ergebnis     : ${got.slice(0, 300)}`)
       }
       // Check 5's false-alarm side, like check 4's below: every § it speaks
       // on had passed the other four.
@@ -1475,7 +1528,7 @@ const faults = {
   U: tally('U     fremder Satz beidspaltig gleich'),
 }
 /** The engine's result as the oracle judged it, without any fault. */
-const results = { verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[], dupAbs: [] as string[], rowOrder: [] as string[] }
+const results = { verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[], dupAbs: [] as string[], rowOrder: [] as string[], placeAlarms: [] as string[] }
 const oracleFaults = {
   E: oracleTally('E     eine Einheit zu viel'),
   Ersatz: oracleTally('E-neben alter Text neben dem neuen'),
@@ -1501,7 +1554,7 @@ const oracleFaults = {
 /** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
 const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich]
 /** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
-const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck]
+const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck]
 
 const docs: any[] = []
 for (let page = 1; page <= 4 && docs.length < limit; page++) {
@@ -1595,6 +1648,8 @@ console.log(`    davon mit anderem Urteil als ohne diese Lesart: ${results.moved
 for (const line of results.moved) console.log(`      ± ${line}`)
 console.log(`    Prüfung 4 („Gestrichenes steht noch im Ergebnis") meldet ohne Injektion: ${results.kept}`)
 for (const line of results.keptAlarms) console.log(`      + ${line}`)
+console.log(`    Prüfung 3 am Ort („wo die Gegenüberstellung nichts ändert") meldet ohne Injektion: ${results.placeAlarms.filter((l) => !l.startsWith('          ')).length}`)
+for (const line of results.placeAlarms) console.log(`      ${line.startsWith('          ') ? '' : '+ '}${line}`)
 console.log(`    Prüfung 2, Reihenfolge der Zeilen („an anderer Stelle") meldet ohne Injektion: ${results.rowOrder.filter((l) => !l.startsWith('          ')).length}`)
 for (const line of results.rowOrder) console.log(`      ${line.startsWith('          ') ? '' : '+ '}${line}`)
 console.log(`    Prüfung 5 („Absätze der Beilage nicht so im Ergebnis") meldet ohne Injektion: ${results.order}`)
@@ -1606,10 +1661,10 @@ for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, or
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.caught)}   ${cell(fault.byKept)}`)
 }
 console.log(`\n  Wortfehler im Ergebnis (19.11.2026), dieselben bestätigten Paragraphen — gefangen von Prüfung 1 bis 5`)
-console.log(`  Fehler                                §§   gefangen               P1     P2    P2r     P3     P4     P5`)
+console.log(`  Fehler                                §§   gefangen               P1     P2    P2r     P3    P3o     P4     P5`)
 for (const fault of wordClasses) {
   const by = (check: string): string => String(fault.byCheck.get(check) ?? 0).padStart(6)
-  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})   ${by('P1')} ${by('P2')} ${by('P2r')} ${by('P3')} ${by('P4')} ${by('P5')}`)
+  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})   ${by('P1')} ${by('P2')} ${by('P2r')} ${by('P3')} ${by('P3o')} ${by('P4')} ${by('P5')}`)
   for (const [kind, [tried, caught]] of fault.kinds) console.log(`      ${kind.padEnd(22)} ${String(tried).padStart(4)}   ${String(caught).padStart(6)} (${pct(caught, tried)})`)
 }
 // An Absatz number held twice: in RIS's own text, or made by the engine —
