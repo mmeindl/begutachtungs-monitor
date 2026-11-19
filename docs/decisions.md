@@ -601,7 +601,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   units of GP XXVIII were compared against partly another law's Begründung
   (`ofLaw`, `articleOn` in `server/utils/explanations/reasoningDiff.ts`). A
   heading that names several laws (an Artikel range, §§ of two acts by their
-  abbreviations) counts for each of them.
+  abbreviations) counts for each of them. Beside the Textgegenüberstellung,
+  where a passage stands at one law's §, a heading over several Artikel
+  („Zu Art. 1 Z 20, Art. 2 Z 16 … (§ 70a ASVG; § 36 GSVG; …)") is discarded
+  in a package: which of its §§ is whose cannot be read (`namesSeveralArticles`
+  in `server/utils/explanations/explanationsJoin.ts`).
 - **A Begründung printed under the neighbouring Ziffer is attached only with
   witnesses beyond the number** (`offsetPassage`): every § the passage names
   is one this change amends, the change that carries that number amends none

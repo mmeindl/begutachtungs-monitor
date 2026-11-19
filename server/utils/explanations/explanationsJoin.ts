@@ -46,6 +46,24 @@ export interface ParagraphExplanation {
 const ARTICLE_NUMERAL_RE = /^(?:zu\s+)?art(?:ikel)?\.?\s*([0-9]+[a-z]?|[ivxlc]+)\b/i
 
 /**
+ * Whether a heading explains changes of several Artikel, each by its Ziffern
+ * — „Zu Art. 1 Z 20, Art. 2 Z 16, Art. 3 Z 10 und Art. 5 Z 1 (§ 70a Abs. 1
+ * ASVG; § 36 Abs. 1 GSVG; § 33c Abs. 1 BSVG; § 24b Abs. 1 B-KUVG):"
+ * (19.11.2026). Its §§ belong to several laws, and the heading's first
+ * Artikel (`articleKeyOf`) would have hung the GSVG's § 36 at the ASVG's.
+ * Until the heading reader took every § of such a list (`headingAddress`,
+ * 19.11.2026) it mostly kept the first, which is the first law's; 30 such
+ * headings stand in the 715 Erläuterungen of the harness cache. An Artikel
+ * a passage merely cites („Art. 6 DSGVO") carries no Ziffer and does not
+ * count.
+ */
+function namesSeveralArticles(heading: string): boolean {
+  const numerals = new Set([...heading.matchAll(ARTICLE_WITH_ZIFFER_RE)].map((m) => m[1]!.toLowerCase()))
+  return numerals.size > 1
+}
+const ARTICLE_WITH_ZIFFER_RE = /(?:^|[,(]|\b(?:und|sowie))\s*(?:zu\s+(?:den\s+)?)?art(?:ikel|\.)\s*([0-9]+[a-z]?|[ivxlc]+)\s+Z\b/gi
+
+/**
  * From where on two law names count as the same, where the passage names no
  * Artikel number.
  *
@@ -113,8 +131,9 @@ export function explanationsByParagraph(
     const law =
       keyed.length <= 1 ? only : articleKeyOf(passage.heading, articles) ?? articleKeyOf(passage.article, articles)
     // A package of several laws and a passage whose law cannot be
-    // determined: discard. See the file header.
-    if (keyed.length > 1 && law === null) continue
+    // determined: discard. See the file header. So too a heading over
+    // several Artikel (`namesSeveralArticles`): its §§ belong to several laws.
+    if (keyed.length > 1 && (law === null || namesSeveralArticles(passage.heading))) continue
     for (const para of passage.paragraphs) {
       const id = explanationParaId(para)
       if (id) out.push({ law, para: id, heading: passage.heading, text: passage.text })

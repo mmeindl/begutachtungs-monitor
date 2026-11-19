@@ -198,6 +198,19 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
     ])
   })
 
+  it('verwirft eine Überschrift über mehrere Artikel: ihre §§ sind mehrerer Gesetze', () => {
+    // The shape of the social-insurance packages: under the first Artikel
+    // (the ASVG) the GSVG's § 36 would stand at the ASVG's § 36.
+    const parsed = besonderer(
+      head('erll', 'Zu Art. 1 Z 20, Art. 2 Z 16 und Art. 3 Z 10 (§ 70a Abs. 1 ASVG; § 36 Abs. 1 GSVG; § 33c Abs. 1 BSVG):') +
+      text('Gleichlautend in allen drei Gesetzen.') +
+      head('erll', 'Zu Art. 2 Z 1 (§ 2 GSVG) - vgl. Art. 6 DSGVO:') +
+      text('Nur das GSVG.'),
+    )
+    const pack = articles({ numeral: '1', key: 'ASVG' }, { numeral: '2', key: 'GSVG' }, { numeral: '3', key: 'BSVG' })
+    expect(explanationsByParagraph(parsed, pack)).toEqual([{ law: 'GSVG', para: '2', heading: 'Zu Art. 2 Z 1 (§ 2 GSVG) - vgl. Art. 6 DSGVO:', text: ['Nur das GSVG.'] }])
+  })
+
   it('verwirft eine Passage, deren Gesetz im Mehrgesetzespaket unbestimmt bleibt', () => {
     const parsed = besonderer(head('erll', 'Zu Z 1 (§ 7):') + text('Dazu.'))
     const pack = articles({ numeral: '1', key: 'Änderung der Notariatsordnung' }, { numeral: '2', key: 'Änderung der Rechtsanwaltsordnung' })
