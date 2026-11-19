@@ -363,6 +363,73 @@ const PARA_RANGE_RE = new RegExp(String.raw`§§\s*(${PARAGRAPH_NUMBER})\s*(?:bi
  * invented here — every number stands in the text.
  */
 const PARA_LIST_RE = new RegExp(String.raw`§§\s*(${PARAGRAPH_NUMBER}(?:\s*,\s*${PARAGRAPH_NUMBER})*)\s*(?:und|sowie)\s*(${PARAGRAPH_NUMBER})\b`, 'gi')
+/**
+ * „§§ 20 Abs. 5 und 193 Abs. 5", „§§ 43, 44, 46 Abs. 2 und 47 Abs. 1", „§§ 12
+ * samt Überschrift und 13" — an enumeration whose items carry an Absatz or a
+ * „samt" (19.11.2026). `PARA_LIST_RE` reads bare numbers only, so such a list
+ * gave its first § alone: 119 of the 227 passage headings of GP XXVIII with a
+ * „§§" list lost at least one §, 232 in all, and 58/ME's „Zu den Z 19, 21, …,
+ * 187 und 188 (§§ 19, 48 Abs. 13, … 380 Abs. 1 …)" was turned away at Z 187
+ * as a passage about § 19 alone.
+ *
+ * The run goes up to a bracket, a colon, a semicolon or the next „§". In it, a
+ * number followed by „Abs." or „samt" opens a § whatever stood before it — an
+ * Absatz is never followed by an Absatz of its own. A bare number, or one
+ * followed by „Z" or „lit.", is a § only while no Absatz, Ziffer or litera
+ * runs: „§§ 46 Abs. 2, 47 und 48" may be Absätze 47 and 48 of § 46 as well as
+ * §§ 47 and 48, and „§§ 1 Z 5, 6 und 7" are Ziffern; what the line does not
+ * say is not read. A number after „bis" is the end of a range, read by
+ * `PARA_RANGE_RE` where it is one of §§.
+ *
+ * Not inside quotes: in an instruction („… wird der Ausdruck "§§ 12 Abs. 2,
+ * 15b oder 15c" durch den Ausdruck "§§ 15b, 15c oder 15d" ersetzt", 74/ME
+ * XXVIII Z 69) the list is the citation being replaced, not what the
+ * instruction amends (`unitParagraphIds` reads its head with this function).
+ */
+const PARA_LIST_RUN_RE = /§§\s*([^():;§„“”"«»]*)/g
+/** A quoted span, or an opened one the line cuts off. */
+const QUOTED_RE = /„[^“”"]*(?:[“”"]|$)|"[^"]*(?:"|$)|»[^«]*(?:«|$)|«[^»]*(?:»|$)/g
+const LIST_NUMBER_RE = new RegExp(String.raw`^${PARAGRAPH_NUMBER}$`)
+/** What opens a § item whatever stood before. */
+const LIST_OPENS_PARAGRAPH_RE = /^(?:abs\.?|absatz|samt)$/i
+/** What sets the numbers after it under the § before: an Absatz, a Ziffer, a litera. */
+const LIST_SUB_RE = /^(?:abs\.?|absatz|z|lit\.?)$/i
+
+function listedParagraphs(run: string): string[] {
+  // Words as printed, and „31Abs." — printed without the space, as
+  // `PARA_RE` knows it — as the § and the Absatz it is.
+  const tokens = run
+    .replace(/(\d)(abs\b|z\b|lit\b)/gi, '$1 $2')
+    .replace(/,/g, ' , ')
+    .split(/\s+/)
+    .filter(Boolean)
+  const out: string[] = []
+  /** Inside an Absatz, Ziffer or litera run of the § before. */
+  let sub = false
+  /** What the next number is: an item of the list, the number of an Absatz (or a range's end), or neither. */
+  let expect: 'item' | 'sub' | 'none' = 'item'
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!
+    if (LIST_NUMBER_RE.test(token)) {
+      const next = tokens[i + 1] ?? ''
+      if (expect === 'item' && (LIST_OPENS_PARAGRAPH_RE.test(next) || (!sub && !/^(?:bis|–|-)$/i.test(next)))) out.push(token.toLowerCase())
+      expect = 'none'
+    } else if (token === ',' || /^(?:und|sowie)$/i.test(token)) {
+      expect = 'item'
+    } else if (LIST_SUB_RE.test(token)) {
+      sub = true
+      expect = 'sub'
+    } else if (/^bis$/i.test(token)) {
+      expect = 'sub'
+    } else if (/^samt$/i.test(token)) {
+      sub = false
+      expect = 'none'
+    } else {
+      expect = 'none'
+    }
+  }
+  return out
+}
 /** A range longer than this is a citation habit, not an address — 45 of 45 measured ranges are far below. */
 const MAX_RANGE = 50
 
@@ -403,6 +470,9 @@ export function headingAddress(heading: string): { paragraphs: string[]; items: 
   for (const m of heading.matchAll(PARA_LIST_RE)) {
     for (const part of m[1]!.split(',')) paragraphs.push(`§ ${part.trim().toLowerCase()}`)
     paragraphs.push(`§ ${m[2]!.toLowerCase()}`)
+  }
+  for (const m of heading.replace(QUOTED_RE, ' ').matchAll(PARA_LIST_RUN_RE)) {
+    for (const n of listedParagraphs(m[1]!)) paragraphs.push(`§ ${n}`)
   }
   return {
     paragraphs: uniq(paragraphs),

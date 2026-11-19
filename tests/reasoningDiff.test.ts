@@ -376,6 +376,17 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
 
   // 55/ME XXVIII: the parser opens the prose „Zu § 77a Abs. 9 vertritt die
   // Kommission … § 40 …" as a passage; it still belongs to the Ziffer above.
+  it('liest alle §§ einer Liste mit Absätzen, bevor sie zwischen zwei Passagen zur selben Ziffer entscheiden (58/ME XXVIII Z 85)', () => {
+    // Read as „§ 91" alone, both passages were turned away, and Z 85 read „nicht zuzuordnen".
+    const units = [z('Z85', 'Z85', 'In § 151 Abs. 2 wird nach der Zeichenfolge "21 bis 23" die Zeichenfolge ", 26, 27" eingefügt.')]
+    const doc = () => erl('Zu den Z 63 und 85 (§§ 91 Abs. 4 bis 6 und 151 Abs. 1 und 2):', 'Das Zuschlagsprinzip.', 'Zu den Z 65 und 85 (§§ 91 Abs. 9 bis 12 und 151 Abs. 1 und 2):', 'Der Zugang zu Beschaffungsmärkten.')
+
+    const out = compareReasoning(units, doc(), doc())
+
+    expect(out.entries[out.units['Gesetz|Z85|changed']!]).toMatchObject({ changed: false })
+    expect(out.gaps).toEqual({})
+  })
+
   it('nimmt eine in Prosa weiterlaufende Unterpassage mit, auch wenn der Satz einen anderen § zitiert', () => {
     const units = [z('Z1', 'Z1', 'In § 77a Abs. 9 wird "a" durch "b" ersetzt.')]
     const prose = 'Zu § 77a Abs. 9 vertritt die Kommission die Auffassung, dass § 40 nicht genügt.'

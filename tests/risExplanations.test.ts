@@ -333,3 +333,26 @@ describe('splitHeading — die Begründung auf der Überschriftszeile (02.10.202
     ])
   })
 })
+
+// „§§ 20 Abs. 5 und 193 Abs. 5" named two §§, and the reader kept the first
+// (19.11.2026): 119 passage headings of GP XXVIII lost 232 §§.
+describe('headingAddress — eine „§§"-Liste, deren Glieder ein Absatz begleitet', () => {
+  it('liest jeden §, dem ein Absatz oder „samt" folgt, und die bloßen Zahlen davor', () => {
+    expect(headingAddress('Zu den Z 22 und 102 (§§ 20 Abs. 5 und 193 Abs. 5):').paragraphs).toEqual(['§ 20', '§ 193'])
+    expect(headingAddress('Zu Z 2 bis 5 (§§ 2 Abs. 1 und 13 Abs. 4 Z 5):').paragraphs).toEqual(['§ 2', '§ 13'])
+    expect(headingAddress('Zu Z 1 und 3 (§§ 51 Abs. 7 sowie 248c samt Überschrift ASVG):').paragraphs).toEqual(['§ 51', '§ 248c'])
+    expect(headingAddress('Zu §§ 12 samt Überschrift und 13:').paragraphs).toEqual(['§ 12', '§ 13'])
+    expect(headingAddress('Zu §§ 34, 35a, 38').paragraphs).toEqual(['§ 34', '§ 35a', '§ 38'])
+    expect(headingAddress('Zu den Z 19 bis 28 und 90 (§§ 30 bis 37 sowie 123 Z 16):').paragraphs).toContain('§ 123')
+    expect(headingAddress('Zu Z 26 (§§ 43, 44, 46 Abs. 2, 47 Abs. 2 und 3, 151 Abs. 6 sowie 312 Abs. 6):').paragraphs).toEqual(['§ 43', '§ 44', '§ 46', '§ 47', '§ 151', '§ 312'])
+  })
+
+  it('liest eine bloße Zahl nach einem Absatz, einer Ziffer oder in Anführungszeichen nicht als §', () => {
+    // „46 Abs. 2, 47 und 48" may be Absätze 47 and 48 as well as §§.
+    expect(headingAddress('(§§ 43, 44, 46 Abs. 2, 47 und 48)').paragraphs).toEqual(['§ 43', '§ 44', '§ 46'])
+    expect(headingAddress('Zu § 3 (§§ 1 Z 5, 6 und 7):').paragraphs).toEqual(['§ 3', '§ 1'])
+    expect(headingAddress('§§ 31Abs. 3 und 5').paragraphs).toEqual(['§ 31'])
+    // The citation an instruction replaces is not what it amends (74/ME XXVIII Z 69).
+    expect(headingAddress('In § 27 Abs. 1 Z 20 wird der Ausdruck "§§ 12 Abs. 2, 15b oder 15c" durch den Ausdruck "§§ 15b, 15c oder 15d" ersetzt').paragraphs).toEqual(['§ 27', '§ 12', '§ 15b'])
+  })
+})

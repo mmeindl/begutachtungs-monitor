@@ -572,6 +572,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   opens a passage like „Zu Z …", printed as typed; „Zu den §§ …", „Zu den
   Abs. …" and prose stay text. „Zu 15 (§ 6):" without „Z" stays text:
   whether 15 is a Ziffer the line does not say.
+- **A „§§" list is read item by item** (`listedParagraphs` in
+  `server/utils/explanations/risExplanations.ts`): a number followed by
+  „Abs." or „samt" is a §, a bare number after an Absatz, Ziffer or litera
+  is not („§§ 46 Abs. 2, 47 und 48" may be Absätze), and a list in quotes is
+  the citation an instruction replaces, not what it amends.
 - **A removed and an inserted instruction become one „geändert" only with
   two witnesses, never the address alone** (`pairSameInstruction`): texts
   alike at 0,8 or more and the same §§ edited, in one Artikel, each side
