@@ -137,6 +137,9 @@ const sequenceOf = (n: string): number => Number.parseInt(n, 10)
  */
 const SUB_INSTRUCTION_RE = new RegExp(`^(\\d{1,3}[a-z]?)\\s*\\.\\s?\\d{1,3}[a-z]?(?:\\s*\\.|\\s+(?=${OPENER}))`)
 
+/** „2.1", „2.1 Brandschutz", „10.2.1." — a number with a second one right behind its period. */
+const NUMBER_THEN_NUMBER_RE = /^\d{1,3}[a-z]?\.\d/
+
 /**
  * The promulgation clause that opens a Novelle for one law — "Das
  * Bundesgesetz …, BGBl. I Nr. 620/1989, … wird wie folgt geändert:".
@@ -489,7 +492,17 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       // signals by coincidence — an early version of this branch read three
       // list items of Mineralrohstoffgesetz § 156 (27/ME) and one of
       // Markenschutzgesetz § 68j (83/ME) as instructions.
-      const n = novelleMode ? novaoNumber(b.text) : null
+      //
+      // Nor a line whose number another number follows („2.1", „2.1 Brandschutz
+      // bei Betriebsbauten"): that is a sub-number or the row number of a
+      // table, and the next instruction prints „2." standing alone. A
+      // Salzburg Verordnung re-enacting the table of OIB-Richtlinien („Im § 1
+      // lautet die Tabelle:", 78. Verordnung 2026) had its row „2.1" read as
+      // instruction 2, and the printed „2." stood behind it as `Z2#dup`
+      // (19.11.2026, `harness/units.ts`, „verdoppelt"). The same test keeps
+      // the fee amounts „3.118", „4.157" … of three Austro-Control
+      // Gebührenverordnungen in their table: they had opened Z3 to Z6.
+      const n = novelleMode && !NUMBER_THEN_NUMBER_RE.test(normalizeText(b.text)) ? novaoNumber(b.text) : null
       if (n && sequenceOf(n) === lastNovao + 1) {
         openNovao(n)
         continue

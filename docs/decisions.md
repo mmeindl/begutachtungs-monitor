@@ -530,6 +530,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   the source printed it once (an unnumbered first line promoted to „1."
   before the printed „1.", a table row „2.1" read as instruction 2); only a
   number both opening lines print is „wiederholt" (`scripts/lib/unitCensus.ts`).
+- **A plain line is promoted to the next instruction only on a number that
+  stands alone** (19.11.2026, `lawUnits.ts`). „2.1", „4.800" — a number with
+  a second one right behind its period — is a sub-number, a table row or an
+  amount, never instruction 2: a Salzburg table row and the fee amounts of
+  three Austro-Control Gebührenverordnungen had opened units of their own.
 - **An Artikel line and its name in one heading are two blocks, on both
   readers** (19.11.2026). „Artikel 1<br>Änderung des …" is split into the
   Artikel line and its name wherever the class mapping leaves the line to

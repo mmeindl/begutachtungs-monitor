@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { segmentUnits, type TextBlock } from '../server/utils/lawtext/lawUnits'
-import { instructionCensus } from '../scripts/lib/unitCensus'
+import { segmentUnits, type LawUnit, type TextBlock } from '../server/utils/lawtext/lawUnits'
+import { dupCauses, instructionCensus } from '../scripts/lib/unitCensus'
 
 const blk = (kind: TextBlock['kind'], text: string, gld: string | null = null): TextBlock => ({ kind, cls: '', text, gld })
 const clause = blk('other', 'Das Testgesetz, BGBl. I Nr. 1/2000, wird wie folgt geändert:')
@@ -31,13 +31,24 @@ describe('units census: a number printed twice and a number the reader gave twic
     expect(c.verdoppelt.map(({ unit, prev }) => [prev.id, unit.id])).toEqual([['Z1', 'Z1#dup']])
   })
 
+  // The reader no longer opens a unit on such a row (`segmentUnits`, 19.11.2026),
+  // so the class is fed the units it produced before.
   it('a table row „2.1 …" read as instruction 2 is verdoppelt, not printed twice (Salzburg OIB-VO, LGBl)', () => {
+    const row = blk('abs', '2.1 Brandschutz bei Betriebsbauten April 2019')
+    const printed = blk('novao', '2. Im § 2 lauten die Z 1 bis 4:')
+    const unit = (id: string, first: TextBlock): LawUnit => ({ article: null, articleNumber: null, id, heading: null, quotedHeadings: [], text: first.text, blocks: [first], stammnorm: null })
+    const units = [unit('Z2', row), unit('Z2#dup', printed)]
+    expect(dupCauses(units, new Map([[units[0]!, row], [units[1]!, printed]]))).toMatchObject({ wiederholt: 0, verdoppelt: 1 })
+  })
+
+  it('… and the reader keeps that row in the instruction above it', () => {
     const c = census([
       clause,
       blk('novao', '1. In § 1 wird das Wort „a“ durch das Wort „b“ ersetzt.'),
       blk('abs', '2.1 Brandschutz bei Betriebsbauten April 2019'),
       blk('novao', '2. Im § 2 lauten die Z 1 bis 4:'),
     ])
-    expect(c.dupIds).toMatchObject({ wiederholt: 0, verdoppelt: 1 })
+    expect(c.dupIds).toMatchObject({ wiederholt: 0, verdoppelt: 0 })
+    expect(c.lost).toEqual([])
   })
 })

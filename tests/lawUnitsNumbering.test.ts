@@ -125,3 +125,24 @@ describe('parseLawUnitsFromRis: two Artikel of the same title keep both instruct
     expect(units[0]!.text).toMatch(/§ 100 Abs\. 107/)
   })
 })
+
+// 78. Verordnung der Salzburger Landesregierung 2026 (OIB-Richtlinien),
+// shortened: a table re-enacted in instruction 1, its cells set as plain text.
+describe('segmentUnits: a table row „2.1" is not instruction 2', () => {
+  it('keeps the row in instruction 1, and the printed „2." opens Z2 once', () => {
+    const blocks = [
+      clause,
+      blk('novao', 'Im § 1 lautet die Tabelle:'),
+      blk('other', '2'),
+      blk('other', 'Brandschutz'),
+      blk('other', '2.1'),
+      blk('other', 'Brandschutz bei Betriebsbauten'),
+      blk('other', '2.2'),
+      blk('other', 'Brandschutz bei Garagen, überdachten Stellplätzen und Parkdecks'),
+      blk('novao', '2. Im § 2 lauten die Z 1 bis 4:'),
+    ]
+    const units = segmentUnits(blocks)
+    expect(units.map((u) => u.id)).toEqual(['Z1', 'Z2'])
+    expect(units[0]!.blocks.map((b) => b.text)).toContain('2.1')
+  })
+})
