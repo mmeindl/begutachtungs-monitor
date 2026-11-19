@@ -25,7 +25,7 @@
 import type { LawDiffUnit } from '#shared/types'
 import { articlePairs, diffAtSamePlace } from '../diff/lawDiff'
 import { parseLawUnitsFromRis, segmentUnits, type LawUnit } from '../lawtext/lawUnits'
-import { lawBlocksFromPdfPages } from './draftPdfLaw'
+import { lawBlocksFromPdfPages, SUB_INSTRUCTION } from './draftPdfLaw'
 
 /* Double quotes, and the single inner ones Salzburg nests („‚erneuerbare
    Energie‘"); not the apostrophe ’, which is part of a word. */
@@ -128,7 +128,9 @@ export function lgblUnits(xml: string): LawUnit[] {
     .replace(SIGNATURE_TABLE_RE, '')
     // A sub-instruction („2.2. Im Abs 2 lautet …", Salzburg) is part of its
     // instruction: as plain text it joins it, as the PDF side reads it.
-    .replace(/<absatz typ="novao[12]"([^>]*)>(\s*(?:<[^>]+>\s*)*\d+\.\s?\d+\.\s)/g, '<absatz typ="abs"$1>$2')
+    // Of any depth and form (19.11.2026, `SUB_INSTRUCTION`): „15.1.1.",
+    // „26a.1.", „18.1a.", „2.1 Abs", „19.1.Nach" opened a unit of their own.
+    .replace(new RegExp(String.raw`<absatz typ="novao[12]"([^>]*)>(\s*(?:<[^>]+>\s*)*${SUB_INSTRUCTION})`, 'g'), '<absatz typ="abs"$1>$2')
     // RIS writes „&" as an element (`Land<amp />Forst`). The shared reader
     // keeps it too since 22.10.2026 (`risXml.ts`); this pass is older and
     // harmless twice.

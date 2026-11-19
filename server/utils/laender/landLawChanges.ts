@@ -13,8 +13,8 @@
  * version is new.
  *
  * And a § is shown only where an instruction of the Landesgesetzblatt names
- * it (`lgblInstructedParagraphs`, every § an instruction names before its
- * quoted text). The rest is counted and named, never dropped silently:
+ * it (`lgblInstructedParagraphs`, every § an instruction or one of its
+ * sub-instructions names before its quoted text). The rest is counted and named, never dropped silently:
  * §§ RIS ties to the Landesgesetzblatt that no instruction names
  * (`uninstructed`), §§ an instruction names that found no pair
  * (`unpaired`). A law the Landesgesetzblatt enacts anew has no instructions
@@ -231,10 +231,29 @@ export function lgblInstructedParagraphs(units: readonly LawUnit[]): Map<string 
   for (const u of units) {
     if (!/^Z/.test(u.id)) continue
     const set = out.get(u.article) ?? new Set<string>()
-    for (const k of lgblNamedParagraphs(u.heading ?? u.text)) set.add(k)
+    for (const head of [u.heading ?? u.text, ...subInstructionHeads(u.text)]) for (const k of lgblNamedParagraphs(head)) set.add(k)
     out.set(u.article, set)
   }
   return out
+}
+
+/** A sub-instruction's number where it opens one, outside the quoted wording: „15.1.1. ", „6a.1 ", „1.1.a ", „19.1.Nach" — not a date („1.1.2026"). */
+const SUB_HEAD_RE = /(?:^|\s)\d{1,3}[a-z]?(?:\.\s?\d{1,2}[a-z]?)+\.?(?=\s|\p{L})/gu
+
+/**
+ * The sub-instructions an instruction holds, each up to its quoted wording
+ * (19.11.2026). Salzburg nests its instructions („15. Im § 18 werden
+ * folgende Änderungen vorgenommen: 15.1. … 15.1.1. Im § 18a …"), and the
+ * Landesgesetzblatt's reader joins the inner ones to their instruction
+ * (`lgblUnits`); a § named in one of them is instructed as much as one in
+ * the instruction's own head. Read only outside quotes, as the head is
+ * (`lgblNamedParagraphs`): a quoted § is new wording, not an address.
+ */
+export function subInstructionHeads(text: string): string[] {
+  // The quoted wording out, each quote a mark where it stood; a quote never closed ends the reading.
+  const bare = text.replace(/„[^“”]*[“”]|"[^"]*"/g, '\u0000').split(/[„"]/)[0]!
+  const starts = [...bare.matchAll(SUB_HEAD_RE)].map((m) => m.index!)
+  return starts.map((at, i) => bare.slice(at, starts[i + 1] ?? bare.length).split('\u0000')[0]!.trim()).filter(Boolean)
 }
 
 /**

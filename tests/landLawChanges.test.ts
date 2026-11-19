@@ -1,6 +1,6 @@
 /** What a Landesgesetz changed, § by § (`landLawChanges.ts`): every doubt is a § not compared. */
 import { describe, expect, it } from 'vitest'
-import { instructionLawFor, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
+import { instructionLawFor, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
 
 const v = (over: Partial<LandKonsVersion>): LandKonsVersion => ({ gesetzesnummer: '20001217', law: 'Salzburger Kinderbildungs- und -betreuungsgesetz 2019', key: '§5', from: null, to: null, organ: '', xmlUrl: 'x', stammnorm: '57/2019', ...over })
 
@@ -41,6 +41,12 @@ describe('instructions', () => {
     expect(lgblNamedParagraphs('Die §§ 48 bis 53 lauten:')).toEqual(['§48', '§53', '§48-53'])
     expect(lgblNamedParagraphs('Im § 3 Abs. 2 und im § 8 wird …')).toEqual(['§3', '§8'])
     expect(lgblNamedParagraphs('Nach § 5 wird folgender § 5a eingefügt: „§ 5a … § 99 …“')).toEqual(['§5', '§5a'])
+  })
+  it('names the §§ a sub-instruction joined to its instruction addresses, none of its quoted wording (Salzburg, 19.11.2026)', () => {
+    const z = (heading: string, text: string) => ({ article: null, articleNumber: null, id: 'Z15', heading, quotedHeadings: [], text, blocks: [], stammnorm: null })
+    const text = 'Im § 18 werden folgende Änderungen vorgenommen: 15.1. Im Abs 1 werden geändert: 15.1.1. In der Z 6 wird nach dem Wort „§ 9“ die Wortfolge „oder verwendet“ eingefügt. 15.2. Im § 12e tritt mit 1.1.2026 „§ 99“ in Kraft. 15.3 Im § 41 Abs 2 entfällt der letzte Satz.'
+    expect([...lgblInstructedParagraphs([z('Im § 18 werden folgende Änderungen vorgenommen', text)]).get(null)!].sort()).toEqual(['§12e', '§18', '§41'])
+    expect(subInstructionHeads('Im § 5 tritt mit 1.1.2026 in Kraft.')).toEqual([])
   })
   it('groups by the Artikel’s law, and finds it for a Kurztitel in the genitive', () => {
     const z = (article: string | null, heading: string) => ({ article, articleNumber: null, id: 'Z1', heading, quotedHeadings: [], text: '', blocks: [], stammnorm: null })

@@ -289,6 +289,23 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     expect(packageChanges(landDraftUnits(draft)!, kundmachung).added).toEqual(['Artikel II Änderung des Oö. Y-Gesetzes'])
   })
 
+  it('joins Salzburg\'s sub-instructions of any depth and form to their instruction, on the Landesgesetzblatt\'s side as on the PDF\'s (32075, 19.11.2026)', () => {
+    const lines = ['1. Im § 2 wird das Wort „alt“ durch das Wort „neu“ ersetzt.', '2. Im § 18 werden folgende Änderungen vorgenommen:', '2.1. Im Abs 1 werden geändert:',
+      '2.1.1. In der Z 6 wird nach dem Wort „bereitstellt“ die Wortfolge „oder verwendet“ eingefügt.', '2.1a. Im Abs 2 wird die Z 16a angefügt.', '2.2 Abs 3 entfällt.',
+      '3. Im § 77c werden folgende Änderungen vorgenommen:', '3.1.Nach Abs 1 wird eingefügt: „(1a) Text.“', '4. § 4 entfällt.']
+    const lgbl = `<?xml version="1.0" encoding="utf-8"?><risdok xmlns="http://www.bka.gv.at"><nutzdaten><abschnitt>
+      <absatz typ="promkleinlsatz">Der Salzburger Landtag hat beschlossen:</absatz>
+      <ueberschrift typ="art" halign="c">Artikel I<br />Änderung des Salzburger X-Gesetzes</ueberschrift>
+      <absatz typ="promkleinlsatz">Das Salzburger X-Gesetz, LGBl Nr 1/2020, wird geändert wie folgt:</absatz>
+      ${lines.map((l) => `<absatz typ="${/^\d+\.\s/.test(l) ? 'novao1' : 'novao2'}">${l}</absatz>`).join('')}</abschnitt></nutzdaten></risdok>`
+    const pdf = [page('Der Salzburger Landtag hat beschlossen:', 'Artikel I', 'Änderung des Salzburger X-Gesetzes', 'Das Salzburger X-Gesetz, LGBl Nr 1/2020, wird geändert wie folgt:', ...lines)]
+    const kundmachung = lgblUnits(lgbl)
+    expect(kundmachung.map((u) => u.id)).toEqual(['Z1', 'Z2', 'Z3', 'Z4'])
+    // The instruction's own line stays, also where it is short.
+    expect(kundmachung[2]!.text).toMatch(/^Im § 77c werden folgende Änderungen vorgenommen: 3\.1\.Nach Abs 1/)
+    expect(diffLandDraft(landDraftUnits(pdf)!, kundmachung).map((u) => `${u.id} ${u.change}`)).toEqual(['Z1 unchanged', 'Z2 unchanged', 'Z3 unchanged', 'Z4 unchanged'])
+  })
+
   it('splits a package at Salzburg\'s Artikel, typed `g1`, so a new law in Artikel I keeps its §§', () => {
     // LGBl. Nr. 95/2022: unsplit, the instructions of Artikel II made the
     // whole document a Novelle, and the 73 §§ of the new law read as two units.

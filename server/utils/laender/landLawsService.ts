@@ -223,7 +223,7 @@ export const landLawText = defineCachedFunction(
     }
     return groups
   },
-  { name: 'land-law-text', base: DERIVED_CACHE, getKey: storageKeyOf, maxAge: SETTLED_TTL_S, swr: false },
+  { name: 'land-law-text-2', base: DERIVED_CACHE, getKey: storageKeyOf, maxAge: SETTLED_TTL_S, swr: false },
 )
 
 /** Salzburg's Landtag, read off the law's own record (`salzburgLandtag`) — a day, and only when the report was read. */

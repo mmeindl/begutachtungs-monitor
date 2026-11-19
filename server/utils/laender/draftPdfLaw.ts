@@ -89,9 +89,28 @@ const ARTICLE_TITLE_RE = /^(?:Änderung|Inkrafttreten|Außerkrafttreten|Übergan
    (Salzburg) — and without the „wird" a Salzburg draft dropped (31136). */
 const AMENDING_RE = /(?:wird )?(?:(?:wie folgt|folgendermaßen) geändert|geändert wie folgt):?$/
 const NUMBERED_RE = /^(\d+)[a-z]?\.(?:\s|(?=\p{Lu}))/u
+/**
+ * A sub-instruction's number: a number, a dot, and a digit straight after —
+ * „15.1.1.", „26a.1.", „18.1a.", „1.1.a", „2.1 Abs", „19.1.Nach" — or the
+ * draft's „2. 2." (19.11.2026). Salzburg nests its instructions three levels
+ * deep, letters them and drops a dot or a space; RIS sets the inner ones as
+ * `novao2`. Only „2.2. " joined its instruction until then: every other
+ * form opened a unit of its own on the Landesgesetzblatt's side only —
+ * `segmentUnits` took „15." for the number and named the rest „Z15#dup" —
+ * while the PDF reader keeps the same lines inside instruction 15
+ * (`NUMBERED_RE` refuses a number a digit follows). Identical texts read
+ * as the instruction „geändert" and each sub-instruction „neu" (Salzburg
+ * 32075: Z15 and 13 „Z15#dup"), and where the instruction's own line was
+ * short, the table-of-contents rule of `segmentUnits` dropped it. Old
+ * against new over 309 cached Land XMLs: 39 move, every one Salzburg's, 227
+ * „#dup" units joined to their instruction; none of the 23 Oberösterreich
+ * XMLs moves, nor any PDF's blocks. Shared with the Landesgesetzblatt's
+ * reader (`lgblUnits`).
+ */
+export const SUB_INSTRUCTION = String.raw`\d+[a-z]?\.(?:\d|\s\d+[a-z]?\.)`
 /* A sub-instruction of a nested numbering („2.1.", and the draft's „2. 2."):
    part of instruction 2, as the Landesgesetzblatt reads it (Salzburg). */
-const SUB_NUMBERED_RE = /^\d+\.\s?\d+\.\s/
+const SUB_NUMBERED_RE = new RegExp(`^${SUB_INSTRUCTION}`)
 /* An instruction whose number lost its dot („2 Im § 34 …", Salzburg) — taken
    only as the next number of the sequence, saying what it does. */
 const UNDOTTED_RE = /^(\d+)\s+(?=(?:Im|Dem|Nach|Vor|Der|Die|Das|In|§)\s)/
