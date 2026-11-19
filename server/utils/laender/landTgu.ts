@@ -293,16 +293,21 @@ function opened(line: TguLine, law: string | null, prev: string): { old: TguPara
   // Gemeindesanitätsdienstgesetz 2006 (2025-16094).
   if (/^[„"“]/.test(line.raw) && /:$/.test(prev)) return null
   const unit = (number: string, extra: Partial<TguParagraph> = {}): TguParagraph => ({ law, number, old: [], neu: [], changed: false, ...extra })
-  const para = PARA_RE.exec(line.raw)
+  // A §, an article or an annex opens only where the line before does not
+  // run on into it: „… ergibt sich aus der" / „Anlage 1" is a sentence the
+  // column wrapped, „… von Kleinfeuerstätten" / „Anlage 2" the title of the
+  // annex above (2025-16103). The § too since 19.11.2026: „… Einhaltung der
+  // Umweltschutzvorschriften gemäß" / „§ 18" / „zu überprüfen." in the same
+  // document opened a § 18 that took the rest of § 25 — § 25 came out cut
+  // short in both columns and „unverändert", and the § 18 withheld as „im
+  // RIS nicht wortgleich". Over the 23 cached one-column documents of
+  // Oberösterreich that one line is the only § opener after a run-on line.
+  const ended = !RUNS_ON_RE.test(prev)
+  const para = ended ? PARA_RE.exec(line.raw) : null
   if (para) {
     const p = unit(para[1]!)
     return { old: p, neu: p }
   }
-  // An article or an annex opens only where the line before does not run
-  // on into it: „… ergibt sich aus der" / „Anlage 1" is a sentence the
-  // column wrapped, „… von Kleinfeuerstätten" / „Anlage 2" the title of the
-  // annex above (2025-16103).
-  const ended = !RUNS_ON_RE.test(prev)
   const article = ended ? ARTICLE_RE.exec(line.raw) : null
   if (article) {
     const p = unit(`Art. ${article[1]!}`)
@@ -649,6 +654,60 @@ function lcsShare(text: string, risText: string): number | null {
 
 /** At or above this share a § counts as the law in force (the corpus parts at 0.98). */
 export const STANDS_IN_RIS = 0.98
+
+/**
+ * The other direction of `shareInRis`: how much of RIS's § the printed text
+ * covers — the share of RIS's words, from the §'s first printed words to
+ * RIS's trailer, that stand in order in the printed text, 0 to 1. Null where
+ * RIS's text has no place the first words stand at.
+ */
+export function coverOfRis(text: string, risText: string): number | null {
+  const ARTICLE = /\bArt(?:ikel|\.)\s*\d+[a-z]*\.?/g
+  return lcsCover(text, risText) ?? lcsCover(text.replace(ARTICLE, ' '), risText.replace(ARTICLE, ' '))
+}
+
+function lcsCover(text: string, risText: string): number | null {
+  const a = comparableWords(text)
+  if (!a.length) return null
+  let b = comparableWords(risText)
+  const trailer = b.findIndex((w, i) => (w === 'im' && b[i + 1] === 'ris' && b[i + 2] === 'seit') || (w === 'zuletzt' && b[i + 1] === 'aktualisiert'))
+  if (trailer > 0) b = b.slice(0, trailer)
+  const head = a.slice(0, 4).join(' ')
+  const at = b.findIndex((_, i) => b.slice(i, i + 4).join(' ') === head)
+  if (at < 0) return null
+  b = b.slice(at)
+  let prevRow = new Uint16Array(b.length + 1)
+  let row = new Uint16Array(b.length + 1)
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = a[i - 1] === b[j - 1] ? prevRow[j - 1]! + 1 : Math.max(prevRow[j]!, row[j - 1]!)
+    }
+    ;[prevRow, row] = [row, prevRow]
+  }
+  return prevRow[b.length]! / b.length
+}
+
+/** Below this share of RIS's § (`coverOfRis`) a § printed whole and unchanged is cut short. */
+export const COVERS_RIS = 0.9
+
+/**
+ * A § the document prints the same in both columns, leaving nothing out,
+ * whose text covers only part of RIS's § (19.11.2026): cut short in both
+ * columns at the same place, by the reader or the document. `standsInRis`
+ * asks only how much of the printed text stands in RIS, so a cut § passed
+ * it whole and was shown „unverändert" — while the part cut off held the
+ * change: Salzburg 34574's § 3 („(1) Form und Inhalt … ergeben sich aus
+ * der", 10 of RIS's 108 words; the draft rewrites its Abs. 2 and 3) and
+ * Oberösterreich 2025-16103's § 25 (118 of 462; the draft changes five of
+ * its Absätze). A § shown as changed is not asked: a Textgegenüberstellung
+ * may print only the Absatz it changes, and the change it shows is true.
+ */
+export function cutShort(p: Pick<TguParagraph, 'old' | 'neu'>, risText: string, bare = false): boolean {
+  const old = joinLines(p.old)
+  if (old !== joinLines(p.neu) || elides(bare ? withMarkedOmissions(old) : old)) return false
+  const cover = coverOfRis(old, risText)
+  return cover !== null && cover < COVERS_RIS
+}
 
 /**
  * „(3) bis (7)", „(1) und (2)": an omission Salzburg prints without its „…"

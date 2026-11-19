@@ -35,6 +35,15 @@
  * last three are below the rule's floors or outside its reach by design;
  * they are run so that is a measured statement, not an assumption.
  *
+ * And one fault for the LEFT column's check (19.11.2026, „Beide gekürzt"):
+ * every § shown whose text in force leaves nothing out and stands in RIS is
+ * cut at the sentence nearest its middle in BOTH columns — the reader
+ * failure that showed Salzburg 34574's § 3 and Oberösterreich 2025-16103's
+ * § 25 „unverändert" — and the product's RIS rule is asked again:
+ * `standsInRis` alone (the rule until then) and with `cutShort`. The control
+ * asks `cutShort` of the uncut texts, as if each were printed unchanged:
+ * what the floor would cost on sound §§.
+ *
  * Runs with `-c vitest.config.ts`: `texts/read.ts` imports `#shared`.
  */
 import { createHash } from 'node:crypto'
@@ -47,6 +56,8 @@ import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/rea
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
 import { guardTguUnits } from '../../server/utils/laender/landTguGuard'
+import { lawInForce, paragraphText } from '../../server/utils/laender/landKons'
+import { comparableWords, cutShort, standsInRis } from '../../server/utils/laender/landTgu'
 import { draftUnits } from '../../server/utils/annex/annexDraft'
 import { designationKey, comparableTokens } from '../../server/utils/annex/annexText'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
@@ -359,11 +370,45 @@ for (const [n, site] of sites.entries()) {
   }), '')
 }
 
+// --- Fault: both columns cut (the left column's check) --------------------
+interface CutRecord { land: LandCode; draft: string; law: string | null; id: string; words: number; kept: number; standsAlone: boolean; refused: boolean; controlRefused: boolean }
+const cuts: CutRecord[] = []
+const ELIDES = /…|\.\.\./
+for (const answer of answers) {
+  if (!answer.available || !answer.date) continue
+  const laws = new Map<string, Map<string, string> | null>()
+  for (const u of answer.units) {
+    if (!u.fromText || ELIDES.test(u.fromText) || !/^§/.test(u.id) || !u.law) continue
+    const words = comparableWords(u.fromText).length
+    if (words < 12) continue
+    if (!laws.has(u.law)) laws.set(u.law, await lawInForce(answer.land, u.law, answer.date).catch(() => null))
+    const url = laws.get(u.law)?.get((u.fromId ?? u.id).replace(/^§/, ''))
+    const ris = url ? await paragraphText(url).catch(() => null) : null
+    const bare = answer.land === 'sbg'
+    // Only §§ whose whole text the rule passes: the fault is the cut, nothing else.
+    if (!ris || !standsInRis(u.fromText, ris, bare)) continue
+    const sentences = u.fromText.split(SENTENCE_SPLIT)
+    let cut = ''
+    for (const sentence of sentences) {
+      if (cut && comparableWords(`${cut} ${sentence}`).length > words / 2) break
+      cut = cut ? `${cut} ${sentence}` : sentence
+    }
+    if (comparableWords(cut).length >= words * 0.8) cut = u.fromText.split(/\s+/).slice(0, Math.ceil(u.fromText.split(/\s+/).length / 2)).join(' ')
+    const standsAlone = standsInRis(cut, ris, bare)
+    cuts.push({
+      land: answer.land, draft: answer.draft, law: u.law, id: u.id, words, kept: comparableWords(cut).length,
+      standsAlone, refused: !standsAlone || cutShort({ old: [cut], neu: [cut] }, ris, bare),
+      controlRefused: cutShort({ old: [u.fromText], neu: [u.fromText] }, ris, bare),
+    })
+  }
+}
+
 // --- Output --------------------------------------------------------------
 writeFileSync(join(outDir, 'units.jsonl'), units.map((u) => JSON.stringify(u)).join('\n') + '\n')
 writeFileSync(join(outDir, 'faults.jsonl'), faults.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'drafts.jsonl'), drafts.map((d) => JSON.stringify(d)).join('\n') + '\n')
 writeFileSync(join(outDir, 'tgu.jsonl'), answers.map((a) => JSON.stringify(a)).join('\n') + '\n')
+writeFileSync(join(outDir, 'cuts.jsonl'), cuts.map((c) => JSON.stringify(c)).join('\n') + '\n')
 
 const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)} %` : '–')
 const lines: string[] = []
@@ -418,6 +463,17 @@ for (const fault of ['R-neu', 'R-fremd', 'Zahl', 'Wort', 'Satz weg'] as Fault[])
     lines.push(`| ${fault} | ${land} | ${f.length} | ${f.filter((x) => x.caught).length} | ${pct(f.filter((x) => x.caught).length, f.length)} |`)
   }
 }
+lines.push('')
+lines.push('## Beide Spalten gekürzt (linke Spalte gegen RIS)')
+lines.push('')
+lines.push('| Land | §§ | standsInRis allein fängt | mit cutShort fängt | Kontrolle: ungekürzt abgelehnt |')
+lines.push('|---|---|---|---|---|')
+for (const land of [...TGU_LANDS, 'alle'] as const) {
+  const c = cuts.filter((x) => land === 'alle' || x.land === land)
+  if (!c.length) continue
+  lines.push(`| ${land} | ${c.length} | ${c.filter((x) => !x.standsAlone).length} (${pct(c.filter((x) => !x.standsAlone).length, c.length)}) | ${c.filter((x) => x.refused).length} (${pct(c.filter((x) => x.refused).length, c.length)}) | ${c.filter((x) => x.controlRefused).length} |`)
+}
+for (const c of cuts.filter((x) => !x.refused || x.controlRefused)) lines.push(`- ${c.controlRefused ? 'Kontrolle abgelehnt' : 'nicht gefangen'}: ${c.draft} ${c.law ?? ''} ${c.id} (${c.kept} von ${c.words} Wörtern)`)
 lines.push('')
 lines.push('## Abweichende §§ (die das Produkt zurückhalten würde)')
 lines.push('')

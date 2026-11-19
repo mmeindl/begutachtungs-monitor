@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
 import { parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annex/annexPdf'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, withMarkedOmissions, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renamedTo, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, cutShort, withMarkedOmissions, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renamedTo, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -171,6 +171,13 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
     ])
   })
 
+  it('opens no § where a sentence the column wrapped cites it on a line of its own (2025-16103, § 25, 19.11.2026)', () => {
+    const paras = tguParagraphs([law, line('§ 25'), line('Wiederkehrende Überprüfung'), line('(1) Feuerungsanlagen sind auf die Einhaltung der Umweltschutzvorschriften gemäß'), line('§ 18'),
+      line('zu überprüfen.'), { raw: '(1a) Gasanlagen sind alle zwölffünfzehn Jahre zu überprüfen.', old: '(1a) Gasanlagen sind alle zwölf Jahre zu überprüfen.', neu: '(1a) Gasanlagen sind alle fünfzehn Jahre zu überprüfen.', marked: true }])
+    expect(paras.map((p) => [p.number, p.changed])).toEqual([['25', true]])
+    expect(joinLines(paras[0]!.old)).toContain('gemäß § 18 zu überprüfen. (1a) Gasanlagen sind alle zwölf Jahre')
+  })
+
   it('opens no Anlage where a sentence the column wrapped goes on in it', () => {
     const paras = tguParagraphs([law, line('§ 5'), ins('(1) Die Form ergibt sich aus der'), ins('Anlage 1'), ins('zu diesem Gesetz.')])
     expect(paras.map((p) => [p.number, p.neu])).toEqual([['5', ['(1) Die Form ergibt sich aus der', 'Anlage 1', 'zu diesem Gesetz.']]])
@@ -281,6 +288,21 @@ describe('tguUnits and joinLines', () => {
 
   it('keeps the space before „und" after a hyphen', () => {
     expect(joinLines(['Kinder-', 'und Jugendhilfe'])).toBe('Kinder- und Jugendhilfe')
+  })
+})
+
+describe('cutShort — a § printed unchanged and cut short in both columns (19.11.2026)', () => {
+  const risText = '<nutzdaten>Umwelterheblichkeitsprüfung § 3. (1) Form und Inhalt der Umwelterheblichkeitsprüfung ergeben sich aus der Anlage 2. Die Beurteilung hat auf Grund der Unterlagen zu erfolgen. (2) Die Behörde hat die Stellungnahmen der Umweltstelle einzuholen und bei ihrer Entscheidung zu berücksichtigen. (3) Die Entscheidung ist kundzumachen.</nutzdaten>'
+  const cut = 'Umwelterheblichkeitsprüfung (1) Form und Inhalt der Umwelterheblichkeitsprüfung ergeben sich aus der'
+  const whole = 'Umwelterheblichkeitsprüfung (1) Form und Inhalt der Umwelterheblichkeitsprüfung ergeben sich aus der Anlage 2. Die Beurteilung hat auf Grund der Unterlagen zu erfolgen. (2) Die Behörde hat die Stellungnahmen der Umweltstelle einzuholen und bei ihrer Entscheidung zu berücksichtigen. (3) Die Entscheidung ist kundzumachen.'
+  it('is what the RIS check alone lets through: every printed word stands in RIS (Salzburg 34574, § 3)', () => {
+    expect(standsInRis(cut, risText)).toBe(true)
+    expect(cutShort({ old: [cut], neu: [cut] }, risText)).toBe(true)
+  })
+  it('is not a § printed whole, one printed as changed, or one that leaves something out', () => {
+    expect(cutShort({ old: [whole], neu: [whole] }, risText)).toBe(false)
+    expect(cutShort({ old: [cut], neu: [`${cut} Anlage 3.`] }, risText)).toBe(false)
+    expect(cutShort({ old: [`${cut} … (3) bis (4) …`], neu: [`${cut} … (3) bis (4) …`] }, risText)).toBe(false)
   })
 })
 

@@ -875,7 +875,9 @@ gets an entry of its own only where it carries a reason the rule does not.
 - **Precision before coverage.** A § of a Land's Textgegenüberstellung is
   shown only where RIS confirms its current wording on the document's date
   (≥ 0.98 word match) or the § is new; the rest is withheld and counted
-  (§12.45, §12.52). An omission is read as the Land prints it: Salzburg
+  (§12.45, §12.52). The match runs both ways for a § printed unchanged and
+  without omissions: it must also cover ≥ 0.9 of RIS's § (`cutShort`,
+  19.11.2026), or a § cut short in both columns reads „unverändert". An omission is read as the Land prints it: Salzburg
   marks an unchanged Absatz or Ziffer by its bare designation („(1) (2) …",
   „1. 2. …"), read as „…" for Salzburg only, and only where the next
   designation follows or a pair ends the § (14.11.2026).
@@ -893,7 +895,8 @@ gets an entry of its own only where it carries a reason the rule does not.
   („des I. Teiles") or counts („I. Dienstklasse"), and never a line opening
   „lit.".
 - **A bare „§ 8." after a line that runs on is the sentence's end, not a
-  §** (19.11.2026, `RUNS_ON_RE` in `landTgu.ts`, used by `draftPdfLaw.ts`):
+  §** (19.11.2026, `RUNS_ON_RE` in `landTgu.ts`, in the draft reader and the
+  Textgegenüberstellung reader alike):
   a citation the column wrapped („… gemäß" / „§ 8.") split the § it stands
   in. No test of the number's order: a contents list echoed before the law
   numbers below the § before it too.

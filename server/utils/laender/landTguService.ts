@@ -34,7 +34,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, paraId, renamedTo, renumberingsOf, replacementsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, cutShort, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, paraId, renamedTo, renumberingsOf, replacementsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes, pagesOfBytes, type PagesReader } from './texts/read'
 import { lawBlocksFromPdfPages } from './draftPdfLaw'
 import type { TextBlock } from '../lawtext/lawUnits'
@@ -572,6 +572,12 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
       unchecked = true
       return failed(null)()
     })
+    /** The law, where the § is printed whole; null and „nicht sicher gelesen" where it is printed unchanged and cut short (`cutShort`). */
+    const printedWhole = (law: string, text: string): string | null => {
+      if (!cutShort(p, text, bare)) return law
+      why[i] = 'unsure'
+      return null
+    }
     // A renumbered § is checked where it stands in force, under its old number (26.10.2026).
     const origin = p.from ?? p.number
     for (const law of p.law ? [p.law, ...laws.filter((l) => l !== p.law)] : laws) {
@@ -580,7 +586,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
       if (paras === null) unchecked ||= !p.law || law === p.law
       const risUrl = paras?.get(origin)
       const text = risUrl ? await risText(risUrl) : null
-      if (text !== null && standsInRis(old, text, bare)) return law
+      if (text !== null && standsInRis(old, text, bare)) return printedWhole(law, text)
     }
     // Not under any name the draft uses: by its own words (`paragraphByPhrase`).
     const phrase = searchPhrase(old, bare)
@@ -591,7 +597,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
         })
       : null
     const text = hit?.law ? await risText(hit.url) : null
-    if (hit?.law && text !== null && standsInRis(old, text, bare)) return hit.law
+    if (hit?.law && text !== null && standsInRis(old, text, bare)) return printedWhole(hit.law, text)
     if (unchecked) why[i] = 'unchecked'
     return null
   }
@@ -613,6 +619,11 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
         const text = risUrl ? await paragraphText(risUrl).catch(failed(null)) : null
         if (risUrl && text === null) why[i] = 'unchecked'
         if (text !== null && standsInRis(joinLines(p.old), text, bare)) {
+          // Printed unchanged and cut short: not shown (`cutShort`), as in the first pass.
+          if (cutShort(p, text, bare)) {
+            why[i] = 'unsure'
+            return null
+          }
           why[i] = undefined
           return law
         }

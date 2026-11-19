@@ -112,6 +112,15 @@ describe('compareTgu — every § not shown, with why (25.10.2026)', () => {
     expect(reasonsOf((await compareTgu('ktn', detail())).value)).toEqual({ '§6': 'twice' })
   })
 
+  it('names a § printed unchanged but cut short in both columns as unsure, never „unverändert" (Salzburg 34574 § 3, 19.11.2026)', async () => {
+    risKnows({ 5: TEXT_5, 6: 'Pflichten (1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen. (2) Wer sie verletzt, hat die Folgen zu tragen, die das Gesetz bestimmt.' })
+    const cut = ['Pflichten (1) Jede Person hat die Pflichten nach diesem Gesetz']
+    ktnTguParagraphs.mockReturnValue([para('5', { old: [TEXT_5], neu: ['Begriffe (1) Neu.'] }), para('6', { old: cut, neu: cut, changed: false })])
+    const r = (await compareTgu('ktn', detail())).value
+    expect(r.units.map((u) => [u.id, u.change])).toEqual([['§5', 'changed']])
+    expect(reasonsOf(r)).toEqual({ '§6': 'unsure' })
+  })
+
   it('hands on the reader\'s own reasons', async () => {
     ktnTguParagraphs.mockReturnValue([
       para('5', { old: [TEXT_5], neu: ['Begriffe (1) Neu.'] }),
