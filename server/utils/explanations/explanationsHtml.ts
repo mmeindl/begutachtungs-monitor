@@ -274,12 +274,20 @@ export function parseExplanationsHtml(
 
     const part = partKind(text)
     if (part) {
+      // „Zu Art. 1 (…)" printed as the last line before „Besonderer Teil"
+      // heads the part's first law (49/ME XXVIII, 19.11.2026): cleared with
+      // the part, the mark left the nine passages of its new law under no
+      // Artikel, and the comparison could not tell them from the KommAustria-
+      // Gesetz's §§ of the same numbers.
+      const opened = part === 'special' && current !== null && current.text.length === 0 && current.ziffern.length === 0 && current.paragraphs.length === 0 && current.section !== null
       inSpecial = part === 'special'
       inHeadedGeneral = part === 'general'
       current = null
-      mark = null
-      section = null
-      law = null
+      if (!opened) {
+        mark = null
+        section = null
+        law = null
+      }
       continue
     }
 

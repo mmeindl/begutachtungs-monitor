@@ -276,3 +276,20 @@ describe('the degree sign Word printed for a non-breaking space', () => {
     expect(parsed.special[0]!.text).toEqual(['Bei 20°C und 3 °C.'])
   })
 })
+
+describe('an Artikel heading printed right before „Besonderer Teil" (19.11.2026)', () => {
+  it('keeps its Artikel for the passages of the part (49/ME XXVIII)', () => {
+    const parsed = parseExplanationsHtml(doc('Allgemeiner Teil', 'Kompetenzgrundlage: Art. 10 B-VG.', 'Zu Art. 1 (Politische Werbung-Gesetz)', 'Besonderer Teil', 'Zu § 2:', 'Die Behörde.', 'Zu Art. 2 (Änderung des KommAustria-Gesetzes)', 'Zu § 2 Abs. 1:', 'Anpassung.'))
+    expect(parsed.special.map((p) => [p.heading, p.article])).toEqual([
+      ['Zu Art. 1 (Politische Werbung-Gesetz)', '1'],
+      ['Zu § 2:', '1'],
+      ['Zu Art. 2 (Änderung des KommAustria-Gesetzes)', '2'],
+      ['Zu § 2 Abs. 1:', '2'],
+    ])
+  })
+
+  it('clears it where the heading carries text of its own', () => {
+    const parsed = parseExplanationsHtml(doc('Zu Art. 1 (Politische Werbung-Gesetz)', 'Ein Satz des Allgemeinen Teils.', 'Besonderer Teil', 'Zu § 2:', 'Die Behörde.'))
+    expect(parsed.special.find((p) => p.heading === 'Zu § 2:')!.article).toBeNull()
+  })
+})
