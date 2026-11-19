@@ -954,6 +954,12 @@ describe('a designation typed as text', () => {
     ])
   })
 
+  it('opens nothing from a range in the § heading either (19.11.2026)', () => {
+    const head = '<ueberschrift typ="para">§§ 35. bis 37. Sonderformen</ueberschrift>'
+    const rows = parse(annex([open, pair(`${head}<absatz typ="abs">(1) Alt.</absatz>`, `${head}<absatz typ="abs">(1) Neu.</absatz>`)]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 21c.', '§ 21c.'])
+  })
+
   it('opens nothing from a range left out, nor where the two columns name different §§', () => {
     const rows = parse(annex([open, pair('§ 21. bis 25. …', '§ 21. bis 25. …'), pair('§ 7. Alt.', '§ 8. Neu.')]))
     expect(rows.map((r) => r.para)).toEqual(['§ 21c.', '§ 21c.', '§ 21c.'])

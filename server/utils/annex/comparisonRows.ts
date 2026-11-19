@@ -177,6 +177,19 @@ const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSym
 const TYPED_DESIGNATION_RE = new RegExp(String.raw`^\s*(§+\s*${PARAGRAPH_NUMBER}\.)(?=\s|$)`, 'i')
 
 /**
+ * The designation `text` opens with, where it opens a § at all: „§§ 1. bis
+ * 26. …", „§ 21. bis 25. …" is a range left out, which opens none of its §§.
+ * Every typed designation is read through here — in a cell, in the § heading
+ * RIS types `typ="para"`, at the head of a renumbered right column — so
+ * none of them opens the first § of a range (19.11.2026).
+ */
+function openingDesignation(text: string): string | null {
+  const m = TYPED_DESIGNATION_RE.exec(text)
+  if (!m || m[1]!.startsWith('§§') || /^\s*(?:bis|und)\b/.test(text.slice(m[0].length))) return null
+  return m[1]!
+}
+
+/**
  * The § a row opens by a designation typed at the head of its text, where it
  * carries no `<gldsym>`: the same one at the head of both columns, or at the
  * head of the one column a new or repealed § fills. Null otherwise — one
@@ -184,14 +197,8 @@ const TYPED_DESIGNATION_RE = new RegExp(String.raw`^\s*(§+\s*${PARAGRAPH_NUMBER
  * case, decided where the left `<gldsym>` is read.
  */
 function typedDesignation(current: string, proposed: string): string | null {
-  // „§§ 1. bis 26. …", „§ 21. bis 25. …": a range left out, which opens none of its §§.
-  const opening = (text: string): string | null => {
-    const m = TYPED_DESIGNATION_RE.exec(text)
-    if (!m || m[1]!.startsWith('§§') || /^\s*(?:bis|und)\b/.test(text.slice(m[0].length))) return null
-    return m[1]!
-  }
-  const left = opening(current)
-  const right = opening(proposed)
+  const left = openingDesignation(current)
+  const right = openingDesignation(proposed)
   if (left && right) return designationKey(left) === designationKey(right) ? left : null
   if (left && !proposed) return left
   if (right && !current) return right
@@ -600,7 +607,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     // the Privatschulgesetz's 71 rows, „bezeichnet diese Stellen nicht als
     // Paragraphen"). A right-only designation beside a left `<gldsym>` stays
     // the renumbering below.
-    const headingGld = lift ? (TYPED_DESIGNATION_RE.exec(ownHeading!)?.[1] ?? null) : null
+    const headingGld = lift ? openingDesignation(ownHeading!) : null
     const gld = gldMatch ? cellText(gldMatch[1] ?? gldMatch[2] ?? '') : (headingGld ?? typedDesignation(cellText(currentHtml), cellText(proposedHtml)))
     const liftedHeading = lift ? (headingGld ? ownHeading!.slice(ownHeading!.indexOf(headingGld) + headingGld.length).trim() : ownHeading) : null
     // The right column's own Gliederungssymbol, where the row is filed under
@@ -634,7 +641,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     // text — a designation at the head of the column that the left one does
     // not open with too: 144/ME XXVIII prints its new „§ 14." that way above
     // the standing § 15.
-    const typed = leftMatch && !rightMatch ? (TYPED_DESIGNATION_RE.exec(proposed)?.[1] ?? null) : null
+    const typed = leftMatch && !rightMatch ? openingDesignation(proposed) : null
     const rightDesignation = rightGld ?? (typed && !current.startsWith(typed) ? typed : null)
     const renumberedTo = rightDesignation && gld && designationKey(rightDesignation) !== designationKey(gld) ? rightDesignation : null
     if (lift && !current && !proposed) {
