@@ -2625,3 +2625,37 @@ describe('a number two units below the § carry for a while (26.10.2026)', () =>
     expect(unresolved.has('§ 4')).toBe(true)
   })
 })
+
+describe('an appended unit whose words the payload parser could not place (19.11.2026)', () => {
+  function law(): StandingLaw {
+    const p = makeNode('para', '5', '§ 5.', '', 'Daten')
+    const a = makeNode('abs', '1', '(1)', 'Zu erfassen sind:')
+    const z1 = makeNode('z', '1', '1.', 'Name, und zwar')
+    z1.children.push(makeNode('lit', 'a', 'a)', 'Familienname;'), makeNode('lit', 'b', 'b)', 'Vorname;'))
+    a.children.push(z1, makeNode('z', '2', '2.', 'Geburtsdatum.'))
+    p.children.push(a)
+    return { paragraphs: [p] }
+  }
+  const outcome = (line: string, payload: string[]) => run(law(), instr(line, payload)).results.map((r) => (r.applied ? 'applied' : r.reason))
+
+  // FSG § 16a (BGBl. I Nr. 18/2026): „o." is no Litera marker the payload
+  // parser knows, the words became a heading, and the lit went in empty.
+  it('is refused where its words would stand in no rendered slot', () => {
+    expect(outcome('Dem § 5 Abs. 1 Z 1 wird folgende lit. c angefügt:', ['c. Telefonnummer und E-Mailadresse;'])).toEqual(['Angefügte Einheit ohne eigene Bezeichnung'])
+    // A lone designation line: its Litera would read as part of the list.
+    expect(outcome('Dem § 5 Abs. 1 wird folgende Z 3 angefügt:', ['3.', 'a) erstens;', 'b) zweitens.'])).toEqual(['Angefügte Einheit ohne eigene Bezeichnung'])
+    expect(outcome('Dem § 5 Abs. 1 wird folgende Z 3 angefügt:', ['3. Wohnort.'])).toEqual(['applied'])
+  })
+
+  // StVO § 54 (BGBl. I Nr. 17/2026): the picture's file path went in as law text.
+  it('holds no picture: refused as a table is', () => {
+    const units = [{ article: null, articleNumber: null, id: 'Z1', heading: null, quotedHeadings: [], stammnorm: null, text: '', blocks: [
+      { kind: 'novao' as const, cls: '', text: '1. Dem § 54 Abs. 5 wird folgende lit. o angefügt:', gld: null },
+      { kind: 'other' as const, cls: 'absatz/abbobj', text: '/Dokumente/BgblAuth/BGBLA_2026_I_17/img1is.jpg', gld: null },
+      { kind: 'other' as const, cls: 'absatz/schlussteil', text: 'Eine solche Zusatztafel zeigt an, dass …', gld: null },
+    ] }]
+    const { instructions, refused } = instructionsFromUnits(units)
+    expect(instructions).toHaveLength(0)
+    expect(refused[0]!.reason).toBe('Bild im neuen Text — nicht als Gesetzestext abbildbar')
+  })
+})

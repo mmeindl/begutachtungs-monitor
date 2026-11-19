@@ -424,6 +424,7 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
   for (const [ui, unit] of units.entries()) {
     const groups: { line: string; payload: PayloadLine[]; open: boolean }[] = []
     const tables = new Set<number>()
+    const pictures = new Set<number>()
     for (const b of unit.blocks) {
       const last = groups[groups.length - 1]
       if (b.kind === 'novao' && last?.open && last.payload.length === 0) {
@@ -437,6 +438,7 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       else if (groups.length) {
         groups[groups.length - 1]!.payload.push(payloadLine(b))
         if (b.cls.startsWith('table:')) tables.add(groups.length - 1)
+        if (b.cls.endsWith('/abbobj')) pictures.add(groups.length - 1)
       }
     }
     let container: NovaoAddress | null = null
@@ -451,6 +453,14 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       // NEHG diverged that way (BGBl. I Nr. 60/2024, 2026-09-09). Refused.
       if (tables.has(gi)) {
         refused.push({ line: group.line, reason: 'Tabelle im neuen Text — nicht als Gesetzestext abbildbar', inherited: container, created: created() })
+        continue
+      }
+      // A picture likewise (19.11.2026): its file path went in as law text
+      // (StVO § 54, BGBl. I Nr. 17/2026: „/Dokumente/BgblAuth/…img1is.jpg
+      // Eine solche Zusatztafel …"), and no annex prints that path, so the
+      // § could never be confirmed — only withheld for a vaguer reason.
+      if (pictures.has(gi)) {
+        refused.push({ line: group.line, reason: 'Bild im neuen Text — nicht als Gesetzestext abbildbar', inherited: container, created: created() })
         continue
       }
       // The table of contents follows from the headings and is never applied;
@@ -2104,6 +2114,15 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // XXVIII, 25.10.2026). `kons/novao.ts` reads that shape as an insertion
       // beside the named unit now; whatever still reaches here is refused.
       if (LEVEL_DEPTH[host.level] >= LEVEL_DEPTH[level]) return `${level === 'abs' ? 'Absatz' : level === 'z' ? 'Ziffer' : 'Litera'} an eine gleichrangige Einheit angefügt — Stelle nicht eindeutig`
+      // A payload line the parser could not read as a unit carries its words
+      // as a heading (19.11.2026), and below the § no renderer and no check
+      // reads a heading: „c. Telefonnummer …" — „c." is no Litera marker it
+      // knows — went in as an empty lit (FSG § 16a, BGBl. I Nr. 18/2026), a
+      // lone „3." left its Litera to read as part of the list before it.
+      // `insertAfter` refuses a unit without its own designation; here only
+      // the shape whose words would vanish, since an unmarked closing line or
+      // dash item keeps its words where the draft prints them.
+      if (payload.some((p) => !p.id && p.heading)) return 'Angefügte Einheit ohne eigene Bezeichnung'
       const nodes = payload.map((p) => ({ ...p, level }))
       for (const n of nodes) if (n.id && childById(host, level, n.id)) return `${n.marker} existiert bereits`
       // The end of the enumeration, not the end of the node. Where the Absatz
