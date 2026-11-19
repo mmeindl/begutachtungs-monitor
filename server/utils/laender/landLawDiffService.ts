@@ -25,7 +25,7 @@
  * held for the day.
  */
 import { gapDe } from '#shared/utils/gaps'
-import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextStation } from '#shared/types'
+import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandTextStation } from '#shared/types'
 import { landDraftPath } from '#shared/utils/laender'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
@@ -34,7 +34,7 @@ import { summarizeDiff } from '../diff/lawDiff'
 import { diffLandDraft, packageChanges } from './landLawDiff'
 import { compareTgu } from './landTguService'
 import { draftsSharingKundmachung } from './sources'
-import { NOT_A_DRAFT } from './texts/read'
+import { NOT_A_DRAFT, type ReadText } from './texts/read'
 import { cachedPdfPages } from './texts/pdfPagesService'
 import { textSources } from './texts/stations'
 
@@ -80,19 +80,8 @@ export async function compareLandTexts(
   const b = sources[to]
   if (!a || !b) return whole(unavailable(from, to, gapDe('notPublished', 'Einen der beiden Texte hat das Land nicht veröffentlicht.')))
   const read = await Promise.all([a.read(), b.read()])
-  // The document read, where the draft's content chose another than its title (`draftByContent`).
-  const docs = { fromDocument: read[0].document ?? a.document, toDocument: read[1].document ?? b.document }
-  // What the Land filed as the draft and evidently is none is not read as it (`notADraft`).
-  if (read.some((r) => r.notDraft)) return whole(unavailable(from, to, NOT_A_DRAFT, docs))
-  const [x, y] = read.map((r) => r.units)
-  if (!x?.length || !y?.length) {
-    const missing = !x?.length ? docs.fromDocument.label : docs.toDocument.label
-    return whole(unavailable(from, to, gapDe('unreadable', `In „${missing}“ fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.`), docs))
-  }
-  const units = diffLandDraft(x, y)
-  const { added, dropped } = packageChanges(x, y)
-  const s = summarizeDiff(units)
-  if (!s.unchanged && !s.changed) return whole(unavailable(from, to, NOTHING_PAIRS, docs))
+  const compared = compareReadTexts(from, to, read, [a.document, b.document])
+  if (!compared.available) return whole(compared)
   const stage = detail.draft.stage
   // The other drafts in the same Kundmachung are a warning above the list:
   // where the Land's record could not be read, the answer goes out without
@@ -105,20 +94,43 @@ export async function compareLandTexts(
       })
     : []
   return {
-    value: {
-      from,
-      to,
-      available: true,
-      unavailableReason: null,
-      units,
-      stats: { total: s.total, unchanged: s.unchanged, changed: s.changed, editorial: s.editorial, inserted: s.inserted, removed: s.removed },
-      ...docs,
-      addedLaws: added,
-      droppedLaws: dropped,
-      sharedWith: shared.map((d) => ({ title: d.title, path: landDraftPath(d.land, d.id), deadline: d.deadline, startedAt: d.startedAt })),
-      withheld: [],
-    },
+    value: { ...compared, sharedWith: shared.map((d) => ({ title: d.title, path: landDraftPath(d.land, d.id), deadline: d.deadline, startedAt: d.startedAt })) },
     complete,
+  }
+}
+
+/**
+ * Two texts of a draft as read, compared — the step every station pair
+ * shares, apart from the reads and the drafts sharing a Kundmachung.
+ * Exported for the Länder station harness (`scripts/harness/landStations.ts`),
+ * so what it measures is this decision and not a copy of it.
+ */
+export function compareReadTexts(from: LandTextStation, to: LandTextStation, read: readonly [ReadText, ReadText], named: readonly [LandTextDocument, LandTextDocument]): LandLawDiffResponse {
+  // The document read, where the draft's content chose another than its title (`draftByContent`).
+  const docs = { fromDocument: read[0].document ?? named[0], toDocument: read[1].document ?? named[1] }
+  // What the Land filed as the draft and evidently is none is not read as it (`notADraft`).
+  if (read.some((r) => r.notDraft)) return unavailable(from, to, NOT_A_DRAFT, docs)
+  const [x, y] = read.map((r) => r.units)
+  if (!x?.length || !y?.length) {
+    const missing = !x?.length ? docs.fromDocument.label : docs.toDocument.label
+    return unavailable(from, to, gapDe('unreadable', `In „${missing}“ fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.`), docs)
+  }
+  const units = diffLandDraft(x, y)
+  const { added, dropped } = packageChanges(x, y)
+  const s = summarizeDiff(units)
+  if (!s.unchanged && !s.changed) return unavailable(from, to, NOTHING_PAIRS, docs)
+  return {
+    from,
+    to,
+    available: true,
+    unavailableReason: null,
+    units,
+    stats: { total: s.total, unchanged: s.unchanged, changed: s.changed, editorial: s.editorial, inserted: s.inserted, removed: s.removed },
+    ...docs,
+    addedLaws: added,
+    droppedLaws: dropped,
+    sharedWith: [],
+    withheld: [],
   }
 }
 

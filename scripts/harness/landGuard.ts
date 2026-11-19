@@ -4,7 +4,7 @@
  * draft — what the Bund's rule „nicht im Entwurf" (`annex/rightColumn.ts`)
  * would say of every § a Land's comparison shows (12.11.2026).
  *
- *   pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w] [--show ooe-2025-16106] [--cached-only]
+ *   pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show ooe-2025-16106] [--cached-only]
  *
  * THE PIPELINE IS THE PRODUCT'S: `compareTgu` reads the document and holds
  * its left column against RIS as the page does; `tguDraftBlocks` reads the
@@ -54,12 +54,15 @@ import { MIN_NEW_WORDS, draftBags, draftWordBag } from '../../server/utils/annex
 import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
 
 const LANDS: LandCode[] = ['ooe', 'sbg', 't', 'w']
+/* Kärnten's answers are dumped too (`tgu.jsonl`): the RIS check is the same
+   for every Land, the guard is not asked of Kärnten (`withoutUndrafted`). */
+const TGU_LANDS: LandCode[] = [...LANDS, 'ktn']
 const outDir = argPair('out')
 const onlyLand = argPair('land') as LandCode | undefined
 const show = argPair('show')
 const cachedOnly = argFlag('cached-only')
 if (!outDir) {
-  console.error('Usage: pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w] [--show <id>] [--cached-only]')
+  console.error('Usage: pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show <id>] [--cached-only]')
   process.exit(1)
 }
 mkdirSync(outDir, { recursive: true })
@@ -100,10 +103,10 @@ const pagesOf = (url: string) => {
 // --- The population ------------------------------------------------------
 const list = JSON.parse(readFileSync(`${EU}/server/${sha1('/api/laender?gp=XXVIII&status=all')}.json`, 'utf8')) as LaenderResponse
 const items = list.items
-  .filter((i) => LANDS.includes(i.land) && (!onlyLand || i.land === onlyLand) && (!show || i.id === show))
+  .filter((i) => TGU_LANDS.includes(i.land) && (!onlyLand || i.land === onlyLand) && (!show || i.id === show))
   .sort((a, b) => a.id.localeCompare(b.id))
 
-type Layout = 'zwei Spalten' | 'OÖ Spalten' | 'OÖ Striche' | 'Tirol' | 'Wien'
+type Layout = 'zwei Spalten' | 'OÖ Spalten' | 'OÖ Striche' | 'Tirol' | 'Wien' | 'Kärnten'
 interface UnitRecord {
   land: LandCode
   draft: string
@@ -150,6 +153,23 @@ interface DraftRecord {
 }
 const units: UnitRecord[] = []
 const drafts: DraftRecord[] = []
+/**
+ * Every answer of `compareTgu` whole — the §§ shown, unchanged ones too, and
+ * the §§ withheld with their reasons (`tgu.jsonl`), so that a change to the
+ * RIS check or the readers can be read old against new, § by §. The guard's
+ * tables above hold only the §§ shown as changed or new.
+ */
+interface TguAnswer {
+  land: LandCode
+  draft: string
+  available: boolean
+  reason: string | null
+  /** The date the left column was held against RIS at, as the answer names it (`toDocument`). */
+  date: string | null
+  units: { law: string | null; id: string; fromId: string | null; change: string; editorial: boolean; fromText: string | null; toText: string | null }[]
+  withheld: { law: string | null; id: string; fromId?: string; reason?: string }[]
+}
+const answers: TguAnswer[] = []
 /** The §§ the rule passes, with what is needed to inject into them. */
 interface Site { record: UnitRecord; unit: LawDiffUnit; blocks: TextBlock[]; all: LawDiffUnit[] }
 const sites: Site[] = []
@@ -199,9 +219,24 @@ for (const item of items) {
     continue
   }
   try {
-    const layout: Layout = item.land === 'sbg' ? 'zwei Spalten' : item.land === 't' ? 'Tirol' : item.land === 'w' ? 'Wien' : sideBySide(await tguPages((await bytesOf(doc.url)).slice())) ? 'OÖ Spalten' : 'OÖ Striche'
+    const layout: Layout = item.land === 'sbg' ? 'zwei Spalten' : item.land === 't' ? 'Tirol' : item.land === 'w' ? 'Wien' : item.land === 'ktn' ? 'Kärnten' : sideBySide(await tguPages((await bytesOf(doc.url)).slice())) ? 'OÖ Spalten' : 'OÖ Striche'
     rec.layout = layout
     const { value } = await compareTgu(item.land, detail, pagesOf, bytesOf)
+    const date = /Fassung vom (\d{2})\.(\d{2})\.(\d{4})/.exec(value.toDocument?.label ?? '')
+    answers.push({
+      land: item.land,
+      draft: item.id,
+      available: value.available,
+      reason: value.unavailableReason,
+      date: date ? `${date[3]}-${date[2]}-${date[1]}` : null,
+      units: value.units.map((u) => ({ law: u.article, id: u.id, fromId: u.fromId, change: u.change, editorial: !!u.editorial, fromText: u.fromText, toText: u.toText })),
+      withheld: value.withheld,
+    })
+    // Kärnten: the answer only — its right column is the Novelle's instructions, which the guard does not judge.
+    if (item.land === 'ktn') {
+      rec.state = value.available ? 'nur Antwort (Kärnten)' : `nicht verfügbar: ${value.unavailableReason?.slice(0, 80)}`
+      continue
+    }
     rec.productWithheld = value.withheld.filter((w) => w.reason === 'notInDraft').map((w) => `${w.law ?? '-'} ${w.fromId ? `${w.fromId} → ` : ''}${w.id}`)
     if (!value.available) {
       rec.state = `nicht verfügbar: ${value.unavailableReason?.slice(0, 80)}`
@@ -328,6 +363,7 @@ for (const [n, site] of sites.entries()) {
 writeFileSync(join(outDir, 'units.jsonl'), units.map((u) => JSON.stringify(u)).join('\n') + '\n')
 writeFileSync(join(outDir, 'faults.jsonl'), faults.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'drafts.jsonl'), drafts.map((d) => JSON.stringify(d)).join('\n') + '\n')
+writeFileSync(join(outDir, 'tgu.jsonl'), answers.map((a) => JSON.stringify(a)).join('\n') + '\n')
 
 const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)} %` : '–')
 const lines: string[] = []
