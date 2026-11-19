@@ -1412,6 +1412,9 @@ function operandQuotes(line: string): QuoteMark[] {
   return out
 }
 
+/** „die Klammern um das Wort", directly in front of the quotation it names. */
+const BRACKETS_AROUND_RE = /\b(?:die\s+)?Klammern?\s+um\s+(?:das|den|die)\s+(?:Wort|Ausdruck|Wortfolge|Zitat|Wendung)\s*$/i
+
 const CHILD_BY_WORD: readonly (readonly [RegExp, ChildLevel])[] = [
   [/\bAbs(atz|ätze)?\.?\s*\d|\bAbsätze\b|\bAbsatz\b/i, 'abs'],
   [/\bZ(?:iffern?)?\.?\s*\d/i, 'z'],
@@ -2562,7 +2565,20 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // one was a silently half-carried instruction.
       const objects = operandQuotes(line)
       if (objects.length === 0) return fail('Streichung ohne Text')
-      return { ops: places.flatMap((t) => objects.map((q) => ({ kind: 'deletePhrase' as const, target: t, text: q.text, eachUnit, wordBound: wordOperand(line, q.ord) }))), reason: null, line }
+      // „entfallen … die Klammern um das Wort ‚Angestelltengesetz'": what goes
+      // is the pair of brackets, and the word stays (20.11.2026). Read as an
+      // operand, the word itself was deleted and „das (), BGBl. Nr. 292/1921"
+      // reported as carried out (Energie-Control-Gesetz § 29, 32/ME XXVIII).
+      // Brackets named any other way are refused, not guessed.
+      const bracketsAround = (q: QuoteMark): boolean => BRACKETS_AROUND_RE.test(line.slice(0, q.at))
+      if (/\bKlammern?\b/i.test(maskQuotes(head)) && !objects.some(bracketsAround)) return fail('Klammern genannt, aber nicht „um das Wort …" — Stelle nicht abgebildet')
+      return {
+        ops: places.flatMap((t) => objects.map((q) => (bracketsAround(q)
+          ? { kind: 'replacePhrase' as const, target: t, from: `(${q.text.trim()})`, to: q.text.trim(), everywhere: false, eachUnit, wordBound: false }
+          : { kind: 'deletePhrase' as const, target: t, text: q.text, eachUnit, wordBound: wordOperand(line, q.ord) }))),
+        reason: null,
+        line,
+      }
     }
     if (/\blaute[nt]\b/i.test(head)) return fail('Wortfolge lautet — Teiltext-Ersetzung, nicht abgesichert')
     return fail('Wortfolge genannt, aber kein bekanntes Verb')

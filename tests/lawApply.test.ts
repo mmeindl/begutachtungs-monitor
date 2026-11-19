@@ -1653,6 +1653,21 @@ describe('„jeweils" über eine Liste: jede Fundstelle in jeder Einheit (20.11.
   })
 })
 
+describe('„die Klammern um das Wort" (20.11.2026)', () => {
+  // Energie-Control-Gesetz § 29 (32/ME XXVIII): the word was read as the
+  // operand and deleted, „das (), BGBl. Nr. 292/1921" counted as applied.
+  it('deletes the brackets and keeps the word', () => {
+    const l: StandingLaw = { paragraphs: [para('29', 'Personal', ['Anzuwenden sind das Bundesgesetz über den Dienstvertrag der Privatangestellten (Angestelltengesetz), BGBl. Nr. 292/1921, und andere Vorschriften.'])] }
+    const { law: out, results } = run(l, instr('In § 29 Abs. 1 entfallen die Wortfolge "Bundesgesetz über den Dienstvertrag der Privatangestellten" und die Klammern um das Wort "Angestelltengesetz".'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Anzuwenden sind das Angestelltengesetz, BGBl. Nr. 292/1921, und andere Vorschriften.')
+  })
+
+  it('refuses brackets named any other way', () => {
+    expect(parseInstruction('In § 29 Abs. 1 entfallen die Klammern und das Wort "Angestelltengesetz".').reason).toMatch(/Klammern genannt/)
+  })
+})
+
 describe('an Abschnitt is not the § of its number (02.10.2026)', () => {
   // The standing text holds no Abschnitt. Looked up by the number, every one
   // of these wrote into § 4 and reported success.
