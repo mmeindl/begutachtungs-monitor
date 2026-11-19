@@ -720,7 +720,22 @@ gets an entry of its own only where it carries a reason the rule does not.
   („die Zeilen betreffend …", „die Überschrift", „der dritte Absatz"), and
   the line is refused rather than carried out on the whole unit, which the
   consolidation would then report as repealed. Fail-closed: an unseen noun
-  is refused, never read (`partStruck` in `kons/novao.ts`).
+  is refused, never read (`partStruck` in `kons/novao.ts`). The same holds
+  for the subject in front of the verb where no „wird/werden" stands
+  (20.11.2026, `partBeforeVerb`): there every word must be the address's —
+  an opening article or preposition, designator and designation, „in der
+  Fassung … BGBl. …", a title in brackets that names no number, the
+  sentence or heading word the address read, a division's words only for a
+  division, or a division named with its §§ („Der 2. Abschnitt mit den §§ 5,
+  6 und 7"), whose §§ go as the line says. Census over the 2,447 whole-unit
+  deletions of the 1,973 cached legistic XML files: 44 were carried out on a
+  unit the line did not name whole — „Anhang III Teil B Tabelle 2 entfällt"
+  on Anhang III, „§ 33 Tarifpost 8 entfällt" on § 33, „Die Überschrift vor
+  § 25 entfällt" on § 25, „In Abschnitt D des Teiles 2 der Anlage zu § 2
+  entfallen die Z 4 bis 30" on Ziffern the Anlage numbers once per
+  Abschnitt. Refused, at a cost of six lines whose net effect was right
+  („Die Überschrift vor § 20 und § 20 entfallen", which also deleted § 20
+  twice).
 - **„Angefügt" is the unit's end; a sentence the clause before named is the
   place only behind the end mark that clause replaced** (19.11.2026). After
   that sentence's deletion the new one goes to the end; after a change

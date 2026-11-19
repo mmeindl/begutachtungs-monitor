@@ -1858,7 +1858,7 @@ function oneUnitEach(head: string, targets: readonly NovaoAddress[]): NovaoAddre
  */
 const DELETION_VERB_RE = /\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|\bgestrichen\b/i
 const DELETION_DESIGNATOR: Record<string, 'para' | 'abs' | 'z' | 'lit'> = {
-  '§': 'para', '§§': 'para', art: 'para', 'art.': 'para', artikel: 'para', anlage: 'para', anlagen: 'para', anhang: 'para', anhänge: 'para',
+  '§': 'para', '§§': 'para', art: 'para', 'art.': 'para', artikel: 'para', anlage: 'para', anlagen: 'para', anhang: 'para', anhangs: 'para', anhanges: 'para', anhänge: 'para',
   abs: 'abs', 'abs.': 'abs', absatz: 'abs', absätze: 'abs', z: 'z', ziffer: 'z', ziffern: 'z', lit: 'lit', 'lit.': 'lit', litera: 'lit',
 }
 /**
@@ -1902,6 +1902,70 @@ function partStruck(head: string, target: NovaoAddress): string | null {
       if (/^(?:nach|vor)$/i.test(words[i - 2] ?? '') || /^(?:nach|vor)$/i.test(words[i - 1] ?? '')) continue
       return w
     }
+  }
+  // Behind the verb first: what it governs names the struck part best.
+  return aux ? null : partBeforeVerb(before, target)
+}
+
+/**
+ * **The struck part named in FRONT of the verb** (20.11.2026). Without an
+ * auxiliary, everything before „entfällt" is the subject, and the subject is
+ * the address — or a part of it the address did not read: „Anhang III Teil B
+ * Tabelle 2 entfällt" deleted Anhang III, „§ 144 Abs. 2 Posten F. III.
+ * entfällt" the Absatz, „Z 14 der Anlage 2 zu Artikel I § 43, Teil 1 Passiva
+ * entfällt" § 43, „Das und am Ende von § 62 Abs. 2 Z 2 entfällt" (the word
+ * „und") the Ziffer, „Der 3. Abschnitt der Anlage (…) entfällt" the Anlage,
+ * „In der Inhaltsübersicht entfällt § 19: …" § 19. Fail-closed like the
+ * scan behind the verb, and stricter, because here every word is the
+ * address's: the opening article or preposition, a designator with its
+ * designation, „in der Fassung … BGBl. I Nr. …", a title in brackets that
+ * names no number („Anlage D/M (Lehrplan des …)"), the sentence or heading
+ * word the address read, and a division's words only where a division is
+ * the target. Any other capitalised word is a part. Census over every
+ * deletion line of the cached legistic XML: docs/decisions.md, „A unit
+ * deletion is carried out only where every noun its verb governs belongs to
+ * the address".
+ */
+const PRE_VERB_OPENER_RE = /^(?:In|Im|Die|Der|Das|Den|Dem|Des|Es|Bei|Zu|Zum|Nach|Vor|Am)$/
+const DIVISION_WITH_CONTENT_RE = /^\s*(?:Der|Die|Das)\s+(.*?)\s*(?:\((?=\s*§§)|\b(?:mit|inklusive|samt|einschließlich)\s+(?:den\s+|der\s+)?(?=§§))/
+const DIVISION_WORD_RE = /^(?:Abschnitt|Abschnitts|Abschnittes|Unterabschnitt|Unterabschnitts|Unterabschnittes|Hauptstück|Hauptstücks|Hauptstückes|Teil|Teils|Teiles|Titel|Titels)$/
+const ORDINAL_CAPITAL_RE = new RegExp(`^(?:${ORDINAL_WORD})[rnsm]?$`, 'iu')
+const HEADING_WORD_RE = /^(?:Überschrift|Überschriften|Paragraphenüberschrift|Paragrafenüberschrift)$/
+function partBeforeVerb(before: string, target: NovaoAddress): string | null {
+  const conj = /^\s*(?:Der|Die|Das)\s+(und|oder|sowie|bzw\.?)(?=\s)/.exec(before)
+  if (conj) return conj[1]!
+  // „Der 2. Abschnitt mit den §§ 5, 6 und 7 entfällt", „Das II. Hauptstück
+  // (§§ 53 bis 60) samt Überschrift entfällt": the division is named with
+  // its content, and the address reads the §§. Their deletion is what the
+  // line says of them; only the division's own heading stays standing.
+  const withContent = DIVISION_WITH_CONTENT_RE.exec(before)
+  const subject = withContent && withContent[1]!.trim().split(/\s+/).every((w) => DIVISION_WORD_RE.test(w) || ORDINAL_CAPITAL_RE.test(w) || /^(?:[IVXLC]+\.?|\d+\.|des|der)$/.test(w)) ? before.slice(withContent[0].length) : before
+  const text = subject
+    .replace(/^\s*\((?:Grundsatz|Verfassungs)bestimmung\)/, ' ')
+    .replace(/\bin\s+der\s+(?:\p{Ll}+\s+)?Fassung\b(?:\s+(?:des|der)\s+[^§]*?BGBl\.?\s*(?:I{1,3}\s*)?Nr\.?\s*\d+\/\d{4})?/giu, ' ')
+    .replace(/\(\s*neu\s*\)/g, ' ')
+    .replace(/\([^()\d]*\)/g, ' ')
+    .replace(/§/g, ' § ')
+  const words = text.split(/[\s,;]+/).map((w) => w.replace(/^[([„]+|[)\]„“:]+$/g, '').replace(/\.$/, '')).filter(Boolean)
+  const division = target.level === 'abschnitt' || target.level === 'titel'
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]!
+    if (/^(?:samt|mitsamt|einschließlich)$/i.test(w)) break
+    if (DELETION_DESIGNATOR[w.toLowerCase()] || DELETION_DESIGNATOR[`${w.toLowerCase()}.`]) {
+      if (/^(?:\d|[IVXLC]+$|[A-Z](?:[\d/.]|$)|[a-z]{1,2}$)/.test(words[i + 1] ?? '')) i++
+      continue
+    }
+    if (!/^\p{Lu}/u.test(w)) continue
+    if (i === 0 && PRE_VERB_OPENER_RE.test(w)) continue
+    // „Am Ende des § 6 Abs. 5 entfällt das Anführungszeichen": a place, and
+    // what goes stands behind the verb.
+    if (i === 1 && words[0] === 'Am' && /^(?:Ende|Anfang|Beginn)$/.test(w)) continue
+    // A designation in its own right: „Posten F. III." reaches here as „F", „III".
+    if (/^(?:[IVXLC]+|[A-Z])$/.test(w) && DELETION_DESIGNATOR[(words[i - 1] ?? '').toLowerCase()]) continue
+    if (/^(?:Satz|Sätze|Halbsatz|Halbsätze|Schlussteil|Schlusssatz|Einleitungsteil|Einleitungssatz|Einleitung)$/.test(w) && sentenceLevel(target)) continue
+    if (HEADING_WORD_RE.test(w) && target.heading) continue
+    if (division && (DIVISION_WORD_RE.test(w) || ORDINAL_CAPITAL_RE.test(w) || /^[IVXLC]+$/.test(w))) continue
+    return w
   }
   return null
 }

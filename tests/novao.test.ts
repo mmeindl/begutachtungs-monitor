@@ -1293,6 +1293,41 @@ describe('a deletion that names a part of the unit (19.11.2026)', () => {
     expect(refusal('In § 18 wird folgender Abs. 5 gestrichen:')).toMatch(/„Abs"/)
   })
 
+  // The subject in front of the verb is the address — or a part of it the
+  // address did not read (20.11.2026). Each line is from the corpus, and each
+  // was carried out as the deletion of the unit in brackets.
+  it('refuses a struck part named in front of the verb, with no auxiliary', () => {
+    const cases: [string, string][] = [
+      ['Anhang III Teil B Tabelle 2 entfällt.', 'Teil'], // Anhang III
+      ['§ 144 Abs. 2 Posten F. III. entfällt und der unmittelbar nachfolgende Posten IV. erhält die Bezeichnung "III." .', 'Posten'], // Abs. 2
+      ['Z 14 der Anlage 2 zu Artikel I § 43, Teil 1 Passiva entfällt.', 'Teil'], // § 43
+      ['Das und am Ende von § 62 Abs.2 Z 2 entfällt.', 'und'], // Z 2
+      ['Der 3. Abschnitt der Anlage (Masterstudien für das Lehramt Sekundarstufe [Allgemeinbildung] in nur einem Unterrichtsfach) entfällt.', 'Abschnitt'], // the Anlage
+      ['In der Inhaltsübersicht entfällt § 19: Sanierung und § 30: Geldbeträge .', 'Inhaltsübersicht'], // § 19
+      ['§ 33 Tarifpost 8 entfällt.', 'Tarifpost'], // § 33
+      ['Die Überschrift vor § 25 entfällt.', 'Überschrift'], // § 25
+      ['Die Überschrift des 1. Abschnitts sowie § 6 entfallen.', 'Abschnitts'], // only the heading of § 6
+      ['Der VII. Teil samt Überschrift sowie § 119 entfallen.', 'VII'], // only § 119
+      ['In Abschnitt D des Teiles 2 der Anlage zu § 2 entfallen die Z 4 bis 30.', 'Abschnitt'], // Z 4 to 30 of the Anlage, whichever Abschnitt
+    ]
+    for (const [line, word] of cases) expect(refusal(line), line).toBe(`Teilstreichung („${word}") — keine ganze Einheit`)
+  })
+
+  it('still reads a subject that is all address', () => {
+    expect(op('§ 4 Abs. 2 Z 2 zweiter Satz entfällt.')).toMatchObject({ kind: 'delete', target: { abs: '2', z: '2', satz: 'zweiter' } })
+    expect(op('Die Überschriften zu den §§ 20 bis 43 entfallen.')).toMatchObject({ kind: 'delete', target: { para: '§ 20', heading: true } })
+    expect(op('(Grundsatzbestimmung) § 73 Abs. 3 entfällt.')).toMatchObject({ kind: 'delete', target: { abs: '3' } })
+    expect(op('§ 18 Abs. 9 in der Fassung des Bundesgesetzes BGBl. I Nr. 98/2018 entfällt.')).toMatchObject({ kind: 'delete', target: { abs: '9' } })
+    expect(op('Anlage D/M (Lehrplan des Realgymnasiums für Berufstätige an der Theresianischen Militärakademie in Wr. Neustadt) entfällt.')).toMatchObject({ kind: 'delete' })
+    expect(op('Z 1 lit. d des Anhangs entfällt.')).toMatchObject({ kind: 'delete', target: { z: '1', lit: 'd' } })
+    expect(op('Der 4. Abschnitt entfällt.')).toMatchObject({ kind: 'delete', target: { level: 'abschnitt' } })
+    // A division named with its §§: the §§ go, as the line says.
+    expect(op('Das II. Hauptstück (§§ 53 bis 60) samt Überschrift entfällt.')).toMatchObject({ kind: 'delete', target: { para: '§ 53' } })
+    expect(op('Der 2. Abschnitt mit den §§ 5, 6 und 7 entfällt.')).toMatchObject({ kind: 'delete', target: { para: '§ 5' } })
+    // „Am Ende" is a place; the refusal names what stands behind the verb.
+    expect(refusal('Am Ende des § 6 Abs. 5 entfällt das Anführungszeichen.')).toMatch(/„Anführungszeichen"/)
+  })
+
   it('still reads the deletion of a unit, a sentence, a Schlussteil and a heading', () => {
     expect(op('§ 39 Abs. 3 entfällt.')).toMatchObject({ kind: 'delete', target: { abs: '3' } })
     expect(op('In § 5 entfällt Abs. 2.')).toMatchObject({ kind: 'delete', target: { abs: '2' } })
