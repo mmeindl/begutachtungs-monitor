@@ -916,7 +916,8 @@ gets an entry of its own only where it carries a reason the rule does not.
   both sides** (19.11.2026, `SUB_INSTRUCTION` in `draftPdfLaw.ts`, used by
   `lgblUnits`): „15.1.1.", „26a.1.", „18.1a.", „2.1 Abs", „19.1.Nach". The
   §§ such a sub-instruction names before its quoted wording are instructed
-  (`subInstructionHeads`).
+  (`subInstructionHeads`). An ordinal division after the number is an
+  address, not a sub-instruction: „2. 3.Teil Z 16 lautet:" is instruction 2.
 - **A § of a law the Landesgesetzblatt enacts anew is named in a sentence
   true of it** (19.11.2026, `enactedUnread` in `landLawChangesService.ts`):
   where RIS holds it in no single version whose text the monitor reads, it

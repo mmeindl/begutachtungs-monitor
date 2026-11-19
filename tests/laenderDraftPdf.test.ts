@@ -306,6 +306,16 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     expect(diffLandDraft(landDraftUnits(pdf)!, kundmachung).map((u) => `${u.id} ${u.change}`)).toEqual(['Z1 unchanged', 'Z2 unchanged', 'Z3 unchanged', 'Z4 unchanged'])
   })
 
+  it('keeps an instruction whose address opens with an ordinal division its own: „2. 3.Teil Z 16 lautet:" is no sub-instruction of 1 (review, 19.11.2026)', () => {
+    const lgbl = `<risdok><nutzdaten><abschnitt><absatz typ="promkleinlsatz">Das Salzburger X-Gesetz, LGBl Nr 1/2020, wird geändert wie folgt:</absatz>
+      <absatz typ="novao1">1. Im § 2 wird das Wort „alt“ durch das Wort „neu“ ersetzt.</absatz><absatz typ="novao1">2. 3.Teil Z 16 lautet:</absatz>
+      <absatz typ="abs">„16. die Behörde;“</absatz><absatz typ="novao1">3. 2. Abschnitt entfällt.</absatz><absatz typ="novao1">4. § 4 entfällt.</absatz></abschnitt></nutzdaten></risdok>`
+    expect(lgblUnits(lgbl).map((u) => u.id)).toEqual(['Z1', 'Z2', 'Z3', 'Z4'])
+    const pdf = [page('Der Salzburger Landtag hat beschlossen:', 'Artikel I', 'Änderung des Salzburger X-Gesetzes', 'Das Salzburger X-Gesetz, LGBl Nr 1/2020, wird geändert wie folgt:',
+      '1. Im § 2 wird das Wort „alt“ durch das Wort „neu“ ersetzt.', '2. 3.Teil Z 16 lautet:', '„16. die Behörde;“', '3. 2. Abschnitt entfällt.', '4. § 4 entfällt.')]
+    expect(landDraftUnits(pdf)!.map((u) => u.id)).toEqual(['Z1', 'Z2', 'Z3', 'Z4'])
+  })
+
   it('splits a package at Salzburg\'s Artikel, typed `g1`, so a new law in Artikel I keeps its §§', () => {
     // LGBl. Nr. 95/2022: unsplit, the instructions of Artikel II made the
     // whole document a Novelle, and the 73 §§ of the new law read as two units.

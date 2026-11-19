@@ -105,9 +105,11 @@ const NUMBERED_RE = /^(\d+)[a-z]?\.(?:\s|(?=\p{Lu}))/u
  * against new over 309 cached Land XMLs: 39 move, every one Salzburg's, 227
  * „#dup" units joined to their instruction; none of the 23 Oberösterreich
  * XMLs moves, nor any PDF's blocks. Shared with the Landesgesetzblatt's
- * reader (`lgblUnits`).
+ * reader (`lgblUnits`). Not an instruction whose division is an ordinal
+ * with no space after it, „2. 3.Teil Z 16 lautet:": that is instruction 2,
+ * and the 3. Teil its address (review, 19.11.2026).
  */
-export const SUB_INSTRUCTION = String.raw`\d+[a-z]?\.(?:\d|\s\d+[a-z]?\.)`
+export const SUB_INSTRUCTION = String.raw`\d+[a-z]?\.(?:\d|\s\d+[a-z]?\.(?!\s?(?:Teil|Abschnitt|Unterabschnitt|Hauptstück)))`
 /* A sub-instruction of a nested numbering („2.1.", and the draft's „2. 2."):
    part of instruction 2, as the Landesgesetzblatt reads it (Salzburg). */
 const SUB_NUMBERED_RE = new RegExp(`^${SUB_INSTRUCTION}`)
