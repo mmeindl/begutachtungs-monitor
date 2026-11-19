@@ -39,6 +39,34 @@ export interface UnitLike {
   text: string
 }
 
+/** A parsed unit with its heading — the instruction line of a Ziffer, a § heading. */
+export interface HeadedUnit extends UnitLike {
+  heading: string | null
+}
+
+/**
+ * Every unit the later text has a part in carries the later text's heading.
+ *
+ * `diffAtSamePlace` pairs a reworded instruction by giving the later unit
+ * the earlier one's instruction line; the result must not keep it, or the
+ * Ausschuss's unit is titled with the Vorlage's „Abs. 1n" where its own line
+ * says „Abs. 1p" (1/ME XXVIII, Tilgungsgesetz 1972 Z 2).
+ */
+export function headingBreaches(to: readonly HeadedUnit[], diff: PackageLike): Breach[] {
+  const own = new Map<string, (string | null)[]>()
+  for (const u of to) {
+    const key = unitKey(u.article, u.id, u.text)
+    own.set(key, [...(own.get(key) ?? []), u.heading])
+  }
+  const out: Breach[] = []
+  for (const u of diff.units) {
+    if (u.change === 'removed') continue
+    const headings = own.get(unitKey(u.article, u.id, u.toText))
+    if (headings && !headings.includes(u.heading)) out.push({ kind: 'überschrift', unit: label(u), detail: `trägt „${(u.heading ?? '∅').slice(0, 60)}", der eigene Text „${(headings[0] ?? '∅').slice(0, 60)}"` })
+  }
+  return out
+}
+
 /** The fields of `diffLawPackage`'s result these checks read. */
 export interface PackageLike {
   units: readonly LawDiffUnit[]
@@ -46,7 +74,7 @@ export interface PackageLike {
   lawsOnlyInTo: readonly LawPackageEntry[]
 }
 
-export type BreachKind = 'rekonstruktion' | 'vollständigkeit' | 'symmetrie' | 'ohne-änderung'
+export type BreachKind = 'rekonstruktion' | 'vollständigkeit' | 'symmetrie' | 'ohne-änderung' | 'überschrift'
 
 export interface Breach {
   kind: BreachKind

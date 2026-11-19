@@ -847,7 +847,21 @@ export function diffAtSamePlace(from: readonly LawUnit[], to: readonly LawUnit[]
     renamed[at]!.heading = a.heading
     paired++
   }
-  return paired ? diffLawUnits(from, renamed, words) : first
+  if (!paired) return first
+  // The borrowed line paired them and nothing more: each unit leaves under
+  // its own text's heading (19.11.2026). Kept, the Ausschuss's „Dem § 9
+  // wird folgender Abs. 1p angefügt" stood under the Vorlage's „Abs. 1n"
+  // (1/ME XXVIII, Tilgungsgesetz 1972 Z 2) — 150 units over the station
+  // pairs of GP XXVIII, shown wherever no § name resolves (`extraHeading`).
+  const textKey = (article: string | null, id: string, text: string | null) => `${article ?? ''}\u0001${id}\u0001${text ?? ''}`
+  const ownHeading = new Map<string, string | null>()
+  to.forEach((t, k) => {
+    if (renamed[k]!.heading !== t.heading) ownHeading.set(textKey(t.article, t.id, t.text), t.heading)
+  })
+  return diffLawUnits(from, renamed, words).map((u) => {
+    const own = textKey(u.article, u.id, u.toText)
+    return u.change !== 'removed' && ownHeading.has(own) ? { ...u, heading: ownHeading.get(own)! } : u
+  })
 }
 
 /**

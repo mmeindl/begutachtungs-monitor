@@ -13,8 +13,9 @@
  * service's options (`scopeToDraft`, `keepAddedLaws`, `keepDroppedLaws`):
  *
  *  1. **Invariants**, which must hold without exception: reconstruction,
- *     completeness, a visible change in every „geändert" unit. A breach
- *     fails the run (exit 1).
+ *     completeness, a visible change in every „geändert" unit, and every
+ *     unit under the heading of its own later text. A breach fails the run
+ *     (exit 1).
  *  2. **Symmetry**: the same pairs, compared the other way round. Listed;
  *     the alignment is greedy, so a tie may break differently, and every
  *     line is one to read, not yet a defect.
@@ -57,7 +58,7 @@ import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/
 import { diffLawPackage, isCommencementArticle, scopeToDraft } from '../../server/utils/diff/lawDiff'
 import { compareWords } from '../../server/utils/diff/wordDiff'
 import { findLawStations } from '../../server/utils/diff/stationDocuments'
-import { completeness, reconstructionBreaches, residuesOf, symmetryBreaches, type Breach, type Residue } from '../lib/stationChecks'
+import { completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches, type Breach, type Residue } from '../lib/stationChecks'
 import { fetchRisBegutCorpus } from '../lib/corpus'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
@@ -228,7 +229,7 @@ for (const inr of numbers) {
       record.pairs++
       const whole = completeness(f, t, diff, isCommencementArticle)
       record.commencementLeftOut += whole.commencementLeftOut.reduce((n, c) => n + c.units, 0)
-      for (const b of [...reconstructionBreaches(diff.units), ...whole.breaches]) record.breaches.push({ ...b, pair })
+      for (const b of [...reconstructionBreaches(diff.units), ...whole.breaches, ...headingBreaches(t, diff)]) record.breaches.push({ ...b, pair })
       const back = diffLawPackage(t, f, { keepAddedLaws: options.keepDroppedLaws, keepDroppedLaws: options.keepAddedLaws, beyondCeiling: true })
       for (const b of symmetryBreaches(diff, back)) record.symmetry.push({ ...b, pair })
       for (const u of diff.units) {

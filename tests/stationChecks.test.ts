@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseLawUnits } from '../server/utils/lawtext/lawUnits'
 import { diffLawPackage, isCommencementArticle } from '../server/utils/diff/lawDiff'
-import { completeness, reconstructionBreaches, residuesOf, symmetryBreaches } from '../scripts/lib/stationChecks'
+import { completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches } from '../scripts/lib/stationChecks'
 
 /** One instruction in Parliament's Word HTML. */
 const html = (instruction: string, payload: string): string =>
@@ -36,5 +36,11 @@ describe('the checks the station harness runs (`scripts/lib/stationChecks.ts`)',
     const diff = diffLawPackage(from, to)
     expect(completeness(from, to, { ...diff, units: [] }, isCommencementArticle).breaches.length).toBeGreaterThan(0)
     expect(completeness(from, to, { ...diff, units: [...diff.units, ...diff.units] }, isCommencementArticle).breaches.length).toBeGreaterThan(0)
+  })
+
+  it('catches a unit under a heading its own text does not carry', () => {
+    const diff = diffLawPackage(from, to)
+    expect(headingBreaches(to, diff)).toEqual([])
+    expect(headingBreaches(to, { ...diff, units: [{ ...diff.units[0]!, heading: 'Ein fremder Satz' }] }).map((b) => b.kind)).toEqual(['überschrift'])
   })
 })

@@ -957,6 +957,18 @@ describe('diffAtSamePlace — an instruction reworded at the same place', () => 
     expect(units.map((u) => u.change)).toEqual(['changed'])
   })
 
+  it('emits the later unit under its own instruction line, not the one it borrowed to pair (19.11.2026)', () => {
+    // 1/ME XXVIII rv → Ausschuss, Tilgungsgesetz 1972 Z 2: the Ausschuss's unit
+    // stood under the Vorlage's „Abs. 1n" where its own line says „Abs. 1p".
+    // The shape only this pass pairs: the same place, the intervention extended.
+    const later = 'In § 146 Abs. 1 wird die Zeichenfolge "BGBl. I Nr. 227/2021" durch die Zeichenfolge "BGBl. Nr. 703/1994" ersetzt und es entfällt der vorletzte Satz.'
+    const units = diffAtSamePlace(
+      [z(1, 'In § 146 Abs. 1 entfällt der vorletzte Satz.', 'In § 146 Abs. 1 entfällt der vorletzte Satz.')],
+      [z(1, later, later)],
+    )
+    expect(units.map((u) => [u.change, u.heading])).toEqual([['changed', later]])
+  })
+
   it('keeps § 6.01 and § 6.01a apart — the number read whole (26.10.2026)', () => {
     // Read as „§ 6" both, the extended intervention below paired across two §§.
     const units = diffAtSamePlace(
