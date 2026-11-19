@@ -151,6 +151,15 @@ describe('oracleVerdict', () => {
     expect(r.note).toMatch(/erfunden/)
   })
 
+  it('reads „xxx/202#" as the placeholder „xxx/2025" (20.11.2026)', () => {
+    const before = 'Dieses Bundesgesetz tritt mit 1. Jänner 2025 in Kraft.'
+    const got = `${before} § 6 in der Fassung BGBl. I Nr. xxx/2025 tritt mit Ablauf des Tages der Kundmachung in Kraft.`
+    const rows = [pair('§ 18. (1) Dieses Bundesgesetz tritt mit 1. Jänner 2025 in Kraft.', `§ 18. (1) Dieses Bundesgesetz tritt mit 1. Jänner 2025 in Kraft. (2) § 6 in der Fassung BGBl. I Nr. xxx/202# tritt mit Ablauf des Tages der Kundmachung in Kraft.`, '§ 18.')]
+    expect(oracleVerdict('18', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // A real number is not a placeholder.
+    expect(oracleVerdict('18', before, got.replace('xxx/2025', '12/2025'), rows).verdict).toBe('widersprochen')
+  })
+
   it('contradicts a result that lacks the change the annex shows', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })

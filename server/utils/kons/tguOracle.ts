@@ -540,9 +540,11 @@ const RIS_NOTE_RE = /\(Anm\.?:[^()]*\)/g
  * spelt three ways (06.10.2026). Only where an x or y stands in it, and as a
  * token of its own: the word diff hands check 3 „xxx/2026" without its „Nr.",
  * and a placeholder normalised on one side only contradicted four §§ the
- * first version had confirmed.
+ * first version had confirmed. A „#" is the same placeholder digit
+ * (20.11.2026): 4/ME XXVIII prints „xxx/202#" in its annex where the draft
+ * writes „xxx/2025", and the § stood contradicted for it.
  */
-const PLACEHOLDER_RE = /(?<![\p{L}\d])(?=[\dxXyY]*\/?[\dxXyY]*[xXyY])[\dxXyY]+\s*\/\s*[\dxXyY]+(?![\p{L}\d])/gu
+const PLACEHOLDER_RE = /(?<![\p{L}\d#])(?=[\dxXyY#]*\/?[\dxXyY#]*[xXyY#])[\dxXyY#]+\s*\/\s*[\dxXyY#]+(?![\p{L}\d#])/gu
 /** „Aufgehoben" where a repealed Absatz stood — the annex prints it, RIS's text does not. */
 const REPEALED_RE = /(?<!\p{L})(?:Aufgehoben|\(aufgehoben\))(?!\p{L})/gu
 
