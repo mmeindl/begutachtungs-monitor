@@ -620,7 +620,7 @@ const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+|(?<!\p{L})\p{Lu})\./gu
  * „(Waldfondsgesetz)". A capital, a digit or a bracket opens all of them; the
  * previous §'s tail opens in lower case, and that half of the guard stands.
  */
-function withoutHeadingStack(piece: string, text: string, from: number): { piece: string; found: number } | null {
+function withoutHeadingStack(piece: string, text: string, from: number, stackOk: StackOk | null = null, raw = ''): { piece: string; found: number } | null {
   if (!HEADING_START_RE.test(piece)) return null
   // EVERY cut, not the first: the PDF path prints a group whose name is the
   // §'s own heading twice — „1. Abschnitt Status des Asylberechtigten Status
@@ -640,7 +640,7 @@ function withoutHeadingStack(piece: string, text: string, from: number): { piece
     // „§ 209. (1) bis (5) …" — so a remainder shorter than the probe has to
     // open the standing text whole.
     if (!text.startsWith(rest.slice(0, HEAD_PROBE))) continue
-    if (!isStack(piece.slice(0, cut))) continue
+    if (!isStack(piece.slice(0, cut)) || (stackOk && !stackOk(piece.slice(0, cut), raw))) continue
     // Where the standing text begins, and nowhere else (19.11.2026). Found
     // anywhere, a remainder whose first words merely recur further down
     // passed: „Zivilflugplatz-Bewilligung" opens LFG § 68 and stands again in
@@ -651,6 +651,59 @@ function withoutHeadingStack(piece: string, text: string, from: number): { piece
     if (text.startsWith(rest, from)) return { piece: rest, found: from }
   }
   return null
+}
+
+/**
+ * Whether a prefix check 2 would drop as a heading stack may be dropped —
+ * given in comparison form (`dropped`) and with the raw stretch it opens
+ * (`raw`), where a group's numbering still stands.
+ */
+type StackOk = (dropped: string, raw: string) => boolean
+
+/**
+ * What check 2 may drop in front of a row's proposed column as a heading
+ * stack (19.11.2026): anything, where the geltende column prints something
+ * in front of its § symbol too — the annex prints a stack over this § —, and
+ * otherwise only what is shaped like a group heading: a unit („Abschnitt"),
+ * a numbering („4. Kleinhandel …", „8a. …", „III. …"), capitals („MASSNAHMEN
+ * ZUR …"), or a title's tail in brackets („… (EKB-InvestitionsV)").
+ *
+ * A plain prefix where the geltende column prints none is the § heading the
+ * draft adds, and the result has to carry it. Dropped as a stack it went
+ * unchecked: BBG 2027-2028 § 61 (GSpG) was confirmed without the heading
+ * „Vollziehung" the draft prepends and the engine had refused, BAO § 48h
+ * without the one it inserts (refused too), AußWG § 70a — a new § inserted
+ * „samt Überschriften" — without its heading at all.
+ */
+function stackOkFor(current: string): StackOk {
+  const cell = normalizeText(current)
+  const symbol = cell ? PARAGRAPH_SYMBOL_RE.exec(cell) : null
+  if (symbol !== null && /\p{L}/u.test(cell.slice(0, symbol.index))) return () => true
+  return (dropped, raw) => GROUP_UNIT_RE.test(dropped) || /\)$/.test(dropped) || /^\s*(?:\d+[a-z]*|[IVXLCDM]+|\p{Lu})\.(?:\s|$)/u.test(raw) || /^\s*\p{Lu}{2,}\s+\p{Lu}{2,}/u.test(raw)
+}
+
+/**
+ * Whether a cell's first stretch is a group heading whose tail is the
+ * standing §'s own heading — „Abschnitt IV Gemeinsame Bestimmungen …
+ * Auswirkung künftiger Änderungen … § 37. (1) bis (12) …", the § symbol cut
+ * off with the chain it announces (19.11.2026). Where the geltende column
+ * prints one, the proposed column's must carry the § heading the result
+ * opens with, and is not passed over as a group heading alone
+ * (`isGroupHeadingOnly`): it was, and a § heading the draft changes and the
+ * engine left alone was confirmed — 57 of 1.088 heading faults on the PDF
+ * path went through so.
+ */
+function groupStretchCarriesHeading(cell: string, beforeKey: string): boolean {
+  if (!cell || beforeKey === '') return false
+  const first = printedStretches(markedOmissions(cell)).find((st) => /[\p{L}\d]/u.test(key(st)))
+  return first !== undefined && isGroupHeadingOnly(first) && withoutHeadingStack(key(first), beforeKey, 0) !== null
+}
+
+/** How the first stretch of the row that opens the § is held (`placedStretches`). */
+interface HeadingPlacement {
+  /** It is a group heading with the § heading in its tail (`groupStretchCarriesHeading`) */
+  required: boolean
+  stackOk: StackOk | null
 }
 
 /** The fewest characters a remainder must keep to count as the §'s own heading. */
@@ -787,7 +840,7 @@ function markedOmissions(cell: string): string {
  */
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function unaccountedStretch(text: string, cell: string, anchor: ((at: number, stretch: string) => boolean) | null = null): string | null {
-  return placedStretches(text, cell, 0, anchor).missing
+  return placedStretches(text, cell, 0, anchor, null).missing
 }
 
 /**
@@ -795,7 +848,7 @@ export function unaccountedStretch(text: string, cell: string, anchor: ((at: num
  * ended — so check 2 can hold the rows of a § in the order the annex prints
  * them (`oracleVerdict`).
  */
-function placedStretches(text: string, cell: string, from: number, anchor: ((at: number, stretch: string) => boolean) | null): { missing: string | null; end: number } {
+function placedStretches(text: string, cell: string, from: number, anchor: ((at: number, stretch: string) => boolean) | null, heading: HeadingPlacement | null): { missing: string | null; end: number } {
   let at = from
   let first = true
   let anchored = anchor
@@ -823,6 +876,14 @@ function placedStretches(text: string, cell: string, from: number, anchor: ((at:
       found = p
     }
     anchored = null
+    // A group heading first in the cell may carry the §'s own heading in its
+    // tail: read it as the stack it is before passing it over, and where the
+    // § heading has to be there, never pass it over (19.11.2026).
+    if (found < 0 && first && isGroupHeadingOnly(stretch)) {
+      const rescued = withoutHeadingStack(piece, text, at, heading?.stackOk ?? null, stretch)
+      if (rescued) ({ piece, found } = rescued)
+      else if (heading?.required) return { missing: stretch, end: at }
+    }
     // Nor does a stretch that is nothing but a group heading — wherever it
     // stands, since the next group's heading comes at the foot of a §.
     if (found < 0 && isGroupHeadingOnly(stretch)) continue
@@ -847,7 +908,7 @@ function placedStretches(text: string, cell: string, from: number, anchor: ((at:
     // Only the first stretch of a cell can carry the heading stack: it is
     // what stands above the § itself.
     if (found < 0 && first) {
-      const rescued = withoutHeadingStack(piece, text, at)
+      const rescued = withoutHeadingStack(piece, text, at, heading?.stackOk ?? null, stretch)
       if (rescued) ({ piece, found } = rescued)
     }
     if (found < 0) return { missing: stretch, end: at }
@@ -1672,13 +1733,14 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
     // row — contradict it, and the page would then tell the reader the annex
     // disagrees with us where in truth it simply left text out.
     const anchor = opensWithHeading(row) ? headingAnchor(row.current, beforeKey, gotKey) : null
-    const placed = placedStretches(gotKey, row.proposed, rowsEnd, anchor)
+    const heading: HeadingPlacement | null = row === opener ? { required: groupStretchCarriesHeading(row.current, beforeKey), stackOk: stackOkFor(row.current) } : null
+    const placed = placedStretches(gotKey, row.proposed, rowsEnd, anchor, heading)
     if (placed.missing !== null) {
       // In the result, but before the row above: the annex prints the rows of
       // a § in its order, and on the table path each Ziffer is a row of its
       // own, so two of them swapped read like the right order wherever every
       // row was looked up from the start (19.11.2026).
-      const elsewhere = rowsEnd > 0 && placedStretches(gotKey, row.proposed, 0, anchor).missing === null
+      const elsewhere = rowsEnd > 0 && placedStretches(gotKey, row.proposed, 0, anchor, heading && { ...heading, required: false }).missing === null
       return { para: id, verdict: 'widersprochen', rows: rows.length, note: elsewhere ? `${ROW_ORDER_NOTE}: "${placed.missing.slice(0, 60)}"` : `Vorgeschlagene Fassung nicht im Ergebnis: "${placed.missing.slice(0, 60)}"` }
     }
     rowsEnd = placed.end

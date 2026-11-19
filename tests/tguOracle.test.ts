@@ -1093,3 +1093,51 @@ describe('a struck Absatz still in the result, where it opens like the next one 
     expect(absatzOrderBroken([pair('(1) bis (3) ...', '(1) bis (3)...'), pair('(4) Alt.', '(4) Neu.')], seq, seq)).toBeNull()
   })
 })
+
+describe('the § heading in the heading area of a cell is checked (19.11.2026)', () => {
+  it('holds the § heading printed in one stretch with its group heading, with no § symbol left in it', () => {
+    // „Abschnitt IV … <§ heading> § 37. (1) bis (12) …": the chain takes the
+    // § symbol with it, the stretch read as a group heading alone and was
+    // passed over — a § heading the draft changes and the engine left alone
+    // was confirmed (BBG 2027-2028 § 37 shape, fault class Überschrift).
+    const rows = [pair(
+      'Abschnitt IV Gemeinsame Bestimmungen Alte Überschrift § 37. (1) bis (12) ... (13) § 823 ASVG ist anzuwenden.',
+      'Abschnitt IV Gemeinsame Bestimmungen Neue Überschrift § 37. (1) bis (12) ... (13) § 823 ASVG ist sinngemäß anzuwenden.',
+      '§ 37.',
+    )]
+    const before = 'Alte Überschrift Erster Absatz. § 823 ASVG ist anzuwenden.'
+    expect(oracleVerdict('37', before, 'Neue Überschrift Erster Absatz. § 823 ASVG ist sinngemäß anzuwenden.', rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('37', before, 'Alte Überschrift Erster Absatz. § 823 ASVG ist sinngemäß anzuwenden.', rows)).toMatchObject({ verdict: 'widersprochen' })
+  })
+
+  it('still passes over a group heading with no § heading in its tail', () => {
+    const rows = [pair('3. Abschnitt Verfahren § 9. (1) bis (3) ... (4) Alt.', '3. Abschnitt Verfahren § 9. (1) bis (3) ... (4) Neu.', '§ 9.')]
+    expect(oracleVerdict('9', 'Erster Absatz. Alt.', 'Erster Absatz. Neu.', rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('never drops the heading the draft prepends as if it were a group heading (BBG 2027-2028 § 61, GSpG)', () => {
+    // „Dem § 61 wird folgende Überschrift vorangestellt: Vollziehung" — the
+    // engine refused it, and the stack rescue dropped „Vollziehung" from the
+    // annex's proposed column as the stack the PDF prints over a §.
+    const rows = [pair(
+      '§ 61. Mit der Vollziehung dieses Bundesgesetzes sind betraut: 1. der Bundesminister für Arbeit.',
+      'Vollziehung § 61. Mit der Vollziehung dieses Bundesgesetzes sind betraut: 1. der Bundesminister für Arbeit und Pflege.',
+      '§ 61.',
+    )]
+    const before = 'Mit der Vollziehung dieses Bundesgesetzes sind betraut: der Bundesminister für Arbeit.'
+    expect(oracleVerdict('61', before, 'Mit der Vollziehung dieses Bundesgesetzes sind betraut: der Bundesminister für Arbeit und Pflege.', rows)).toMatchObject({ verdict: 'widersprochen' })
+    expect(oracleVerdict('61', before, 'Vollziehung Mit der Vollziehung dieses Bundesgesetzes sind betraut: der Bundesminister für Arbeit und Pflege.', rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('drops what is shaped like a group heading, and anything where the geltende column prints a stack too', () => {
+    const before = 'Meldungen Die FMA ist zuständig.'
+    const got = 'Meldungen Die FMA ist zuständig. Sie ist Sammelstelle.'
+    // Capitals (Finanzkonglomerategesetz § 14), a numbering („4. Kleinhandel …"), a title's tail in brackets.
+    for (const stack of ['MASSNAHMEN ZUR ERLEICHTERUNG DER AUFSICHT', '4. Kleinhandel mit Tabakerzeugnissen und E-Liquids', 'Verordnung über Investitionen (EKB-InvestitionsV)']) {
+      const rows = [pair('Meldungen § 14. (1) Die FMA ist zuständig.', `${stack} Meldungen § 14. (1) Die FMA ist zuständig. (2) Sie ist Sammelstelle.`, '§ 14.')]
+      expect(oracleVerdict('14', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    }
+    const shared = [pair('Erster Titel Meldungen § 14. (1) Die FMA ist zuständig.', 'Meldungen und Sammelstelle Meldungen § 14. (1) Die FMA ist zuständig. (2) Sie ist Sammelstelle.', '§ 14.')]
+    expect(oracleVerdict('14', before, got, shared)).toMatchObject({ verdict: 'bestätigt' })
+  })
+})

@@ -660,6 +660,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   result, and a stretch that carries a § symbol and text after it is never
   „a group heading alone". Found anywhere, a heading or a remainder was
   found in the body, and the words in front of it went unchecked.
+  **Nor is a § heading passed over as a stack** (19.11.2026): a group
+  heading first in a cell is read for the § heading in its tail, which has
+  to open the result where the geltende column carries one there; and check
+  2 drops a prefix as a stack only where it is shaped like a group heading
+  (unit, numbering, capitals, a title's tail in brackets) or the geltende
+  column prints a stack over the § too. A plain prefix over a § that had
+  none is the heading the draft adds (BBG 2027-2028 § 61: „Vollziehung",
+  refused by the engine, confirmed by the oracle).
 - **Check 2 reads the changed rows of a § in the annex's order** (19.11.2026):
   each row from where the one above ended, so two Ziffern swapped across
   rows (the table path prints one per row) are a contradiction, reported as
