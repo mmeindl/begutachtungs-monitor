@@ -165,7 +165,24 @@ const NUMBER_THEN_NUMBER_RE = /^\d{1,3}[a-z]?\.\d/
 // (BFG-Novelle 2011):"). Unmatched, the law's only instruction opened no unit
 // and was compared, applied and listed nowhere — 15 instruction lines in 12
 // texts of the harness cache; the census exempts such a line by design.
-const PROMULGATION_RE = /\bwird\s+(?:wie\s+folgt\s+)?geändert\s*:\s*$|\bwerden\s+wie\s+folgt\s+geändert\s*:\s*$|\bwird\s+geändert\s+wie\s+folgt\s*:\s*$|\bwird\s[^:]*\bwie\s+folgt\s+geändert\s*(?:\([^()]*\)\s*)?:\s*$/
+// And (20.11.2026, the last four the listing left): RIS's own typo „wird
+// folgt geändert:" (2e78ceb8), and a Verordnung's „… wird verordnet:" that
+// names the Verordnung it changes in its title only (0c2d09a6) — a new
+// Verordnung under the same words opens with its § 1, which RIS does not
+// tag as an instruction.
+const PROMULGATION_RE = /\bwird\s+(?:wie\s+)?folgt\s+geändert\s*:\s*$|\bwird\s+geändert\s*:\s*$|\bwerden\s+wie\s+folgt\s+geändert\s*:\s*$|\bwird\s+geändert\s+wie\s+folgt\s*:\s*$|\bwird\s[^:]*\bwie\s+folgt\s+geändert\s*(?:\([^()]*\)\s*)?:\s*$|\bverordnet\s*:\s*$/
+
+/**
+ * „Änderung des Wertpapieraufsichtsgesetzes 2007": an Artikel's name that
+ * stands for its clause where the draft prints none (9aa88c41, Artikel 7).
+ */
+const AMENDMENT_NAME_RE = /^Änderung\s+(?:des|der)\s/
+
+/** A promulgation clause, not an instruction worded like one: it cites the law it changes („BGBl. I Nr. 41/2019", „LGBl Nr 1/2016"). */
+const isClause = (text: string): boolean => {
+  const t = normalizeText(text)
+  return PROMULGATION_RE.test(t) && /\b[BL]GBl\b/.test(t)
+}
 
 /**
  * A litera sub-instruction — "a) In Abs. 3 lautet der erste Satz:". It
@@ -305,7 +322,14 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       const { flips, depth } = quoteShift(prev.text)
       if (flips % 2 === 1) quoted = !quoted
       guillemets = Math.max(0, guillemets + depth)
-      afterPromulgation = PROMULGATION_RE.test(prev.text)
+      // A clause carries over a bare Artikel or section heading set between
+      // it and the instruction („… wird wie folgt geändert:" / „Artikel I" /
+      // „§ 3 wird um folgenden Abs. 6 ergänzt:", bfa0c3f4), and an Artikel
+      // named „Änderung des …" is its own clause where none is printed.
+      afterPromulgation =
+        PROMULGATION_RE.test(prev.text) ||
+        (prev.kind === 'section' && AMENDMENT_NAME_RE.test(normalizeText(prev.text))) ||
+        (afterPromulgation && (prev.kind === 'article' || prev.kind === 'section'))
     }
     prev = b
     const continuesHeading = headingRun
@@ -480,7 +504,12 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       // No number. The first instruction of a law carries none when the law
       // is amended in a single respect — recognisable because the
       // promulgation clause stands directly above it, and only there.
-      if (afterPromulgation && lastNovao === 0 && !inPayload && !LITERA_RE.test(b.text)) {
+      // Never the clause itself, where RIS tags it as an instruction too
+      // (7b657081, 26225fa7, 92/ME): under „Änderung des …" or „verordnet:"
+      // it stood where the instruction stands. A clause cites the law it
+      // changes; „§ 186 wird wie folgt geändert:" over its litterae reads
+      // alike and is an instruction.
+      if (afterPromulgation && lastNovao === 0 && !inPayload && !LITERA_RE.test(b.text) && !isClause(b.text)) {
         openNovao('1')
         continue
       }

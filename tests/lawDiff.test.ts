@@ -162,10 +162,33 @@ describe('a Novellierungsanordnung with no number at all', () => {
     'Das X-Gesetz, BGBl. I Nr. 1/2000, zuletzt ge&auml;ndert durch BGBl. I Nr. 2/2001 wird ge&auml;ndert wie folgt:',
     'Auf Grund des Y-Gesetzes wird die X-Verordnung, BGBl. II Nr. 1/2000, wie folgt ge&auml;ndert:',
     'Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt ge&auml;ndert (X-Novelle 2011):',
+    // 20.11.2026: RIS's typo (2e78ceb8), and a Verordnung's „verordnet:" (0c2d09a6).
+    'Die X-Verordnung, BGBl. II Nr. 1/2000, wird folgt ge&auml;ndert:',
+    'Auf Grund des &sect; 5 des Y-Gesetzes wird verordnet:',
   ])('opens it under „%s"', (text) => {
     const units = parseLawUnitsFromRis(ris(`<absatz typ="promkleinlsatz">${text}</absatz>`, '<absatz typ="novao1">&sect; 5 Abs. 1 lautet:</absatz>', '<absatz typ="abs">"(1) Neuer Text."</absatz>'))
     expect(units.map((u) => u.id)).toEqual(['Z1'])
     expect(units[0]!.text).toContain('(1) Neuer Text.')
+  })
+
+  // 20.11.2026: a clause set before the Artikel heading (bfa0c3f4), and an
+  // Artikel named „Änderung des …" with no clause at all (9aa88c41).
+  it('opens it under a clause above the Artikel heading, and under an Artikel named for the change', () => {
+    const across = parseLawUnitsFromRis(ris(clause, '<ueberschrift typ="g1">Artikel I</ueberschrift>', '<absatz typ="novao1">&sect; 3 wird um folgenden Abs. 6 erg&auml;nzt:</absatz>', '<absatz typ="abs">"(6) Neu."</absatz>'))
+    expect(across.map((u) => u.id)).toEqual(['Z1'])
+    const named = parseLawUnitsFromRis(ris('<ueberschrift typ="g1">Artikel 7</ueberschrift>', '<ueberschrift typ="g2">&Auml;nderung des Y-Gesetzes</ueberschrift>', '<absatz typ="novao1">Nach &sect; 79 wird folgender &sect; 78a eingef&uuml;gt:</absatz>', '<absatz typ="abs">"&sect; 78a. Neu."</absatz>'))
+    expect(named.map((u) => u.id)).toEqual(['Z1'])
+  })
+
+  // The clause itself, tagged as an instruction (7b657081), is no instruction
+  // — but „§ 186 wird wie folgt geändert:" over its litterae is one.
+  it('never opens a unit for the clause, and still for an instruction worded like one', () => {
+    const units = parseLawUnitsFromRis(ris('<ueberschrift typ="g1">Artikel 1</ueberschrift>', '<ueberschrift typ="g2">&Auml;nderung des X-Gesetzes</ueberschrift>',
+      '<absatz typ="novao1">Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt ge&auml;ndert:</absatz>', '<absatz typ="novao1">1. &sect; 2 entf&auml;llt.</absatz>'))
+    expect(units.map((u) => u.id)).toEqual(['Z1'])
+    expect(units[0]!.text).toContain('§ 2 entfällt')
+    const container = parseLawUnitsFromRis(ris(clause, '<absatz typ="novao1">&sect; 186 wird wie folgt ge&auml;ndert:</absatz>', '<absatz typ="novao2">a) Abs. 1 entf&auml;llt.</absatz>'))
+    expect(container.map((u) => u.id)).toEqual(['Z1'])
   })
 
   it('refuses a line that continues the instruction above it', () => {
