@@ -35,6 +35,21 @@ function kindOf(cls: string, text: string): BlockKind {
 
 const P_RE = /<p\s+class=["']?([\w-]+)["']?[^>]*>([\s\S]*?)<\/p\s*>/gi
 const GLD_RE = /<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/i
+/**
+ * A § symbol set in bold right behind the opening quote of a quoted §:
+ * „<b>§ 62a.</b> (1) …". The same position the Gliederungssymbol span takes
+ * in most documents („<span class=991GldSymbol>§ 62a.</span> (1) …"), so it
+ * is read the same way: as the block's symbol, not as its text.
+ *
+ * Read as text, the symbol stood in one side of a comparison and not in the
+ * other wherever a draft and its Vorlage were set in different styles, and a
+ * § whose words did not move counted as changed: four of 23 units of 147/ME
+ * XXVIII (Anti-SLAPP), ME bold, RV span (19.11.2026). Of 1,567 cached
+ * Parliament documents 14 set the symbol bold (27 times), 351 as the span.
+ * Only the bare symbol counts — a bold run that carries more („§ 15. Dauer")
+ * stays text, as before.
+ */
+const BOLD_GLD_RE = /^(\s*(?:&#8222;|„|&quot;|")\s*)<b>\s*((?:&sect;|§)(?:&nbsp;|\s)*\d+[a-z]*\.)\s*<\/b>/i
 const BR_RE = /<br\b[^>]*>/i
 
 /**
@@ -88,8 +103,15 @@ export function parseParliamentHtml(html: string): TextBlock[] {
       blocks.push({ kind: 'article', cls, text: split[0], gld: null }, { kind: 'section', cls, text: split[1], gld: null })
       continue
     }
-    const gld = gldMatch ? stripTags(gldMatch[1]!) : null
-    const text = stripTags(gldMatch ? inner.replace(gldMatch[0], ' ') : inner)
+    const boldMatch = gldMatch ? null : BOLD_GLD_RE.exec(inner)
+    const gld = gldMatch ? stripTags(gldMatch[1]!) : boldMatch ? stripTags(boldMatch[2]!) : null
+    const text = stripTags(
+      gldMatch
+        ? inner.replace(gldMatch[0], ' ')
+        : boldMatch
+          ? `${boldMatch[1]} ${inner.slice(boldMatch[0].length)}`
+          : inner,
+    )
     if (!text && !gld) continue
     blocks.push({ kind: kindOf(cls, text), cls, text, gld: gld || null })
   }

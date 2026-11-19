@@ -54,6 +54,15 @@ const RIS_ABSATZ_KIND: Record<string, BlockKind> = {
  */
 const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
+/**
+ * „<b>§ 56.</b> Die Bewertung …" — a quoted § whose symbol is set bold
+ * instead of as `<gldsym>`, read as the symbol all the same. The RIS twin of
+ * `BOLD_GLD_RE` in `parliamentHtml.ts` (reasons there): with only the HTML
+ * side reading it, 68/ME XXVII (draft from RIS, Vorlage from Parliament)
+ * gained the very phantom change the rule removes elsewhere (19.11.2026).
+ * 18 such symbols against 120 `<gldsym>` in the 83 cached Begut XMLs.
+ */
+const RIS_BOLD_GLD_RE = /^(\s*„\s*)<b>\s*(§\s*\d+[a-z]*\.)\s*<\/b>/
 
 /**
  * The Novellentext tags a quotation is cut into where it holds a dash:
@@ -117,8 +126,15 @@ export function parseRisXml(xml: string): TextBlock[] {
     const typ = /typ="([^"]+)"/.exec(m[2]!)?.[1] ?? ''
     const inner = m[3]!
     const gldMatch = RIS_GLD_RE.exec(inner)
-    const gld = gldMatch ? risText(gldMatch[1]!) : null
-    const text = risText(gldMatch ? inner.replace(gldMatch[0], ' ') : inner)
+    const boldMatch = gldMatch ? null : RIS_BOLD_GLD_RE.exec(inner)
+    const gld = gldMatch ? risText(gldMatch[1]!) : boldMatch ? risText(boldMatch[2]!) : null
+    const text = risText(
+      gldMatch
+        ? inner.replace(gldMatch[0], ' ')
+        : boldMatch
+          ? `${boldMatch[1]} ${inner.slice(boldMatch[0].length)}`
+          : inner,
+    )
     if (!text && !gld) continue
     let kind: BlockKind
     if (tag === 'ueberschrift') {
