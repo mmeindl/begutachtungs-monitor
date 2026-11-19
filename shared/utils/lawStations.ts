@@ -215,7 +215,7 @@ export const UPSTREAM_PLENUM_TITLE = 'Geändert im Plenum'
  * stayed, the sentence follows it.
  */
 export const EDITORIAL_BADGE_DEFINITION =
-  'Kein Wort mit eigener Bedeutung ist anders. Geändert haben sich nur Satzzeichen, Artikel, „in“ und „im“, Verweiswörter wie „Abs.“ oder „Nr.“, ein Datum, das bloß anders geschrieben ist, oder ein Platzhalter wie „xx“, der seine Zahl bekommt – und Verweisnummern nur dort, wo sie einer Umnummerierung in diesem Vergleich folgen.'
+  'Kein Wort mit eigener Bedeutung ist anders. Geändert haben sich nur Satzzeichen, ein Wort, das bloß getrennt oder zusammengeschrieben ist, Artikel, „in“ und „im“, Verweiswörter wie „Abs.“ oder „Nr.“, ein Datum, das bloß anders geschrieben ist, oder ein Platzhalter wie „xx“, der seine Zahl bekommt – und Verweisnummern nur dort, wo sie einer Umnummerierung in diesem Vergleich folgen.'
 
 const UPSTREAM_STATION_TITLES: Readonly<Record<string, LawStationId>> = {
   // `mapTextEvolution` renames upstream's "Gesetzestext" to the station
