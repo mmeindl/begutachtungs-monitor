@@ -44,6 +44,10 @@
  *    a repeal, trusting the struck rows to say it; where the rows show the
  *    unit still there, the block is silent about a Lesefassung the engine
  *    got wrong (8CA8E8B1 Anl. 2, C3F4E0AD Anl. 1, 19.11.2026).
+ *  - `verloren` — an outcome of the server that a block took and no block
+ *    shows, nor the end of its law (`placeAtParagraphs`, `lost`; 20.11.2026).
+ *    Zero by construction today; a vacated old number is said by its struck
+ *    rows and is no loss.
  *  - `obergrenze` — `nicht-geladen` in a draft whose §§ fit the budget
  *    (`KONS_MAX_PARAGRAPHS`). The page's sentence names that ceiling and no
  *    other; 116/ME's 139 §§ stood under it while a ceiling of 40 laws
@@ -151,6 +155,7 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
   // The section's own pass (`placeAtParagraphs`), over the whole annex.
   const placement = placeAtParagraphs(annex.rows, kons, erl?.paragraphs ?? [])
   const ran = kons.notRun === null
+  for (const o of placement.lost) report.failures.push(`verloren: ein Ergebnis des Servers steht an keinem Block und an keinem Gesetzesende — ${o.law ? `${o.law}: ` : ''}${o.id}`)
   const ends = [...placement.ends.byGroup.entries(), ...placement.ends.rest.map((r) => [r.law ?? '', r] as const)]
   for (const [law, end] of ends) {
     for (const o of end.outcomes) {

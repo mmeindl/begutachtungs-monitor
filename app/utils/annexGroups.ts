@@ -14,7 +14,7 @@ import type { AnnexWithheldCause, ConsolidatedTextResponse, LawDiffSegment, Para
 import { annexUnitId, explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { type DiffBadge, paragraphBadge } from './diffBadges'
 import { readsSideBySide, splitSegments } from './diffSides'
-import { outcomeIndex, showsInstructedChange, type LawEnd, type Lesefassung } from './lesefassung'
+import { outcomeIndex, showsInstructedChange, type LawEnd, type Lesefassung, type Outcome } from './lesefassung'
 
 /**
  * A row whose two columns are nothing but the annex's elision notation, reaching
@@ -559,7 +559,7 @@ export function placeAtParagraphs(
   rows: readonly TextComparisonRow[],
   consolidated: ConsolidatedTextResponse | null,
   explanations: readonly ParagraphExplanationView[],
-): { byRow: Map<TextComparisonRow, ParaPlacement>; groupKeys: string[]; ends: { byGroup: Map<string, LawEnd>; rest: (LawEnd & { law: string | null })[] } } {
+): { byRow: Map<TextComparisonRow, ParaPlacement>; groupKeys: string[]; ends: { byGroup: Map<string, LawEnd>; rest: (LawEnd & { law: string | null })[] }; lost: { id: string; law: string | null }[] } {
   const { groups } = groupAnnexRows(rows, { matches: null, hidden: [] })
   const groupKeys = groups.map((g) => g.key)
   // The schedules the annex prints per law, by the unit each block stands
@@ -587,12 +587,15 @@ export function placeAtParagraphs(
     return id ? (passages.get(explanationKey(law, id)) ?? []) : []
   }
   const placedPassages = new Set<ParagraphExplanationView>()
+  /** Each outcome a block took, with what that block placed for it; and the old numbers a renumbered § vacated (`lost`). */
+  const tookAs = new Map<Outcome, Lesefassung>()
+  const vacated = new Set<Outcome>()
 
   /**
    * Each block's own finds first, the placement after: one outcome found at
    * several blocks stands at one of them (below).
    */
-  const blocks: { rows: readonly TextComparisonRow[]; matched: ParagraphExplanationView[]; found: PlacedLesefassung[]; standsAfter: string | null }[] = []
+  const blocks: { rows: readonly TextComparisonRow[]; matched: ParagraphExplanationView[]; found: PlacedLesefassung[]; ownNumber: Set<Lesefassung>; standsAfter: string | null }[] = []
   for (const g of groups) {
     const runs = paragraphRuns(g.rows)
     const addressed = addressedParagraphs(runs)
@@ -603,6 +606,7 @@ export function placeAtParagraphs(
       for (const e of matched) placedPassages.add(e)
 
       const found: PlacedLesefassung[] = []
+      const ownNumber = new Set<Lesefassung>()
       if (outcomes) {
         // The § that keeps the run's number first (2/ME's § 2 also opens the
         // new § 1a, and stays § 2), then the others, each under the number
@@ -612,17 +616,22 @@ export function placeAtParagraphs(
           const hit = lookUp(first.law, p, (law, para) => outcomes.at(law, para), (o) => o !== null)
           if (!hit || hit.outcomes.every((o) => found.some((l) => l.lesefassung === o.lesefassung))) continue
           outcomes.take(hit.outcomes)
+          for (const o of hit.outcomes) tookAs.set(o, hit.lesefassung)
           found.push({ designation: p.after ?? p.own, lesefassung: hit.lesefassung })
+          if (keeps(p) || p.after === null) ownNumber.add(hit.lesefassung)
           // A § this block shows under a new number leaves its old one
           // behind: the number is vacated (`entfaellt`), or another § holds
           // it — and that one is placed at its own block.
           if (p.after !== null && explanationParaId(p.after) !== explanationParaId(p.own)) {
             const old = outcomes.at(first.law, p.own)
-            if (old && old.lesefassung.kind === 'withheld' && old.lesefassung.cause === 'entfaellt') outcomes.take(old.outcomes)
+            if (old && old.lesefassung.kind === 'withheld' && old.lesefassung.cause === 'entfaellt') {
+              outcomes.take(old.outcomes)
+              for (const o of old.outcomes) vacated.add(o)
+            }
           }
         }
       }
-      blocks.push({ rows: run.rows, matched, found, standsAfter: ps.find((p) => p.after !== null)?.after ?? null })
+      blocks.push({ rows: run.rows, matched, found, ownNumber, standsAfter: ps.find((p) => p.after !== null)?.after ?? null })
     }
   }
 
@@ -637,12 +646,21 @@ export function placeAtParagraphs(
    * one row, and it comes first. Taking the first block instead left the
    * body § empty, and there the page said „nicht gefunden" of a § whose
    * confirmed text stood under its table-of-contents entry.
+   *
+   * Before the later one, on a tie, the block that finds the outcome under
+   * the number it prints (20.11.2026): a § the draft renumbers is printed
+   * under its old number and reaches the outcome of its new one, and where
+   * the § that holds that number afterwards is printed as long, „the later
+   * one" could be the renumbered block — the outcome of § 22 at the old
+   * § 14's rows.
    */
   const home = new Map<Lesefassung, number>()
   for (const [i, b] of blocks.entries()) {
     for (const { lesefassung } of b.found) {
       const at = home.get(lesefassung)
-      if (at === undefined || b.rows.length >= blocks[at]!.rows.length) home.set(lesefassung, i)
+      const there = at === undefined ? null : blocks[at]!
+      const wins = !there || b.rows.length > there.rows.length || (b.rows.length === there.rows.length && (b.ownNumber.has(lesefassung) || !there.ownNumber.has(lesefassung)))
+      if (wins) home.set(lesefassung, i)
     }
   }
   const byRow = new Map<TextComparisonRow, ParaPlacement>()
@@ -711,5 +729,12 @@ export function placeAtParagraphs(
     const met = byGroup.get(key)
     byGroup.set(key, met ? { outcomes: [...met.outcomes, ...end.outcomes], explanations: [...met.explanations, ...end.explanations] } : end)
   }
-  return { byRow, groupKeys, ends: { byGroup, rest } }
+  // Every outcome the server sent stands at a block or at its law's end
+  // (20.11.2026, `scripts/harness/accounting.ts`, „verloren"): one a block
+  // took but no block shows is lost to the page. Taken on purpose and shown
+  // nowhere: the old number a renumbered § vacated, which its struck rows
+  // say (above).
+  const shownAt = new Set(home.keys())
+  const lost = [...tookAs].filter(([o, as]) => !shownAt.has(as) && !vacated.has(o)).map(([o]) => ({ id: o.id, law: o.law }))
+  return { byRow, groupKeys, ends: { byGroup, rest }, lost }
 }

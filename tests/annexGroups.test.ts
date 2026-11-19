@@ -314,6 +314,18 @@ describe('annexParas — the Begründung and the Lesefassung of a renumbered §'
     expect(outcomes(renumbered, response(['22'], []))).toEqual([['nicht-gefunden'], ['nicht-gefunden'], ['22']])
   })
 
+  // One outcome, one block, and on a tie the block printing the number
+  // before the one reaching it through a renumbering (20.11.2026).
+  it('puts an outcome both blocks find, on a tie, at the block that prints its number', () => {
+    const tie = [row('§ 22.', { gld: '§ 22.', current: 'Alt.', proposed: 'Neu.' }), row('§ 14.', { gld: '§ 14.', paraAfter: '§ 22.', current: 'Soweit …', proposed: '§ 22. Soweit …' })]
+    const placed = parasOf(tie, {}, [], response(['22'], [])).paras
+    expect(placed.map((p) => [p.gld, p.lesefassungen.map((l) => (l.lesefassung.kind === 'shown' ? l.lesefassung.paragraph.id : l.lesefassung.cause))])).toEqual([['§ 22.', ['22']], ['§ 14.', []]])
+    // Every outcome stands somewhere: at a block, at its law's end, or — a
+    // vacated old number — in the struck rows (`lost`).
+    expect(placeAtParagraphs(tie, response(['22'], []), []).lost).toEqual([])
+    expect(placeAtParagraphs(renumbered, response(['22'], [['14', 'entfaellt'], ['21', 'verweigert'], ['99', 'verweigert']]), []).lost).toEqual([])
+  })
+
   it('gives each § of a shift its own outcome, and names a § the run does not know by its number afterwards (20/ME XXVIII)', () => {
     // The old § 81 becomes § 82, the old § 82 becomes § 83; the run knows § 82 only.
     const shift = [
