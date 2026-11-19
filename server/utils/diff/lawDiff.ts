@@ -690,11 +690,17 @@ export interface LawPackageDiff {
  */
 const COMMENCEMENT_ARTICLE = /^(?:artikel\s+\S+\s+)?(?:inkrafttreten|inkrafttretens-|schlussbestimmung|übergangsbestimmung)/i
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+/** An Artikel `lawsOf` leaves out of the one-sided law lists (`COMMENCEMENT_ARTICLE`) — exported for the harness that counts them. */
+export function isCommencementArticle(article: string): boolean {
+  return COMMENCEMENT_ARTICLE.test(normalizeText(article).trim())
+}
+
 /** Units of articles the other side does not have, counted per law. */
 function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): LawPackageEntry[] {
   const counts = new Map<string, number>()
   for (const u of units) {
-    if (u.article === null || keep(u.article) || COMMENCEMENT_ARTICLE.test(normalizeText(u.article).trim())) continue
+    if (u.article === null || keep(u.article) || isCommencementArticle(u.article)) continue
     counts.set(u.article, (counts.get(u.article) ?? 0) + 1)
   }
   return [...counts].map(([article, n]) => ({ article, units: n }))
