@@ -1813,6 +1813,59 @@ function oneUnitEach(head: string, targets: readonly NovaoAddress[]): NovaoAddre
   })
 }
 
+/**
+ * **What a unit deletion strikes, if not the unit** (19.11.2026). The words
+ * the verb governs — behind „entfällt"/„entfallen", or between „wird/werden"
+ * and „gestrichen"/„aufgehoben" — name the unit by designation („entfällt
+ * Abs. 2", „entfallen die Z 3 und 4"), as the sentence the address read („der
+ * dritte Satz", „im Schlussteil der letzte Satz"), or not at all („§ 39 Abs.
+ * 3 entfällt"); „samt/einschließlich Überschrift" and what follows goes along,
+ * and a place word's noun („nach der Tabelle") only says where. Any other
+ * noun names a PART of the unit, and the branch below would have removed the
+ * whole: „In der Anlage 2 entfallen die Zeilen betreffend den Lehrberuf
+ * Karosseriebautechnik" removed Anlage 2 (8CA8E8B1), „werden folgende
+ * Aufzählungen gestrichen" Anlage 1 (C3F4E0AD), „In § 5 entfällt die
+ * Überschrift" § 5, „Vor § 16 entfällt die Abschnittsüberschrift" § 16, „In
+ * § 4 Abs. 2 entfallen die Ziffern 11 bis 20" the Absatz — a unit the
+ * consolidation then reports as repealed. Fail-closed on purpose: the next
+ * unseen noun is refused, not read, so the list of what is allowed is the
+ * address's own vocabulary and nothing else. Returns that noun, or null.
+ */
+const DELETION_VERB_RE = /\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|\bgestrichen\b/i
+const DELETION_DESIGNATOR: Record<string, 'para' | 'abs' | 'z' | 'lit'> = {
+  '§': 'para', '§§': 'para', art: 'para', 'art.': 'para', artikel: 'para', anlage: 'para', anlagen: 'para', anhang: 'para', anhänge: 'para',
+  abs: 'abs', 'abs.': 'abs', absatz: 'abs', absätze: 'abs', z: 'z', ziffer: 'z', ziffern: 'z', lit: 'lit', 'lit.': 'lit', litera: 'lit',
+}
+function partStruck(head: string, target: NovaoAddress): string | null {
+  const masked = maskQuotes(head)
+  const verb = DELETION_VERB_RE.exec(masked)
+  if (!verb) return null
+  const before = masked.slice(0, verb.index)
+  const aux = [...before.matchAll(/\b(?:wird|werden)\b/gi)].at(-1)
+  const regions = [masked.slice(verb.index + verb[0].length), ...(aux ? [before.slice(aux.index + aux[0].length)] : [])]
+  for (const region of regions) {
+    const words = region.split(/[\s,;]+/).map((w) => w.replace(/^[(„]+|[).„“]+$/g, '')).filter(Boolean)
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i]!
+      if (/^(?:samt|mitsamt|einschließlich)$/i.test(w)) break
+      const level = DELETION_DESIGNATOR[w.toLowerCase()]
+      if (level && /^(?:\d|[IVXLC]+$|[a-z]{1,2}$)/.test(words[i + 1] ?? '')) {
+        if (level !== 'para' && target[level] === null) return w
+        i++
+        continue
+      }
+      if (!/^\p{Lu}/u.test(w)) continue
+      if (/^(?:Satz|Sätze|Halbsatz|Halbsätze|Schlussteil|Schlusssatz|Einleitungsteil|Einleitungssatz|Einleitung)$/.test(w) && sentenceLevel(target)) continue
+      if (/^Überschrift(?:en)?$/.test(w) && target.heading) continue
+      // „der gesamte Schlussteil nach der Tabelle": a place word and its noun
+      // only say where the struck unit stands.
+      if (/^(?:nach|vor)$/i.test(words[i - 2] ?? '') || /^(?:nach|vor)$/i.test(words[i - 1] ?? '')) continue
+      return w
+    }
+  }
+  return null
+}
+
 /** A sentence or Halbsatz address, or the append of one: the operations `oneUnitEach` splits. */
 function sentenceLevel(t: NovaoAddress): boolean {
   return t.satz !== null || t.halbsatz !== null
@@ -2371,6 +2424,11 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // ressort left standing. The refusal carries the clause, so the next
     // reading of the list can name the noun.
     if (head.includes('"')) return fail('Streichung nennt einen Text — Einheit oder Textstelle nicht entscheidbar')
+    // And without a quotation, a noun the address did not read names a part
+    // of the unit: „In der Anlage 2 entfallen die Zeilen betreffend …", „In
+    // § 5 entfällt die Überschrift" (`partStruck`).
+    const part = partStruck(head, target)
+    if (part) return fail(`Teilstreichung („${part}") — keine ganze Einheit`)
     // A unit deletion over siblings removes each of them (`lawApply`); a
     // sentence deletion is carried out at one place (`oneUnitEach`).
     const places = targets.some(sentenceLevel) ? oneUnitEach(head, targets) : targets

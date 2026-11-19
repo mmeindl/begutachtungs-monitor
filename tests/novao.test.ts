@@ -1261,3 +1261,39 @@ describe('„gestrichen" ends a clause like „entfällt" (27.10.2026)', () => {
     expect(read('In § 3 Z 3 lit. a wird nach der Wortfolge "Fruchtsaft aus Konzentrat" das Wort "oder" gestrichen und durch einen Beistrich ersetzt.')).toEqual(['replacePhrase lit: § 3 Z 3 „oder" → „,"'])
   })
 })
+
+describe('a deletion that names a part of the unit (19.11.2026)', () => {
+  const refusal = (line: string) => parseInstruction(line).reason ?? ''
+
+  // Each of these used to be read as the deletion of the whole addressed
+  // unit — a § or an Anlage the consolidation then reported as repealed.
+  it('refuses a struck part the address does not read, whatever the noun', () => {
+    expect(refusal('In der Anlage 2 entfallen die Zeilen betreffend den Lehrberuf Karosseriebautechnik.')).toMatch(/^Teilstreichung \(„Zeilen"\)/)
+    expect(refusal('In Anlage 1 werden folgende Aufzählungen gestrichen: "73-07 – Sonstiges"')).toMatch(/„Aufzählungen"/)
+    expect(refusal('In § 5 entfällt die Überschrift.')).toMatch(/„Überschrift"/)
+    expect(refusal('Vor § 16 entfällt die Abschnittsüberschrift.')).toMatch(/„Abschnittsüberschrift"/)
+    expect(refusal('In § 9 Abs. 2b entfällt das Anführungszeichen am Anfang.')).toMatch(/„Anführungszeichen"/)
+    expect(refusal('In der Tabelle des Anhangs B entfallen die Zeilen der Positionen 39 und 40.')).toMatch(/„Zeilen"/)
+    expect(refusal('In den §§ 23 und 24 entfallen die Paragraphenbezeichnungen.')).toMatch(/„Paragraphenbezeichnungen"/)
+    expect(refusal('In § 46 Abs. 5 entfällt der zweite Unterabsatz.')).toMatch(/„Unterabsatz"/)
+    expect(refusal('In § 365v entfällt der dritte Absatz.')).toMatch(/„Absatz"/)
+  })
+
+  // A designation the address did not take is a part too: the Absatz stayed
+  // the target, and its Ziffern 11 to 20 would have taken it with them.
+  it('refuses a unit named after the verb that the address did not read', () => {
+    expect(refusal('In § 4 Abs. 2 entfallen die Ziffern 11 bis 20.')).toMatch(/„Ziffern"/)
+    expect(refusal('In § 18 wird folgender Abs. 5 gestrichen:')).toMatch(/„Abs"/)
+  })
+
+  it('still reads the deletion of a unit, a sentence, a Schlussteil and a heading', () => {
+    expect(op('§ 39 Abs. 3 entfällt.')).toMatchObject({ kind: 'delete', target: { abs: '3' } })
+    expect(op('In § 5 entfällt Abs. 2.')).toMatchObject({ kind: 'delete', target: { abs: '2' } })
+    expect(op('In § 40 Abs. 6 entfällt der dritte Satz.')).toMatchObject({ kind: 'delete', target: { satz: 'dritter' } })
+    expect(op('In § 22 Abs. 4 entfällt der gesamte Schlussteil nach der Tabelle.')).toMatchObject({ kind: 'delete', target: { satz: 'schluss' } })
+    expect(op('§ 84g entfällt samt Überschrift.')).toMatchObject({ kind: 'delete', withHeading: true })
+    expect(op('§ 6 entfällt einschließlich der Überschrift Beimischung von biogenen Stoffen.')).toMatchObject({ kind: 'delete', target: { para: '§ 6' } })
+    expect(op('Es entfällt die Überschrift des § 19.')).toMatchObject({ kind: 'delete', target: { para: '§ 19', heading: true } })
+    expect(op('In § 7 wird Abs. 3 aufgehoben.')).toMatchObject({ kind: 'delete', target: { abs: '3' } })
+  })
+})
