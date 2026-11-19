@@ -45,9 +45,9 @@ export function annexUncheckedNote(reasons: readonly string[]): string | null {
 /**
  * What a withheld block says it found, and who might be at fault for it.
  *
- * Three findings, and the sentence has to name the one that applies to *this*
- * § — a single sentence for all three would tell the reader something untrue
- * about two of them.
+ * Four findings, and the sentence has to name the one that applies to *this*
+ * § — a single sentence for all of them would tell the reader something
+ * untrue about the others.
  *
  * The second half is the attribution, and it depends on where the rows came
  * from. On the PDF path we inferred the pairing from the page geometry
@@ -64,6 +64,9 @@ const WITHHELD_FINDING: Record<AnnexWithheldCause, string> = {
   standing: 'der geltende Text dieser Stelle steht so nicht im RIS.',
   alreadyStanding: 'die vorgeschlagene Fassung zeigt Text als neu, der im RIS schon gilt.',
   notInDraft: 'die vorgeschlagene Fassung enthält Text, den der Entwurf für diesen Paragraphen nicht anordnet.',
+  // Not „der Entwurf hebt ihn nicht auf": that the grammar found no such
+  // instruction is no proof that none is there (19.11.2026).
+  repealUnproven: 'die vorgeschlagene Fassung zeigt von diesem Paragraphen nichts, und eine Anordnung des Entwurfs, die ihn aufhebt, ließ sich nicht finden.',
 }
 /* SHORT SINCE 30.09.2026 — one clause of attribution, not the list of
  * causes. The PDF variants ran to two or three „Das kann daran liegen,
@@ -84,6 +87,7 @@ const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, string | null> = {
   standing: null,
   alreadyStanding: 'Das kann auch daran liegen, dass derselbe Wortlaut an anderer Stelle des Paragraphen steht; unsere Prüfung unterscheidet die Absätze nicht.',
   notInDraft: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
+  repealUnproven: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
 }
 
 /**

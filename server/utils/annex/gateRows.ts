@@ -123,7 +123,7 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
     // text stands inside the § and has to name what was found there.
     return { ...row, current: '', proposed: '', segments: null, check: 'withheld' as const, owesCheck, withheldCause: causeOf(verification, key) }
   })
-  const withheldByCause: Record<AnnexWithheldCause, number> = { standing: 0, alreadyStanding: 0, notInDraft: 0 }
+  const withheldByCause: Record<AnnexWithheldCause, number> = { standing: 0, alreadyStanding: 0, notInDraft: 0, repealUnproven: 0 }
   for (const [key, verdict] of Object.entries(verification.verdicts)) {
     if (verdict === 'withheld') withheldByCause[causeOf(verification, key)]++
   }

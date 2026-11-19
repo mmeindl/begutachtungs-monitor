@@ -59,6 +59,7 @@ import type { AnnexWithheldCause } from '../../../shared/types'
 import { annexParagraphKey, designationKey } from './annexText'
 import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange, type Coverage } from './coverage'
 import { draftBags, draftReference, rightColumnCheck, type RightColumnCheck, type StandingText, type WordBag } from './rightColumn'
+import { divisionsOf, draftRepeals, repealsParagraph, showsRepeal, type DraftRepeals } from './repeals'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
@@ -609,6 +610,9 @@ export async function verifyAnnex(
 
   const coverage = new Map<string | null, Map<string, Coverage>>()
   const rightColumn = new Map<string, RightColumnCheck>()
+  /** Per law: its § index, and the divisions RIS files over each § it was asked for — the repeal check walks them (`repealsParagraph`). */
+  const indexes = new Map<string | null, LawIndex>()
+  const divisions = new Map<string | null, Map<string, string[]>>()
   let looked = 0
   // `failFast`: stop the other workers too — a RIS that just failed four
   // times over is not worth another 150 requests, and the answer is thrown
@@ -628,6 +632,10 @@ export async function verifyAnnex(
     if (!ref) return skip(groupKey, insertedByDraft(group.law).has(key) ? REASON_INSERTED_BY_DRAFT : REASON_NO_SUCH_PARAGRAPH)
     const standing = await sources.standingText(ref)
     if (standing === null) return skip(groupKey, REASON_NOT_REPRESENTABLE)
+    indexes.set(group.law, index)
+    const named = divisions.get(group.law) ?? new Map<string, string[]>()
+    named.set(key, divisionsOf(standing.heading))
+    divisions.set(group.law, named)
     const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()
     byPara.set(group.para, coverageOfParagraph(group.rows, standing.text))
     coverage.set(group.law, byPara)
@@ -683,8 +691,59 @@ export async function verifyAnnex(
       verdicts[key] = 'verified'
     }
   }
+  // **A repeal the page would show is one the draft has to order**
+  // (19.11.2026). A § whose proposed column is empty goes out as „entfällt",
+  // and the left check confirms it: the left column IS the law in force. But
+  // an empty right column is also what the PDF reader leaves where it missed
+  // the § on that side — a new text quoted „„§ 1. …“" under „§ 1 lautet:",
+  // or an annex that prints the instruction instead of the text: six §§ of
+  // the Weinrecht-Sammelverordnungen 2024 and 2026 and § 68i MSchG went out
+  // as confirmed repeals, every one of them a § the draft rewrites. Withheld
+  // with its own cause, from wherever the check stood, unless the draft's
+  // instructions for that law repeal the § whole (`annex/repeals.ts`) —
+  // the rule the Länder reader already keeps (`draftDeletes`). A draft
+  // whose text could not be read disarms the rule, as it does rule 2.
+  if (draft.blocks.length > 0) {
+    const repealed = new Map<string | null, DraftRepeals>()
+    const repealsIn = (law: string | null): DraftRepeals => {
+      let found = repealed.get(law)
+      if (!found) {
+        // An unattributed row has a law only where the draft amends one —
+        // or several Artikel amend the same Stammnorm (FM-GwG-Anpassungsgesetz).
+        const sameLaw = amending.length > 0 && amending.every((a) => a.bgbl !== null && amending[0]!.bgbl !== null && a.bgbl.organ === amending[0]!.bgbl.organ && a.bgbl.nummer === amending[0]!.bgbl.nummer)
+        const article = law === null ? (amending.length === 1 || sameLaw ? amending[0]! : null) : byKey.get(law)
+        found = article ? draftRepeals(draft.blocks, article) : { paragraphs: new Set(), ranges: [], divisions: new Set() }
+        repealed.set(law, found)
+      }
+      return found
+    }
+    // The division a § stands in: RIS names it over the first § of the
+    // division only, so walk back through the law's §§ to the nearest one
+    // that names one — over §§ the check fetched, and no further.
+    const divisionOf = (law: string | null, key: string): string | null => {
+      const index = indexes.get(law)
+      const named = divisions.get(law)
+      if (!index || !named) return null
+      const order = [...index.paragraphs.keys()]
+      for (let i = order.indexOf(key); i >= 0; i--) {
+        const here = named.get(order[i]!)
+        if (here === undefined) return null
+        if (here.length > 0) return here.at(-1)!
+      }
+      return null
+    }
+    for (const [groupKey, group] of groups) {
+      if (verdicts[groupKey] === 'withheld' || !showsRepeal(group.rows)) continue
+      const key = designationKey(group.para)
+      if (repealsParagraph(repealsIn(group.law), group.para, key === null ? null : divisionOf(group.law, key))) continue
+      verdicts[groupKey] = 'withheld'
+      withheldCauses[groupKey] = 'repealUnproven'
+    }
+  }
   // Counted off the verdicts rather than summed per law, so "bestätigt" means
   // "came through everything" and cannot drift from what the rows show.
   const verified = Object.values(verdicts).filter((v) => v === 'verified').length
-  return { ran: compared > 0, reasons: [...reasons], verdicts, withheldCauses, uncheckedReasons, doubtfulLaws, judged, verified }
+  // A reason for a § that is no longer unchecked (the repeal rule above) is no reason of its own.
+  const stillUnchecked = Object.fromEntries(Object.entries(uncheckedReasons).filter(([key]) => verdicts[key] !== 'withheld'))
+  return { ran: compared > 0, reasons: [...reasons], verdicts, withheldCauses, uncheckedReasons: stillUnchecked, doubtfulLaws, judged, verified }
 }

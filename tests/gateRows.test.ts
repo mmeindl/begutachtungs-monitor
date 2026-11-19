@@ -37,7 +37,7 @@ describe('checkAnnexRows', () => {
       verdicts: { '#§ 1.': 'withheld', '#§ 2.': 'withheld', '#§ 3.': 'withheld', '#§ 4.': 'verified' },
       withheldCauses: { '#§ 1.': 'standing', '#§ 2.': 'alreadyStanding', '#§ 3.': 'notInDraft' },
     }))
-    expect(out.withheldByCause).toEqual({ standing: 1, alreadyStanding: 1, notInDraft: 1 })
+    expect(out.withheldByCause).toEqual({ standing: 1, alreadyStanding: 1, notInDraft: 1, repealUnproven: 0 })
     expect(Object.values(out.withheldByCause).reduce((a, b) => a + b, 0)).toBe(out.withheldParagraphs)
     expect(out.rows.map((r) => r.withheldCause)).toEqual(['standing', 'alreadyStanding', 'notInDraft', undefined])
   })

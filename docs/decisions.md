@@ -793,6 +793,15 @@ gets an entry of its own only where it carries a reason the rule does not.
   `kons/consolidate.ts`). Two law ends that meet at one group are merged,
   never one set over the other: 25 §§ in five drafts vanished from the page
   that way.
+- **A § the annex shows as repealed is shown so only where the draft repeals
+  it** (19.11.2026, `server/utils/annex/repeals.ts`): an instruction of the
+  same law that deletes the § itself, a list or range naming it, or a whole
+  division RIS files it under. Otherwise the § is withheld
+  (`repealUnproven`), whatever the left check said. An empty right column is
+  also what a reading leaves where it missed the § there (a quoted „„§ 1.",
+  an annex printing instructions, a renumbering paired by its old number);
+  the left check confirms such a § because its left column is the law in
+  force. A draft that could not be read disarms the rule, as it does rule 2.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

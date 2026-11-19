@@ -67,6 +67,12 @@ export interface AnnexDraftReport {
   withheldStanding: number
   withheldAlreadyStanding: number
   withheldNotInDraft: number
+  /**
+   * Shown as repealed whole, and no instruction of the draft repeals it
+   * (`annex/repeals.ts`, 19.11.2026). Optional, so a report written
+   * before the cause existed still reads; absent counts as 0.
+   */
+  withheldRepealUnproven?: number
   uncheckedParas: number
   rowsNoPara: number
   /** …of those, shown as a change — class B, see the header */
@@ -162,9 +168,9 @@ export function classAFindings(report: AnnexReport): Finding[] {
     // result claims as much in its comment (`annex/verdict.ts`,
     // `withheldCauses`), but nobody ever checked it: a fourth cause that
     // nobody adds to the sum would otherwise drop out of the page silently.
-    const causes = d.withheldStanding + d.withheldAlreadyStanding + d.withheldNotInDraft
+    const causes = d.withheldStanding + d.withheldAlreadyStanding + d.withheldNotInDraft + (d.withheldRepealUnproven ?? 0)
     if (causes !== d.withheldParas) {
-      at(`${d.withheldParas} Paragraphen einbehalten, aber die Gründe summieren auf ${causes} (geltende Fassung ${d.withheldStanding}, Geltendes als neu ${d.withheldAlreadyStanding}, nicht angeordnet ${d.withheldNotInDraft}).`)
+      at(`${d.withheldParas} Paragraphen einbehalten, aber die Gründe summieren auf ${causes} (geltende Fassung ${d.withheldStanding}, Geltendes als neu ${d.withheldAlreadyStanding}, nicht angeordnet ${d.withheldNotInDraft}, Aufhebung nicht angeordnet ${d.withheldRepealUnproven ?? 0}).`)
     }
 
     // The one figure about the document's shape that is zero on both paths
