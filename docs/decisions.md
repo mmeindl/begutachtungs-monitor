@@ -599,7 +599,9 @@ gets an entry of its own only where it carries a reason the rule does not.
   no second Artikel of the draft addresses the number: a Vorlage that
   bundles other drafts explains laws the comparison does not hold, and 53
   units of GP XXVIII were compared against partly another law's Begründung
-  (`ofLaw`, `articleOn` in `server/utils/explanations/reasoningDiff.ts`).
+  (`ofLaw`, `articleOn` in `server/utils/explanations/reasoningDiff.ts`). A
+  heading that names several laws (an Artikel range, §§ of two acts by their
+  abbreviations) counts for each of them.
 - **A Begründung printed under the neighbouring Ziffer is attached only with
   witnesses beyond the number** (`offsetPassage`): every § the passage names
   is one this change amends, the change that carries that number amends none

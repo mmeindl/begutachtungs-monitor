@@ -1002,6 +1002,33 @@ describe('compareReasoning — keine Passage eines anderen Gesetzes am §', () =
     expect(entry.segments!.map((s) => s.text).join('')).not.toContain('Tierärztekammer')
   })
 
+  it('nimmt eine Passage, deren Überschrift mehrere Gesetze nennt, für jedes von ihnen (337/ME XXVII)', () => {
+    const ASVG = 'Änderung des Allgemeinen Sozialversicherungsgesetzes'
+    const BKUVG = 'Änderung des Beamten-Kranken- und Unfallversicherungsgesetzes'
+    const units = [unit(ASVG, 'Z2', '§ 175 Abs. 1a und 1b lautet: …', 'changed', { to: '5' }), unit(BKUVG, 'Z1', '§ 90 Abs. 1a und 1b lautet: …', 'changed', { to: '6' })]
+    const doc = (text: string) => erl(`Zu Artikel 5 (${ASVG}):`, 'Zu § 175 Abs. 1a Z 1 ASVG, § 90 Abs. 1a Z 1 B-KUVG:', text, `Zu Artikel 6 (${BKUVG}):`, 'Zu Z 2 (§ 1):', 'Anderes.')
+
+    const out = compareReasoning(units, doc('Die Wegunfälle.'), doc('Die Wegunfälle, nach der Begutachtung genauer.'))
+
+    expect(out.entries[out.units[`${BKUVG}|Z1|changed`]!]).toMatchObject({ basis: 'paragraph', changed: true })
+  })
+
+  it('findet den Artikel eines Gesetzes ohne gepaarte Änderung über seinen Titel (149/ME XXVII: die BAO ist Artikel 3, dann 1)', () => {
+    const BAO = 'Änderung der Bundesabgabenordnung'
+    const GEWO = 'Änderung der Gewerbeordnung'
+    const units = [
+      unit(BAO, 'Z4', 'In § 323 wird nach Abs. 71 folgender Abs. 72 angefügt: …', 'removed', { from: '3', to: '3' }),
+      { ...unit(BAO, 'Z2', 'Dem § 323 wird folgender Abs. 72 angefügt: …', 'inserted', { to: '1' }), fromArticleKey: null, fromId: null },
+      unit(GEWO, 'Z1', 'In § 339 Abs. 3 wird "a" durch "b" ersetzt.', 'changed', { from: '1', to: '2' }),
+    ]
+    const before = erl(`Zu Artikel 1 (${GEWO}):`, 'Zu Z 1 (§ 339 Abs. 3):', 'Anpassung.', `Zu Artikel 3 (${BAO}):`, 'Zu Z 4 (§ 323 Abs. 71):', 'Inkrafttreten.')
+    const after = erl(`Zu Artikel 1 (${BAO}):`, 'Zu Z 2 (§ 323 Abs. 72):', 'Inkrafttreten, angepasst.', `Zu Artikel 2 (${GEWO}):`, 'Zu Z 1 (§ 339 Abs. 3):', 'Anpassung.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units[`${BAO}|Z4|removed`]!]).toMatchObject({ basis: 'paragraph', label: '§ 323', changed: true })
+  })
+
   it('nimmt auch an der Ziffer keine nach § betitelte Passage eines anderen Gesetzes', () => {
     // The Vorlage titles its Ziffern, but explains this change only under
     // another law's Artikel by § alone.

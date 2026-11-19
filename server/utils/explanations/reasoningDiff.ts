@@ -398,7 +398,12 @@ function articleOn(unit: LawDiffUnit, side: Side, units: readonly LawDiffUnit[])
   const key = otherKey(unit)
   const sameLaw = (u: LawDiffUnit) => (key ? otherKey(u) === key : unit.article !== null && u.article === unit.article)
   const peer = units.find((u) => isPaired(u) && own(u) && sameLaw(u))
-  return peer ? own(peer) : null
+  if (peer) return own(peer)
+  // A law none of whose changes the comparison paired — removed in the draft,
+  // inserted in the Vorlage (149/ME XXVII: the BAO is Artikel 3 there and 1
+  // here): the Artikel its units carry on that side, where they agree.
+  const keys = new Set(units.flatMap((u) => (existsOn(u, side) && own(u) && unit.article !== null && u.article === unit.article ? [own(u)!] : [])))
+  return keys.size === 1 ? [...keys][0]! : null
 }
 
 /**
@@ -462,9 +467,27 @@ function textsByLaw(units: readonly LawDiffUnit[], before: HtmlExplanations, aft
  * another law's.
  */
 function ofLaw(passage: HtmlPassage, article: string | null, keyed: boolean): boolean {
-  if (!keyed || passage.article === null) return true
+  if (!keyed || passage.article === null || namesSeveralLaws(passage.heading)) return true
   if (!article) return false
   return passage.article === article || (passage.section?.includes(article) ?? false)
+}
+
+/** „Art. 4 bis 7" — an Artikel range in a heading's address. */
+const ARTICLE_RANGE_RE = /(?<![a-zäöü])art(?:ikel)?\.?\s*(?:[0-9]+|[ivxlc]+)\s*(?:bis|–|-)\s*(?:[0-9]+|[ivxlc]+)\b/i
+/** „§ 175 Abs. 1a Z 1 ASVG" — a § and the act it belongs to, by its abbreviation (two capitals at least). */
+const PARAGRAPH_OF_ACT_RE = /§\s*\d+[a-z]*\d*(?:\s+(?:Abs\.?|Z|lit\.?|Satz)\s*[\w.]+(?:\s*(?:und|bis)\s*[\w.]+)*)*\s+([A-ZÄÖÜ][\wÄÖÜäöüß-]*[A-ZÄÖÜ][\wÄÖÜäöüß-]*)/g
+
+/**
+ * A heading over several laws, which the parser files under the first
+ * Artikel it names (19.11.2026): an Artikel range („Zu Art. 4 bis 7 jeweils
+ * Z 4 (§ 747 ASVG; § 384 GSVG; …)", 261/ME XXVII) or §§ of two acts by their
+ * abbreviations („Zu § 175 Abs. 1a Z 1 ASVG, § 90 Abs. 1a Z 1 B-KUVG",
+ * 337/ME XXVII). It is about each of them, so `ofLaw` holds it to none.
+ */
+function namesSeveralLaws(heading: string): boolean {
+  const address = heading.split(':')[0] ?? heading
+  if (ARTICLE_RANGE_RE.test(address)) return true
+  return new Set([...address.matchAll(PARAGRAPH_OF_ACT_RE)].map((m) => m[1])).size > 1
 }
 
 /**
