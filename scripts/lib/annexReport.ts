@@ -60,6 +60,9 @@ export interface AnnexDraftReport {
   noLaw: number
   /** Pages whose geometry the parser could not establish */
   droppedPages: number
+  /** Column lines of the PDF that reach no row, and those that differ from the other column (`lineAccounting` in the harness, 19.11.2026); absent in older reports. */
+  lostLines?: number
+  lostDiffering?: number
   ran: boolean
   notRunReason: string | null
   verifiedParas: number

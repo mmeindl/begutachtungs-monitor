@@ -33,7 +33,8 @@ import {
   type AnnexSources,
   type ParagraphVerdict,
 } from '../../server/utils/annex/verdict'
-import { parseAnnexParts } from '../../server/utils/annex/annexPdf'
+import { parseAnnexParts, type AnnexPage } from '../../server/utils/annex/annexPdf'
+import { lineAccounting } from '../lib/annexLines'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
 import { plainText } from '../../server/utils/lawtext/konsTree'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
@@ -133,6 +134,16 @@ interface DraftResult {
    * number nobody looks at cannot say when that stops being true.
    */
   droppedPages: number
+  /**
+   * Line accounting (19.11.2026, `lineAccounting`): the PDF's column lines
+   * whose words reach no row of their column, and of those the ones that
+   * differ from the other column's line beside them — where a change could
+   * hide that the page never shows. 0 on the table path.
+   */
+  lostLines: number
+  lostDiffering: number
+  /** …and the lines of parts read on their own that reach no row. */
+  lostApart: number
   /**
    * How far rule 2's reference reaches: instructions read, instructions that
    * addressed at least one §, and the annex's §§ split by whether the draft's
@@ -260,7 +271,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const id = String(meta?.Technisch?.ID ?? cite)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
   const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, withheldRepealUnproven: 0, withheldRepeated: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [] }
-  const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
+  const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, lostLines: 0, lostDiffering: 0, lostApart: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -487,7 +498,10 @@ async function verify(doc: any): Promise<DraftResult | null> {
     if (bags.byLaw.get(group.law)?.get(key) === undefined) parasWithoutOwnBag++
     else parasWithOwnBag++
   }
-  return { id, cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, unchangedRows, unchangedParas, unchangedProse, unchangedBelow, unchangedBelowVerified, gate }
+  // Every line of the annex against the rows (`lineAccounting`): what no other figure here can see.
+  const lost = fromPdf ? lineAccounting(pdfParts.filter((p): p is AnnexPage[] => p !== null), parsed.rows) : { lost: 0, differing: [], apart: 0 }
+  if (dumpLost) for (const l of lost.differing) console.log(`    ~ ${cite} S. ${l.page} ${l.side}: ${l.text.slice(0, 140)}`)
+  return { id, cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, lostLines: lost.lost, lostDiffering: lost.differing.length, lostApart: lost.apart, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, unchangedRows, unchangedParas, unchangedProse, unchangedBelow, unchangedBelowVerified, gate }
 }
 
 /**
@@ -576,6 +590,8 @@ const ceilingArg = argAssigned('obergrenze')
 const ceiling = ceilingArg === null ? null : Number(ceilingArg)
 const dumpWorst = argFlag('dump-worst')
 const rowsPath = argAssigned('zeilen') ?? null
+/** `--verloren`: list every column line that reaches no row and differs from the other column (`lineAccounting`). */
+const dumpLost = argFlag('verloren')
 const xmlMode = argFlag('xml')
 /**
  * `--nur-inhalt` scores only the drafts whose annex was picked by content
@@ -618,7 +634,7 @@ for (const doc of docs.slice(0, limit)) {
     // A dropped page is named on the draft's own line, not only in the total:
     // it is a hole in *this* annex, and a sum over the corpus cannot say which
     // document is missing a page.
-    const dropped = r.droppedPages > 0 ? ` [${r.droppedPages} Seite${r.droppedPages === 1 ? '' : 'n'} ungelesen]` : ''
+    const dropped = (r.droppedPages > 0 ? ` [${r.droppedPages} Seite${r.droppedPages === 1 ? '' : 'n'} ungelesen]` : '') + (r.lostDiffering > 0 ? ` [${r.lostDiffering} Zeile${r.lostDiffering === 1 ? '' : 'n'} ohne Zeile, abweichend]` : '')
     if (r.note) console.log(`  ·  ${r.cite.padEnd(9)} ${r.note}${dropped}`)
     else console.log(`  ${r.clean === r.checked ? '✓' : '✗'}  ${r.cite.padEnd(9)} ${r.clean}/${r.checked} Paragraphen ≥99 % im RIS${dropped}${r.worst.length ? ` — ${r.worst.slice(0, 2).join('; ')}` : ''}`)
   } catch (err) {
@@ -650,6 +666,13 @@ console.log(`  RIS-Paragraph ist eine Tabelle (nicht darstellbar, verweigert): $
 // are losses the reader is owed.
 const droppedTotal = results.reduce((n, r) => n + r.droppedPages, 0)
 console.log(`  Seiten ohne belegte Seitengeometrie (nicht gelesen): ${droppedTotal}${droppedTotal > 0 ? ` in ${results.filter((r) => r.droppedPages > 0).length} Beilagen` : ''}`)
+// What no other line here measures: text of the annex that reaches no row (`lineAccounting`).
+if (!xmlMode) {
+  const lostAll = results.reduce((n, r) => n + r.lostLines, 0)
+  const lostDiff = results.reduce((n, r) => n + r.lostDiffering, 0)
+  console.log(`  Spaltenzeilen, die keine Zeile erreichen: ${lostAll}; davon von der anderen Spalte verschieden: ${lostDiff} in ${results.filter((r) => r.lostDiffering > 0).length} Beilagen (--verloren listet sie)`)
+  console.log(`    in Teilen, die für sich gelesen werden (andere Seitengröße): ${results.reduce((n, r) => n + r.lostApart, 0)} in ${results.filter((r) => r.lostApart > 0).length} Beilagen`)
+}
 
 // The gate as it ships, over every draft with a readable annex — including
 // the ones the coverage loop scores as zero, because "nothing was checked" is
@@ -751,6 +774,8 @@ if (jsonPath) {
       substantialClean: r.substantialClean,
       noLaw: r.noLaw,
       droppedPages: r.droppedPages,
+      lostLines: r.lostLines,
+      lostDiffering: r.lostDiffering,
       ran: r.gate.ran,
       notRunReason: r.gate.notRunReason,
       verifiedParas: r.gate.verifiedParas,
