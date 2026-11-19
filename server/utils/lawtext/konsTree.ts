@@ -13,6 +13,7 @@
 import { normalizeText, stripMarkup } from './normalize'
 import { decodeEntities } from '../parliament/htmlText'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+import { FIGURE_MARK } from '../../../shared/utils/figureMark'
 
 export type NodeLevel = 'para' | 'abs' | 'z' | 'lit' | 'schluss'
 
@@ -201,11 +202,23 @@ function headsAbsatz(t: string, next: RegExpExecArray | RegExpMatchArray | undef
  * "anm", "aufgehoben" and "novelle" in the standing bag that the annex column
  * never offered.
  */
+/**
+ * RIS's image element, `<binary …><src>/Dokumente/Bundesnormen/…/hauptdokument.img1is.png</src></binary>`.
+ * Its `<src>` is a text node, so the file path stood in the standing law as
+ * its words: MinBestG § 49 read „… × Mindeststeuersatz /Dokumente/
+ * Bundesnormen/NOR40258681/hauptdokument.img1is.png angepasste erfasste
+ * Steuern", 24 of 132 cached § documents with an image (19.11.2026), and a
+ * Lesefassung printed it wherever an annex row elided the stretch. Named
+ * instead (`FIGURE_MARK`), as the draft's readers name it.
+ */
+const BINARY_RE = /<binary\b[^>]*?(?:\/>|>[\s\S]*?<\/binary\s*>)/g
+
 function text(inner: string): string {
   return normalizeText(
     decodeEntities(
       stripMarkup(
         inner
+          .replace(BINARY_RE, ` ${FIGURE_MARK} `)
           .replace(ANNOTATION_RE, ' ')
           .replace(/<gdash\s*\/>/g, '-')
           .replace(/<nbsp\s*\/>/g, ' ')

@@ -2744,3 +2744,12 @@ describe('a sentence appended behind a list unit closes the list (19.11.2026)', 
     expect(run(standing(), instr('Im § 11 wird folgender Schlusssatz angefügt:', ['Neu.'])).results[0]!.reason).toBe('Schlussteil ohne Liste, die er schließt')
   })
 })
+
+describe('an image in the standing law (19.11.2026)', () => {
+  // MinBestG § 49 (NOR40258681): the formula's image stood as its file path.
+  it('reads RIS’s binary as the image mark, not as its file path', () => {
+    const node = parseKonsParagraph('<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 49.</gldsym> (1) Die Steuer beträgt:</absatz><table><tr><td><absatz typ="tabtext" ct="text">Gewinne <b>×</b> Mindeststeuersatz</absatz></td></tr><tr><td><absatz typ="tabtext" ct="text"><binary nr="1" shapetype="is" datatype="png"><src>/Dokumente/Bundesnormen/NOR40258681/hauptdokument.img1is.png</src></binary></absatz></td><td><absatz typ="tabtext" ct="text">angepasste erfasste Steuern</absatz></td></tr></table></abschnitt></nutzdaten></risdok>')!
+    expect(plainText(node)).not.toMatch(/Dokumente|\.png/)
+    expect(plainText(node)).toContain('[Abbildung]')
+  })
+})
