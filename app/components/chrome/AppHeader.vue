@@ -42,6 +42,11 @@ const navItems = [
  */
 const SEARCH = { label: 'Suche', to: '/suche' } as const
 
+/* The project's motto, the same in every language of the site. Two halves,
+   because the first is highlighted: it is the name the site moves to. */
+const MOTTO_NAME = 'view your state'
+const MOTTO_REST = ' – state your view'
+
 /* A label is current on its page and every page below it (`/anliegen/…`). */
 function isActive(to: string): boolean {
   return route.path === to || route.path.startsWith(`${to}/`)
@@ -54,28 +59,53 @@ function isActive(to: string): boolean {
          viewport. Decorative (no contrast obligation). -->
     <div class="h-0.75 bg-mark" aria-hidden="true" />
     <div
-      class="page-frame flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-2"
+      class="page-frame flex flex-wrap items-end justify-between gap-x-6 pt-2"
     >
+      <!-- The nav stands on the header's bottom line (19.11.2026): no
+           padding below the row, so the links end on the border and the
+           current page's line lies on it, as a tab on its page. The
+           wordmark keeps its 8 px below; on a phone, and between `sm` and
+           the width where both fit, that is the gap to the nav's row. -->
       <!-- Target size: 44px on touch, 36px with a mouse (main.css) -->
       <!-- The start page's one way in since „Aktuell" left the nav
            (16.11.2026), so its name says where it leads; `aria-current` on
            the start page, like a nav label on its own. -->
       <!-- The wordmark's row: on a phone the whole width, with the search's
            magnifier at its end; from `sm` the wordmark alone. -->
-      <div class="flex w-full items-center justify-between gap-1 sm:w-auto">
+      <div class="flex w-full items-center justify-between gap-1 pb-2 sm:w-auto">
+        <!-- The motto under the wordmark (19.11.2026): it says what the name
+             does not — the site is about taking part, not only watching —
+             and it is the name the site moves to (ViewYourState), so the
+             relaunch arrives as something readers already know. Inside the
+             link, so one target covers both lines: the link's name is its
+             visible text plus a hidden „zur Startseite" (an `aria-label`
+             would leave the motto out of the name, WCAG 2.5.3). English on a
+             German page, so `lang` tells a screen reader how to speak it
+             (WCAG 3.1.2). -->
         <NuxtLink
           to="/"
-          aria-label="Begutachtungs-Monitor, zur Startseite"
           :aria-current="route.path === '/' ? 'page' : undefined"
-          class="inline-flex min-h-target items-center gap-2 rounded-sm font-semibold text-ink"
+          class="inline-grid min-h-target grid-cols-[auto_auto] items-center gap-x-2 gap-y-0.5 rounded-sm py-1 text-ink"
         >
           <!-- § on the marker tile — same mark as favicon and og:image.
-             Decorative next to the wordmark, hence aria-hidden. -->
+               Decorative next to the wordmark, hence aria-hidden. The tile
+               belongs to the name's line and the motto hangs under the name
+               (19.11.2026): a tile grown to both lines (40 px filled, then
+               an outline) was the heaviest thing in the header, and at
+               320 px the name wrapped beside it. -->
           <span
             aria-hidden="true"
             class="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-mark font-heading text-[15px] font-semibold text-ink"
           >§</span>
-          <span class="font-heading text-lg">Begutachtungs-Monitor</span>
+          <span class="font-heading text-lg leading-tight font-semibold">Begutachtungs-Monitor</span>
+          <!-- The highlighter (yellow's one meaning) under the motto's first
+               half: „view your state" becomes the site's name (ViewYourState),
+               so the header points to it before the move. A stroke over
+               30–90 % of the line, not a filled box: lower, at 12 px it
+               read as a thick underline through the descenders. The marked
+               words in ink (13.5:1 on mark). -->
+          <span lang="en" class="col-start-2 text-xs text-ink-secondary"><span class="bg-[linear-gradient(transparent_30%,var(--color-mark)_30%,var(--color-mark)_90%,transparent_90%)] text-ink">{{ MOTTO_NAME }}</span>{{ MOTTO_REST }}</span>
+          <span class="sr-only">, zur Startseite</span>
         </NuxtLink>
         <!-- No line under the icon alone (17.11.2026): an underline marks
              a word, and under a lone symbol it reads as a stray stroke. The
@@ -114,9 +144,12 @@ function isActive(to: string): boolean {
           <li v-for="item in navItems" :key="item.to">
             <!-- Hover is the site's one hover state, the 2 px underline
                  (16.11.2026): the step from secondary ink to ink alone was
-                 not visible. At the active label's offset, in the secondary
+                 not visible. At the active label's place, in the secondary
                  ink, so the current page — ink text, ink line — still
                  reads as the stronger of the two.
+                 The line is an inset shadow at the link's bottom edge, not
+                 a text underline (19.11.2026): an underline's place depends
+                 on the font, the link's edge is the header's border.
                  The current label is NOT heavier (16.11.2026; `font-medium`
                  until then): a heavier word is a wider word, so the labels
                  after it moved on every page change. Reserving the width for
@@ -125,11 +158,11 @@ function isActive(to: string): boolean {
             <NuxtLink
               :to="item.to"
               :aria-current="isActive(item.to) ? 'page' : undefined"
-              class="inline-flex min-h-target items-center rounded-sm text-sm transition-colors"
+              class="inline-flex min-h-target items-end rounded-t-sm pb-2.5 text-sm transition-colors"
               :class="
                 isActive(item.to)
-                  ? 'text-ink underline decoration-ink decoration-2 underline-offset-8'
-                  : 'text-ink-secondary underline-offset-8 hover:text-ink hover:underline hover:decoration-ink-secondary hover:decoration-2'
+                  ? 'text-ink shadow-[inset_0_-2px_0_var(--color-ink)]'
+                  : 'text-ink-secondary hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-ink-secondary)]'
               "
             >
               {{ item.label }}
@@ -139,11 +172,11 @@ function isActive(to: string): boolean {
             <NuxtLink
               :to="SEARCH.to"
               :aria-current="isActive(SEARCH.to) ? 'page' : undefined"
-              class="inline-flex min-h-target items-center rounded-sm text-sm transition-colors"
+              class="inline-flex min-h-target items-end rounded-t-sm pb-2.5 text-sm transition-colors"
               :class="
                 isActive(SEARCH.to)
-                  ? 'text-ink underline decoration-ink decoration-2 underline-offset-8'
-                  : 'text-ink-secondary underline-offset-8 hover:text-ink hover:underline hover:decoration-ink-secondary hover:decoration-2'
+                  ? 'text-ink shadow-[inset_0_-2px_0_var(--color-ink)]'
+                  : 'text-ink-secondary hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-ink-secondary)]'
               "
             >
               {{ SEARCH.label }}
