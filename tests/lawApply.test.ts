@@ -1208,6 +1208,44 @@ describe('Anlagen sind keine Paragraphen (26.09.2026)', () => {
   })
 })
 
+describe('Ein römisch nummerierter Anhang ist die Anlage seiner Zahl (19.11.2026)', () => {
+  /** RIS files every schedule as „Anl." with an Arabic number — the BVergG 2018's Anhänge too. */
+  function withAnhaenge(): StandingLaw {
+    return {
+      paragraphs: [
+        para('8', 'Acht', ['Paragraph acht.']),
+        makeNode('para', '8', 'Anl. 8', 'Anhang acht alt.', 'Anhang VIII'),
+        makeNode('para', '9', 'Anl. 9', 'Anhang neun alt.', 'Anhang IX'),
+      ],
+    }
+  }
+
+  it('changes text in the Anhang a Roman numeral names', () => {
+    const { law: out, results } = run(withAnhaenge(), instr('Im Anhang VIII wird das Wort "alt" durch das Wort "neu" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.text)).toEqual(['', 'Anhang acht neu.', 'Anhang neun alt.'])
+  })
+
+  // „Anhang VIII und IX": the sibling is Roman as well (58/ME XXVIII).
+  it('reaches both Anhänge of a Roman enumeration, and never the § of the number', () => {
+    const { law: out, results } = run(withAnhaenge(), instr('Im Anhang VIII und IX wird jeweils das Wort "alt" durch das Wort "neu" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.text)).toEqual(['', 'Anhang acht neu.', 'Anhang neun neu.'])
+  })
+
+  it('deletes the Anhang a Roman numeral names', () => {
+    const { law: out, results } = run(withAnhaenge(), instr('Anhang IX entfällt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.marker)).toEqual(['§ 8.', 'Anl. 8'])
+  })
+
+  it('refuses a Roman Anhang the law does not carry', () => {
+    const { results } = run(withAnhaenge(), instr('Im Anhang III wird das Wort "alt" durch das Wort "neu" ersetzt.'))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/Nicht im geltenden Text/)
+  })
+})
+
 describe('Schreibweise einer Fundstelle (26.09.2026)', () => {
   const cited = (): StandingLaw => ({ paragraphs: [para('5', 'A', ['Die Betreuung erfolgt nach dem BBU-Errichtungsgesetz, BGBl. I Nr. 53/2019.'])] })
 

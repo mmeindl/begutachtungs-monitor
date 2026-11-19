@@ -22,6 +22,7 @@ import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { announcesHeading, announcesSchedule, continuesToc, createdParagraphs, createdUnits, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId, isDivision, isSchedule, unitKey } from '../text/designation'
+import { scheduleNumber } from '../../../shared/utils/scheduleNumber'
 import { byParagraphOrder } from './konsGate'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
@@ -707,7 +708,7 @@ function arrivesBeside(law: StandingLaw, para: LawNode): boolean {
  * tree looks like in between.
  */
 function unitPlace(a: NovaoAddress, level: NodeLevel, id: string): string {
-  return [a.artikel ?? '', isSchedule(a.para) ? 'Anl.' : '§', bareParaId(a.para) ?? '', level, level === 'abs' ? '' : (a.abs ?? ''), level === 'lit' ? (a.z ?? '') : '', id].join('|')
+  return [a.artikel ?? '', isSchedule(a.para) ? 'Anl.' : '§', paraNumber(a.para) ?? '', level, level === 'abs' ? '' : (a.abs ?? ''), level === 'lit' ? (a.z ?? '') : '', id].join('|')
 }
 
 /** A unit below the § this instruction moved to its number, or brought in. */
@@ -781,11 +782,18 @@ function sharedNumber(law: StandingLaw, hits: readonly LawNode[]): LawNode | nul
  *
  * The collision was unreachable until 26.09.2026 only because `konsTree`
  * failed to read „Anl. 1" at all and every schedule arrived with the id „?".
+ *
+ * A schedule's number is read as RIS files it (`paraNumber`): „Anhang VIII"
+ * is the node of „Anl. 8", and a sibling the draft writes in Roman („Anhang
+ * VIII und IX") the node of „Anl. 9". Read through `bareParaId` until
+ * 19.11.2026, a Roman schedule had no number at all, and in a law with
+ * several every instruction on one was refused as „nicht im geltenden Text"
+ * — 19 lookups of the BGBl bench, the BVergG 2018's Anhänge among them.
  */
 function findParagraph(law: StandingLaw, a: NovaoAddress, overrideId?: string): LawNode | null {
   const wantsSchedule = isSchedule(a.para)
   const pool = law.paragraphs.filter((p) => isSchedule(p.marker) === wantsSchedule)
-  const id = overrideId ?? bareParaId(a.para)
+  const id = overrideId === undefined ? paraNumber(a.para) : wantsSchedule && overrideId !== '' ? (scheduleNumber(`Anlage ${overrideId}`) ?? overrideId) : overrideId
   // „Z 1 lit. n des Anhangs" names no number, because the law has exactly
   // one schedule. Where it has several the instruction has to say which, and
   // an address that does not is refused rather than guessed at.
@@ -1720,7 +1728,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
 
     case 'replace': {
       if (op.target.level !== 'para') payload = unwrapParaPayload(payload, op.target)
-      const ids = [op.target.level === 'para' ? (bareParaId(op.target.para) ?? '') : deepestId(op.target), ...op.target.siblings]
+      const ids = [op.target.level === 'para' ? (paraNumber(op.target.para) ?? '') : deepestId(op.target), ...op.target.siblings]
       if (op.target.level === 'para') {
         // Through `findParagraph`, which asks the KIND as well as the number
         // (22.10.2026): „Die Anlage 1 und 2 lauten:" looked up by „1" and
@@ -2703,7 +2711,18 @@ function unwrapParaPayload(payload: readonly LawNode[], a: NovaoAddress): LawNod
 }
 
 function deepestId(a: NovaoAddress): string {
-  return a.lit ?? a.z ?? a.abs ?? bareParaId(a.para) ?? ''
+  return a.lit ?? a.z ?? a.abs ?? paraNumber(a.para) ?? ''
+}
+
+/**
+ * The number of the unit an address names at its top: a §'s as every reader
+ * reads it (`bareParaId`), a schedule's as RIS files it (`scheduleNumber`) —
+ * „Anhang XIV" is „14", „Anlage A" is „A", „Anlage zu § 5" has none. Read by
+ * the first number anywhere, „Anhang XIV" had none and „Anlage zu § 5" read
+ * as the § it refers to.
+ */
+function paraNumber(para: string | null): string | null {
+  return isSchedule(para) ? scheduleNumber(para!) : bareParaId(para)
 }
 
 /**

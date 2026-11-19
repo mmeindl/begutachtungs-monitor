@@ -914,7 +914,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   schedule, and the page gives it to a numbered block only where the annex
   prints one schedule for that law. Read as the first number anywhere, all
   Roman schedules of a law shared one outcome (58/ME XXVIII: one at eleven
-  Anhänge) (`shared/utils/scheduleNumber.ts`).
+  Anhänge) (`shared/utils/scheduleNumber.ts`). The engine looks a schedule
+  up by the same number, its Roman siblings included („Anhang VIII und
+  IX"): through `bareParaId` a Roman schedule had none, and in a law with
+  several every line on one was refused (`findParagraph`, `paraNumber`).
 - **One outcome stands at one block** (19.11.2026): where a unit is printed
   as two blocks (a table of contents with § symbols, a schedule in two
   parts), at the one that prints most of it, the later on a tie; the other
