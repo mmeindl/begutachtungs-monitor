@@ -89,14 +89,18 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
     const v = vs[0]!
     const createdHere = v.stammnorm === nummer
     // A law this Landesgesetzblatt enacts: no instructions, no earlier wording — its §§ stand as new.
+    // One it cannot read in a single certain version is named so (`enactedUnread`, 19.11.2026): until
+    // then it was named „unpaired" — „eine Anweisung nennt ihn; seine Fassung davor …", false of a § no
+    // instruction names and that had none before — and one whose XML held no text was dropped uncounted.
     if (createdHere) {
-      if (vs.length !== 1 || shiftedRecord(v, promulgated)) return void withheld.push({ law: v.law, id: v.key, reason: 'unpaired' })
+      if (vs.length !== 1 || shiftedRecord(v, promulgated)) return void withheld.push({ law: v.law, id: v.key, reason: 'enactedUnread' })
       const unit = await unitOf(v).catch(() => {
         complete = false
         return undefined
       })
       if (unit === undefined) return void withheld.push({ law: v.law, id: v.key, reason: 'unchecked' })
-      if (unit) newUnits.push(unit)
+      if (!unit) return void withheld.push({ law: v.law, id: v.key, reason: 'enactedUnread' })
+      newUnits.push(unit)
       return
     }
     const lawKey = instructionLawFor(v.law, instructionLaws, laws.length)

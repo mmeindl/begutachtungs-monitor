@@ -418,8 +418,16 @@ export interface LandLawDiffResponse {
  *  - `notInDraft`: what the document shows as new at it is, too much of it,
  *    not in the draft's own Gesetzestext — the Bund's rule of the same name
  *    (`laender/landTguGuard.ts`, 12.11.2026). Not Kärnten's.
+ * And on a Landesgesetz's page (`landLawChangesService.ts`):
+ *  - `uninstructed`: RIS ties its version to the Landesgesetzblatt, no
+ *    instruction names it;
+ *  - `unpaired`: an instruction names it, its wording before and after is
+ *    not certain in RIS;
+ *  - `enactedUnread`: a § of a law the Landesgesetzblatt enacts anew whose
+ *    text RIS holds in no single version the monitor reads with certainty
+ *    (19.11.2026).
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'notInDraft'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'enactedUnread' | 'notInDraft'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

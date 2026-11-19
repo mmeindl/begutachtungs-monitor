@@ -910,6 +910,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   `lgblUnits`): „15.1.1.", „26a.1.", „18.1a.", „2.1 Abs", „19.1.Nach". The
   §§ such a sub-instruction names before its quoted wording are instructed
   (`subInstructionHeads`).
+- **A § of a law the Landesgesetzblatt enacts anew is named in a sentence
+  true of it** (19.11.2026, `enactedUnread` in `landLawChangesService.ts`):
+  where RIS holds it in no single version whose text the monitor reads, it
+  is listed — never as „eine Anweisung nennt ihn", and never dropped.
 - **„Entfallen" only where the draft says so.** An empty right column can be
   text the reader missed (§12.52).
 - **A document a Land files as the draft but that is not one is not read as

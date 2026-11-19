@@ -124,6 +124,12 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     one: 'Eine Anweisung des Landesgesetzblatts nennt ihn; seine Fassung davor und danach fand der Monitor im RIS nicht eindeutig',
     many: 'Anweisungen des Landesgesetzblatts nennen sie; ihre Fassung davor und danach fand der Monitor im RIS nicht eindeutig',
   },
+  // A law the Landesgesetzblatt enacts anew (19.11.2026): no instruction names its §§, and there is nothing before.
+  enactedUnread: {
+    lead: 'Nicht gezeigt:',
+    one: 'Das Landesgesetzblatt erlässt ihn neu; seinen Text fand der Monitor im RIS nicht in einer Fassung, die er sicher lesen kann',
+    many: 'Das Landesgesetzblatt erlässt sie neu; ihren Text fand der Monitor im RIS nicht in einer Fassung, die er sicher lesen kann',
+  },
   // One per law (`tguParagraphs`): the id is „Titel".
   title: {
     lead: 'Nicht gezeigt:',
@@ -133,7 +139,7 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
+const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
  * The numbers other §§ of a group move to: „§ 34 → § 33" makes § 33 one
