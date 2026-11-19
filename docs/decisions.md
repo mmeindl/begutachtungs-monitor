@@ -873,49 +873,6 @@ gets an entry of its own only where it carries a reason the rule does not.
   in five is a trivial difference (a title fragment, a reprinted contents
   line); the sentence stays true there. A part set otherwise that yields
   no row counts its pages as unread (`droppedPages`).
-- **An unmarked `erltext` block behind an Absatz of the standing law is
-  that Absatz's closing part** (19.11.2026), the shape RIS's newer converter
-  gives the same sentences (`<schlussteil ebene="0">`). Skipped, binding
-  sentences were missing from oracle-confirmed Lesefassungen (UStG § 21,
-  BUAG § 13d): an annex row's „…" leaves no check a word to miss. RIS's
-  apparatus stays out: italics, „Anm", footnotes, the footnote rule and the
-  italic blocks behind a numbered note, a note split over two blocks, and a
-  line that heads the next numbered Absatz (`lawtext/konsTree.ts`).
-- **A new unit's text prints every number its line announces** (19.11.2026),
-  for appended and inserted Absätze, Ziffern, Literae and §§; more printed
-  than announced passes. An unmarked unit never takes the announced number
-  of its place: over the corpus it was a misread dash item or continuation
-  seven times in ten. A sub-unit anchored only to a whole § („Nach § 18c …
-  Abs. 1a") is refused, since a § need not list its units in order
-  (`kons/lawApply.ts`).
-- **A unit deletion is carried out only where every noun its verb governs
-  belongs to the address** (19.11.2026): a designation the target carries,
-  the sentence or heading the address read, a place word's noun, and what
-  follows „samt/einschließlich". Any other noun names a part of the unit
-  („die Zeilen betreffend …", „die Überschrift", „der dritte Absatz"), and
-  the line is refused rather than carried out on the whole unit, which the
-  consolidation would then report as repealed. Fail-closed: an unseen noun
-  is refused, never read (`partStruck` in `kons/novao.ts`).
-- **„Angefügt" is the unit's end; a sentence the clause before named is the
-  place only behind the end mark that clause replaced** (19.11.2026). After
-  that sentence's deletion the new one goes to the end; after a change
-  inside it, and for „an Stelle des N. Satzes … angefügt", the line is
-  refused: the words do not settle the place (`parseInstruction` in
-  `kons/novao.ts`).
-- **New text the payload parser could not read as a unit is not appended,
-  and neither is a picture** (19.11.2026). A line left as a heading below
-  the § („c. Telefonnummer", a lone „42.") is read by no renderer and no
-  check; a picture's file path would stand as law text. Both refused, as a
-  table is (`kons/lawApply.ts`).
-- **„Nach der Z 3 folgender Satz angefügt" closes the list** (19.11.2026):
-  the text goes behind the unit named, into the unit above it, as its
-  Schlussteil, and only behind the list's last unit with no Schlussteil
-  yet. A Schlussteil closes Ziffern or Literae, never Absätze
-  (`behindListItem` in `kons/novao.ts`, `kons/lawApply.ts`).
-- **New §§ announced „samt Überschrift(en)" are inserted only where the
-  first one carries a heading** (19.11.2026); one heading may stand over
-  several §§ (StPO §§ 115f to 115l), so not each. A heading of a division
-  („vierter Teil samt Überschrift") does not count (`announcesHeading`).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
