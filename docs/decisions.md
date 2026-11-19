@@ -607,6 +607,15 @@ gets an entry of its own only where it carries a reason the rule does not.
   is one this change amends, the change that carries that number amends none
   of them, no other change of the law amends them, and the other document's
   passage names the same §. Missing one, the change keeps no Begründung.
+  Where both documents print it so, the documents' agreement stands in for
+  the second document, and the change whose number the passage carries
+  says „die Erläuterungen zählen die Ziffern anders" only where that change
+  alone amends every § the passage names and has no passage of its own
+  (`claimedByAnother`, 96/ME XXVIII).
+- **A bare „Zu Z 5:" under a heading titled by § alone is that §'s Ziffer,**
+  not a Novellierungsanordnung's passage — only in a document every bare
+  Ziffer heading of which stands in such a run (`ownedPassages`, 67/ME
+  XXVIII; 145/ME XXVII heads its Ziffern „Zu Z 1:" and keeps them).
 - **A change whose Begründung could not be attached says so, at the
   change,** where both documents carry Erläuterungen titled by Ziffer
   (`ReasoningDiffResponse.gaps`). Without the line it looked like a change

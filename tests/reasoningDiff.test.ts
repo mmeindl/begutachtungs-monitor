@@ -734,6 +734,50 @@ describe('compareReasoning — eine Seite zählt ihre Ziffern versetzt (02.10.20
   })
 })
 
+describe('compareReasoning — beide Seiten zählen ihre Ziffern gleich versetzt (19.11.2026)', () => {
+  // 96/ME XXVIII: both documents print § 80's passage as „Zu Z 2"; Z 2 is
+  // the Inkrafttreten, which neither explains, and § 80 is Z 3.
+  const units = [
+    z('Z1', 'Z1', 'Nach § 51 wird folgender § 51a samt Überschrift eingefügt: Arbeitsmarkt-Transformationsfonds …'),
+    z('Z2', 'Z2', 'Dem § 78 wird folgender Abs. 58 angefügt: "(58) § 51a und § 80 … treten … in Kraft."'),
+    z('Z3', 'Z3', 'Nach § 79 wird folgender § 80 samt Überschrift eingefügt: Evaluierung …'),
+  ]
+  const before = () => erl('Zu Z 1 (§ 51a AMSG):', 'Der Fonds.', 'Zu Z 2 (§ 80 AMSG):', 'Die Evaluierung von Beschäftigungsprojekten.')
+  const after = () => erl('Zu Z 1 (§ 51a AMSG):', 'Der Fonds.', 'Zu Z 2 (§ 80 AMSG):', 'Die Evaluierung der Beschäftigungsprojekte.')
+
+  it('gibt die Passage der Änderung, deren § sie nennt, und der eigenen Nummer die Zählung als Grund (96/ME XXVIII)', () => {
+    const out = compareReasoning(units, before(), after())
+
+    expect(out.units['Gesetz|Z2|changed']).toBeUndefined()
+    expect(out.gaps['Gesetz|Z2|changed']).toBe('numbering')
+    expect(out.entries[out.units['Gesetz|Z3|changed']!]).toMatchObject({ label: 'Zu Z 2 (§ 80 AMSG):', changed: true })
+    expect(out.fallbacks['Gesetz|Z3|changed']).toBe('offset')
+  })
+
+  it('lässt die Passage, wo die Änderung ihres § eine eigene hat', () => {
+    // The Inhaltsverzeichnis entry for § 78b, which Z 5 inserts with a passage of its own (230/ME XXVII).
+    const toc = [z('Z1', 'Z1', 'Im Inhaltsverzeichnis wird nach dem den § 78a betreffenden Eintrag folgender Eintrag eingefügt: …'), z('Z5', 'Z5', 'Nach § 78a wird folgender § 78b samt Überschrift eingefügt: …')]
+    const doc = () => erl('Zu Z 1 (Der den § 78b betreffende Eintrag im Inhaltsverzeichnis):', 'Anpassung.', 'Zu Z 5 (§ 78b):', 'Neu.')
+    expect(compareReasoning(toc, doc(), doc()).units['Gesetz|Z1|changed']).toBeDefined()
+  })
+})
+
+describe('compareReasoning — die Ziffern eines § unter seiner Überschrift (19.11.2026)', () => {
+  it('liest „Zu Z 11:" unter „Zu § 1:" als Ziffer des § 1, nicht als Novellierungsanordnung (67/ME XXVIII)', () => {
+    const units = [
+      z('Z1', 'Z1', '§ 1 Z 5 lautet: "5. Aufgaben …"'),
+      z('Z12', 'Z11', 'Der bisherige Text des § 11 erhält die Absatzbezeichnung (1), folgender Abs. 2 wird angefügt: "(2) … tritt … in Kraft."'),
+    ]
+    const before = erl('Zu § 1:', 'Die Aufgaben.', 'Zu Z 5:', 'Der Verweis auf den SKS-Vertrag ist obsolet.', 'Zu Z 11:', 'Die Teilnahme an Sitzungen des Nationalrates.', 'Zu § 11 Abs. 2:', 'Inkrafttretensbestimmung.')
+    const after = erl('Zu § 1:', 'Die Aufgaben.', 'Zu Z 1 (§ 1 Z 5):', 'Der Verweis auf den SKS-Vertrag ist obsolet.', 'Zu Z 12 (§ 11 Abs. 2):', 'Inkrafttretensbestimmung.')
+
+    const out = compareReasoning(units, before, after)
+
+    // Held against „Zu Z 11:" it read „geändert"; the draft's own „Zu § 11 Abs. 2:" says the same words.
+    expect(out.entries[out.units['Gesetz|Z12|changed']!]).toMatchObject({ label: 'Zu Z 12 (§ 11 Abs. 2):', changed: false })
+  })
+})
+
 describe('compareReasoning — die Passage unter der Nachbarnummer (14.11.2026)', () => {
   // 54/ME XXVIII: the Vorlage prints „Zu Z 12" twice, and from there every
   // heading is one behind its instruction. The draft numbers right.
