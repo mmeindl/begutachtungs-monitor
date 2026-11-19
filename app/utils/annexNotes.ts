@@ -84,8 +84,14 @@ const WITHHELD_FROM_PDF = 'Das kann an unserer Lesung des PDF liegen.'
  * apart. Since then an instruction that appends exactly that wording no
  * longer fires the rule (`WordBag.carries`), but a restated Absatz still can,
  * so the sentence names our check, not the ministry. */
+/* „standing" said nothing on the table path until 19.11.2026: the pairing
+ * was taken to be the ressort's. It is not all of it — which § a row belongs
+ * to is ours where the row opens none (the § above is inherited), and SchOG
+ * §§ 6, 21c and 40 were withheld as „steht so nicht im RIS" because we filed
+ * §§ 8, 35, 37, 39 and 45 under them (`typedDesignation` in
+ * `annex/comparisonRows.ts`). */
 const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, string | null> = {
-  standing: null,
+  standing: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
   alreadyStanding: 'Das kann auch daran liegen, dass derselbe Wortlaut an anderer Stelle des Paragraphen steht; unsere Prüfung unterscheidet die Absätze nicht.',
   notInDraft: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
   repealUnproven: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',

@@ -813,6 +813,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   FPRG 2021 § 3 was confirmed without its new Abs. 12. No § opens on a line
   the line above runs on into („… gemäß" over „§ 19b."); that citation
   split a § and hid its end.
+- **On the table path a withheld § names our filing too** (19.11.2026,
+  `annexNotes.ts`): the cells are the ressort's, but the § a row belongs to
+  is ours where it opens none. A designation typed as text — in the
+  `typ="para"` heading, or at the head of both columns — opens its § like a
+  `<gldsym>` (`typedDesignation` in `comparisonRows.ts`); unread, SchOG
+  §§ 6, 21c and 40 were withheld for rows of §§ 8, 35, 37, 39 and 45.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

@@ -174,6 +174,28 @@ const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSym
 const TYPED_DESIGNATION_RE = new RegExp(String.raw`^\s*(§+\s*${PARAGRAPH_NUMBER}\.)(?=\s|$)`, 'i')
 
 /**
+ * The § a row opens by a designation typed at the head of its text, where it
+ * carries no `<gldsym>`: the same one at the head of both columns, or at the
+ * head of the one column a new or repealed § fills. Null otherwise — one
+ * column alone opening with it beside text in the other is the renumbering
+ * case, decided where the left `<gldsym>` is read.
+ */
+function typedDesignation(current: string, proposed: string): string | null {
+  // „§§ 1. bis 26. …", „§ 21. bis 25. …": a range left out, which opens none of its §§.
+  const opening = (text: string): string | null => {
+    const m = TYPED_DESIGNATION_RE.exec(text)
+    if (!m || m[1]!.startsWith('§§') || /^\s*(?:bis|und)\b/.test(text.slice(m[0].length))) return null
+    return m[1]!
+  }
+  const left = opening(current)
+  const right = opening(proposed)
+  if (left && right) return designationKey(left) === designationKey(right) ? left : null
+  if (left && !proposed) return left
+  if (right && !current) return right
+  return null
+}
+
+/**
  * A structural division of the law — "3. Abschnitt", "Abschnitt XI",
  * "2. Hauptstück", "7. Teil", with or without its title on the same line.
  *
@@ -554,7 +576,19 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     // Group 1 is RIS's `<gldsym>`, group 2 the Word template's span; exactly
     // one of them is set. Reading group 1 alone gave `undefined` for every
     // Parliament annex — the branch fired and its capture was dropped.
-    const gld = gldMatch ? cellText(gldMatch[1] ?? gldMatch[2] ?? '') : null
+    //
+    // **A designation the ressort typed as text opens its § too**
+    // (19.11.2026): in the § heading RIS types `typ="para"` — „§ 35.", „§ 1.
+    // Geltungsbereich." — or at the head of both columns alike, or of the one
+    // column a new or repealed § fills, with no `<gldsym>` anywhere. Unread,
+    // the rows went to the § above (SchOG §§ 35, 37, 39 under § 21c, which
+    // the gate then withheld as „steht so nicht im RIS"), or to none (59 of
+    // the Privatschulgesetz's 71 rows, „bezeichnet diese Stellen nicht als
+    // Paragraphen"). A right-only designation beside a left `<gldsym>` stays
+    // the renumbering below.
+    const headingGld = lift ? (TYPED_DESIGNATION_RE.exec(ownHeading!)?.[1] ?? null) : null
+    const gld = gldMatch ? cellText(gldMatch[1] ?? gldMatch[2] ?? '') : (headingGld ?? typedDesignation(cellText(currentHtml), cellText(proposedHtml)))
+    const liftedHeading = lift ? (headingGld ? ownHeading!.slice(ownHeading!.indexOf(headingGld) + headingGld.length).trim() : ownHeading) : null
     // The right column's own Gliederungssymbol, where the row is filed under
     // the left one (`designateAfter`).
     const rightGld = leftMatch && rightMatch ? cellText(rightMatch[1] ?? rightMatch[2] ?? '') : null
@@ -587,7 +621,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
       // The heading had a row of its own. It belongs to the § *below* it —
       // read in printed order it landed in the § before, which once put
       // another §'s title onto a provision.
-      pendingHeading.push(ownHeading)
+      if (liftedHeading) pendingHeading.push(liftedHeading)
       continue
     }
     // A row that prints nothing but the designation is a marker, not a
@@ -606,7 +640,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     const row: ComparisonRow = {
       kind: 'pair',
       law,
-      heading: [pendingHeading.join(' '), lift ? ownHeading : ''].filter(Boolean).join(' · ') || null,
+      heading: [pendingHeading.join(' '), liftedHeading ?? ''].filter(Boolean).join(' · ') || null,
       gld,
       para: openPara,
       // Decided per § once the annex is read (`designateAfter`).

@@ -904,6 +904,32 @@ describe('a row whose two columns carry different designations', () => {
 // begins here. Where a ressort writes it that way it prints no `<gldsym>`: in
 // the Verbrechensopfergesetz annex the new § 16 Abs. 25 and the new § 9b
 // Abs. 6 went out under §§ 10 and 7c (2026-09-11).
+// A designation the ressort typed as text (19.11.2026): SchOG §§ 35, 37 and
+// 39 (RIS DE314E3C) print it in the § heading RIS types `typ="para"`, the
+// Privatschulgesetz (95BA094D) at the head of both columns. With no
+// `<gldsym>`, the rows went to the § above — withheld, „steht so nicht im
+// RIS" — or to no § at all.
+describe('a designation typed as text', () => {
+  const open = pair('<absatz typ="abs"><gldsym>§ 21c.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 21c.</gldsym> (1) Neu.</absatz>')
+
+  it('opens its § from the § heading, and the heading loses the designation', () => {
+    const head = '<ueberschrift typ="para">§ 37. Sonderformen</ueberschrift>'
+    const rows = parse(annex([open, pair(`${head}<absatz typ="abs">(1) Alt.</absatz>`, `${head}<absatz typ="abs">(1) Neu.</absatz>`), pair('(2) Gleich.', '(2) Gleich.')]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 21c.', '§ 37.', '§ 37.'])
+    expect(rows[1]!.heading).toBe('Sonderformen')
+  })
+
+  it('opens its § from the head of both columns alike, or of the one a new § fills', () => {
+    const rows = parse(annex([open, pair('§ 3. Voraussetzungen alt.', '§ 3. Voraussetzungen neu.'), pair('', '§ 3a. Neue Bestimmung.')]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 21c.', '§ 3.', '§ 3a.'])
+  })
+
+  it('opens nothing from a range left out, nor where the two columns name different §§', () => {
+    const rows = parse(annex([open, pair('§ 21. bis 25. …', '§ 21. bis 25. …'), pair('§ 7. Alt.', '§ 8. Neu.')]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 21c.', '§ 21c.', '§ 21c.'])
+  })
+})
+
 describe('an elision line that names its own §', () => {
   const open = pair('<absatz typ="abs"><gldsym>§ 10.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 10.</gldsym> (1) Neu.</absatz>')
 

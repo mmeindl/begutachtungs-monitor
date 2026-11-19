@@ -39,10 +39,12 @@ describe('annexWithheldBlame', () => {
     expect(annexWithheldBlame('standing', 'pdf')).toBe('Das kann an unserer Lesung des PDF liegen.')
   })
 
-  it('says nothing about a mismatching left column on the table path', () => {
-    // There the pairing is the ressort's own, so there is nothing of ours to
-    // blame — and no sentence beats an invented one.
-    expect(annexWithheldBlame('standing', 'table')).toBeNull()
+  it('names our filing of the rows on the table path too', () => {
+    // The table's cells are the ressort's, but which § a row belongs to is
+    // ours where it opens none: SchOG §§ 6, 21c and 40 (RIS DE314E3C) were
+    // withheld as „steht so nicht im RIS" for rows we had filed under them
+    // (19.11.2026). Until then this sentence was null, blaming the annex.
+    expect(annexWithheldBlame('standing', 'table')).toBe('Das kann auch an unserer Zuordnung zum Paragraphen liegen.')
     expect(annexWithheldBlame('notInDraft', 'table')).toContain('an unserer Zuordnung zum Paragraphen')
   })
 
