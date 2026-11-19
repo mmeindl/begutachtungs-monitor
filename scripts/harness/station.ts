@@ -315,7 +315,8 @@ if (baselinePath) {
   const went = [...was].filter((l) => !now.has(l))
   console.log(`\n── Gegen die Baseline ${baselinePath}: ${came.length} neu, ${went.length} weg`)
   for (const l of came) console.log(`   + ${l}`)
-  for (const l of went) console.log(`   − ${l}${before.reasons?.[l.replace(/^\S+ /, '')] ? ` (war: ${before.reasons[l.replace(/^\S+ /, '')]})` : ''}`)
+  // A reason is keyed by the residue's whole line, its kind first, as `came` and `went` are.
+  for (const l of went) console.log(`   − ${l}${before.reasons?.[l] ? ` (war: ${before.reasons[l]})` : ''}`)
   if (came.length || went.length) failed = true
 }
 process.exit(failed ? 1 : 0)

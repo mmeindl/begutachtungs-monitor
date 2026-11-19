@@ -2,15 +2,11 @@
  "gp": "XXVIII",
  "drafts": 91,
  "pairs": 453,
- "note": "Reste der beiden Nullvergleiche (scripts/harness/station.ts) am 19.11.2026 über den Offline-Cache. Ein Rest hier ist nicht hingenommen: reasons sagt für jeden nicht redaktionellen, warum er steht; die redaktionellen der Kundmachung sind die eingesetzte Fundstelle und Zeichen, nicht einzeln gelesen.",
+ "note": "Reste der beiden Nullvergleiche (scripts/harness/station.ts) am Abend des 19.11.2026 über den Offline-Cache (am Mittag vier mehr: die Überschriften der Anlagen in 32/ME und 43/ME, die das Parlament im Text des letzten § ließ, sind seither keine Reste mehr). Ein Rest hier ist nicht hingenommen: reasons sagt für jeden nicht redaktionellen, warum er steht; die redaktionellen der Kundmachung sind die eingesetzte Fundstelle und Zeichen, nicht einzeln gelesen.",
  "reasons": {
   "html-xml 2/ME html>xml changed Änderung des Bundesgesetzes über die justizielle Zusammenarb · Z73→Z73": "Leser: der zitierte Titel der Vereinbarung steht im Parlaments-HTML, im RIS-XML nicht als lesbarer Block — offen",
-  "parlament-bgbl 32/ME plenum>bgbl changed Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §190→§190": "Leser: die Überschriften der Anlagen („Anlage I (zu § …)\", „Anhang 1\") bleiben beim Parlament im Text des letzten §, das RIS führt sie als Gliederung (lawtext/lawUnits.ts) — offen, gemeldet",
   "html-xml 32/ME html>xml changed (redaktionell) Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §151→§151": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
   "html-xml 32/ME html>xml changed (redaktionell) Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §153→§153": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
-  "html-xml 32/ME html>xml changed Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §182→§182": "Leser: die Überschriften der Anlagen („Anlage I (zu § …)\", „Anhang 1\") bleiben beim Parlament im Text des letzten §, das RIS führt sie als Gliederung (lawtext/lawUnits.ts) — offen, gemeldet",
-  "parlament-bgbl 43/ME plenum>bgbl changed Bundesgesetz über die Beschleunigung des Ausbaus von Anlagen · §63→§63": "Leser: die Überschriften der Anlagen („Anlage I (zu § …)\", „Anhang 1\") bleiben beim Parlament im Text des letzten §, das RIS führt sie als Gliederung (lawtext/lawUnits.ts) — offen, gemeldet",
-  "html-xml 43/ME html>xml changed Bundesgesetz über die Beschleunigung des Ausbaus von Anlagen · §59→§59": "Leser: die Überschriften der Anlagen („Anlage I (zu § …)\", „Anhang 1\") bleiben beim Parlament im Text des letzten §, das RIS führt sie als Gliederung (lawtext/lawUnits.ts) — offen, gemeldet",
   "html-xml 47/ME html>xml changed Änderungen des Rechtsanwaltstarifgesetzes · Z2→Z2": "Quellen verschieden: das RIS-XML schreibt „kommt,.\" (Tippfehler der Quelle)",
   "html-xml 101/ME html>xml changed (redaktionell) Bundesgesetz über die Errichtung eines Unterstützungsfonds f · §7→§7": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
   "parlament-bgbl 116/ME plenum>bgbl changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)",
@@ -417,7 +413,7 @@
    "kind": "parlament-bgbl",
    "pair": "8/ME ausschuss>bgbl",
    "residue": {
-    "unit": "Änderung des Staatsschutz- und Nachrichtendienst-Gesetzes · Z22#dup→Z22#dup",
+    "unit": "Änderung des Staatsschutz- und Nachrichtendienst-Gesetzes · Z22a→Z22a",
     "change": "changed",
     "editorial": true,
     "pieces": [],
@@ -2408,17 +2404,6 @@
    "kind": "parlament-bgbl",
    "pair": "32/ME plenum>bgbl",
    "residue": {
-    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §190→§190",
-    "change": "changed",
-    "editorial": false,
-    "pieces": [],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "parlament-bgbl",
-   "pair": "32/ME plenum>bgbl",
-   "residue": {
     "unit": "Bundesgesetz zur Definition des Begriffs der Energiearmut fü · §12→§12",
     "change": "changed",
     "editorial": true,
@@ -2466,17 +2451,6 @@
     "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §153→§153",
     "change": "changed",
     "editorial": true,
-    "pieces": [],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "html-xml",
-   "pair": "32/ME html>xml",
-   "residue": {
-    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §182→§182",
-    "change": "changed",
-    "editorial": false,
     "pieces": [],
     "ceiling": false
    }
@@ -2683,17 +2657,6 @@
    "kind": "parlament-bgbl",
    "pair": "43/ME plenum>bgbl",
    "residue": {
-    "unit": "Bundesgesetz über die Beschleunigung des Ausbaus von Anlagen · §63→§63",
-    "change": "changed",
-    "editorial": false,
-    "pieces": [],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "parlament-bgbl",
-   "pair": "43/ME plenum>bgbl",
-   "residue": {
     "unit": "Änderung des Erneuerbaren-Ausbau-Gesetzes · Z5→Z5",
     "change": "changed",
     "editorial": true,
@@ -2719,17 +2682,6 @@
     "unit": "Änderung des Erneuerbaren-Ausbau-Gesetzes · Z9→Z9",
     "change": "changed",
     "editorial": true,
-    "pieces": [],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "html-xml",
-   "pair": "43/ME html>xml",
-   "residue": {
-    "unit": "Bundesgesetz über die Beschleunigung des Ausbaus von Anlagen · §59→§59",
-    "change": "changed",
-    "editorial": false,
     "pieces": [],
     "ceiling": false
    }
