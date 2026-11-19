@@ -59,7 +59,7 @@ import type { AnnexWithheldCause } from '../../../shared/types'
 import { annexParagraphKey, designationKey } from './annexText'
 import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange, type Coverage } from './coverage'
 import { draftBags, draftReference, rightColumnCheck, type RightColumnCheck, type StandingText, type WordBag } from './rightColumn'
-import { divisionsOf, draftRepeals, repealsParagraph, showsRepeal, type DraftRepeals } from './repeals'
+import { divisionPath, divisionsOf, draftRepeals, noRepeals, repealsParagraph, showsRepeal, type DraftRepeals } from './repeals'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
@@ -722,30 +722,26 @@ export async function verifyAnnex(
         // or several Artikel amend the same Stammnorm (FM-GwG-Anpassungsgesetz).
         const sameLaw = amending.length > 0 && amending.every((a) => a.bgbl !== null && amending[0]!.bgbl !== null && a.bgbl.organ === amending[0]!.bgbl.organ && a.bgbl.nummer === amending[0]!.bgbl.nummer)
         const article = law === null ? (amending.length === 1 || sameLaw ? amending[0]! : null) : byKey.get(law)
-        found = article ? draftRepeals(draft.blocks, article) : { paragraphs: new Set(), ranges: [], divisions: new Set() }
+        found = article ? draftRepeals(draft.blocks, article) : noRepeals()
         repealed.set(law, found)
       }
       return found
     }
-    // The division a § stands in: RIS names it over the first § of the
-    // division only, so walk back through the law's §§ to the nearest one
-    // that names one — over §§ the check fetched, and no further.
-    const divisionOf = (law: string | null, key: string): string | null => {
+    // The divisions a § stands in, innermost first: RIS names each over its
+    // first § only, so walk back through the law's §§ — over §§ the check
+    // fetched, and no further (`divisionPath`).
+    const pathOf = (law: string | null, key: string): string[] => {
       const index = indexes.get(law)
       const named = divisions.get(law)
-      if (!index || !named) return null
+      if (!index || !named) return []
       const order = [...index.paragraphs.keys()]
-      for (let i = order.indexOf(key); i >= 0; i--) {
-        const here = named.get(order[i]!)
-        if (here === undefined) return null
-        if (here.length > 0) return here.at(-1)!
-      }
-      return null
+      const at = order.indexOf(key)
+      return at < 0 ? [] : divisionPath(order.map((k) => named.get(k)), at)
     }
     for (const [groupKey, group] of groups) {
       if (verdicts[groupKey] === 'withheld' || !showsRepeal(group.rows)) continue
       const key = designationKey(group.para)
-      if (repealsParagraph(repealsIn(group.law), group.para, key === null ? null : divisionOf(group.law, key))) continue
+      if (repealsParagraph(repealsIn(group.law), group.para, key === null ? [] : pathOf(group.law, key))) continue
       verdicts[groupKey] = 'withheld'
       withheldCauses[groupKey] = 'repealUnproven'
     }

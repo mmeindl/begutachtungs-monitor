@@ -27,9 +27,19 @@ export interface DraftRepeals {
   paragraphs: Set<string>
   /** „die §§ 66 bis 70a": the first and the last, as `repealKey`; every § between them goes too (`inRange`). */
   ranges: [string, string][]
-  /** Divisions repealed whole, as `divisionKey`: „3. abschnitt", „9. teil". */
+  /** Divisions repealed whole, as `divisionKey`: „3. abschnitt", „9. teil", „b. teil". */
   divisions: Set<string>
+  /**
+   * „Der II. Abschnitt des Teils A": the division and the one it is
+   * qualified by, both as `divisionKey`. Proven only for a § whose path
+   * holds both (`divisionPath`) — „ii. abschnitt" alone stands in every Teil
+   * of the Seeschifffahrts-Verordnung.
+   */
+  qualified: [string, string][]
 }
+
+/** An empty `DraftRepeals`. */
+export const noRepeals = (): DraftRepeals => ({ paragraphs: new Set(), ranges: [], divisions: new Set(), qualified: [] })
 
 /**
  * A designation as the repeal check compares it: `designationKey`, and where
@@ -42,25 +52,45 @@ export function repealKey(designation: string): string {
 
 /**
  * „Die §§ 65, 66 bis 70a und 73 samt Überschriften entfallen.", „Die
- * Anlagen 6, 7 und 10 entfallen.": a list the grammar refuses
+ * Anlagen 6, 7 und 10 entfallen.", „Die Anlagen 1 bis 27 sowie 30 entfallen
+ * samt Überschriften." (the headings after the verb since 20.11.2026,
+ * 4D9E1224): a list the grammar refuses
  * („keine auflösbare Adresse", 19.11.2026: GuKG-Novelle 2024, 2. Novelle
  * zur Bäderhygieneverordnung). Read only where the grammar typed nothing,
  * and only in this shape — the list, at most the headings, the verb, nothing
  * else — so „In § 16 entfällt Abs. 3" or a quotation can never count.
  */
-const LIST_REPEAL_RE = /^(?:\d+[a-z]?\.\s*)?(?:(?:Die|Der|Das)\s+)?(§§?|Anlagen?|Anhänge|Anhang)\s+([\dIVXL]+[a-z]?(?:\s*(?:,|und|sowie|bis)\s*[\dIVXL]+[a-z]?)*)\s+(?:samt\s+(?:den\s+|der\s+)?Überschriften?\s+)?(?:entf(?:ällt|allen)|(?:wird|werden)\s+aufgehoben)\.?$/
+const LIST_REPEAL_RE = /^(?:\d+[a-z]?\.\s*)?(?:(?:Die|Der|Das)\s+)?(§§?|Anlagen?|Anhänge|Anhang)\s+([\dIVXL]+[a-z]?(?:\s*(?:,|und|sowie|bis)\s*[\dIVXL]+[a-z]?)*)\s+(?:samt\s+(?:den\s+|der\s+)?Überschrift(?:en)?\s+)?(?:entf(?:ällt|allen)|(?:wird|werden)\s+aufgehoben)(?:\s+samt\s+(?:den\s+|der\s+)?Überschrift(?:en)?)?\.?$/
+
+/** A division's number: Arabic, Roman, or the capital letter of a lettered Teil („Teil B"). */
+const DIVISION_NUMBER = String.raw`(?:\d+[a-z]?|[IVXL]+|[A-Z])`
+/** A division named in a repeal, either order: „3. Abschnitt", „Teil B", „II. ABSCHNITT". */
+const DIVISION_NAME = String.raw`(?:(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Hauptstück|Abschnitt|Unterabschnitt|TEIL|HAUPTSTÜCK|ABSCHNITT|UNTERABSCHNITT)|(?:Teil|Hauptstück|Abschnitt|Unterabschnitt)\s+${DIVISION_NUMBER})`
 
 /**
- * „Der 9. Teil entfällt.", „Der 3. Abschnitt des 6. Hauptstücks entfällt.":
- * the innermost division is group 1, the division it is qualified by group 2.
+ * „Der 9. Teil entfällt.", „Der Teil B entfällt.", „Die Teile B und C
+ * entfallen.", „Der II. Abschnitt des Teils A entfällt.": the division or
+ * divisions are group 1, the division they are qualified by group 2.
+ *
+ * The plural and the lettered Teil since 20.11.2026: the Seeschifffahrts-
+ * Verordnung's draft (4D9E1224) repeals 177 §§ by „Die Teile B und C
+ * entfallen", „Die Teile J, K und L entfallen" and „Der II. Abschnitt des
+ * Teils A entfällt", and none of them was read.
  */
-const DIVISION_REPEAL_RE = /^(?:\d+[a-z]?\.\s*)?(?:Der|Das|Die)\s+((?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Hauptstück|Abschnitt|Unterabschnitt))\b(?:\s+((?:des|der)\s+[^,;:]{1,60}?))?\s+(?:samt\s+(?:der\s+)?Überschrift\s+)?(?:entfällt|wird\s+aufgehoben)\.?$/i
+const DIVISION_REPEAL_RE = new RegExp(
+  String.raw`^(?:\d+[a-z]?\.\s*)?(?:Der|Das|Die)\s+(${DIVISION_NAME}(?:\s*(?:,|und|sowie)\s*${DIVISION_NAME})*|(?:Teile|Hauptstücke|Abschnitte|Unterabschnitte)\s+${DIVISION_NUMBER}(?:\s*(?:,|und|sowie)\s*${DIVISION_NUMBER})*)` +
+  String.raw`(?:\s+((?:des|der)\s+[^,;:]{1,60}?))?\s+(?:samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?\s+)?(?:entfällt|entfallen|(?:wird|werden)\s+aufgehoben)(?:\s+samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?)?\.?$`,
+)
 
 /** „des Gesetzes", „des Bundesgesetzes", with the division's name in brackets after it: the law itself, no division around this one. */
 const LAW_ITSELF_RE = /^des\s+(?:Bundes|Landes)?[Gg]esetzes\b(?:\s*\([^()]*\))?\s*$/
 
-/** A division's designation in either order RIS prints it: „9. Teil", „Abschnitt 13", „ABSCHNITT II". */
-const DIVISION_RE = /(?:\b(\d+[a-z]?|[IVXL]+)\.\s*(Teil|Hauptstück|Abschnitt|Unterabschnitt)\b|\b(Teil|Hauptstück|Abschnitt|Unterabschnitt)\s+(\d+[a-z]?|[IVXL]+)\b)/giu
+/**
+ * A division's designation in either order RIS prints it: „9. Teil",
+ * „Abschnitt 13", „ABSCHNITT II", „TEIL B". A letter is read only as a
+ * capital (`divisionsOf`): the flag that lets „TEIL" match lets „a" too.
+ */
+const DIVISION_RE = /(?:\b(\d+[a-z]?|[IVXL]+)\.\s*(Teil|Hauptstück|Abschnitt|Unterabschnitt)\b|\b(Teil|Hauptstück|Abschnitt|Unterabschnitt)\s+(\d+[a-z]?|[IVXL]+|[A-Z])(?![\p{L}\d]))/giu
 
 /** „9. teil": number and kind, lower case. */
 function divisionKey(number: string, kind: string): string {
@@ -69,7 +99,42 @@ function divisionKey(number: string, kind: string): string {
 
 /** The divisions a standing §'s headings name — RIS files them on the first § of each (`StandingText.heading`). */
 export function divisionsOf(heading: string): string[] {
-  return [...heading.matchAll(DIVISION_RE)].map((m) => (m[1] ? divisionKey(m[1], m[2]!) : divisionKey(m[4]!, m[3]!)))
+  return [...heading.matchAll(DIVISION_RE)]
+    .filter((m) => m[1] || !/^[a-z]$/.test(m[4]!))
+    .map((m) => (m[1] ? divisionKey(m[1], m[2]!) : divisionKey(m[4]!, m[3]!)))
+}
+
+/** „Teils", „Hauptstückes" → „teil", „hauptstück": the kind of a division named in the genitive. */
+function kindOf(word: string): string {
+  return word.toLowerCase().replace(/(?:es|s)$/, '').replace(/^(teil|hauptstück|abschnitt|unterabschnitt).*$/, '$1')
+}
+
+/** „3. Abschnitt", „Teil B", „II. ABSCHNITT" → `divisionKey`; null for anything else. */
+function nameKey(name: string): string | null {
+  const t = name.replace(/\s+/g, ' ').trim()
+  const a = /^(\S+)\.\s*(\S+)$/.exec(t)
+  if (a) return divisionKey(a[1]!, kindOf(a[2]!))
+  const b = /^(\S+)\s+(\S+)$/.exec(t)
+  return b ? divisionKey(b[2]!, kindOf(b[1]!)) : null
+}
+
+/** The divisions group 1 of `DIVISION_REPEAL_RE` names, as `divisionKey`. */
+function repealedDivisions(group: string): string[] {
+  const plural = /^(Teile|Hauptstücke|Abschnitte|Unterabschnitte)\s+(.*)$/.exec(group.trim())
+  if (plural) {
+    const kind = plural[1]!.replace(/e$/, '')
+    return plural[2]!.split(/\s*(?:,|\bund\b|\bsowie\b)\s*/).filter(Boolean).map((n) => divisionKey(n, kind))
+  }
+  return group.split(/\s*(?:,|\bund\b|\bsowie\b)\s*/).filter(Boolean).map(nameKey).filter((k): k is string => k !== null)
+}
+
+/** „des Teils A", „des 6. Hauptstücks", „der 2. Unterabschnitte" → `divisionKey`; null where it names no division. */
+function qualifierKey(qualifier: string): string | null {
+  const q = qualifier.replace(/^(?:des|der)\s+/, '').trim()
+  const a = /^(\d+[a-z]?|[IVXL]+)\.\s*(Teil|Hauptstück|Abschnitt|Unterabschnitt)\w*$/i.exec(q)
+  if (a) return divisionKey(a[1]!, kindOf(a[2]!))
+  const b = /^(Teil|Hauptstück|Abschnitt|Unterabschnitt)\w*\s+(\d+[a-z]?|[IVXL]+|[A-Z])$/.exec(q)
+  return b ? divisionKey(b[2]!, kindOf(b[1]!)) : null
 }
 
 const KIND_OF: Record<string, string> = { '§': '§', '§§': '§', Anlage: 'Anlage', Anlagen: 'Anlage', Anhang: 'Anhang', Anhänge: 'Anhang' }
@@ -84,7 +149,7 @@ const KIND_OF: Record<string, string> = { '§': '§', '§§': '§', Anlage: 'Anl
 export function draftRepeals(blocks: readonly TextBlock[], article: DraftArticle): DraftRepeals {
   const same = (a: DraftArticle): boolean =>
     a.key === article.key || (a.bgbl !== null && article.bgbl !== null && a.bgbl.organ === article.bgbl.organ && a.bgbl.nummer === article.bgbl.nummer)
-  const out: DraftRepeals = { paragraphs: new Set(), ranges: [], divisions: new Set() }
+  const out = noRepeals()
   for (const part of articleBlocks(blocks)) {
     if (!same(part.article)) continue
     for (const unit of segmentUnits(part.blocks)) {
@@ -96,19 +161,20 @@ export function draftRepeals(blocks: readonly TextBlock[], article: DraftArticle
         const text = block.text.replace(/\s+/g, ' ').trim()
         const division = DIVISION_REPEAL_RE.exec(text)
         if (division) {
-          // „Der 3. Abschnitt des 6. Hauptstücks": the check knows only the
-          // innermost division a § stands in, so keyed „3. abschnitt" this
-          // would vouch for a removed § in the 3. Abschnitt of any
-          // Hauptstück. Such a repeal proves nothing here (19.11.2026).
-          // „des Gesetzes („Allgemeine Auskunftspflicht")" qualifies by the
-          // law itself, which holds the division once: no qualifier
-          // (20.11.2026; two of the four qualified repeals in the corpus).
-          // Walking the outer division instead was not built: the other two
-          // would need the check to fetch every § back to the Hauptstück's
-          // first, which it never does.
-          if (division[2] && !LAW_ITSELF_RE.test(division[2])) continue
-          const m = /^(\S+)\.\s*(\S+)$/.exec(division[1]!.replace(/\s+/g, ' '))
-          if (m) out.divisions.add(divisionKey(m[1]!, m[2]!))
+          // „Der 3. Abschnitt des 6. Hauptstücks": keyed „3. abschnitt" alone
+          // this would vouch for a removed § in the 3. Abschnitt of any
+          // Hauptstück (19.11.2026). Kept as a pair, it proves a repeal only
+          // where the §'s division path holds both (`divisionPath`,
+          // 20.11.2026). „des Gesetzes („Allgemeine Auskunftspflicht")"
+          // qualifies by the law itself, which holds the division once: no
+          // qualifier. A qualifier this cannot read proves nothing.
+          const inner = repealedDivisions(division[1]!)
+          if (division[2] && !LAW_ITSELF_RE.test(division[2])) {
+            const outer = qualifierKey(division[2])
+            if (outer) for (const d of inner) out.qualified.push([d, outer])
+            continue
+          }
+          for (const d of inner) out.divisions.add(d)
           continue
         }
         const { ops } = parseInstruction(block.text, i === 0 ? null : inherited)
@@ -151,14 +217,63 @@ export function inRange(key: string, [from, to]: readonly [string, string]): boo
 
 /**
  * Does the draft repeal this § whole? By name, by a range around it, or by a
- * division it stands in — `division` is the innermost division the standing
- * law files it under (`divisionsOf`, walked back to the first § of the
- * division by the caller), null where that is not known.
+ * division it stands in — `path` holds the divisions the standing law files
+ * it under, innermost first (`divisionPath`), as far as they are known.
  */
-export function repealsParagraph(repeals: DraftRepeals, designation: string, division: string | null): boolean {
+export function repealsParagraph(repeals: DraftRepeals, designation: string, path: readonly string[]): boolean {
   const key = repealKey(designation)
   if (repeals.paragraphs.has(key) || repeals.ranges.some((r) => inRange(key, r))) return true
-  return division !== null && repeals.divisions.has(division)
+  return path.some((d) => repeals.divisions.has(d)) || repeals.qualified.some(([inner, outer]) => path.includes(inner) && path.includes(outer))
+}
+
+/** „ii. abschnitt" → „abschnitt". */
+const kindOfKey = (key: string): string => key.slice(key.indexOf(' ') + 1)
+
+/**
+ * The divisions a § stands in, innermost first, from the headings RIS files
+ * over the §§ of its law in printed order (`headings[i]` as `divisionsOf`
+ * reads them; undefined for a § the check did not fetch).
+ *
+ * RIS names a division over its first § only, so the path is walked back.
+ * Walking back, a heading belongs to the § only where it is OUTER to every
+ * division already taken: going back from § 40 of the Seeschifffahrts-
+ * Verordnung, „III. Abschnitt" (§ 37) is its Abschnitt, „I. Abschnitt" over
+ * § 27 belongs to an earlier one, and „TEIL C" over the same § is its Teil.
+ *
+ * Which kind is outer is read from the law itself, never assumed: a heading
+ * list „TEIL B | … | I. ABSCHNITT" over one § shows Teil outside Abschnitt.
+ * A heading whose order to a division already taken the law never shows
+ * ends the walk, and so does a § the check did not fetch — a division not
+ * known is a division not proven. Until 20.11.2026 the walk took the
+ * innermost division alone and stopped there: no Teil was ever known, and
+ * 177 repealed §§ of 4D9E1224 were withheld as unproven.
+ */
+export function divisionPath(headings: readonly (readonly string[] | undefined)[], at: number): string[] {
+  const outer = new Set<string>()
+  for (const list of headings) {
+    if (!list) continue
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const a = kindOfKey(list[i]!)
+      const b = kindOfKey(list[j]!)
+      if (a !== b) outer.add(`${a}>${b}`)
+    }
+  }
+  const path: string[] = []
+  for (let i = at; i >= 0; i--) {
+    const here = headings[i]
+    if (here === undefined) break
+    for (const d of [...here].reverse()) {
+      const kind = kindOfKey(d)
+      if (path.length === 0) {
+        path.push(d)
+        continue
+      }
+      const taken = path.map(kindOfKey)
+      if (taken.every((t) => outer.has(`${kind}>${t}`) && !outer.has(`${t}>${kind}`))) path.push(d)
+      else if (!taken.some((t) => t === kind || outer.has(`${t}>${kind}`))) return path
+    }
+  }
+  return path
 }
 
 /**

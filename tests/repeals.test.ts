@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { divisionsOf, draftRepeals, inRange, repealKey, repealsParagraph, showsRepeal } from '../server/utils/annex/repeals'
+import { divisionPath, divisionsOf, draftRepeals, inRange, noRepeals, repealKey, repealsParagraph, showsRepeal } from '../server/utils/annex/repeals'
 import { verifyAnnex, type AnnexSources } from '../server/utils/annex/verdict'
 import { checkAnnexRows } from '../server/utils/annex/gateRows'
 import type { TextBlock } from '../server/utils/lawtext/lawUnits'
@@ -28,6 +28,10 @@ describe('draftRepeals', () => {
     const r = draftRepeals(draftOf('40. Die §§ 65, 66 bis 70a und 73 samt Überschriften entfallen.', '29. Die Anlagen 6, 7 und 10 entfallen.'), article())
     expect([...r.paragraphs].sort()).toEqual(['Anl 10', 'Anl 6', 'Anl 7', '§ 65', '§ 73'])
     expect(r.ranges).toEqual([['§ 66', '§ 70a']])
+    // The headings named after the verb (Seeschifffahrts-Verordnung, 4D9E1224).
+    const after = draftRepeals(draftOf('13. Die Anlagen 1 bis 27 sowie 30 entfallen samt Überschriften.'), article())
+    expect([...after.paragraphs]).toEqual(['Anl 30'])
+    expect(after.ranges).toEqual([['Anl 1', 'Anl 27']])
   })
 
   it('reads a Roman Anhang by its name', () => {
@@ -37,14 +41,23 @@ describe('draftRepeals', () => {
   })
 
   it('reads whole divisions, innermost first', () => {
-    const r = draftRepeals(draftOf('7. Der 9. Teil entfällt.', '3. Der 4a. Abschnitt entfällt.'), article())
-    expect([...r.divisions].sort()).toEqual(['4a. abschnitt', '9. teil'])
+    const r = draftRepeals(draftOf('7. Der 9. Teil entfällt.', '3. Der 4a. Abschnitt entfällt.', '12. Der 5. Abschnitt samt Überschrift entfällt.'), article())
+    expect([...r.divisions].sort()).toEqual(['4a. abschnitt', '5. abschnitt', '9. teil'])
+    // The singular heading in a list too (IKT-Schulverordnung, 20.11.2026: „Überschriften?" read „Überschrifte").
+    expect([...draftRepeals(draftOf('2. § 7 samt Überschrift entfällt.', '3. Die §§ 8 und 9 samt Überschrift entfallen.'), article()).paragraphs].sort()).toEqual(['§ 7', '§ 8', '§ 9'])
   })
 
-  it('counts no division qualified by another: the check knows only the innermost (19.11.2026)', () => {
+  it('keeps a division qualified by another as a pair, never as the division alone (19./20.11.2026)', () => {
     // Keyed „3. abschnitt", it vouched for the 3. Abschnitt of every Hauptstück.
-    const r = draftRepeals(draftOf('6. Der 3. Abschnitt des 6. Hauptstücks entfällt.'), article())
+    const r = draftRepeals(draftOf('6. Der 3. Abschnitt des 6. Hauptstücks entfällt.', '7. Der II. Abschnitt des Teils A entfällt.'), article())
     expect(r.divisions.size).toBe(0)
+    expect(r.qualified).toEqual([['3. abschnitt', '6. hauptstück'], ['ii. abschnitt', 'a. teil']])
+  })
+
+  // Seeschifffahrts-Verordnung, 4D9E1224 (20.11.2026): 177 repealed §§ withheld.
+  it('reads lettered Teile and a plural list of divisions', () => {
+    const r = draftRepeals(draftOf('8. Die Teile B und C entfallen.', '11. Die Teile J, K und L entfallen.', '12. Der Teil M entfällt.'), article())
+    expect([...r.divisions].sort()).toEqual(['b. teil', 'c. teil', 'j. teil', 'k. teil', 'l. teil', 'm. teil'])
   })
 
   it('reads a division qualified by the law itself as the division (20.11.2026)', () => {
@@ -87,14 +100,46 @@ describe('inRange, divisionsOf, showsRepeal', () => {
 
   it('reads the divisions RIS files over a §, in either order', () => {
     expect(divisionsOf('9. Teil Integrierter österreichischer Netzinfrastrukturplan Integrierter Netzinfrastrukturplan (NIP)')).toEqual(['9. teil'])
+    // A lettered Teil, as RIS prints it over § 1 of the Seeschifffahrts-Verordnung — and no lower-case letter after a word.
+    expect(divisionsOf('TEIL A Grundsätzliche Bestimmungen I. ABSCHNITT Allgemeines')).toEqual(['a. teil', 'i. abschnitt'])
+    expect(divisionsOf('der zweite Teil a der Liste; Teil des Ganzen')).toEqual([])
     expect(divisionsOf('ABSCHNITT II BUNDESBEHINDERTENBEIRAT')).toEqual(['ii. abschnitt'])
     expect(divisionsOf('Anwendung des 3. Abschnitts')).toEqual([])
   })
 
   it('proves by a division only where the caller knows the §\'s division', () => {
-    const r = { paragraphs: new Set<string>(), ranges: [], divisions: new Set(['3. abschnitt']) }
-    expect(repealsParagraph(r, '§ 10.', '3. abschnitt')).toBe(true)
-    expect(repealsParagraph(r, '§ 10.', null)).toBe(false)
+    const r = { ...noRepeals(), divisions: new Set(['3. abschnitt']) }
+    expect(repealsParagraph(r, '§ 10.', ['3. abschnitt'])).toBe(true)
+    expect(repealsParagraph(r, '§ 10.', [])).toBe(false)
+  })
+
+  it('proves a qualified division only where the path holds both', () => {
+    const r = { ...noRepeals(), qualified: [['ii. abschnitt', 'a. teil']] as [string, string][] }
+    expect(repealsParagraph(r, '§ 3.', ['ii. abschnitt', 'a. teil'])).toBe(true)
+    expect(repealsParagraph(r, '§ 18.', ['ii. abschnitt', 'b. teil'])).toBe(false)
+    expect(repealsParagraph(r, '§ 3.', ['ii. abschnitt'])).toBe(false)
+  })
+})
+
+describe('divisionPath', () => {
+  // The Seeschifffahrts-Verordnung as RIS files its headings: each over the first § of its division.
+  const headings = [
+    ['a. teil', 'i. abschnitt'], [], ['ii. abschnitt'], [], // §§ 1–4
+    ['b. teil', 'i. abschnitt'], ['ii. abschnitt'], [], // §§ 16, 18, 19
+    ['c. teil', 'i. abschnitt'], [], ['iii. abschnitt'], [], // §§ 27, 28, 37, 40
+  ]
+  it('walks back to the Abschnitt and past the earlier ones to the Teil', () => {
+    expect(divisionPath(headings, 10)).toEqual(['iii. abschnitt', 'c. teil'])
+    expect(divisionPath(headings, 3)).toEqual(['ii. abschnitt', 'a. teil'])
+    expect(divisionPath(headings, 4)).toEqual(['i. abschnitt', 'b. teil'])
+  })
+
+  it('stops at a § the check did not fetch, and at a kind whose order the law never shows', () => {
+    const gap = [...headings]
+    gap[7] = undefined as unknown as string[]
+    expect(divisionPath(gap, 10)).toEqual(['iii. abschnitt'])
+    // No list ever shows „hauptstück" against „abschnitt": unknown, so not taken, and the walk ends.
+    expect(divisionPath([['3. hauptstück'], ['2. abschnitt'], []], 2)).toEqual(['2. abschnitt'])
   })
 
   it('sees a repeal only where nothing of the § stands in the proposed column', () => {

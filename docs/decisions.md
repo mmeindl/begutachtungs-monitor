@@ -960,6 +960,16 @@ gets an entry of its own only where it carries a reason the rule does not.
   an annex printing instructions, a renumbering paired by its old number);
   the left check confirms such a § because its left column is the law in
   force. A draft that could not be read disarms the rule, as it does rule 2.
+  **A division is proven by the §'s whole division path** (20.11.2026,
+  `divisionPath`): walked back over the §§ the check fetched, a heading
+  belongs to the § where it is outer to every division already taken, and
+  which kind is outer is read from the law's own heading lists („TEIL B | …
+  | I. ABSCHNITT"), never assumed; an unfetched § or a kind whose order the
+  law never shows ends the walk. A repeal qualified by another division
+  („Der II. Abschnitt des Teils A") proves a § only where the path holds
+  both. With the innermost division alone, the Seeschifffahrts-Verordnung's
+  draft (4D9E1224) had 177 repealed §§ withheld; lettered Teile and plural
+  lists („Die Teile B und C entfallen") were not read at all.
 - **A § one column of a PDF annex prints twice is never paired by length**
   (19.11.2026, `unitsOfColumn` in `server/utils/annex/annexPdf.ts`): a
   print is dropped only as a contents entry, a print carrying no provision,
