@@ -225,7 +225,64 @@ const DESIGNATION_JOIN = String.raw`(?:\s*(?:bis|und|sowie|oder|,|[-–—])\s*|
  * unbounded run of an optional unit backtracks, which is the trap
  * `withoutElision` records one function above.
  */
-const ELISION_HEAD_RE_TAIL = new RegExp(String.raw`(?:^|\s)${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'i')
+/** The chain as the whole stretch: „(2) bis (4)", „§ 16 Abs. 1 bis 24", „(1) Z 1 bis 18". */
+const ELISION_HEAD_ALONE_RE = new RegExp(String.raw`^\s*${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'i')
+/** The chain from a space to the end of the stretch — tried at every space, the leftmost permitted start wins. */
+const ELISION_HEAD_FROM_RE = new RegExp(String.raw`^\s${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'i')
+/**
+ * The §'s own designation after its heading, which the PDF path prints in
+ * front of the marks — „Inkrafttreten § 11. …", „Begriffsbestimmungen § 2.
+ * (1) bis (3) …". After a capitalised word or a bracket only: a citation
+ * follows „gemäß", „des", „nach" and never heads omitted units.
+ */
+const ELISION_HEAD_AFTER_HEADING_RE = new RegExp(
+  String.raw`(?<=(?:^|\s)\p{Lu}[\p{L}\-]*|[)\]])\s§+\s*${PARAGRAPH_NUMBER}\.(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`,
+  'u',
+)
+/** A bare marker: „(2)", „3.", „b)", „a.". */
+const MARKER_START_RE = /^\s(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.|[a-z]{1,2}[).])/i
+/** A range whose first number goes without its dot: „für 1 bis 4. …". */
+const RANGE_START_RE = /^\s\d+[a-z]*\s+(?:bis|und)\s/i
+/** Words after which a number is a citation's: a head never starts there. */
+const CITATION_WORD_RE = /(?:^|[\s(])(?:§+|Abs|Z|Ziff|lit|Art|Nr|Satz|Absatz|Absätze|Ziffer|Ziffern|Artikel|Punkt|Pkt|Teil|Abschnitt|Kapitel)\.?$/i
+/** A join right behind a designation — „Z 1 und", „§§ 126 und" — is inside a chain; behind prose („wurde, oder") it joins the next unit. */
+const JOIN_IN_CHAIN_RE = /(?:\(\s*\d+[a-z]*\s*\)|(?:^|\s)\d+[a-z]*\.?|(?:^|\s)[a-z]{1,2}[).])\s+(?:bis|und|sowie|oder)$/i
+/** A full stop that ends a sentence, not an abbreviation's: „ist.", „Rechtsvorschriften." — never „Abs.", „BGBl.". */
+const SENTENCE_END_RE = /(?:^|\s)(?!(?:Abs|Art|lit|Nr|Ziff|Pkt|Tz|Rz|vgl|bzw|idF|iSd|iSv|iVm|ua|uä|zB|ff|BGBl|LGBl|ABl|Hs|Bd|Anm)[.;:]$)[\p{L}]{2,}[.;:]$|\)[.;:]?$/u
+
+/**
+ * A stretch without the designation chain that introduces the mark behind it
+ * — „(1) bis (3)" in „… (1) bis (3) …".
+ *
+ * **Anchored at any space, the chain ate citations** until 19.11.2026: in
+ * „… gemäß §§ 3 Abs. 2 Z 1 bis 6 und 4 Abs. 1 Z 1 und 2. (2) …" the whole run
+ * from „§§ 3" reads as nine designations, so the change „Z 1 bis 6" → „bis 9"
+ * left the stretch on both sides, and the oracle's second check — which reads
+ * exactly these stretches — could not see whether the engine made it
+ * (Asylgesetz § 7 in the Asyl- und Migrationspakt-Anpassungsgesetz; „gemäß
+ * § 69 Abs. 2 und 3, 3. bis 7. …" in the Abgabenänderungsgesetz 2025 § 79).
+ * A chain that follows text of the stretch's own now has to start where a
+ * head can: after a finished sentence („… zulässig ist. Abs. 3 bis 5 …"), at
+ * a bare marker („über 1. bis 4. …"), or at a range („für 1 bis 4. …") —
+ * never after a citation word, a „§" or a join, which is where a citation's
+ * number stands. One that stands alone is cut as before, and so is the §'s
+ * own designation after its heading.
+ */
+function withoutHead(raw: string): string {
+  const stretch = raw.trim()
+  if (ELISION_HEAD_ALONE_RE.test(stretch)) return ''
+  const designation = ELISION_HEAD_AFTER_HEADING_RE.exec(stretch)
+  if (designation) return stretch.slice(0, designation.index)
+  for (let at = stretch.indexOf(' '); at > 0; at = stretch.indexOf(' ', at + 1)) {
+    const rest = stretch.slice(at)
+    if (!ELISION_HEAD_FROM_RE.test(rest)) continue
+    const before = stretch.slice(0, at)
+    if (SENTENCE_END_RE.test(before)) return before
+    if (CITATION_WORD_RE.test(before) || JOIN_IN_CHAIN_RE.test(before)) continue
+    if (MARKER_START_RE.test(rest) || RANGE_START_RE.test(rest)) return before
+  }
+  return stretch
+}
 
 export function printedStretches(text: string): string[] {
   return printedLayout(text).filter((s): s is string => s !== null)
@@ -253,7 +310,7 @@ export function printedLayout(text: string, eachMark = false): (string | null)[]
   let at = 0
   ELISION_RUN_RE.lastIndex = 0
   for (let mark = ELISION_RUN_RE.exec(text); mark; mark = ELISION_RUN_RE.exec(text)) {
-    const stretch = text.slice(at, mark.index).replace(ELISION_HEAD_RE_TAIL, '').trim()
+    const stretch = withoutHead(text.slice(at, mark.index))
     if (stretch !== '') out.push(stretch)
     if (eachMark || out[out.length - 1] !== null) out.push(null)
     at = mark.index + mark[0].length

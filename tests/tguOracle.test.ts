@@ -400,6 +400,40 @@ describe('oracleVerdict — group headings in the row', () => {
     expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
   })
 
+  // The remainder has to be the result's beginning, whole — not its first
+  // 24 characters there and the rest wherever it stands (126/ME XXVIII StPO
+  // § 23, 19.11.2026): the §'s heading recurs inside the Absatz, and the
+  // row's own changed words were read as the stack above it.
+  it('never reads a row\'s changed words as a stack because the §\'s heading recurs further in', () => {
+    const standing = 'Nichtigkeitsbeschwerde zur Wahrung des Gesetzes Die Generalprokuratur kann von Amts wegen oder im Auftrag des Bundesministers für Justiz gegen Urteile der Strafgerichte, die auf einer Verletzung des Gesetzes beruhen, Nichtigkeitsbeschwerde zur Wahrung des Gesetzes erheben.'
+    const rows = [
+      pair(
+        '(1) Die Generalprokuratur kann von Amts wegen oder im Auftrag des Bundesministers für Justiz gegen Urteile der Strafgerichte, die auf einer Verletzung des Gesetzes beruhen, Nichtigkeitsbeschwerde zur Wahrung des Gesetzes erheben.',
+        '(1) Die Bundesstaatsanwaltschaft kann von Amts wegen gegen Urteile der Strafgerichte, die auf einer Verletzung des Gesetzes beruhen, Nichtigkeitsbeschwerde zur Wahrung des Gesetzes erheben.',
+        '§ 23.',
+      ),
+    ]
+    expect(oracleVerdict('23', standing, standing, rows)).toMatchObject({ verdict: 'widersprochen' })
+    const carried = 'Nichtigkeitsbeschwerde zur Wahrung des Gesetzes Die Bundesstaatsanwaltschaft kann von Amts wegen gegen Urteile der Strafgerichte, die auf einer Verletzung des Gesetzes beruhen, Nichtigkeitsbeschwerde zur Wahrung des Gesetzes erheben.'
+    expect(oracleVerdict('23', standing, carried, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  // The citation in front of the marks is the changed text (Asylgesetz § 7,
+  // 19.11.2026): read as the announcement of „(2) …", it left the stretch
+  // on both sides, and a result that kept „bis 6" was confirmed.
+  it('reads a changed citation that stands right before an omission', () => {
+    const standing = 'Bundesverwaltungsgericht Das Bundesverwaltungsgericht entscheidet über Beschwerden gemäß §§ 3 Abs. 2 Z 1 bis 6 und 4 Abs. 1 Z 1 und 2. Es entscheidet ferner.'
+    const rows = [
+      pair(
+        'Bundesverwaltungsgericht § 7. (1) Das Bundesverwaltungsgericht entscheidet über Beschwerden gemäß §§ 3 Abs. 2 Z 1 bis 6 und 4 Abs. 1 Z 1 und 2. (2) ...',
+        'Bundesverwaltungsgericht § 7. (1) Das Bundesverwaltungsgericht entscheidet über Beschwerden gemäß §§ 3 Abs. 2 Z 1 bis 9 und 4 Abs. 1 Z 1 und 2. (2) ...',
+        '§ 7.',
+      ),
+    ]
+    expect(oracleVerdict('7', standing, standing, rows)).toMatchObject({ verdict: 'widersprochen' })
+    expect(oracleVerdict('7', standing, standing.replace('bis 6', 'bis 9'), rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
   it('cuts at the second copy when the group bears the §\'s own heading', () => {
     const rows = [
       pair(

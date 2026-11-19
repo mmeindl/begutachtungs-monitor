@@ -1054,6 +1054,30 @@ describe('printedStretches — the other half of the notation', () => {
     expect(printedStretches('Eins [...] Zwei')).toEqual(['Eins', 'Zwei'])
   })
 
+  // A citation that ends the sentence before the marks is law, not the
+  // announcement (19.11.2026). Anchored at any space, the chain read „§§ 3
+  // Abs. 2 Z 1 bis 6 und 4 Abs. 1 Z 1 und 2. (2)" as nine designations, and
+  // a draft changing „bis 6" to „bis 9" left the stretch on both sides — the
+  // oracle could not see whether the engine made the change.
+  it('keeps a citation that stands before the announcement', () => {
+    expect(printedStretches('5. Beschwerden gemäß §§ 3 Abs. 2 Z 1 bis 6 und 4 Abs. 1 Z 1 und 2. (2) ...')).toEqual(['5. Beschwerden gemäß §§ 3 Abs. 2 Z 1 bis 6 und 4 Abs. 1 Z 1 und 2.'])
+    expect(printedStretches('2. der Nachweis gemäß § 69 Abs. 2 und 3, 3. bis 7. … elektronisch')).toEqual(['2. der Nachweis gemäß § 69 Abs. 2 und 3,', 'elektronisch'])
+    expect(printedStretches('die Angabe gemäß den §§ 126 und 127. … Rest')).toEqual(['die Angabe gemäß den §§ 126 und 127.', 'Rest'])
+    expect(printedStretches('im Jahr 2026 (2) … Rest')).toEqual(['im Jahr 2026', 'Rest'])
+  })
+
+  // …and still takes off every announcement a head can be: after a finished
+  // sentence, at a bare marker behind prose, at a range whose first number
+  // has no dot, and the §'s own designation after its heading.
+  it('still takes off a head wherever one can start', () => {
+    expect(printedStretches('zulässig ist. Abs. 3 bis 5 … Rest')).toEqual(['zulässig ist.', 'Rest'])
+    expect(printedStretches('entscheidet über 1. bis 4. ... 5. Beschwerden')).toEqual(['entscheidet über', '5. Beschwerden'])
+    expect(printedStretches('ermäßigt sich die Steuer auf 13% für 1 bis 4. … (4) x')).toEqual(['ermäßigt sich die Steuer auf 13% für', '(4) x'])
+    expect(printedStretches('eröffnet wurde, oder 2. bis 10. … Rest')).toEqual(['eröffnet wurde, oder', 'Rest'])
+    expect(printedStretches('zu erklären ist (§ 256 Abs. 3) oder c) … Rest')).toEqual(['zu erklären ist (§ 256 Abs. 3) oder', 'Rest'])
+    expect(printedStretches('Inkrafttreten § 11. … Rest')).toEqual(['Inkrafttreten', 'Rest'])
+  })
+
   // The whole safety of the generalisation: a cell without a mark comes back
   // whole, so every row that reads correctly today reads identically. Measured
   // over 3.550 unmarked rows of the corpus — nought differences.
