@@ -38,7 +38,7 @@ describe('fasseZusammen', () => {
     ])
     // Every page class, most views first, ties in KLASSEN order; bots never.
     expect(s.nachSeite.map((r) => r.klasse)).toEqual([
-      'entwurf-bund', 'entwurf-land', 'start', 'entwuerfe', 'vorlage-bund', 'anliegen', 'anliegen-gegenstand', 'eu-recht', 'eu-initiative', 'eu-vorschlag', 'eu-buergerinitiative', 'wege', 'eu-wege', 'datenlage', 'quellen', 'suche', 'so-funktionierts',
+      'entwurf-bund', 'entwurf-land', 'start', 'entwuerfe', 'vorlage-bund', 'anliegen', 'anliegen-gegenstand', 'eu-recht', 'eu-initiative', 'eu-vorschlag', 'eu-buergerinitiative', 'wege', 'eu-wege', 'datenlage', 'genauigkeit', 'quellen', 'suche', 'so-funktionierts',
       'ueber', 'impressum', 'datenschutz', 'statistik', 'sonstige',
     ])
     expect(s.nachSeite.filter((r) => r.aufrufe)).toEqual([

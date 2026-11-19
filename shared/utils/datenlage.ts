@@ -731,6 +731,12 @@ export interface DatenlageFigure {
 /**
  * The measured figures behind the cells, each with its population and day.
  * They are not re-measured here: re-measure in the named source first.
+ *
+ * What the monitor makes of a source — how often its own comparisons are
+ * right — stands on `/genauigkeit` since 19.11.2026, from a measurement
+ * round's record (`shared/data/genauigkeit.json`); the two Lesefassung
+ * figures that stood here moved there. What stays is what a source
+ * publishes and how often the monitor finds it.
  */
 export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
   {
@@ -757,24 +763,6 @@ export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
     text: 'Zu 162 findet der Monitor den Datensatz im RIS, aus dem er Entwurf und Textgegenüberstellung liest – zu einem davon nur über Datum und Ministerium. Einer steht nicht im RIS.',
     population: '163 Ministerialentwürfe der XXVIII. GP',
     date: '18.11.2026',
-  },
-  {
-    // decisions.md, „The consolidated reading and the annex" (`pnpm harness:kons -- --discover=60 --sammel --oracle`),
-    // the line „beide Wege: plausibel, Orakel bestätigt" — the Textgegenüberstellung read from the RIS table
-    // and from the PDF, as the page reads it; until 18.11.2026 the table alone (106 of 106).
-    source: 'bund',
-    step: 'tgu',
-    text: 'Die Lesefassung, an kundgemachten Gesetzen geprüft: Von 431 Paragraphen, die der Monitor zeigen würde, sind 430 wortgleich mit dem geltenden Text im RIS. Dem übrigen fehlt ein Teil; ein Wort, das nicht im Gesetz steht, hat keiner. Ohne die Bestätigung durch die Textgegenüberstellung wären es 1.434 von 1.469.',
-    population: '1.794 Paragraphen aus 60 Bundesgesetzblättern',
-    date: '19.11.2026',
-  },
-  {
-    // decisions.md, same table (`scripts/harness/accounting.ts --gp=XXVIII`).
-    source: 'bund',
-    step: 'tgu',
-    text: 'Von 4.798 geänderten Paragraphen zeigt der Monitor 2.395 als Lesefassung; bei jedem anderen steht der Grund.',
-    population: '164 Ministerialentwürfe der XXVIII. GP',
-    date: '19.11.2026',
   },
   {
     // so-funktionierts #eu-recht.

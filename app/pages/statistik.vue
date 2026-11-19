@@ -52,6 +52,8 @@ const KLASSE_NAME: Record<string, string> = {
   // Counted on its own since 16.11.2026; before, the EU's ways stood on `/wege`.
   'eu-wege': 'Wege der Gesetzgebung in der EU',
   datenlage: 'Datenlage',
+  // Counted since 19.11.2026, the day the page was made.
+  genauigkeit: 'Genauigkeit',
   // A page of its own since 16.11.2026; before, a section of the Impressum.
   quellen: 'Quellen & Lizenzen',
   // Counted since 17.11.2026; before, `/suche` redirected and was not counted.

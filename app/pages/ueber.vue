@@ -169,8 +169,9 @@ const contact = useContact()
          is not (Impressum, footer, „Grenzen"). Three statements, each one
          the code keeps: what is passed through is the source's; what is
          derived is ours and says so; a missing assignment proves no
-         absence. The figures stand on /datenlage#gemessen and the legal
-         sentence on /impressum#imp-data; neither is repeated here. -->
+         absence. The figures stand on /genauigkeit (the comparisons, since
+         19.11.2026) and /datenlage#gemessen (the joins), the legal sentence
+         on /impressum#imp-data; none is repeated here. -->
     <ProseSection id="about-reliability" heading="Wie verlässlich die Angaben sind">
       <p>
         Fristen, Zahlen und Dokumente übernimmt der Monitor aus den
@@ -184,9 +185,11 @@ const contact = useContact()
         solchen Abschnitt steht, was vom Monitor stammt, und „Methode“ öffnet
         dort, wie es entsteht. Eine fehlende
         Zuordnung heißt, dass der Monitor keine gefunden hat, nicht, dass es
-        keine gibt. Wo etwas fehlt, steht dabei, warum; wie oft die
-        Ableitungen stimmen, ist
-        <NuxtLink to="/datenlage#gemessen" class="link-inline">gemessen</NuxtLink>.
+        keine gibt. Wo etwas fehlt, steht dabei, warum. Wie oft die
+        Ableitungen stimmen, ist gemessen: die Textvergleiche unter
+        <NuxtLink to="/genauigkeit" class="link-inline">Genauigkeit</NuxtLink>,
+        die Zuordnungen unter
+        <NuxtLink to="/datenlage#gemessen" class="link-inline">Datenlage</NuxtLink>.
       </p>
       <p>
         Der Monitor ist
@@ -206,7 +209,9 @@ const contact = useContact()
           Novellen vergleicht er die Änderungs<em>anweisungen</em>; wie das
           Gesetz danach lautet, zeigt die Lesefassung nur für die
           Paragraphen, die die Textgegenüberstellung des Ministeriums
-          bestätigt. Im Zweifel gilt das verlinkte Original.
+          bestätigt. Im Zweifel gilt das verlinkte Original. Welche Fehler
+          seine Prüfungen fangen und welche nicht, steht unter
+          <NuxtLink to="/genauigkeit" class="link-inline">Genauigkeit</NuxtLink>.
         </li>
         <li>
           Benachrichtigungen gibt es nur als Feed und Kalender, nicht per

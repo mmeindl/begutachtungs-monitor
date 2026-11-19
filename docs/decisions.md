@@ -89,6 +89,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   which source is read and under which licence, one entry per source.
   `/datenschutz`: what is processed, and in `#dse-names` who is named and
   who is not, for every source. `/datenlage`: what a source publishes.
+  `/genauigkeit` (19.11.2026): how the monitor's comparisons are checked,
+  how often they hold, and which faults the checks do not catch — what the
+  monitor makes of a source, beside what the source publishes; the two
+  Lesefassung figures moved there from `/datenlage`. The short „Methode"
+  at each comparison stays, because it is about that document, and links
+  there for the measurement.
   `/ueber`: what the monitor is, its limits, how to subscribe and support.
   The others link there instead of repeating it: the licences stood on
   `/ueber` and in the Impressum and had drifted apart, the names rule stood
@@ -1043,6 +1049,27 @@ gets an entry of its own only where it carries a reason the rule does not.
   longer occurs fails the run as a new hit does (19.11.2026; until then the
   harness failed on main for two real changes, and the third hit, a
   reader fault, stood unread among them).
+- **The figures on `/genauigkeit` come out of a measurement round, never
+  out of a hand** (19.11.2026). `scripts/harness/genauigkeit.ts` reads the
+  round's records — `kons.ts`, `faultInjection.ts` on both annex paths,
+  `annexPdf.ts`, `station.ts`, `accounting.ts` with and without `--ris`, and
+  the Länder harnesses' `summary.json` — and writes
+  `shared/data/genauigkeit.json` with the day and the commit measured;
+  `shared/utils/genauigkeit.ts` puts it into words. Not in CI: the
+  accounting asks a running server and a round takes minutes. Run it after
+  a round whose figures belong on the page and read the JSON's diff before
+  committing it. It stops on a record missing, a funnel that does not add
+  up, a failed invariant, or records from more than one day. The count of
+  Lesefassungen shown moved by two within the day the page was made; a
+  figure typed into copy would have been wrong by evening.
+- **Each kind of comparison names on `/genauigkeit` what its check does not
+  catch, measured** (19.11.2026): a fault class the harness injects stands
+  in exactly one of the page's groups (`tests/genauigkeit.test.ts` fails on
+  a key no group names), and a blind spot by construction — a unit RIS
+  lacks too, a foreign sentence in both columns alike, one misread word in
+  a Land's right column — is printed with its count of tries, not left out
+  of a range. Shares are rounded down, so the page never claims a catch
+  that was not measured.
 - **Report per-draft figures (median, share of drafts)** over pooled
   percentages, which a few large laws dominate (§12.12).
 - **Figures about windows, claims and joins are measured on a production
@@ -2576,6 +2603,8 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | Fault injection, one word, figure or place in a printed stretch (word dropped, added, swapped, figure, citation, two Ziffern swapped) | 99.3–100 % on both paths; § heading 99.9 % (PDF, 94.8 % before the heading-area fix) and 100 % (table) | GP XXVIII · 19.11.2026 |
 | The same where no changed row prints anything (word dropped / added / figure changed) | 99.0 / 99.7 / 99.6 % (PDF), 99.5 / 99.9 / 99.7 % (table), floored; 65.0 / 23.8 / 95.8 % and 66.7 / 28.0 / 97.1 % while check 3 asked only whether a word stands anywhere in the annex. Withdrawn without injection: 6 of 1,549 PDF and 2 of 1,153 table confirmations, each read (four engine gaps behind a refusal, one result without a heading the annex prints, three correct results the annex prints wrongly: TDBG § 40b, HSG § 7, BD-EG § 38) | GP XXVIII · 19.11.2026 |
 | A struck Absatz put back under its old number (fault class Zurück) | 45 of 45 (PDF), 25 of 25 (table); 41 of 46 and 20 of 25 before checks 4 and 5 read a struck Absatz that opens like the next | GP XXVIII · 19.11.2026 |
+| The annex gate as shipped (left check, rule 1, rule 2 per §) under fault injection | another §'s sentence in the right column withheld 68.9 / 79.5 % (old text, PDF / table: 818 of 1,187, 283 of 358) and 79.5 / 75.6 % (proposed text: 941 of 1,184, 270 of 357); a sentence of the left column lost 62.8 / 66.4 % (774 of 1,231, 249 of 375); another §'s sentence in both columns alike 2.4 / 0 % (29 of 1,187, 0 of 358), outside the gate by construction | GP XXVIII, `faultInjection.ts --json` · 19.11.2026 |
+| § comparison, the two null comparisons (`station.ts`) | last parliamentary text → Kundmachung 452 residues in 4,867 units, 1 not editorial; one draft read as HTML → as XML 6 in 4,675, 3 not editorial; 453 pairs of 91 drafts, no invariant breached | GP XXVIII · 19.11.2026 |
 | Silent omission read (`silentOmissions`) under fault injection | a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16 | GP XXVIII · 14.11.2026 |
 | Changed §§ with an outcome on the page | all 4,798 in 164 drafts (ME) on 19.11.2026, no invariant violated, „verloren" included (4,701 in 163 on 18.11.2026); 1,518 in 222 without Gegenstand on 19.11.2026, none violated (1,490 in 219 on 18.11.2026); 4,463 and 1,541 on 27.10.2026. The second fell although five drafts came, and none of it is the engine: six drafts left the set (−89; four got a Parliament page as 150/ME to 153/ME, two were lost by the corpus read, next table), eleven came (+38), and on the 208 in both the count stayed 1,452. Reconstructed by running the code of 27.10. offline on the same inputs: 214 drafts, 1,541, 630, the recorded figures. The JSON of an `accounting.ts` run is the per-draft record from now on | GP XXVIII · 18.11.2026 (§12.12c) |
 | Of those shown | 2,395 and 636 on the evening of 19.11.2026, main a953024c (2,393 at noon, after the engine and annex fixes of 18. and 19.11.); 2,267 and 623 on 18.11.2026; 2,167 and 630 on 27.10.2026. Without Gegenstand: −33 with the six that left, +11 with the eleven that came, +15 on the 208 in both (7262426, omissions without „…": 14; 14984f1, letter-spaced words: 1) | same |

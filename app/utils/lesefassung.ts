@@ -160,6 +160,11 @@ const CAUSE_TEXT: Record<LesefassungCause, string> = {
   'nicht-gefunden': 'Eine Anweisung des Entwurfs zu diesem Paragraphen fanden wir nicht.',
 }
 
+/** The reason as it stands at the §, alone — for `/genauigkeit`, which lists every reason with its count. */
+export function lesefassungCauseText(cause: LesefassungCause): string {
+  return CAUSE_TEXT[cause]
+}
+
 /**
  * The line that stands at a § of the annex where the disclosure would — or
  * null where the block needs none: a § the draft repeals or moves away

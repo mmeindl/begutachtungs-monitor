@@ -69,5 +69,16 @@ const committeeSentence = computed(() => landCommitteeSentenceDe(props.land))
         beiden Vergleiche.
       </dd>
     </div>
+    <!-- How often it holds, and what its check does not catch: measured,
+         on /genauigkeit (19.11.2026); the method stays here, the figures
+         stand there once. -->
+    <div>
+      <dt>Wie oft das stimmt, ist gemessen</dt>
+      <dd>
+        Auf der Seite
+        <NuxtLink to="/genauigkeit#land-stationen" class="link-inline">Genauigkeit</NuxtLink>,
+        samt den Fehlern, die die Prüfung nicht fängt.
+      </dd>
+    </div>
   </dl>
 </template>

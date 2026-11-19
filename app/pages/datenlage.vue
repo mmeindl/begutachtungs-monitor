@@ -42,6 +42,7 @@ import {
   type DatenlageStep,
   type DatenlageView,
 } from '#shared/utils/datenlage'
+import { GENAUIGKEIT_PATH } from '#shared/utils/genauigkeit'
 
 usePageSeo({
   title: 'Datenlage',
@@ -241,7 +242,9 @@ function cellText(cell: DatenlageCell): string | undefined {
     <ProseSection id="gemessen" heading="Gemessen">
       <p>
         Die Zahlen hinter einzelnen Angaben, jede mit dem, was gezählt wurde,
-        und dem Tag der Messung.
+        und dem Tag der Messung. Wie genau der Monitor selbst Texte
+        vergleicht, steht unter
+        <NuxtLink :to="GENAUIGKEIT_PATH" class="link-inline">Genauigkeit</NuxtLink>.
       </p>
       <ul class="mt-4 list-none space-y-3 border-y border-hairline py-3 pl-0 text-sm">
         <li v-for="(figure, i) in DATENLAGE_FIGURES" :key="i">

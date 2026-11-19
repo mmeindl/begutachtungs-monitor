@@ -52,6 +52,9 @@ export const KLASSEN = [
   // `wege` stays the country's page, which held the EU's ways until then.
   'eu-wege',
   'datenlage',
+  // How the monitor's comparisons are checked and how often they hold,
+  // `/genauigkeit` (19.11.2026). Before, its figures stood on /datenlage.
+  'genauigkeit',
   // The register of sources and licences, a page of its own since
   // 16.11.2026; before, a section of `/impressum`.
   'quellen',
@@ -86,6 +89,7 @@ const FIXED: Record<string, Klasse> = {
   '/wege': 'wege',
   [euWegePath()]: 'eu-wege',
   '/datenlage': 'datenlage',
+  '/genauigkeit': 'genauigkeit',
   '/quellen': 'quellen',
   '/suche': 'suche',
   '/ueber': 'ueber',

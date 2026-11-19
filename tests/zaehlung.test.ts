@@ -42,6 +42,7 @@ describe('klassifiziere', () => {
     // The EU's ways, a page of their own since 16.11.2026.
     expect(k('/eu-recht/wege')).toEqual({ klasse: 'eu-wege' })
     expect(k('/datenlage')).toEqual({ klasse: 'datenlage' })
+    expect(k('/genauigkeit')).toEqual({ klasse: 'genauigkeit' })
     expect(k('/quellen')).toEqual({ klasse: 'quellen' })
     // The path alone: the search term never reaches the count.
     expect(k('/suche')).toEqual({ klasse: 'suche' })

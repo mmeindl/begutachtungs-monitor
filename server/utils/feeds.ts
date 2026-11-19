@@ -405,6 +405,7 @@ export function buildSitemap(
     `${siteUrl}/entwuerfe`,
     `${siteUrl}/wege`,
     `${siteUrl}/datenlage`,
+    `${siteUrl}/genauigkeit`,
     `${siteUrl}/quellen`,
     `${siteUrl}/ueber`,
     `${siteUrl}/impressum`,

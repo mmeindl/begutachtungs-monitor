@@ -18,6 +18,10 @@
  *     for the RIS rows, which CC BY 4.0 § 3 a (2) expressly allows to be a
  *     link to the page carrying it;
  *   - „Datenlage" — what each source publishes, the pages' gaps by source;
+ *   - „Genauigkeit" (19.11.2026) — how the comparisons are checked and
+ *     which faults the checks miss: the other half of how far a page can be
+ *     trusted, beside the source's half, on every page because a reader
+ *     doubts a comparison where they meet it;
  *   - „Kein amtliches Angebot" — the load-bearing line on a .at address about
  *     ministries;
  *   - source code — AGPL § 13 requires offering users the source on network
@@ -75,7 +79,12 @@ const contact = useContact()
           <NuxtLink
             to="/datenlage"
             class="link-muted"
-          >Datenlage: was die Quellen veröffentlichen</NuxtLink>. Kein amtliches Angebot.
+          >Datenlage: was die Quellen veröffentlichen</NuxtLink>
+          ·
+          <NuxtLink
+            to="/genauigkeit"
+            class="link-muted"
+          >Genauigkeit: wie der Monitor vergleicht</NuxtLink>. Kein amtliches Angebot.
         </p>
         <p>
           <ExternalLink
