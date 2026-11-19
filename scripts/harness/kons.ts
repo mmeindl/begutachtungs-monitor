@@ -64,7 +64,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { asArray } from '../lib/ris'
-import { anlageLabelKey, bareParaId, isSchedule } from '../../server/utils/text/designation'
+import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 import { harnessKey, kindKey, matchArticle, scoredKey, unchangedClass, UNCHANGED_CLASSES, type UnchangedClass } from './konsJudge'
 
@@ -763,8 +763,11 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // The question a per-paragraph publication gate turns on: when the engine
   // reports no refusal for a §, is that § actually right? Refusals are known
   // at draft time; correctness is not, because the law has not been passed yet.
-  // The site's reading (`refusedUnits`), keyed by the bare number this Prüfstand holds its §§ under.
-  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), harnessKey)
+  // The site's reading (`refusedUnits`), keyed as the site keys it (`unitKey`):
+  // a schedule apart from the § of its number, a Roman one by its Arabic
+  // number. Keyed by the bare number until 20.11.2026, a refused § 8 locked
+  // BVergG Anl. 8 here, and a refused „Anhang VIII" line locked nothing.
+  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), unitKey)
   const applied = results.filter((r) => r.applied).length
 
   if (verbose) {
@@ -836,6 +839,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   const divergences: { label: string; got: string; expected: string; before: string }[] = []
   for (const [label, pair] of [...pairs].sort()) {
     const id = scoredKey(label) ?? undefined
+    const refusedKey = id === undefined ? undefined : kindKey(label, id)
     if ((keyCount.get(`${isSchedule(label) ? 'Anl' : ''}|${id}`) ?? 0) > 1) {
       ambiguousLabels++
       if (verbose) console.log(`    ?  ${label.padEnd(9)} nicht gewertet — ein zweites Label dieses Gesetzes hat dieselbe Nummer`)
@@ -873,8 +877,8 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     if (staged) verdict = 'unvollständig'
     const why = verdict !== 'unverändert'
       ? null
-      : unchangedClass({ refused: Boolean(id && refusedIds.has(id)), named: namedKeys.has(kindKey(label, id)), schedule: isSchedule(label), unkeyedSchedule })
-    if (id && !refusedIds.has(id)) {
+      : unchangedClass({ refused: Boolean(refusedKey && refusedIds.has(refusedKey)), named: namedKeys.has(kindKey(label, id)), schedule: isSchedule(label), unkeyedSchedule })
+    if (id && !refusedIds.has(refusedKey!)) {
       cleanTotal++
       if (verdict === 'identisch') cleanIdentical++
       else if (verdict === 'abweichend' && comparable) cleanDivergent++
@@ -900,7 +904,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       .map(({ instruction, result }) => ({ instruction, result }))
     const guard = id ? guardParagraph(id, law, beforeNode ?? null, node, touching) : null
     const flags = new Set<GuardFlag>(guard?.flags ?? [])
-    if (id && refusedIds.has(id)) flags.add('verweigert')
+    if (refusedKey && refusedIds.has(refusedKey)) flags.add('verweigert')
     const dangerous = verdict === 'abweichend' && comparable
     const outcome = dangerous ? 'abweichend' : verdict
     // With the Absätze, as the page asks it (`kons/consolidate.ts`): a
@@ -964,7 +968,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
           verdict,
           staged,
           plausible,
-          refused: refusedIds.has(id),
+          refused: refusedIds.has(refusedKey!),
           guardFlags: guard?.flags ?? [],
           same: unchanged,
           before: beforeText,
@@ -998,7 +1002,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
           const op = ins.op
           const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
           if (address?.level === 'document') return true
-          if (address?.para && harnessKey(address.para) === id) return true
+          if (address?.para && unitKey(address.para) === refusedKey) return true
           // An instruction that creates this § names its anchor, not the § itself.
           if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return ins.payload.some((p) => p.id === id)
           return false
@@ -1015,7 +1019,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       const history = (versions.get(label) ?? []).map((v) => ({ inkrafttreten: v.inkrafttreten, amendedBy: amendedBy(v) }))
       appendFileSync(
         dumpFile,
-        `${JSON.stringify({ bgbl: bgblNumber, law: kurztitel, label, id, verdict, refused: id !== undefined && refusedIds.has(id), before: beforeText, got, expected, beforeTree: beforeNode ?? null, afterTree: node, touching, refusedLines, afterVersion: matched.inkrafttreten, history, comparable, staged })}\n`,
+        `${JSON.stringify({ bgbl: bgblNumber, law: kurztitel, label, id, verdict, refused: refusedKey !== undefined && refusedIds.has(refusedKey), before: beforeText, got, expected, beforeTree: beforeNode ?? null, afterTree: node, touching, refusedLines, afterVersion: matched.inkrafttreten, history, comparable, staged })}\n`,
       )
     }
     const mark = { identisch: '✓', unverändert: '·', unvollständig: '~', halbangewendet: '!', abweichend: '✗' }[verdict]
