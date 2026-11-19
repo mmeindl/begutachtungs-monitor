@@ -128,8 +128,14 @@ const sequenceOf = (n: string): number => Number.parseInt(n, 10)
  * leading number must be that one's, letter and all. Read as „10.", it
  * opened a second Z10 and pushed the first out of the list, or stood beside
  * it as a fragment under the same key (`#dup`) that no join could use.
+ *
+ * The sub-number takes a letter as the instruction number does: „18.1a.
+ * Nach Abs 5 wird eingefügt" is slotted in between „18.1." and „18.2." (LGBl.
+ * Salzburg, four such lines in the harness cache, 19.11.2026). Without it the
+ * line read as instruction 18 again and stood as „Z18#dup" — printed so on
+ * the Land page, and paired as an instruction of its own.
  */
-const SUB_INSTRUCTION_RE = new RegExp(`^(\\d{1,3}[a-z]?)\\s*\\.\\s?\\d{1,3}(?:\\s*\\.|\\s+(?=${OPENER}))`)
+const SUB_INSTRUCTION_RE = new RegExp(`^(\\d{1,3}[a-z]?)\\s*\\.\\s?\\d{1,3}[a-z]?(?:\\s*\\.|\\s+(?=${OPENER}))`)
 
 /**
  * The promulgation clause that opens a Novelle for one law — "Das

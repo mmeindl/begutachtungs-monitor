@@ -84,6 +84,17 @@ describe('segmentUnits: a lettered instruction keeps its letter, and the one bef
     expect(segmentUnits(blocks).map((u) => `${u.id}:${u.blocks.length}`)).toEqual(['Z21:2', 'Z21a:2', 'Z21#dup:1'])
   })
 
+  it('a lettered sub-instruction „18.1a." stays in instruction 18 (LGBl. Salzburg, 19.11.2026)', () => {
+    const blocks = [
+      clause,
+      blk('novao', '18. Im § 77b werden folgende Änderungen vorgenommen: 18.1. Im Abs 3 wird nach der Wortfolge „Bau“ das Wort „neu“ eingefügt.'),
+      blk('novao', '18.1a. Nach Abs 5 wird eingefügt: „(5a) Die Landesregierung hat die Beträge kundzumachen.“'),
+      blk('novao', '18.2. Nach Abs 6 wird eingefügt: „(6a) Eine Abgabenerklärung gilt auch für die Folgejahre.“'),
+      blk('novao', '19. § 77c entfällt.'),
+    ]
+    expect(segmentUnits(blocks).map((u) => `${u.id}:${u.blocks.length}`)).toEqual(['Z18:3', 'Z19:1'])
+  })
+
   it('a § echo from a table of contents is still dropped — it holds no instruction', () => {
     const blocks = [
       blk('abs', 'Anwendungsbereich', '§ 5.'),
