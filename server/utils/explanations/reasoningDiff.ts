@@ -170,7 +170,7 @@ function readings(): Readings {
     addressed: (unit) => {
       const known = addressed.get(unit)
       if (known !== undefined) return known
-      const para = addressedParagraphOf(unit)
+      const para = addressedParagraphOf(unit, 'join')
       addressed.set(unit, para)
       return para
     },
@@ -989,7 +989,7 @@ function unitParagraphIds(unit: LawDiffUnit, side: Side): Set<string> {
   // grammar types, „Der bisherige § 14a erhält die Bezeichnung „§ 14."" the
   // one in quotes — both are what a passage heading names.
   const head = line.split(':')[0] ?? line
-  for (const p of [addressedParagraph(line), ...instructionParagraphs(line), ...headingAddress(head).paragraphs]) {
+  for (const p of [addressedParagraph(line, 'join'), ...instructionParagraphs(line), ...headingAddress(head).paragraphs]) {
     const id = explanationParaId(p)
     if (id) ids.add(id)
   }
@@ -1556,6 +1556,20 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     const notBefore = provesAbsence(before, after, unit, 'before', read)
     const notAfter = provesAbsence(after, before, unit, 'after', read)
     gaps[key] = notBefore || notAfter ? missingGap(notBefore, notAfter) : 'unread'
+  }
+  // An inserted or removed change (20.11.2026) stands in one document only,
+  // and only that one can prove it explains nothing: „im Entwurf nicht
+  // gefunden" at a change the draft never made would be true of every such
+  // change and say nothing. So the line stands where the change's own
+  // document names it nowhere (`provesAbsence`) — 15 changes of GP XXVIII,
+  // silent before. Elsewhere none: its own document mostly explains it,
+  // and „nicht zuzuordnen." at the 857 others would have read as a failure
+  // where there was only nothing to hold the passage against.
+  for (const unit of units) {
+    const key = diffUnitKey(unit)
+    if (isPaired(unit) || f.out.units[key] || gaps[key] || f.capped.has(key)) continue
+    const side: Side = unit.change === 'inserted' ? 'after' : 'before'
+    if (provesAbsence(side === 'after' ? after : before, side === 'after' ? before : after, unit, side, read)) gaps[key] = missingGap(side === 'before', side === 'after')
   }
   return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length, ownParagraph: ownParagraph.length }, guarded: [...guarded.values()], scopes, gaps }
 }

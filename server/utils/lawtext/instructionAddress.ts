@@ -28,7 +28,7 @@ const CREATES_PARAGRAPH_RE = /\b(?:folgende[rnms]?|nachstehende[rnms]?|neue[rnms
  * An instruction that adds a sub-unit ("In § 5 wird folgender Abs. 3
  * eingefügt") does happen inside § 5, so its heading fits.
  */
-export function addressedParagraph(line: string): string | null {
+export function addressedParagraph(line: string, use: AddressUse = 'name'): string | null {
   const { paras, typed } = readParagraphs(line)
   // Several paragraphs in one instruction have no single name.
   if (paras.length > 0 || typed) return paras.length === 1 ? paras[0]! : null
@@ -61,13 +61,27 @@ export function addressedParagraph(line: string): string | null {
   // Abschnitt Va …").
   const head = (line.split(':')[0] ?? line).replace(/"[^"]*"/g, '""')
   if (CREATES_PARAGRAPH_RE.test(head) || REFUSED_HEAD_RE.test(head)) return null
+  if (use === 'name' && ARTIKEL_PARAGRAPH_RE.test(head)) return null
   const refused = [...new Set(refusedAddresses(line) ?? [])]
   return refused.length === 1 && DESIGNATION_RE.test(refused[0]!) ? refused[0]! : null
 }
 
-/** See `addressedParagraph`: a § marked new, a division beside a §, a § inside an Artikel. The table of contents is `isTocInstruction`'s. */
-const REFUSED_HEAD_RE =
-  /§\s*\d+[a-z]*\s*\(neu\)|\b(?:vor|nach)\s+(?:dem\s+)?§|abschnitts(?:bezeichnung|überschrift)|\bbezeichnung\s+und\s+überschrift|hauptstück|\bArt(?:ikel|\.)\s*[IVXLC\d]+[a-z]?\s+§/i
+/** See `addressedParagraph`: a § marked new, a division beside a §. The table of contents is `isTocInstruction`'s. */
+const REFUSED_HEAD_RE = /§\s*\d+[a-z]*\s*\(neu\)|\b(?:vor|nach)\s+(?:dem\s+)?§|abschnitts(?:bezeichnung|überschrift)|\bbezeichnung\s+und\s+überschrift|hauptstück/i
+/**
+ * A § inside an Artikel of the law („In Art. I § 9a …"): no name, because
+ * which § 9a the standing law means is not the name's question to guess.
+ * The Begründungsvergleich asks something else — which „Zu …" passage
+ * explains the change — and its passages name the § as „(Art. II § 9)",
+ * where the typed reading gives „§ 9" for the same address already: „Art. II
+ * § 9 Abs. 3 entfällt." was joined at § 9, while „In Artikel II § 9 entfällt
+ * der dritte Absatz.", which the engine refuses since 19.11.2026, lost its §
+ * and its Begründung line (75/ME XXVIII Z 11; 20.11.2026). So the join reads
+ * it (`AddressUse`).
+ */
+const ARTIKEL_PARAGRAPH_RE = /\bArt(?:ikel|\.)\s*[IVXLC\d]+[a-z]?\s+§/i
+/** What the address is read for: the § name (`'name'`) or the Begründungsvergleich's § join (`'join'`), which also reads a § inside an Artikel. */
+export type AddressUse = 'name' | 'join'
 /** The designations a name can be looked up under. */
 const DESIGNATION_RE = /^(?:§|Art\.|Anlage|Anhang)\s/
 
@@ -109,7 +123,7 @@ function readParagraphs(line: string): { paras: string[]; typed: boolean } {
  * understanding it. One place for every caller: the § names and the
  * Begründungsvergleich have to mean the same Paragraph.
  */
-export function addressedParagraphOf(unit: LawDiffUnit): string | null {
+export function addressedParagraphOf(unit: LawDiffUnit, use: AddressUse = 'name'): string | null {
   // A unit that IS a § carries law text, not an instruction, and its text
   // cites other §§ as law does („… ihren Pflichten gemäß § 47 nachkommen",
   // § 48 of 32/ME, XXVIII). Read as an instruction it came out as that
@@ -121,7 +135,7 @@ export function addressedParagraphOf(unit: LawDiffUnit): string | null {
   // says so already.
   if (isParagraphUnit(unit)) return null
   const line = instructionLineOf(unit)
-  return line ? addressedParagraph(line) : null
+  return line ? addressedParagraph(line, use) : null
 }
 
 /** The unshortened instruction a unit carries — see `addressedParagraphOf`. */

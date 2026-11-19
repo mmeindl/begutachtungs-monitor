@@ -13,8 +13,9 @@ import type { ExplanationsMissing, LandReasoningResponse, ReasoningDiffResponse,
  * disclosure read like one whose Begründung was found and left unchanged —
  * „kept" where the truth is „we could not tell". For every change present on
  * both sides where both documents carry Erläuterungen, whichever join it
- * took (`ReasoningDiffResponse.gaps`, 19.11.2026); where one has none,
- * nothing at the change could be attached in the first place.
+ * took (`ReasoningDiffResponse.gaps`, 19.11.2026), and for an inserted or
+ * removed one whose own document names it nowhere (20.11.2026); where one
+ * has none, nothing at the change could be attached in the first place.
  */
 const REASONING_GAP_DE: Record<ReasoningGap, string> = {
   numbering: 'Begründung: nicht zuzuordnen – die Erläuterungen zählen die Ziffern anders.',

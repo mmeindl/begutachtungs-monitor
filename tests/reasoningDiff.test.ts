@@ -1203,3 +1203,37 @@ describe('compareReasoning — die Zeile auch außerhalb des Ziffer-Joins (19.11
     expect(out.gaps).toEqual({})
   })
 })
+
+// An inserted or removed change stood silent where its Begründung could not
+// be attached: the gap line was for changes on both sides (20.11.2026).
+describe('compareReasoning — die Zeile an einer eingefügten oder entfallenen Änderung (20.11.2026)', () => {
+  const removed = (id: string, line: string): LawDiffUnit => ({ ...z(id, id, line, 'removed'), toText: null })
+  const inserted = (id: string, line: string): LawDiffUnit => ({ ...z(id, null, line, 'inserted'), fromText: null })
+
+  it('nennt nur das Dokument, in dem die Änderung steht, und nur wo es sie nirgends nennt', () => {
+    const units = [
+      z('Z1', 'Z1', 'In § 3 Abs. 1 wird "a" durch "b" ersetzt.'),
+      removed('Z2', '§ 94d Z 21 entfällt.'), // 62/ME XXVIII Z 10
+      inserted('Z2', 'Dem § 272 wird folgender Abs. 41 angefügt: "(41) …"'), // 7/ME XXVIII Z 12
+      inserted('Z3', 'In § 5 wird "c" durch "d" ersetzt.'),
+    ]
+    const before = erl('Zu § 3:', 'Klarstellung.')
+    const after = erl('Zu § 3:', 'Klarstellung.', 'Zu § 5:', 'Neu nach der Begutachtung.')
+
+    expect(compareReasoning(units, before, after).gaps).toEqual({ 'Gesetz|Z2|removed': 'missingBefore', 'Gesetz|Z2|inserted': 'missingAfter' })
+  })
+
+  it('findet den § in einem Artikel des Gesetzes auch, wo die Engine die Anordnung ablehnt (75/ME XXVIII Z 11)', () => {
+    // „der dritte Absatz" is a part the engine refuses to delete whole, and
+    // the § name never reads a § inside an Artikel; the join reads „§ 9".
+    const units = [removed('Z11', 'In Artikel II § 9 entfällt der dritte Absatz.'), inserted('Z12', 'Art. II § 9 Abs. 3 entfällt.')]
+    const before = erl('Zu § 9:', 'Der Absatz ist überholt.')
+    const after = erl('Zu § 9:', 'Der Absatz ist nach den Stellungnahmen überholt.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.units['Gesetz|Z11|removed']).toBe('§ 9')
+    expect(out.units['Gesetz|Z12|inserted']).toBe('§ 9')
+    expect(out.gaps).toEqual({})
+  })
+})

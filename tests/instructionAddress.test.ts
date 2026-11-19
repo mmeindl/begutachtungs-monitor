@@ -70,3 +70,13 @@ describe('addressedParagraph', () => {
     expect(addressedParagraphOf({ ...unit, id: 'Z3', toText: 'In § 47 Abs. 1 wird das Wort "alt" durch das Wort "neu" ersetzt.' })).toBe('§ 47')
   })
 })
+
+describe('addressedParagraph — ein § in einem Artikel des Gesetzes (20.11.2026)', () => {
+  it('gibt ihm keinen Namen, liest ihn aber für den §-Join der Begründungen (75/ME XXVIII Z 11)', () => {
+    const line = 'In Artikel II § 9 entfällt der dritte Absatz.'
+    expect(addressedParagraph(line)).toBeNull()
+    expect(addressedParagraph(line, 'join')).toBe('§ 9')
+    // A division beside a § stays unread for the join too.
+    expect(addressedParagraph('Vor § 40 werden folgende Abschnittsbezeichnung und Abschnittsüberschrift eingefügt:', 'join')).toBeNull()
+  })
+})

@@ -651,6 +651,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   reason too (`provesAbsence`: 49/ME XXVIII heads its Inkrafttreten „Zu § 10:").
   Otherwise the line is „Begründung: nicht zuzuordnen." with no reason: an
   unproven „nicht gefunden" would have been false on most such changes.
+  An inserted or removed change (20.11.2026) gets the line only where the
+  one document it stands in proves the absence — „in der
+  Regierungsvorlage nicht gefunden" at an inserted one, „im Entwurf nicht
+  gefunden" at a removed one; 15 changes of GP XXVIII, silent before. Not
+  „nicht zuzuordnen." at the 857 others: its own document mostly explains
+  such a change, and there was only nothing to hold that against. The §
+  join reads a § inside an Artikel of the law („In Artikel II § 9 …"),
+  which the § name does not (`addressedParagraph(line, 'join')`): the
+  typed reading gave „§ 9" for „Art. II § 9 Abs. 3 entfällt." already, and
+  75/ME XXVIII's „In Artikel II § 9 entfällt der dritte Absatz.", refused by
+  the engine since 19.11.2026, had lost its Begründung.
 - **The reasoning comparison runs only ME → RV, and only where both sides
   give a reasoning.** „Unchanged" means the same words in the same order; no
   percentage threshold. Both sides are read with the same parser (§12.10b).
