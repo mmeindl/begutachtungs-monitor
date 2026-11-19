@@ -80,6 +80,8 @@ interface Verdict {
   checked: number
   identical: number
   untouched: number
+  /** `untouched`, split by why nothing changed (`UNCHANGED_CLASSES`) */
+  untouchedBy: Record<UnchangedClass, number>
   incomplete: number
   halfApplied: number
   divergent: number
@@ -89,8 +91,36 @@ interface Verdict {
   cleanIdentical: number
   cleanDivergent: number
   cleanNotLaw: number
+  /** The clean §§ no other clean line counts, so the block sums to `cleanTotal` */
+  cleanUntouched: number
+  cleanIncomplete: number
+  cleanUnverifiable: number
   note: string | null
 }
+
+/**
+ * Why a § the engine left as it stood, while RIS changed it, stands so.
+ *
+ * The summary filed all of them as „ungefährlich, wird verweigert" and never
+ * checked it. 28 of 189 were not refused at all (19.11.2026): five were §§
+ * whose only instruction `segmentUnits` had dropped (SBBG § 5, ÄrzteG §§ 6a
+ * and 7, StVfG § 1 — the line was in no unit, so it was neither applied nor
+ * refused), the rest Anlagen the engine refused under a designation this
+ * bench cannot key, §§ no line of the Novelle names, and §§ an applied
+ * instruction touched without changing them. Only the first class is the
+ * harmless one the legend promised; the others are printed by name.
+ */
+const UNCHANGED_CLASSES = ['verweigert', 'angewendet', 'Anlage', 'ungenannt'] as const
+type UnchangedClass = (typeof UNCHANGED_CLASSES)[number]
+const UNCHANGED_LEGEND: Record<UnchangedClass, string> = {
+  verweigert: 'verweigert — ungefährlich, die Seite hält ihn zurück',
+  angewendet: 'eine Anweisung nennt ihn, nichts verweigert ihn — kein geltender Text',
+  Anlage: 'Anlage, ihre Anweisung nennt eine Bezeichnung ohne RIS-Label',
+  ungenannt: 'keine Anweisung nennt ihn — Zeile verloren oder RIS ordnet zu',
+}
+const noUnchanged = (): Record<UnchangedClass, number> => ({ verweigert: 0, angewendet: 0, Anlage: 0, ungenannt: 0 })
+/** The unchanged §§ outside `verweigert`, one line each, for reading. */
+const unchangedListed: string[] = []
 
 type VersionPair = { before: KonsParagraphRef | null; after: KonsParagraphRef; afters: KonsParagraphRef[] }
 
@@ -100,6 +130,23 @@ type VersionPair = { before: KonsParagraphRef | null; after: KonsParagraphRef; a
  * which locked § 4 here under its number.
  */
 const harnessKey = (label: string): string | null => (isDivision(label) ? null : bareParaId(label))
+
+/**
+ * The key a RIS label's § is scored under — the engine's id for it.
+ *
+ * „Art. 1 § 3", a law organised in Artikel, is § 3: the first number is the
+ * Artikel's. Read by the first number, the bench held the engine's § 1
+ * against RIS's § 3 and booked an „eigene Abweichung" that was neither
+ * (AlVG, BGBl. I Nr. 62/2026) — and every other § of such a law found no
+ * engine node under its Artikel's number and was silently never scored: 45
+ * §§ of six laws in the 60-BGBl run (GGG, FinStrG, AlVG, BEinstG, PreisG,
+ * LMBG), 41 of them identical (19.11.2026).
+ * Where two labels of one law come to the same key, neither is scored
+ * (`ambiguousLabels`): which Artikel's § 3 the engine holds is a question
+ * this bench does not answer for it.
+ */
+const scoredKey = (label: string): string | null => harnessKey(label.replace(/^Art\.\s*\S+\s+(?=§)/, ''))
+let ambiguousLabels = 0
 
 const verbose = !argFlag('quiet')
 /**
@@ -121,16 +168,20 @@ const dumpFile = argAssigned('dump') ?? null
  * without a readable annex.
  *
  * **Both annex paths since 19.11.2026**, and the tables say which path each
- * figure is from. Over `--discover=60 --sammel`, 207 laws, 1.752 §§: the
+ * figure is from. Over `--discover=60 --sammel`, 207 laws, 1.796 §§: the
  * oracle loads for 132 laws, 43 from the XML table and 89 from the PDF; until
  * that day the 99 rasterised ones dropped out as „ist ein Scan". The XML lines
- * are the table as it stood: 108 confirmed, 106 identical, 0 deviating, and
- * the 2 others implausible, so withheld. The PDF path: 178 confirmed, 173
- * identical, 0 deviating, 5 others — and 3 of those 5 plausible, so they are
- * what the gate would SHOW. Over `--discover=120`, 426 laws, 3.423 §§: 216
- * laws with an oracle (66 XML, 150 PDF); XML 135 confirmed, 132 identical,
- * 3 others, none shown; PDF 294 confirmed, 287 identical, 7 others, 5 shown.
- * Read by hand (`--oracle-dump`), the 5 shown are three things:
+ * are the table as it stood: 109 confirmed, 107 identical, 0 deviating, and
+ * the 2 others implausible, so withheld. The PDF path: 192 confirmed, 188
+ * identical, 0 deviating, 4 others — and 2 of those 4 plausible, so they are
+ * what the gate would SHOW. Over `--discover=120`, 426 laws, 3.508 §§: 216
+ * laws with an oracle (66 XML, 150 PDF); XML 136 confirmed, 133 identical,
+ * 3 others, none shown; PDF 312 confirmed, 306 identical, 6 others, 4 shown.
+ * (Measured 19.11.2026 after `segmentUnits` kept „25." beside „25a." and the
+ * §§ of laws filed as „Art. 1 § 3" were scored at all; the same morning's
+ * figures were 1.752 and 3.423 §§, with BVergGVS § 30 among the shown.)
+ * Read by hand (`--oracle-dump`), the 4 shown at 120 are two things, and the
+ * fifth of that morning a third:
  *
  *  - not the engine, not the oracle: GVG-B § 5 (RIS keeps a space before a
  *    comma the engine's edit closed) and BAO § 211 (RIS's version for
@@ -143,18 +194,26 @@ const dumpFile = argAssigned('dump') ?? null
  *    which the per-block `ANNOTATION_RE` cannot see — the annex elides the
  *    Absätze they stand in, so no oracle check can;
  *  - an instruction lost before the engine and an oracle blind to it:
- *    BVergGVS § 30 (BGBl. I Nr. 8/2026 Art. 3) — „25a." opens a second
+ *    BVergGVS § 30 (BGBl. I Nr. 8/2026 Art. 3) — „25a." opened a second
  *    `Z25` in `segmentUnits` and the short real Z 25 („§ 30 Abs. 8 entfällt;
- *    Abs. 9 erhält die Absatzbezeichnung (8)") is dropped as a
- *    table-of-contents echo, neither applied nor refused; the annex row that
- *    strikes Abs. 8 is aligned past it because Abs. 8 and Abs. 9 open with
- *    the same words, so check 4 leaves it to check 2, and check 5 does not
- *    ask about an Absatz the result has beyond the annex's last.
+ *    Abs. 9 erhält die Absatzbezeichnung (8)") was dropped as a
+ *    table-of-contents echo, neither applied nor refused. The line is read
+ *    since 19.11.2026 and the § is identical; the oracle's blindness stays:
+ *    the annex row that strikes Abs. 8 is aligned past it because Abs. 8 and
+ *    Abs. 9 open with the same words, so check 4 leaves it to check 2, and
+ *    check 5 does not ask about an Absatz the result has beyond the annex's
+ *    last.
  *
- * Over `--discover=200`, 857 laws, 5.970 §§: 278 laws with an oracle (77
- * XML, 201 PDF); XML 173 confirmed, 170 identical, none of the 3 others
- * shown; PDF 390 confirmed, 377 identical, 0 deviating, 7 of the 13 others
- * shown — the five above, UVP-G § 3 (RIS's space before a comma again) and
+ * The designation line („Gliederung der identischen Paragraphen") finds one
+ * § at 120 that the gate would show with the law's words under another
+ * structure: Tabakmonopolgesetz § 18 (BGBl. I Nr. 97/2025), where the engine
+ * ends Z 3 with the text RIS sets apart as the Absatz's Schlussteil.
+ *
+ * Over `--discover=200` (measured the morning of 19.11.2026, before both
+ * corrections), 857 laws, 5.970 §§: 278 laws with an oracle (77 XML, 201
+ * PDF); XML 173 confirmed, 170 identical, none of the 3 others shown; PDF 390
+ * confirmed, 377 identical, 0 deviating, 7 of the 13 others shown — the five
+ * above, UVP-G § 3 (RIS's space before a comma again) and
  * UStG § 21 (BGBl. I Nr. 113/2024, 338/ME XXVII): RIS's standing version types
  * the closing sentences of Abs. 1 as `<absatz typ="erltext">`, `konsTree`
  * skips every unmarked erltext block in a § with Absätze as a note, and the
@@ -659,7 +718,7 @@ function matchArticle(candidates: readonly DraftArticle[], article: DraftArticle
 async function verify(bgblId: string, titleHint?: string): Promise<Verdict[]> {
   const meta = await risJson({ Applikation: 'BgblAuth', Suchworte: bgblId, DokumenteProSeite: 'Ten' })
   const ref = asArray<any>(meta?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference).find((r) => r?.Data?.Metadaten?.Technisch?.ID === bgblId)
-  const blank = (note: string): Verdict => ({ bgbl: bgblId, article: null, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, halfApplied: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, cleanNotLaw: 0, note })
+  const blank = (note: string): Verdict => ({ bgbl: bgblId, article: null, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, untouchedBy: noUnchanged(), incomplete: 0, halfApplied: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, cleanNotLaw: 0, cleanUntouched: 0, cleanIncomplete: 0, cleanUnverifiable: 0, note })
   if (!ref) return [blank('BGBl nicht gefunden')]
 
   const bundesrecht = ref.Data.Metadaten.Bundesrecht
@@ -697,7 +756,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // print "Artikel 1" is not one, and labelling it would make the summary
   // count it as one.
   const articleLabel = ctx.package ? article.number : null
-  const blank = (note: string): Verdict => ({ bgbl: bgblNumber || ctx.bgblId, article: articleLabel, law: article.title ?? titleHint ?? ctx.fallback, instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, halfApplied: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, cleanNotLaw: 0, note })
+  const blank = (note: string): Verdict => ({ bgbl: bgblNumber || ctx.bgblId, article: articleLabel, law: article.title ?? titleHint ?? ctx.fallback, instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, untouchedBy: noUnchanged(), incomplete: 0, halfApplied: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, cleanNotLaw: 0, cleanUntouched: 0, cleanIncomplete: 0, cleanUnverifiable: 0, note })
 
   const units = segmentUnits(blocks)
   const { instructions, refused } = instructionsFromUnits(units.filter((u) => u.blocks.some((b) => b.kind === 'novao')))
@@ -808,9 +867,41 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   let cleanIdentical = 0
   let cleanDivergent = 0
   let cleanNotLaw = 0
+  let cleanUntouched = 0
+  let cleanIncomplete = 0
+  let cleanUnverifiable = 0
+  const untouchedBy = noUnchanged()
+  // Which §§ a line of this Novelle names at all, by the key they are scored
+  // under and their kind — „§ 1" does not name „Anl. 1" — to tell a § the
+  // Novelle left alone from one it lost.
+  const kindKey = (designation: string, key: string | null | undefined): string => `${isSchedule(designation) ? 'Anl. ' : ''}${key ?? ''}`
+  const namedKeys = new Set<string>()
+  // A schedule the engine was told about under a designation no RIS label of
+  // this law carries („Anhang I" for „Anl. 1", a bare „Anhang").
+  const labelKeys = new Set([...pairs.keys()].map(labelKey))
+  let unkeyedSchedule = refused.some((r) => /\b(?:Anlagen?|Anhang|Anhänge)\b/.test(r.line))
+  for (const { op, payload } of instructions) {
+    const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+    for (const para of address ? namedParagraphs(address) : []) {
+      const key = harnessKey(para)
+      if (key) namedKeys.add(kindKey(para, key))
+      if (isSchedule(para) && !labelKeys.has(labelKey(para))) unkeyedSchedule = true
+    }
+    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') for (const p of payload) if (p.id) namedKeys.add(kindKey(p.marker, p.id))
+  }
+  const keyCount = new Map<string, number>()
+  for (const label of pairs.keys()) {
+    const k = `${isSchedule(label) ? 'Anl' : ''}|${scoredKey(label)}`
+    keyCount.set(k, (keyCount.get(k) ?? 0) + 1)
+  }
   const divergences: { label: string; got: string; expected: string; before: string }[] = []
   for (const [label, pair] of [...pairs].sort()) {
-    const id = /(\d+[a-z]*)/.exec(label)?.[1]
+    const id = scoredKey(label) ?? undefined
+    if ((keyCount.get(`${isSchedule(label) ? 'Anl' : ''}|${id}`) ?? 0) > 1) {
+      ambiguousLabels++
+      if (verbose) console.log(`    ?  ${label.padEnd(9)} nicht gewertet — ein zweites Label dieses Gesetzes hat dieselbe Nummer`)
+      continue
+    }
     const node = nodeFor(after.paragraphs, label, id)
     // Every version this BGBl created is law text that exists; the engine's
     // end state is scored against the best match among them (see
@@ -841,6 +932,15 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // the harness simply has no single text to hold it against.
     const staged = verdict === 'abweichend' && comparable && truths.length > 1 && isSubsetOfRis(beforeText ?? '', got, truths.map((t) => t.text).join(' '))
     if (staged) verdict = 'unvollständig'
+    const why: UnchangedClass | null = verdict !== 'unverändert'
+      ? null
+      : id && refusedIds.has(id)
+        ? 'verweigert'
+        : namedKeys.has(kindKey(label, id))
+          ? 'angewendet'
+          : isSchedule(label) && unkeyedSchedule
+            ? 'Anlage'
+            : 'ungenannt'
     if (id && !refusedIds.has(id)) {
       cleanTotal++
       if (verdict === 'identisch') cleanIdentical++
@@ -849,7 +949,13 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       // half-applied § invents no word, so it passes every test the engine
       // can run on itself — and its text is still not law. Reporting only
       // the divergences understated this line by a factor of four.
-      if (verdict === 'halbangewendet' || (verdict === 'abweichend' && comparable)) cleanNotLaw++
+      // An instruction named it, nothing refused it, and its text is the one
+      // from before the Novelle — or, partly, still is: no refusal holds it
+      // back, and it is not the law either (KFG § 24, VBG § 100, 19.11.2026).
+      if (verdict === 'halbangewendet' || (verdict === 'abweichend' && comparable) || why === 'angewendet') cleanNotLaw++
+      else if (verdict === 'unverändert') cleanUntouched++
+      else if (verdict === 'unvollständig') cleanIncomplete++
+      else if (verdict === 'abweichend') cleanUnverifiable++
     }
     // The draft-time gate: refusal, plausibility, and — where the draft has
     // an annex — the ressort's own comparison. Tallied against the RIS truth.
@@ -980,6 +1086,10 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       )
     }
     const mark = { identisch: '✓', unverändert: '·', unvollständig: '~', halbangewendet: '!', abweichend: '✗' }[verdict]
+    if (why) {
+      untouchedBy[why]++
+      if (why !== 'verweigert') unchangedListed.push(`${why.padEnd(10)} ${bgblNumber}${articleLabel ? ` ${articleLabel}` : ''} — ${kurztitel} ${label}${touching.length ? ` — ${touching[0]!.instruction.line.slice(0, 90)}` : ''}`)
+    }
     if (verdict === 'identisch') identical++
     else if (verdict === 'unverändert') untouched++
     else if (verdict === 'unvollständig') incomplete++
@@ -1002,7 +1112,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     }
   }
 
-  return { bgbl: bgblNumber, article: articleLabel, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, halfApplied, divergent: divergences.length, unverifiable, cleanTotal, cleanIdentical, cleanDivergent, cleanNotLaw, note: null }
+  return { bgbl: bgblNumber, article: articleLabel, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, untouchedBy, incomplete, halfApplied, divergent: divergences.length, unverifiable, cleanTotal, cleanIdentical, cleanDivergent, cleanNotLaw, cleanUntouched, cleanIncomplete, cleanUnverifiable, note: null }
 }
 
 // --- CLI ----------------------------------------------------------------------
@@ -1072,7 +1182,8 @@ console.log(`  grammatikalisch gelesen: ${sum((v) => v.read)} (${pct(sum((v) => 
 console.log(`  angewendet             : ${sum((v) => v.applied)} (${pct(sum((v) => v.applied), sum((v) => v.instructions))})`)
 console.log(`  geprüfte Paragraphen   : ${sum((v) => v.checked)}`)
 console.log(`    identisch mit dem RIS: ${sum((v) => v.identical)} (${pct(sum((v) => v.identical), sum((v) => v.checked))})`)
-console.log(`    unverändert gelassen : ${sum((v) => v.untouched)} (${pct(sum((v) => v.untouched), sum((v) => v.checked))})  — ungefährlich, wird verweigert`)
+console.log(`    unverändert gelassen : ${sum((v) => v.untouched)} (${pct(sum((v) => v.untouched), sum((v) => v.checked))})  — der Text vor der Novelle`)
+for (const why of UNCHANGED_CLASSES) console.log(`      ${why.padEnd(19)}: ${String(sum((v) => v.untouchedBy[why])).padStart(4)}  — ${UNCHANGED_LEGEND[why]}`)
 console.log(`    unvollständig        : ${sum((v) => v.incomplete)} (${pct(sum((v) => v.incomplete), sum((v) => v.checked))})  — der Text des RIS mit Auslassungen`)
 console.log(`    halb angewendet      : ${sum((v) => v.halfApplied)} (${pct(sum((v) => v.halfApplied), sum((v) => v.checked))})  — kein erfundenes Wort, trotzdem kein geltender Text`)
 console.log(`    eigene Abweichung    : ${sum((v) => v.divergent)} (${pct(sum((v) => v.divergent), sum((v) => v.checked))})  — erfundene Wörter, die schärfste Klasse`)
@@ -1082,7 +1193,17 @@ console.log(`\n  Nur Paragraphen ohne jede Verweigerung (das, was ein Gate anzei
 console.log(`    davon geprüft        : ${clean} von ${sum((v) => v.checked)}`)
 console.log(`    identisch            : ${sum((v) => v.cleanIdentical)} (${pct(sum((v) => v.cleanIdentical), clean)})`)
 console.log(`    eigene Abweichung    : ${sum((v) => v.cleanDivergent)} (${pct(sum((v) => v.cleanDivergent), clean)})  — erfundene Wörter`)
-console.log(`    kein geltender Text  : ${sum((v) => v.cleanNotLaw)} (${pct(sum((v) => v.cleanNotLaw), clean)})  — die Restgefahr eines Gates: Abweichung *und* halb angewendet`)
+console.log(`    kein geltender Text  : ${sum((v) => v.cleanNotLaw)} (${pct(sum((v) => v.cleanNotLaw), clean)})  — die Restgefahr eines Gates: Abweichung, halb angewendet, unverändert trotz Anweisung`)
+// The rest of the denominator, so the block sums: a § counted in `clean`
+// and in no line above was a § nobody read (19.11.2026).
+console.log(`    unverändert          : ${sum((v) => v.cleanUntouched)} (${pct(sum((v) => v.cleanUntouched), clean)})  — keine Anweisung nennt ihn unter dieser Bezeichnung (Klassen „Anlage", „ungenannt")`)
+console.log(`    unvollständig        : ${sum((v) => v.cleanIncomplete)} (${pct(sum((v) => v.cleanIncomplete), clean)})  — der Text des RIS mit Auslassungen`)
+console.log(`    nicht prüfbar        : ${sum((v) => v.cleanUnverifiable)} (${pct(sum((v) => v.cleanUnverifiable), clean)})  — Wortdiff zu groß`)
+if (ambiguousLabels > 0) console.log(`    nicht gewertet       : ${ambiguousLabels}  — zwei RIS-Labels eines Gesetzes mit derselben Nummer`)
+if (unchangedListed.length > 0) {
+  console.log(`\n  Unverändert gelassen, aber nicht verweigert (${unchangedListed.length}):`)
+  for (const line of unchangedListed) console.log(`    ${line}`)
+}
 {
   const sumKeys = (map: Map<string, number>, pred: (parts: string[]) => boolean): number => [...map].filter(([k]) => pred(k.split('|'))).reduce((n, [, v]) => n + v, 0)
   // „übrig" is what neither column counts — unvollständig, unverändert and
@@ -1114,7 +1235,7 @@ console.log(`    kein geltender Text  : ${sum((v) => v.cleanNotLaw)} (${pct(sum(
     line('Orakel bestätigt, egal ob plausibel', (p) => p[1] === 'bestätigt')
     const marked = (pred: (parts: string[]) => boolean): number => sumKeys(markerTally, pred)
     console.log(`\n  Gliederung der identischen Paragraphen (Absatz-, Ziffer-, Literabezeichnungen, wie die Seite sie zeigt):`)
-    console.log(`    gleich ${marked((p) => p[0] === 'gleich')}, abweichend ${marked((p) => p[0] === 'abweichend')}; abweichend und Orakel bestätigt: ${marked((p) => p[0] === 'abweichend' && p[1] === 'bestätigt')} (muss 0 sein)`)
+    console.log(`    gleich ${marked((p) => p[0] === 'gleich')}, abweichend ${marked((p) => p[0] === 'abweichend')}; abweichend und Orakel bestätigt: ${marked((p) => p[0] === 'abweichend' && p[1] === 'bestätigt')} (muss 0 sein), davon plausibel, also gezeigt: ${marked((p) => p[0] === 'abweichend' && p[1] === 'bestätigt' && p[2] === 'plausibel')}`)
     console.log(`\n  Orakel nach Herkunft der Anweisungen (identische Anweisungen im ME und im BGBl → ein Widerspruch ist ein Fehler des Orakels):`)
     const sameLine = (name: string, pred: (parts: string[]) => boolean) => {
       const total = sumKeys(sameTally, pred)

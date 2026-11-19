@@ -796,6 +796,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   `--discover=40`, where no class moved; the range „Die §§ 7 bis 9 (neu) …
   werden ersetzt" stands in the 48th of the 60, and eleven §§ of the
   IVS-Gesetz that matched the RIS were refused for four days unseen.
+- **A bench line promises nothing it does not check** (19.11.2026,
+  `scripts/harness/kons.ts`). „unverändert gelassen — ungefährlich, wird
+  verweigert" was printed over 189 §§, and 28 were not refused: among them
+  five whose only line `segmentUnits` had dropped, and two that no refusal
+  holds back while they are not the law. The class is split by why the §
+  stood still, a § is scored under its own number („Art. 1 § 3" is § 3,
+  not 1), and the unrefused block sums to its denominator.
 - **Before a parser change, compare old against new over the whole corpus and
   read every item that moves.** Zeros measured on tuning data are in-sample.
 - **The § comparison is held by `scripts/harness/station.ts`** (19.11.2026):
@@ -2275,9 +2282,9 @@ Ministerialentwurf, RV = Regierungsvorlage.
 
 | What | Value | Sample, date |
 |---|---|---|
-| Engine against RIS after entry into force: identical | 79.7 % (1,397); 79.5 % (1,392) before the lettered Ziffern were read (five §§ whose only line was lost now identical); 77.9 % on 04.10.2026 | 60 BGBl, 1,752 §§ · 19.11.2026 (§12.12) |
-| Engine's own deviations | 1.3 % (0.7 % among unrefused §§) | same |
-| Unrefused but not the law in force | 1.3 % (19) of 1,435 §§ (BVergGVS § 30 identical since its lost line is read, 19.11.2026); 1.4 % (20) on 18.11.2026; 3.0 % (46 of 1,519) on 04.10.2026. Of the 26 that left, 21 are refused now with the same text and 4 became identical: bookkeeping, not accuracy. The 26th was Privatschulgesetz § 30, never wrong (next row) | same |
+| Engine against RIS after entry into force: identical | 80.1 % (1,439 of 1,796). The bench scored 1,752 §§ until 19.11.2026: 45 §§ of laws RIS files as „Art. 1 § 3" were never scored (41 identical), and the same day five §§ whose only line `segmentUnits` had lost became identical (79.5 %, 1,392, before both); 77.9 % on 04.10.2026 | 60 BGBl · 19.11.2026 (§12.12) |
+| Engine's own deviations | 1.2 % (21); 0.6 % (9 of 1,476) among unrefused §§. 0.7 % until 19.11.2026, one of them the bench's own: AlVG „Art. 1 § 3" held against the engine's § 1 | same |
+| Unrefused but not the law in force | 1.4 % (21) of 1,476 §§, counting since 19.11.2026 the two §§ an instruction named, nothing refused and the engine left (partly) as they stood (KFG § 24, VBG § 100); BVergGVS § 30 identical since its lost line is read; 1.4 % (20 of 1,435) on 18.11.2026; 3.0 % (46 of 1,519) on 04.10.2026. Of the 26 that left, 21 are refused now with the same text and 4 became identical: bookkeeping, not accuracy. The 26th was Privatschulgesetz § 30, never wrong (next row) | same |
 | Annex-confirmed §§ against the enacted text | 109 confirmed: 107 identical, 2 incomplete and withheld as implausible, 0 deviating. So all 107 the gate shows are identical (108 and 106 on 18.11.2026, before the lettered Ziffern were read). „0 of 108 deviate" (26.10.2026) counted the class „abweichend" alone and summed three §§ away; the third, Privatschulgesetz § 30, was word for word the law and read as „halb angewendet" because RIS gives the designation once as `<ueberschrift typ="para">` and once as `<gldsym>` (`konsTree.ts`) | 19.11.2026 (§12.12c) |
 | Fault injection: known error classes caught | ≥ 95 % each | 26.10.2026 (§12.12c) |
 | Fault injection, one word, figure or place in a printed stretch (word dropped, added, swapped, figure, citation, two Ziffern swapped) | 99.3–100 % on both paths; § heading 99.9 % (PDF, 94.8 % before the heading-area fix) and 100 % (table) | GP XXVIII · 19.11.2026 |
