@@ -1,17 +1,30 @@
 /**
- * The two sides of a comparison shown side by side, for the case where there
- * is no word diff to project onto them.
+ * The two sides of a comparison shown side by side, and what they say where
+ * there is no word diff to project onto them.
  *
- * `segments` is null when the word diff hit its cell ceiling (`MAX_DP_CELLS`,
- * roughly 1.500 words a side). Both comparison sections then show each version
- * whole, marked as wholly differing, in the SAME two columns as a diffed row —
- * so a technical limit stops looking like a different kind of change.
+ * `segments` is null where the word diff stopped at its ceiling — for the §
+ * comparison past `MAX_LINEAR_CELLS`, for the annex rows and the Begründung
+ * past `MAX_DP_CELLS` (`server/utils/diff/wordDiff.ts`). Each version then
+ * stands whole in the SAME two columns as a diffed row, **unmarked, under a
+ * sentence that says why** (`NO_WORD_DIFF_DE`, 19.11.2026). Until then both
+ * were marked as wholly differing, every word struck or inserted, with no
+ * sentence: 80/ME XXVIII Z 13 read as a rewrite where four words changed,
+ * and the page claimed changes nobody had found.
  *
  * Where there are segments both sides are the same runs, and `DiffText`'s
  * `side` drops what a column does not show: `inserted` on the left, `removed`
  * on the right. Nothing is recomputed, the same data is read twice.
  */
 import type { LawDiffSegment } from '#shared/types'
+import { gapDe } from '#shared/utils/gaps'
+
+/**
+ * Said where a changed text has no word diff: the ceiling is ours and holds
+ * for every text of that length, so the lead word is the monitor's own. The
+ * pill still says „geändert" — that the texts differ is decided apart from
+ * the word diff, by their comparison key.
+ */
+export const NO_WORD_DIFF_DE = gapDe('outOfScope', 'Texte dieser Länge vergleicht der Monitor nicht Wort für Wort. Beide Fassungen stehen hier im Ganzen, ohne Markierung.')
 
 export function splitSegments(
   segments: LawDiffSegment[] | null,
@@ -20,8 +33,8 @@ export function splitSegments(
 ): { from: LawDiffSegment[]; to: LawDiffSegment[] } {
   if (segments) return { from: segments, to: segments }
   return {
-    from: fromText ? [{ type: 'removed', text: fromText }] : [],
-    to: toText ? [{ type: 'inserted', text: toText }] : [],
+    from: fromText ? [{ type: 'equal', text: fromText }] : [],
+    to: toText ? [{ type: 'equal', text: toText }] : [],
   }
 }
 
@@ -47,8 +60,8 @@ export function splitSegments(
  * 6,8 % of the annex rows — the ressorts recast whole Absätze, the
  * Regierungsvorlage rarely does.
  *
- * No segments (the word diff hit its ceiling) is handled by `splitSegments`
- * and shown in columns anyway.
+ * No segments (the word diff stopped at its ceiling) is handled by
+ * `splitSegments` and shown in columns anyway, unmarked.
  */
 export const SIDE_BY_SIDE_SHARE = 0.4
 export const SIDE_BY_SIDE_MIN_CHARS = 60

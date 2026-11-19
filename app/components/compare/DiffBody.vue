@@ -20,6 +20,7 @@ import type { LawDiffSegment, LawUnitChange } from '#shared/types'
 import { FIGURE_NOT_COMPARED_DE, hasFigure } from '#shared/utils/figureMark'
 import { absaetze } from '~/utils/absaetze'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, PILL_CLASS } from '~/utils/diffBadges'
+import { NO_WORD_DIFF_DE } from '~/utils/diffSides'
 import type { TermKey } from '~/utils/terms'
 
 const props = defineProps<{
@@ -27,7 +28,7 @@ const props = defineProps<{
   /** The pill's word — the sections differ in one (`badgeLabels`). */
   label: string
   change: LawUnitChange
-  /** The word diff; null where it hit its ceiling. */
+  /** The word diff; null where it stopped at its ceiling (`NO_WORD_DIFF_DE`). */
   segments: LawDiffSegment[] | null
   /** The two columns (`splitSegments`). */
   from: LawDiffSegment[]
@@ -99,22 +100,25 @@ const removedBlocks = computed(() => plain(props.fromText))
       <p v-for="(block, i) in inline" :key="i"><DiffText :segments="block" /></p>
     </div>
     <!-- Side by side. ONE shape for two cases: the text was rewritten too
-         thoroughly to read inline, or the word diff hit its ceiling and
-         there are no segments to inline (then `splitSegments` marks each
-         side whole). The fallback used to be its own layout, which made a
-         technical limit look like a different kind of change. -->
-    <SideBySide v-else-if="change === 'changed'" :from-label="fromLabel" :to-label="toLabel">
-      <template #from>
-        <div class="space-y-1.5 hyphens-auto text-ink">
-          <p v-for="(block, i) in fromBlocks" :key="i"><DiffText :segments="block" side="from" /></p>
-        </div>
-      </template>
-      <template #to>
-        <div class="space-y-1.5 hyphens-auto text-ink">
-          <p v-for="(block, i) in toBlocks" :key="i"><DiffText :segments="block" side="to" /></p>
-        </div>
-      </template>
-    </SideBySide>
+         thoroughly to read inline, or the word diff stopped at its ceiling
+         and there are no segments to inline. Then the sentence says so, and
+         both sides stand unmarked (`splitSegments`): marked whole they
+         claimed every word changed (19.11.2026). -->
+    <template v-else-if="change === 'changed'">
+      <GapNote v-if="!segments" class="mb-1 text-xs text-ink-secondary" :text="NO_WORD_DIFF_DE" />
+      <SideBySide :from-label="fromLabel" :to-label="toLabel">
+        <template #from>
+          <div class="space-y-1.5 hyphens-auto text-ink">
+            <p v-for="(block, i) in fromBlocks" :key="i"><DiffText :segments="block" side="from" /></p>
+          </div>
+        </template>
+        <template #to>
+          <div class="space-y-1.5 hyphens-auto text-ink">
+            <p v-for="(block, i) in toBlocks" :key="i"><DiffText :segments="block" side="to" /></p>
+          </div>
+        </template>
+      </SideBySide>
+    </template>
     <!-- Only one side has a text; a column to hold nothing beside it would be
          a column about our layout, not about the law. -->
     <div v-else-if="change === 'inserted'" class="space-y-1.5 hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">

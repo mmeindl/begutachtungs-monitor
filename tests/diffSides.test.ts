@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { readsSideBySide, splitSegments } from '../app/utils/diffSides'
+import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '../app/utils/diffSides'
+import { splitGap } from '../shared/utils/gaps'
 
 describe('splitSegments', () => {
   it('hands both sides the same runs — the column filters, not this', () => {
@@ -13,11 +14,16 @@ describe('splitSegments', () => {
     expect(sides.to).toEqual([...segments])
   })
 
-  it('marks each version whole where the word diff hit its ceiling', () => {
+  it('shows each version whole and unmarked where the word diff stopped at its ceiling (19.11.2026)', () => {
+    // Marked whole, every word read as changed: 80/ME XXVIII Z 13, where four of 2.002 did.
     expect(splitSegments(null, 'alt', 'neu')).toEqual({
-      from: [{ type: 'removed', text: 'alt' }],
-      to: [{ type: 'inserted', text: 'neu' }],
+      from: [{ type: 'equal', text: 'alt' }],
+      to: [{ type: 'equal', text: 'neu' }],
     })
+  })
+
+  it('says why, with the lead word of the monitor’s own ceiling', () => {
+    expect(splitGap(NO_WORD_DIFF_DE)?.kind).toBe('outOfScope')
   })
 
   it('leaves a side empty rather than marking an empty string', () => {
