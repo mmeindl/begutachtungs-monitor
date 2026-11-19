@@ -1057,6 +1057,9 @@ const ABBREVIATIONS = new Set(
  */
 const ORDINAL_FOLLOWERS = /^(?:J[äa]nner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|Satz|Halbsatz|Abschnitt|Hauptstück|Teil|Unterabschnitt|Kapitel|Stufe|Instanz|Klasse|Kategorie|Quartal|Halbjahr|Jahr|Lebensjahr|Schuljahr|Kalenderjahr|Semester|Absatz|Ziffer|Fall|Alternative|Variante|Tatbestand|Spiegelstrich|Anstrich|Untergliederung|Rate|Tranche|Runde|Wahlgang|Lesung|Auflage|Ausfertigung|Stock|Ebene)(?:e?s)?\b/
 
+/** „1. Jänner 2026": a year closing a date, the text in front of its full stop. */
+const YEAR_OF_DATE_RE = /(?:J[äa]nner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+\d{4}$/
+
 /**
  * The words a designation number stands behind, by depth: „§ 8 Abs. 1 Z 6".
  * Behind one of them a number is the unit's number and never an ordinal, so
@@ -1127,8 +1130,19 @@ export function splitSentences(text: string): string[] | null {
       if (/^[a-z]$/.test(lower) && /(?:^|[\s(])[a-zA-Z]\.\s?[a-zA-Z]$/.test(t.slice(start, i))) continue
       if (/^\d+$/.test(lower) || /^[a-z]$/.test(lower) || /^[ivx]+$/.test(lower)) {
         if (!/^[A-ZÄÖÜ"„§(]/.test(rest)) continue
-        if (ORDINAL_FOLLOWERS.test(rest)) continue
-        if (endsDesignation(t.slice(start, i), rest) !== true) return null
+        // The word in front decides first (19.11.2026): behind „Abs." or
+        // „Z" the number is a designation and the full stop ends the
+        // sentence, whatever follows — KFG § 47 Abs. 4b „… gemäß § 61 Abs. 3.
+        // Falls kein haftender Versicherer …" counted six sentences for seven.
+        // A year („1. Jänner 2026.") is no ordinal either, and whether a
+        // sentence ends behind it is as undecidable as behind any number;
+        // so is a capitalised „Falls", the conjunction as often as the
+        // genitive of „Fall". Joined, „entfällt der zweite Satz" struck two.
+        const designation = endsDesignation(t.slice(start, i), rest)
+        if (designation !== true) {
+          if (designation === null && ORDINAL_FOLLOWERS.test(rest) && !/^Falls\b/.test(rest) && !YEAR_OF_DATE_RE.test(t.slice(start, i))) continue
+          return null
+        }
       }
       if (/^[a-zäöüß]/.test(rest)) continue
     }

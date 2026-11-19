@@ -143,6 +143,28 @@ describe('applyNovelle — safety', () => {
   })
 })
 
+describe('where a full stop behind a number ends a sentence (19.11.2026)', () => {
+  // KFG 1967 § 47 Abs. 4b: „Falls" opens the seventh sentence. Read as the
+  // genitive of „Fall", sentences six and seven were one, and „entfällt der
+  // letzte Satz" struck both.
+  it('lets a designation end the sentence whatever word follows', () => {
+    expect(splitSentences('Dies gilt wie eine Anzeige gemäß § 61 Abs. 3. Falls kein Versicherer festgestellt werden kann, gilt Abs. 2.')).toEqual([
+      'Dies gilt wie eine Anzeige gemäß § 61 Abs. 3.',
+      'Falls kein Versicherer festgestellt werden kann, gilt Abs. 2.',
+    ])
+    expect(splitSentences('Es gilt § 8 Abs. 1 Z 6. Absatz 2 gilt sinngemäß. Ende.')).toHaveLength(3)
+  })
+  it('refuses where a year or a capitalised „Falls" leaves the boundary open', () => {
+    expect(splitSentences('Dies gilt ab 1. Jänner 2026. Satz zwei. Satz drei.')).toBeNull()
+    expect(splitSentences('Dies gilt bis zum 30. Juni 2008. Falls nichts anderes bestimmt ist, gilt Satz 1.')).toBeNull()
+  })
+  it('still reads ordinals as ordinals', () => {
+    expect(splitSentences('Dies gilt ab dem 1. Jänner 2026 für den 2. Teil. Ende.')).toHaveLength(2)
+    expect(splitSentences('Er beträgt den 360. Teil des Jahresbetrags. Ende.')).toHaveLength(2)
+    expect(splitSentences('Die Bestimmungen des 2. Teiles 1. Hauptstückes gelten. Ende.')).toHaveLength(2)
+  })
+})
+
 describe('a sentence appended after a deletion (19.11.2026)', () => {
   // KommAustria-G § 35 Abs. 1 (BGBl. I Nr. 20/2026) in miniature: the new
   // sentence went behind the inherited „dritter Satz", the old fourth.
