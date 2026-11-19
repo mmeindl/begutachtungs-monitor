@@ -365,6 +365,11 @@ describe('headingAddress — eine „§§"-Liste, deren Glieder ein Absatz begle
     expect(headingAddress('(§§ 43, 44, 46 Abs. 2, 47 und 48)').paragraphs).toEqual(['§ 43', '§ 44', '§ 46'])
     expect(headingAddress('Zu § 3 (§§ 1 Z 5, 6 und 7):').paragraphs).toEqual(['§ 3', '§ 1'])
     expect(headingAddress('§§ 31Abs. 3 und 5').paragraphs).toEqual(['§ 31'])
+    // An Absatz printed without its space, and a list word the reader does
+    // not know: neither turns the numbers after it into §§ (19.11.2026).
+    expect(headingAddress('(§§ 46 Abs.2 und 3)').paragraphs).toEqual(['§ 46'])
+    expect(headingAddress('(§§ 12, 13 sowie Art. 2 und 3)').paragraphs).toEqual(['§ 12', '§ 13'])
+    expect(headingAddress('(§§ 5 und 6 Anlagen 2 und 3)').paragraphs).toEqual(['§ 5', '§ 6'])
     // The citation an instruction replaces is not what it amends (74/ME XXVIII Z 69).
     expect(headingAddress('In § 27 Abs. 1 Z 20 wird der Ausdruck "§§ 12 Abs. 2, 15b oder 15c" durch den Ausdruck "§§ 15b, 15c oder 15d" ersetzt').paragraphs).toEqual(['§ 27', '§ 12', '§ 15b'])
   })

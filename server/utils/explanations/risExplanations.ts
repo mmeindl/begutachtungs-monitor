@@ -397,9 +397,11 @@ const LIST_SUB_RE = /^(?:abs\.?|absatz|z|lit\.?)$/i
 
 function listedParagraphs(run: string): string[] {
   // Words as printed, and „31Abs." — printed without the space, as
-  // `PARA_RE` knows it — as the § and the Absatz it is.
+  // `PARA_RE` knows it — as the § and the Absatz it is; „Abs.2" as the
+  // Absatz and its number, or the bare number after it read as a §.
   const tokens = run
     .replace(/(\d)(abs\b|z\b|lit\b)/gi, '$1 $2')
+    .replace(/\b(abs\.|z|lit\.)(?=\d)/gi, '$1 ')
     .replace(/,/g, ' , ')
     .split(/\s+/)
     .filter(Boolean)
@@ -424,7 +426,13 @@ function listedParagraphs(run: string): string[] {
     } else if (/^samt$/i.test(token)) {
       sub = false
       expect = 'none'
+    } else if (/^Überschrift(?:en)?$/.test(token) && /^samt$/i.test(tokens[i - 1] ?? '')) {
+      expect = 'none'
     } else {
+      // Any other word ends the list as the line names it: „§§ 12, 13 sowie
+      // Art. 2 und 3", „§§ 5 und 6 Anlagen 2 und 3" — a number after it is
+      // no § unless „Abs." or „samt" says so, as under an Absatz (19.11.2026).
+      sub = true
       expect = 'none'
     }
   }
