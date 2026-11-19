@@ -559,8 +559,8 @@ const REPEALED_RE = /(?<!\p{L})(?:Aufgehoben|\((?:aufgehoben|entfällt)\))(?!\p{
 export const containmentKey = key
 
 /** Words without punctuation — "36," and "36" are the same word. */
-function words(t: string): string[] {
-  return punctuationTokens(stripMarkers(sameText(t)))
+function words(t: string, reading: (t: string) => string = (t) => t): string[] {
+  return punctuationTokens(reading(stripMarkers(sameText(t))))
 }
 
 /**
@@ -577,7 +577,22 @@ function words(t: string): string[] {
 function cellWords(t: string): string[] {
   // And the syllable break, where the hyphen belongs to the line and not to
   // the word: „Konzentrations- schwellen" is „Konzentrationsschwellen".
-  return [...words(t), ...words(t.replace(/(\p{L})- (?=\p{L})/gu, '$1-')), ...words(t.replace(/(\p{Ll})- (?=\p{Ll})/gu, '$1'))]
+  return [...words(t), ...words(t.replace(/(\p{L})- (?=\p{L})/gu, '$1-')), ...words(t.replace(/(\p{Ll})- (?=\p{Ll})/gu, '$1')), ...words(t, splitHyphens)]
+}
+
+/**
+ * A hyphen between two letters, split into a word of its own (20.11.2026).
+ * RIS sets „ARF - Mittel" where the annex prints „ARF-Mittel" (TDBG § 40d,
+ * 116/ME XXVIII, a § the bench finds identical to the enacted law), and
+ * check 3 asked the annex for the three words „ARF", „-", „Mittel" the engine
+ * removed. The annex is read this way as well, on the comparison form where
+ * every dash is „-" (`normalizeText`); the engine's words stay as the diff
+ * cut them. Closing RIS's spaced hyphen instead failed on a chain the diff
+ * cuts in the middle („wird - GVG-B -" against „wird – GVG-B – geregelt",
+ * AsylG § 50, 74/ME). Nothing gets in that the annex does not print.
+ */
+function splitHyphens(t: string): string {
+  return t.replace(/(\p{L})-(?=\p{L})/gu, '$1 - ')
 }
 
 /**

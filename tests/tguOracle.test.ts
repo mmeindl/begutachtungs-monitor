@@ -173,6 +173,22 @@ describe('oracleVerdict', () => {
     expect(oracleVerdict('12a', 'Erster Satz. Zweiter Satz.', 'Zweiter Satz.', abs, ['2'], ['1', '2'])).toMatchObject({ verdict: 'bestätigt' })
   })
 
+  it('reads a hyphen RIS sets with spaces as the annex\'s closed one (20.11.2026)', () => {
+    // 116/ME XXVIII, TDBG § 40d: RIS „ARF - Mittel", the annex „ARF-Mittel".
+    const before = 'Werden ARF - Mittel nachträglich zweckgewidmet, so sind sie zu kennzeichnen.'
+    const got = 'Werden ARF- oder KSF-Mittel nachträglich zweckgewidmet, so sind sie zu kennzeichnen.'
+    const rows = [pair('§ 40d. Werden ARF-Mittel nachträglich zweckgewidmet, so sind sie zu kennzeichnen.', '§ 40d. Werden ARF- oder KSF-Mittel nachträglich zweckgewidmet, so sind sie zu kennzeichnen.', '§ 40d.')]
+    expect(oracleVerdict('40d', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // A dash between two words the engine removes is still read on both readings.
+    const dash = [pair('§ 5. Wer zahlt - sofern nichts anderes gilt - die Gebühr, begeht eine Übertretung.', '§ 5. Wer zahlt, begeht eine Übertretung.', '§ 5.')]
+    expect(oracleVerdict('5', 'Wer zahlt - sofern nichts anderes gilt - die Gebühr, begeht eine Übertretung.', 'Wer zahlt, begeht eine Übertretung.', dash)).toMatchObject({ verdict: 'bestätigt' })
+    // A cell's en dash closes like the diff's hyphen (74/ME XXVIII, AsylG § 50).
+    const en = [pair('§ 50. Dies wird – GVG-B – geregelt.', '§ 50. Dies geregelt.', '§ 50.')]
+    expect(oracleVerdict('50', 'Dies wird - GVG-B - geregelt.', 'Dies geregelt.', en)).toMatchObject({ verdict: 'bestätigt' })
+    // A word removed that the annex keeps is still caught.
+    expect(oracleVerdict('40d', before, got.replace('nachträglich ', ''), rows).verdict).toBe('widersprochen')
+  })
+
   it('contradicts a result that lacks the change the annex shows', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })
