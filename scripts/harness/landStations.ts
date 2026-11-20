@@ -55,6 +55,13 @@
  * that no longer occurs fails the run too: the record moves with the
  * reading in the same commit, as `stationBaseline.json` does.
  *
+ * THE BUND'S CHECKS (`lib/stationChecks.ts`, 20.11.2026), as `station.ts`
+ * runs them over the Bund's pairs (`landPairChecks`): reconstruction over
+ * the units the route serves, completeness and the later side's heading
+ * over `diffLandDraft` before it withholds — blind to the law, see there —,
+ * each breach failing the run; symmetry against the served comparison the
+ * other way round, listed, not asserted.
+ *
  * Counted beside them, not asserted: the instructions a pair withholds or
  * names as unread because one side or both did not read what they announce
  * (`announcedText.ts`, 19.11.2026), per pair in `comparisons.jsonl` and
@@ -75,7 +82,9 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
-import { numbersOnly, recurringRuns } from '../lib/landStationChecks'
+import { landPairChecks, numbersOnly, recurringRuns } from '../lib/landStationChecks'
+import type { Breach } from '../lib/stationChecks'
+import { comparedText, diffLandDraft } from '../../server/utils/laender/landLawDiff'
 
 const outDir = argPair('out')
 const onlyLand = argPair('land') as LandCode | undefined
@@ -171,6 +180,9 @@ interface ComparisonLine {
   /** Units the comparison withholds, with the reason; and those it shows with their announced text unread (`announcedText.ts`). */
   withheld: string[]
   unread: string[]
+  /** The Bund's checks (`stationChecks.ts`): breaches fail the run, symmetry is listed. */
+  breaches: string[]
+  symmetry: string[]
 }
 const lines: ComparisonLine[] = []
 const segmentsOf = (u: LawDiffUnit): string[] =>
@@ -191,7 +203,7 @@ for (const item of items) {
   if (!pairs.length) continue
   const sources = textSources(item.land, detail, pagesOf)
   for (const [from, to] of pairs as [LandTextStation, LandTextStation][]) {
-    const line: ComparisonLine = { land: item.land, draft: item.id, pair: `${from}→${to}`, state: 'verglichen', reason: null, from: null, to: null, stats: null, units: [], withheld: [], unread: [] }
+    const line: ComparisonLine = { land: item.land, draft: item.id, pair: `${from}→${to}`, state: 'verglichen', reason: null, from: null, to: null, stats: null, units: [], withheld: [], unread: [], breaches: [], symmetry: [] }
     lines.push(line)
     const a = sources[from]
     const b = sources[to]
@@ -201,7 +213,8 @@ for (const item of items) {
       continue
     }
     try {
-      const value = compareReadTexts(from, to, [await a.read(), await b.read()], [a.document, b.document])
+      const reads = [await a.read(), await b.read()] as const
+      const value = compareReadTexts(from, to, reads, [a.document, b.document])
       line.from = value.fromDocument?.url ?? value.fromDocument?.label ?? null
       line.to = value.toDocument?.url ?? value.toDocument?.label ?? null
       if (!value.available) {
@@ -213,6 +226,19 @@ for (const item of items) {
       line.units = value.units.map((u) => ({ article: u.article, id: u.id, fromId: u.fromId, change: u.change, editorial: !!u.editorial, segments: segmentsOf(u), violations: violations(u) }))
       line.withheld = value.withheld.map((w) => `${w.law ?? '-'}|${w.id}|${w.reason ?? 'standing'}`)
       line.unread = (value.unreadAnnounced ?? []).map((w) => `${w.law ?? '-'}|${w.id}`)
+      // The Bund's checks (`landPairChecks`).
+      const back = compareReadTexts(to, from, [reads[1], reads[0]], [b.document, a.document])
+      const checks = landPairChecks({
+        from: reads[0].units ?? [],
+        to: reads[1].units ?? [],
+        served: value.units,
+        before: diffLandDraft(reads[0].units ?? [], reads[1].units ?? []),
+        back: back.available ? back.units : null,
+        compared: comparedText,
+      })
+      const said = (b: Breach) => `${b.kind} | ${b.unit} | ${b.detail}`
+      line.breaches = checks.breaches.map(said)
+      line.symmetry = back.available ? checks.symmetry.map(said) : [`rückwärts nicht verfügbar | ${back.unavailableReason ?? ''}`]
     } catch (err) {
       line.state = /nicht im Cache/.test(String(err)) ? 'fehlt' : 'Fehler'
       line.reason = String(err).slice(0, 200)
@@ -273,6 +299,17 @@ const withheldUnits = lines.flatMap((l) => l.withheld.filter((w) => w.endsWith('
 const unreadUnits = lines.flatMap((l) => l.unread)
 out.push('')
 out.push(`Angekündigter Text nicht gelesen (announcedText.ts): ${withheldUnits.length} Anweisungen zurückgehalten in ${lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length} Vergleichen, ${unreadUnits.length} gezeigt und als „nicht lesbar" genannt in ${lines.filter((l) => l.unread.length).length} Vergleichen`)
+const breachLines = lines.flatMap((l) => l.breaches.map((b) => ({ l, b })))
+const symmetryLines = lines.flatMap((l) => l.symmetry.map((b) => ({ l, b })))
+const kinds = (xs: { b: string }[]) => [...xs.reduce((m, x) => m.set(x.b.split(' | ')[0]!, (m.get(x.b.split(' | ')[0]!) ?? 0) + 1), new Map<string, number>())].map(([k, n]) => `${k} ${n}`).join(', ') || '0'
+out.push('')
+out.push('## Prüfungen des Bundes (stationChecks.ts)')
+out.push('')
+out.push(`- Brüche (müssen 0 sein): ${breachLines.length} in ${new Set(breachLines.map((x) => `${x.l.draft} ${x.l.pair}`)).size} Vergleichen — ${kinds(breachLines)}`)
+out.push(`- Symmetrie (gelistet): ${symmetryLines.length} in ${new Set(symmetryLines.map((x) => `${x.l.draft} ${x.l.pair}`)).size} Vergleichen — ${kinds(symmetryLines)}`)
+out.push('')
+for (const { l, b } of breachLines) out.push(`- [Bruch] ${l.draft} ${l.pair} ${b.slice(0, 300)}`)
+for (const { l, b } of symmetryLines) out.push(`- [Symmetrie] ${l.draft} ${l.pair} ${b.slice(0, 300)}`)
 const errors = lines.filter((l) => l.state === 'Fehler')
 if (errors.length) {
   out.push('')
@@ -324,6 +361,8 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   units: lines.reduce((n, l) => n + (l.stats?.total ?? 0), 0),
   hits: hits.length,
   accepted: accepted.length,
+  breaches: breachLines.length,
+  symmetry: symmetryLines.length,
   stale: stale.length,
   withheld: withheldUnits.length,
   withheldPairs: lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length,
@@ -332,4 +371,4 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
 }, null, 1)}\n`)
 console.log(out.join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)
-process.exit(hits.length || stale.length ? 1 : 0)
+process.exit(hits.length || stale.length || breachLines.length ? 1 : 0)

@@ -3,8 +3,10 @@
  * reaches (`scripts/harness/landStations.ts`).
  *
  * PURE MODULE — no imports that decide: the harness loads and prints, the
- * judgement is here.
+ * judgement is here; what decides (`comparedText`) is passed in.
  */
+import type { LawDiffUnit } from '../../shared/types'
+import { completeness, headingBreaches, reconstructionBreaches, symmetryBreaches, type Breach, type HeadedUnit } from './stationChecks'
 
 /** A changed unit's run, as the comparison shows it. */
 export interface RunSegment {
@@ -94,4 +96,45 @@ export function numbersOnly(change: string, segments: readonly RunSegment[]): 'n
   if (runs.every((s) => s.type === 'inserted')) return 'neu'
   if (runs.every((s) => s.type === 'removed')) return 'weg'
   return null
+}
+
+/** One Land pair, as the harness holds it. */
+export interface LandPairInput {
+  /** Each side's units as its reader gave them. */
+  from: readonly HeadedUnit[]
+  to: readonly HeadedUnit[]
+  /** The units the route serves (`compareReadTexts`). */
+  served: readonly LawDiffUnit[]
+  /** The comparison before it withholds what `announcedText.ts` settles (`diffLandDraft`). */
+  before: readonly LawDiffUnit[]
+  /** The served comparison the other way round, or null where it is unavailable. */
+  back: readonly LawDiffUnit[] | null
+  /** The text a unit is compared as (`comparedText`): a diff unit's `fromText`/`toText`. */
+  compared: (text: string) => string
+}
+
+/**
+ * The Bund's checks (`stationChecks.ts`) over a Land pair, as `station.ts`
+ * runs them over the Bund's (20.11.2026): reconstruction over the units
+ * served; completeness and the later side's heading over the comparison
+ * before it withholds; symmetry against the comparison the other way round.
+ * `breaches` must be empty; `symmetry` is listed.
+ *
+ * Completeness and heading are blind to the law: the comparison names an
+ * earlier Artikel by its partner's title (`landArticlePairs`), so a unit is
+ * found by its id and its compared text alone — a unit filed under the
+ * wrong law passes, a unit lost or doubled does not.
+ */
+export function landPairChecks(i: LandPairInput): { breaches: Breach[]; symmetry: Breach[] } {
+  const side = (units: readonly HeadedUnit[]) => units.map((u) => ({ article: null, id: u.id, text: i.compared(u.text), heading: u.heading }))
+  const blind = { units: i.before.map((u) => ({ ...u, article: null })), lawsOnlyInFrom: [], lawsOnlyInTo: [] }
+  const pkg = (units: readonly LawDiffUnit[]) => ({ units, lawsOnlyInFrom: [], lawsOnlyInTo: [] })
+  return {
+    breaches: [
+      ...reconstructionBreaches(i.served),
+      ...completeness(side(i.from), side(i.to), blind, () => false).breaches,
+      ...headingBreaches(side(i.to), blind),
+    ],
+    symmetry: i.back ? symmetryBreaches(pkg(i.served), pkg(i.back)) : [],
+  }
 }

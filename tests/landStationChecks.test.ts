@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { numbersOnly, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
+import { landPairChecks, numbersOnly, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
+import { comparedText, diffLandDraft, landDraftUnits } from '../server/utils/laender/landLawDiff'
+import type { LawUnit } from '../server/utils/lawtext/lawUnits'
+
+const page = (...lines: string[]) => lines.join('\n')
 
 /* A changed unit of a station pair: its Land, its draft, and the runs the
    comparison shows inserted („+…") or removed („-…"). */
@@ -68,5 +72,44 @@ describe('numbersOnly — a unit changed by nothing but bare numbers, inserted o
     expect(numbersOnly('changed', seg('-.', '-,'))).toBeNull()
     expect(numbersOnly('removed', seg('-60'))).toBeNull()
     expect(numbersOnly('changed', seg('=gleich'))).toBeNull()
+  })
+})
+
+describe('landPairChecks — the Bund\'s checks over a Land pair (20.11.2026)', () => {
+  /* Salzburg's Kehrgebietsverordnung (sbg-31933 § 1): the draft PDF prints
+     „§ 1" over a sentence whose first line ends without punctuation, and the
+     reader takes that line for the §'s title; the Landesgesetzblatt reads the
+     sentence whole, with no title. */
+  const pdf = landDraftUnits([page('Verordnung des Landeshauptmannes von Salzburg über die Festlegung von Kehrgebieten', 'Auf Grund des § 120 Abs 1 GewO 1994 wird verordnet:',
+    '§ 1', 'Für die Ausübung der sicherheitsrelevanten Tätigkeiten des Rauchfangkehrergewerbes im Sinn des',
+    '§ 120 Abs 1 zweiter Satz GewO 1994 im Land Salzburg werden folgende Kehrgebiete festgelegt:', '1. Jene Gebiete der Stadtgemeinde Salzburg.')])!
+  const lgbl = pdf.map((u) => ({ ...u, heading: null, text: `${u.heading} ${u.text}` }))
+  const checks = (from: LawUnit[], to: LawUnit[]) => {
+    const served = diffLandDraft(from, to)
+    return landPairChecks({ from, to, served, before: served, back: diffLandDraft(to, from), compared: comparedText })
+  }
+
+  it('finds nothing wrong where the two texts are read alike', () => {
+    expect(checks(lgbl, lgbl)).toEqual({ breaches: [], symmetry: [] })
+  })
+
+  it('names a unit that carries the earlier side\'s heading where the later side has none', () => {
+    expect(pdf[0]!.heading).toBe('Für die Ausübung der sicherheitsrelevanten Tätigkeiten des Rauchfangkehrergewerbes im Sinn des')
+    expect(checks(pdf, lgbl).breaches.map((b) => b.kind)).toEqual(['überschrift'])
+  })
+
+  it('names a run that does not read the two texts, and a pair only one direction makes', () => {
+    const from = [...lgbl, { ...lgbl[0]!, id: '§2', text: 'Der Antrag ist binnen sechs Wochen einzubringen.' }]
+    const to = [...lgbl, { ...lgbl[0]!, id: '§2', text: 'Der Antrag ist binnen acht Wochen einzubringen.' }]
+    const served = diffLandDraft(from, to)
+    const lost = served.map((u) => (u.change === 'changed' ? { ...u, segments: u.segments!.filter((s) => s.type !== 'removed') } : u))
+    expect(landPairChecks({ from, to, served: lost, before: served, back: diffLandDraft(to, from), compared: comparedText }).breaches.map((b) => b.kind)).toEqual(['rekonstruktion'])
+    const back = diffLandDraft(to, from).flatMap((u) => (u.change === 'changed' ? [{ ...u, change: 'removed' as const, toText: null }, { ...u, change: 'inserted' as const, fromText: null }] : [u]))
+    expect(landPairChecks({ from, to, served, before: served, back, compared: comparedText }).symmetry.map((b) => b.detail)).toEqual(['nur vorwärts gepaart'])
+  })
+
+  it('names a unit of a side the comparison lost', () => {
+    const served = diffLandDraft(lgbl, lgbl)
+    expect(landPairChecks({ from: lgbl, to: lgbl, served, before: [], back: null, compared: comparedText }).breaches.map((b) => b.kind)).toEqual(['vollständigkeit', 'vollständigkeit'])
   })
 })
