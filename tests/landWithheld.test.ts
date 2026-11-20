@@ -67,6 +67,16 @@ describe('withheldNotes — the causes of 26.10.2026', () => {
     expect(withheldNotes([{ law: null, id: '§1', reason: 'notInDraft' }, { law: null, id: '§2', reason: 'notInDraft' }])[0]!.text).toMatch(/^Einen Teil dessen, was die Textgegenüberstellung bei ihnen als neu zeigt, fand der Monitor im Entwurf an diesen Stellen nicht/)
   })
 
+  it('words the strict check\'s finding without „einen Teil", beside „nicht im Entwurf" (20.11.2026)', () => {
+    const notes = withheldNotes([
+      { law: 'K', id: '§9', reason: 'twice' },
+      { law: 'K', id: '§7', reason: 'draftDiffers' },
+      { law: 'K', id: '§6', reason: 'notInDraft' },
+    ])
+    expect(notes.map((n) => n.cause)).toEqual(['notInDraft', 'draftDiffers', 'twice'])
+    expect(notes[1]).toMatchObject({ lead: 'Nicht gezeigt:', text: 'Was die Textgegenüberstellung bei ihm als neu zeigt, stimmt nicht Wort für Wort mit dem Wortlaut überein, den der Entwurf für ihn schreibt – das kann an den beiden Dokumenten liegen oder daran, wie der Monitor sie liest' })
+  })
+
   it('refers to one § as „ihn", to several and to an Anlage as „sie"', () => {
     expect(withheldNotes([{ law: null, id: '§1', reason: 'division' }])[0]!.pronoun).toBe('ihn')
     expect(withheldNotes([{ law: null, id: '§1', reason: 'division' }, { law: null, id: '§2', reason: 'division' }])[0]!.pronoun).toBe('sie')

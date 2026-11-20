@@ -27,13 +27,26 @@
  * texts, the words the draft lacks, the draft's instructions for the §),
  * `<dir>/faults.jsonl` and `<dir>/summary.md`.
  *
- * Fault injection (`--faults`, on by default): every § the rule passes with
- * enough new words to be judged gets, one at a time, a sentence of ANOTHER §
+ * SINCE 20.11.2026 TWO RULES ARE MEASURED: the bag rule („nicht im Entwurf")
+ * and the strict one (`landTguStrict.ts`, word for word against the draft's
+ * wording for the §). The summary says for how many §§ the strict check
+ * holds, differs or could not be run and why; `units.jsonl` carries both
+ * verdicts with the words either side lacks. The §§ are asked as the product
+ * asks them — before its own withholding (`compareTgu`'s `beforeDraftCheck`)
+ * — and `corpus.jsonl` keeps them with each draft's blocks, so a rule can be
+ * probed offline without reading a PDF again.
+ *
+ * Fault injection (`--faults`, on by default): every § the product shows
+ * (until 20.11.2026: every § the bag rule passes with enough new words to be
+ * judged — the table still counts those apart, old rule against product)
+ * gets, one at a time, a sentence of ANOTHER §
  * of the same draft appended to its new text (R-neu, the Bund's fault), a
  * sentence of ANOTHER Land's draft appended (R-fremd), a number changed, a
- * word swapped, and a sentence dropped — and the rule is asked again. The
- * last three are below the rule's floors or outside its reach by design;
- * they are run so that is a measured statement, not an assumption.
+ * word swapped, and a sentence dropped — and the rules are asked again. The
+ * last three are below the bag rule's floors or outside its reach by design
+ * (0 caught of each, 19.11.2026); the strict rule exists for them. What it
+ * costs is the count of §§ it withholds with no fault injected („weicht
+ * ab"): read those, they are sound §§ of ours or real findings.
  *
  * And faults for the LEFT column's check (19.11.2026, „Beide gekürzt"):
  * every § shown whose text in force leaves nothing out and stands in RIS is
@@ -55,7 +68,7 @@ import { argFlag, argPair } from '../lib/args'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
-import { guardTguUnits } from '../../server/utils/laender/landTguGuard'
+import { guardTguUnits, undrafted } from '../../server/utils/laender/landTguGuard'
 import { lawInForce, paragraphText } from '../../server/utils/laender/landKons'
 import { comparableWords, cutShort, standsInRis } from '../../server/utils/laender/landTgu'
 import { draftUnits } from '../../server/utils/annex/annexDraft'
@@ -133,6 +146,13 @@ interface UnitRecord {
   /** Held against the whole draft: its law could not be named in the draft (`draftLawKey`). */
   wholeDraft: boolean
   notInDraft: boolean
+  /** The strict check (`landTguStrict.ts`): held word for word, differing, or not held this way — with why, and the words either side lacks. */
+  strict: 'holds' | 'differs' | 'unchecked'
+  strictReason: string | null
+  strictNotInDraft: string[]
+  strictNotShown: string[]
+  /** Whether the product shows the §: neither rule withholds it. */
+  shown: boolean
   undiffed: number
   missing: string[]
   /** …of those, the ones the WHOLE draft lacks too: zero means the words are in the draft, under another address. */
@@ -143,6 +163,8 @@ interface UnitRecord {
   toText: string
   fromText: string
   draftFor: string
+  /** The draft's law key the rules read the § under; null where the draft has no Artikel or the law could not be named (`wholeDraft`). */
+  draftLaw: string | null
 }
 interface DraftRecord {
   land: LandCode
@@ -159,6 +181,8 @@ interface DraftRecord {
   tguLaws: (string | null)[]
   /** What `compareTgu` itself withheld as „nicht im Entwurf" — the product's path, wired since 12.11.2026. */
   productWithheld: string[]
+  /** …and as differing from the draft's wording word for word (`draftDiffers`, 20.11.2026). */
+  productDiffers: string[]
   /** The guard's cost on this comparison, the draft's pages already read: `tguDraftBlocks` + `guardTguUnits`, in ms. */
   guardMs: number | null
 }
@@ -184,16 +208,25 @@ const answers: TguAnswer[] = []
 /** The §§ the rule passes, with what is needed to inject into them. */
 interface Site { record: UnitRecord; unit: LawDiffUnit; blocks: TextBlock[]; all: LawDiffUnit[] }
 const sites: Site[] = []
+/** Every comparison's §§ and its draft's blocks (`corpus.jsonl`): what a rule can be probed against offline, without reading a PDF again. */
+const corpus: { land: LandCode; draft: string; layout: Layout; blocks: TextBlock[] | null; units: LawDiffUnit[] }[] = []
 
 const insertedOf = (u: LawDiffUnit): string =>
   u.change === 'inserted' ? (u.toText ?? '') : (u.segments ?? []).filter((s) => s.type === 'inserted').map((s) => s.text).join(' … ')
 
-/** The draft's instructions that name this § (`draftUnits`), for reading by eye. */
-function draftTextFor(blocks: readonly TextBlock[] | null, id: string, fromId: string | null): string {
+/**
+ * The draft's instructions that name this § (`draftUnits`), for reading by
+ * eye — of the law the rules read the § under (`TguGuard.lawKeys`), and of
+ * every law only where that could not be named. Until 20.11.2026 this
+ * listed every law's: under „Oö. Gleichbehandlungsgesetz 2021 § 7" stood
+ * the Agrarrecht-Organisationsgesetz's instructions for its own § 7, which
+ * the rules never read.
+ */
+function draftTextFor(blocks: readonly TextBlock[] | null, id: string, fromId: string | null, lawKey: string | null | undefined): string {
   if (!blocks) return ''
   const keys = new Set([id, fromId].filter((x): x is string => !!x).map((x) => designationKey(x.replace(/^§\s*/, '§ '))))
   return draftUnits(blocks)
-    .filter((u) => u.paras.some((p) => keys.has(designationKey(p))))
+    .filter((u) => (lawKey === undefined || u.law === lawKey) && u.paras.some((p) => keys.has(designationKey(p))))
     .map((u) => `[${u.law ?? '-'} ${u.id}] ${u.text}`)
     .join('\n')
     .slice(0, 3000)
@@ -217,7 +250,7 @@ for (const item of items) {
   const number = item.id.slice(item.id.indexOf('-') + 1)
   const path = `/api/laender/${item.land}/${encodeURIComponent(number)}`
   const file = `${EU}/server/${sha1(path)}.json`
-  const rec: DraftRecord = { land: item.land, id: item.id, layout: null, state: '', shown: 0, checked: 0, blocks: null, instructions: 0, addressed: 0, draftLaws: [], tguLaws: [], productWithheld: [], guardMs: null }
+  const rec: DraftRecord = { land: item.land, id: item.id, layout: null, state: '', shown: 0, checked: 0, blocks: null, instructions: 0, addressed: 0, draftLaws: [], tguLaws: [], productWithheld: [], productDiffers: [], guardMs: null }
   drafts.push(rec)
   if (!existsSync(file)) {
     rec.state = 'kein Detail im Cache'
@@ -232,7 +265,9 @@ for (const item of items) {
   try {
     const layout: Layout = item.land === 'sbg' ? 'zwei Spalten' : item.land === 't' ? 'Tirol' : item.land === 'w' ? 'Wien' : item.land === 'ktn' ? 'Kärnten' : sideBySide(await tguPages((await bytesOf(doc.url)).slice())) ? 'OÖ Spalten' : 'OÖ Striche'
     rec.layout = layout
-    const { value } = await compareTgu(item.land, detail, pagesOf, bytesOf)
+    // The §§ as the comparison holds them before its draft check: what the two rules are asked of here, as `withoutUndrafted` asks them.
+    let compared: LawDiffUnit[] = []
+    const { value } = await compareTgu(item.land, detail, pagesOf, bytesOf, (all) => { compared = [...all] })
     const date = /Fassung vom (\d{2})\.(\d{2})\.(\d{4})/.exec(value.toDocument?.label ?? '')
     answers.push({
       land: item.land,
@@ -249,7 +284,8 @@ for (const item of items) {
       continue
     }
     rec.productWithheld = value.withheld.filter((w) => w.reason === 'notInDraft').map((w) => `${w.law ?? '-'} ${w.fromId ? `${w.fromId} → ` : ''}${w.id}`)
-    if (!value.available) {
+    rec.productDiffers = value.withheld.filter((w) => w.reason === 'draftDiffers').map((w) => `${w.law ?? '-'} ${w.fromId ? `${w.fromId} → ` : ''}${w.id}`)
+    if (!value.available && !compared.length) {
       rec.state = `nicht verfügbar: ${value.unavailableReason?.slice(0, 80)}`
       continue
     }
@@ -261,17 +297,20 @@ for (const item of items) {
       rec.state = `Entwurf nicht lesbar: ${String(err).slice(0, 80)}`
     }
     rec.blocks = blocks?.length ?? null
-    // `value.units` no longer holds what the product withheld: those are counted from `value.withheld` (`productWithheld`).
-    const guard = guardTguUnits(value.units, blocks)
+    // `value.units` no longer holds what the product withheld; the rules are asked of the §§ before that (`compared`), as the product asks them.
+    const guard = guardTguUnits(compared, blocks)
+    const off = undrafted(guard)
     rec.guardMs = performance.now() - t0
     rec.instructions = guard.units
+    corpus.push({ land: item.land, draft: item.id, layout, blocks, units: compared })
     rec.draftLaws = blocks ? [...new Set(draftUnits(blocks).map((u) => u.law))] : []
-    rec.tguLaws = [...new Set(value.units.map((u) => u.article))]
+    rec.tguLaws = [...new Set(compared.map((u) => u.article))]
     rec.addressed = guard.addressed
-    rec.shown = value.units.filter((u) => u.change !== 'unchanged').length
+    rec.shown = compared.filter((u, i) => u.change !== 'unchanged' && !off.has(i)).length
     rec.state ||= guard.read ? 'gelesen' : 'Entwurf ohne Gesetzestext'
     for (const [i, check] of guard.checks) {
-      const u = value.units[i]!
+      const u = compared[i]!
+      const strict = guard.strict.get(i)
       rec.checked++
       const record: UnitRecord = {
         land: item.land,
@@ -287,6 +326,11 @@ for (const item of items) {
         judged: guard.read && check.newWords >= MIN_NEW_WORDS,
         wholeDraft: guard.wholeDraft.has(i),
         notInDraft: check.notInDraft,
+        strict: strict?.state ?? 'unchecked',
+        strictReason: strict?.reason ?? (guard.read ? null : 'der Entwurf wurde nicht gelesen'),
+        strictNotInDraft: strict?.notInDraft ?? [],
+        strictNotShown: strict?.notShown ?? [],
+        shown: !off.has(i),
         undiffed: check.undiffed,
         missing: check.missing,
         wholeMissing: blocks ? check.missing.filter((w) => !draftBags(blocks!).whole.has(w) && !draftBags(blocks!).whole.has(w.replace(/-/g, ''))) : check.missing,
@@ -294,10 +338,12 @@ for (const item of items) {
         inserted: insertedOf(u).slice(0, 2500),
         toText: (u.toText ?? '').slice(0, 2500),
         fromText: (u.fromText ?? '').slice(0, 1500),
-        draftFor: draftTextFor(blocks, u.id, u.fromId),
+        draftFor: draftTextFor(blocks, u.id, u.fromId, guard.lawKeys.get(u.article)),
+        draftLaw: guard.lawKeys.has(u.article) ? (guard.lawKeys.get(u.article) ?? null) : null,
       }
       units.push(record)
-      if (record.judged && !record.notInDraft && blocks) sites.push({ record, unit: u, blocks, all: value.units })
+      // Every § the product shows, with a draft read: the bag rule's faults are counted over those it can judge (`judged`), the strict rule's over all.
+      if (record.shown && blocks) sites.push({ record, unit: u, blocks, all: compared })
     }
   } catch (err) {
     rec.state = `Fehler: ${String(err).slice(0, 120)}`
@@ -312,7 +358,8 @@ const toks = (t: string) => comparableTokens(normalizeText(t))
 const sentenceOf = (text: string | null, minTokens = 8): string | null => (text ?? '').split(SENTENCE_SPLIT).find((s) => toks(s).length >= minTokens) ?? null
 
 type Fault = 'R-neu' | 'R-fremd' | 'Zahl' | 'Wort' | 'Satz weg'
-interface FaultRecord { fault: Fault; land: LandCode; layout: Layout; draft: string; id: string; caught: boolean; applied: boolean; newWords: number; missingWords: number; donor: string }
+/** `caught`: the product withholds the § with the fault in it. `bag`: the rule „nicht im Entwurf“ alone does — the product until 20.11.2026. `judged`/`strict`: what the two rules made of the § without the fault. */
+interface FaultRecord { fault: Fault; land: LandCode; layout: Layout; draft: string; id: string; caught: boolean; bag: boolean; judged: boolean; strict: UnitRecord['strict']; applied: boolean; newWords: number; missingWords: number; donor: string; lacks: string }
 const faults: FaultRecord[] = []
 
 /** The unit with `extra` shown as new at its end, as the word diff would show an appended sentence. */
@@ -340,14 +387,18 @@ function rewritten(u: LawDiffUnit, edit: (s: string) => string | null): LawDiffU
 
 for (const [n, site] of sites.entries()) {
   const { record, unit, blocks, all } = site
-  const ask = (u: LawDiffUnit) => guardTguUnits(all.map((x) => (x === unit ? u : x)), blocks).checks.get(all.indexOf(unit))!
+  const at = all.indexOf(unit)
+  const ask = (u: LawDiffUnit) => guardTguUnits(all.map((x) => (x === unit ? u : x)), blocks, at)
+  const base = { land: record.land, layout: record.layout, draft: record.draft, id: record.id, judged: record.judged, strict: record.strict }
   const push = (fault: Fault, u: LawDiffUnit | null, donor: string) => {
     if (!u) {
-      faults.push({ fault, land: record.land, layout: record.layout, draft: record.draft, id: record.id, caught: false, applied: false, newWords: 0, missingWords: 0, donor })
+      faults.push({ fault, ...base, caught: false, bag: false, applied: false, newWords: 0, missingWords: 0, donor, lacks: '' })
       return
     }
-    const c = ask(u)
-    faults.push({ fault, land: record.land, layout: record.layout, draft: record.draft, id: record.id, caught: c.notInDraft, applied: true, newWords: c.newWords, missingWords: c.missingWords, donor: donor.slice(0, 300) })
+    const guard = ask(u)
+    const c = guard.checks.get(at)!
+    const st = guard.strict.get(at)
+    faults.push({ fault, ...base, caught: undrafted(guard).has(at), bag: c.notInDraft, applied: true, newWords: c.newWords, missingWords: c.missingWords, donor: donor.slice(0, 300), lacks: `${st?.state ?? ''} ${st?.reason ?? ''} | neu, nicht im Entwurf: ${(st?.notInDraft ?? []).slice(0, 12).join(' ')} | im Entwurf, nicht gezeigt: ${(st?.notShown ?? []).slice(0, 12).join(' ')}` })
   }
   // R-neu: another § of the same draft, its new text.
   const own = all.filter((x) => x !== unit && x.change !== 'unchanged' && x.change !== 'removed').map((x) => sentenceOf(x.toText)).find((s) => s !== null) ?? null
@@ -467,6 +518,7 @@ for (const answer of answers) {
 // --- Output --------------------------------------------------------------
 writeFileSync(join(outDir, 'units.jsonl'), units.map((u) => JSON.stringify(u)).join('\n') + '\n')
 writeFileSync(join(outDir, 'faults.jsonl'), faults.map((f) => JSON.stringify(f)).join('\n') + '\n')
+writeFileSync(join(outDir, 'corpus.jsonl'), corpus.map((c) => JSON.stringify(c)).join('\n') + '\n')
 writeFileSync(join(outDir, 'drafts.jsonl'), drafts.map((d) => JSON.stringify(d)).join('\n') + '\n')
 writeFileSync(join(outDir, 'tgu.jsonl'), answers.map((a) => JSON.stringify(a)).join('\n') + '\n')
 writeFileSync(join(outDir, 'cuts.jsonl'), cuts.map((c) => JSON.stringify(c)).join('\n') + '\n')
@@ -514,15 +566,38 @@ lines.push(`- Von compareTgu als „nicht im Entwurf“ zurückgehalten: ${produ
 const costs = drafts.flatMap((d) => (d.guardMs === null ? [] : [d.guardMs])).sort((a, b) => a - b)
 if (costs.length) lines.push(`- Kosten des Wächters je Vergleich (Seiten des Entwurfs schon gelesen): Median ${costs[Math.floor(costs.length / 2)]!.toFixed(1)} ms, Maximum ${costs.at(-1)!.toFixed(1)} ms, über ${costs.length} Vergleiche`)
 lines.push('')
-lines.push('## Fehlerinjektion (an §§, die die Regel bestehen lässt)')
+const productDiffers = drafts.flatMap((d) => d.productDiffers.map((w) => `${d.id} ${w}`))
+lines.push('## Wort für Wort gegen den Wortlaut des Entwurfs (landTguStrict.ts, seit 20.11.2026)')
 lines.push('')
-lines.push('| Fehler | Land | angewandt | gefangen | Quote |')
-lines.push('|---|---|---|---|---|')
-for (const fault of ['R-neu', 'R-fremd', 'Zahl', 'Wort', 'Satz weg'] as Fault[]) {
+lines.push('| Land | §§ geändert oder neu | Wort für Wort gehalten | weicht ab (nicht gezeigt) | so nicht prüfbar (alte Regel entscheidet) | gezeigt |')
+lines.push('|---|---|---|---|---|---|')
+for (const land of [...LANDS, 'alle'] as const) {
+  const l = units.filter((u) => land === 'alle' || u.land === land)
+  if (!l.length) continue
+  lines.push(`| ${land} | ${l.length} | ${l.filter((u) => u.strict === 'holds').length} | ${l.filter((u) => u.strict === 'differs').length} (${pct(l.filter((u) => u.strict === 'differs').length, l.length)}) | ${l.filter((u) => u.strict === 'unchecked').length} | ${l.filter((u) => u.shown).length} |`)
+}
+lines.push('')
+lines.push(`- Von compareTgu als „weicht vom Wortlaut des Entwurfs ab“ zurückgehalten: ${productDiffers.length} (die Tabelle zählt ${units.filter((u) => u.strict === 'differs').length})`)
+lines.push('- Nicht so prüfbar, nach Grund:')
+const whyNot = new Map<string, number>()
+for (const u of units.filter((x) => x.strict === 'unchecked')) whyNot.set((u.strictReason ?? '').replace(/:.*$/, ''), (whyNot.get((u.strictReason ?? '').replace(/:.*$/, '')) ?? 0) + 1)
+for (const [k, v] of [...whyNot].sort((a, b) => b[1] - a[1])) lines.push(`  - ${k}: ${v}`)
+lines.push('')
+lines.push('## Fehlerinjektion (an §§, die das Produkt zeigt)')
+lines.push('')
+lines.push('„Alte Regel“: „nicht im Entwurf“ allein, an den §§, die sie beurteilen kann (≥ 10 neue Wörter) — die Messung bis 19.11.2026. „Produkt“: beide Regeln, an denselben §§ und an allen gezeigten.')
+lines.push('')
+lines.push('| Fehler | Land | beurteilbar: angewandt | alte Regel fängt | Produkt fängt | alle gezeigten: angewandt | Produkt fängt | davon Wort für Wort gehalten: angewandt | gefangen |')
+lines.push('|---|---|---|---|---|---|---|---|---|')
+const FAULTS: Fault[] = ['R-neu', 'R-fremd', 'Zahl', 'Wort', 'Satz weg']
+for (const fault of FAULTS) {
   for (const land of [...LANDS, 'alle'] as const) {
     const f = faults.filter((x) => x.fault === fault && x.applied && (land === 'alle' || x.land === land))
     if (!f.length) continue
-    lines.push(`| ${fault} | ${land} | ${f.length} | ${f.filter((x) => x.caught).length} | ${pct(f.filter((x) => x.caught).length, f.length)} |`)
+    const j = f.filter((x) => x.judged)
+    const h = f.filter((x) => x.strict === 'holds')
+    const n = (l: FaultRecord[], by: (x: FaultRecord) => boolean) => `${l.filter(by).length} (${pct(l.filter(by).length, l.length)})`
+    lines.push(`| ${fault} | ${land} | ${j.length} | ${n(j, (x) => x.bag)} | ${n(j, (x) => x.caught)} | ${f.length} | ${n(f, (x) => x.caught)} | ${h.length} | ${n(h, (x) => x.caught)} |`)
   }
 }
 lines.push('')
@@ -568,13 +643,29 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   at: new Date().toISOString(),
   lands: LANDS,
   documents: new Set(units.map((u) => u.draft)).size,
-  shown: units.length,
+  // The §§ the product shows as changed or new: neither rule withholds them.
+  compared: units.length,
+  shown: units.filter((u) => u.shown).length,
   judged: judgedAll.length,
   found: judgedAll.filter((u) => !u.notInDraft).length,
-  faults: (['R-neu', 'R-fremd', 'Zahl', 'Wort', 'Satz weg'] as Fault[]).map((fault) => {
+  // Over every § the product shows (20.11.2026; until then over the §§ the bag rule could judge).
+  faults: FAULTS.map((fault) => {
     const f = faults.filter((x) => x.fault === fault && x.applied)
     return { key: fault, tried: f.length, caught: f.filter((x) => x.caught).length }
   }),
+  strict: {
+    held: units.filter((u) => u.strict === 'holds').length,
+    differs: units.filter((u) => u.strict === 'differs').length,
+    unchecked: units.filter((u) => u.strict === 'unchecked').length,
+    faultsWhereHeld: FAULTS.map((fault) => {
+      const f = faults.filter((x) => x.fault === fault && x.applied && x.strict === 'holds')
+      return { key: fault, tried: f.length, caught: f.filter((x) => x.caught).length }
+    }),
+    faultsWhereJudged: FAULTS.map((fault) => {
+      const f = faults.filter((x) => x.fault === fault && x.applied && x.judged)
+      return { key: fault, tried: f.length, bag: f.filter((x) => x.bag).length, caught: f.filter((x) => x.caught).length }
+    }),
+  },
 }, null, 1)}\n`)
 console.log(lines.slice(0, lines.indexOf('## Abweichende §§ (die das Produkt zurückhalten würde)')).join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)
