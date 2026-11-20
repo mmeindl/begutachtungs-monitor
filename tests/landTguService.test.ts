@@ -534,6 +534,24 @@ describe('compareTgu — the right column held against the draft\'s own text (12
     expect(r.complete).toBe(false)
     expect(r.value.units.map((u) => u.id)).toEqual(['§5', '§6'])
     expect(r.value.withheld).toEqual([])
+    // …and says at every § shown that its new text was not held against the draft (20.11.2026).
+    expect(r.value.draftUnchecked).toEqual([{ law: SBG_LAW, id: '§5', change: 'changed', reason: 'draftUnread' }, { law: SBG_LAW, id: '§6', change: 'changed', reason: 'draftUnread' }])
+  })
+
+  it('marks every § shown and stores nothing where the draft is read but yields no law text (20.11.2026)', async () => {
+    draftSource.mockReturnValue({ document: { label: 'Entwurf', url: 'https://service.salzburg.gv.at/pub/get/1', publisher: 'Land Salzburg' }, read: async () => ({ units: null, text: 'Erläuterungen ohne Gesetzestext.' }) })
+    const r = await compareTgu('sbg', sbg())
+    expect(r.complete).toBe(false)
+    expect(r.value.units.map((u) => u.id)).toEqual(['§5', '§6'])
+    expect(r.value.draftUnchecked?.map((m) => [m.id, m.reason])).toEqual([['§5', 'draftUnread'], ['§6', 'draftUnread']])
+  })
+
+  it('marks a § shown that no instruction of the draft names, and none it held (20.11.2026)', async () => {
+    draft('1. § 7 entfällt.', '2. § 6 Abs. 1 lautet:', `„${PAYLOAD_6}“`)
+    const r = await compareTgu('sbg', sbg())
+    expect(r.complete).toBe(true)
+    expect(r.value.units.map((u) => u.id)).toEqual(['§5', '§6'])
+    expect(r.value.draftUnchecked).toEqual([{ law: SBG_LAW, id: '§5', change: 'changed', reason: 'unassigned' }])
   })
 
   it('does not ask Kärnten: its right column is the Novelle\'s own instructions', async () => {

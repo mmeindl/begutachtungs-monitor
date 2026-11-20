@@ -44,7 +44,7 @@ import { parseAnnexPdf, type AnnexLayout, type AnnexPage } from '../annex/annexP
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from '../annex/tableCells'
 import { ktnTguReading } from './landTguKaernten'
 import { tirolTguPages, tirolTguReading } from './landTguTirol'
-import { guardTguUnits, undrafted } from './landTguGuard'
+import { guardTguUnits, notHeld, undrafted } from './landTguGuard'
 import type { Gathered } from '../cache/gathered'
 
 /** RIS documents fetched at once while checking the §§ */
@@ -791,6 +791,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
       ...beside,
       // Only beside §§ compared: what the list does by number, it says above it (`renumberedNote`).
       ...(got.renumbered?.length ? { renumbered: got.renumbered } : {}),
+      ...(guard.unchecked.length ? { draftUnchecked: guard.unchecked } : {}),
       ...(renamed.length ? { renamed } : {}),
       ...(replaced.length ? { replaced } : {}),
     },
@@ -814,27 +815,38 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
  * be run — no instruction names the §, or one could not be read as wording
  * — the bag rule decides as before (`undrafted`).
  *
- * A § neither rule can judge (the strict check not run, and under
- * `MIN_NEW_WORDS` new words) stays as it is, with no word of the check. Kärnten is not asked: its right column is
- * the Novelle's own instructions, reprinted (`landTguGuard.ts`). Where the
- * draft could not be read the rule is disarmed and the answer not stored
- * (`gathered.ts`): a failed read is no verdict, neither way. The draft's
- * pages come from the read the page already holds (`draftPagesOf`).
+ * A § shown whose new text was not held word for word — neither rule can
+ * judge it, or only the bag rule could — carries „nicht geprüft" with its
+ * reason (`notHeld`, 20.11.2026; until then it stood as if checked). Kärnten
+ * is not asked: its right column is the Novelle's own instructions,
+ * reprinted (`landTguGuard.ts`). Where the draft could not be read, or
+ * yields no law text, the rule is disarmed, every § shown as changed or new
+ * is marked, and the answer is not stored (`gathered.ts`): a failed read is
+ * no verdict, neither way. The draft's pages come from the read the page
+ * already holds (`draftPagesOf`).
  */
-async function withoutUndrafted(land: LandCode, detail: LandDraftDetail, units: LawDiffUnit[], draftPagesOf: PagesReader | undefined, bytesOf: BytesReader): Promise<{ units: LawDiffUnit[]; withheld: LandLawDiffResponse['withheld']; complete: boolean }> {
-  if (land === 'ktn') return { units, withheld: [], complete: true }
+async function withoutUndrafted(land: LandCode, detail: LandDraftDetail, units: LawDiffUnit[], draftPagesOf: PagesReader | undefined, bytesOf: BytesReader): Promise<{ units: LawDiffUnit[]; withheld: LandLawDiffResponse['withheld']; unchecked: NonNullable<LandLawDiffResponse['draftUnchecked']>; complete: boolean }> {
+  if (land === 'ktn') return { units, withheld: [], unchecked: [], complete: true }
   let blocks: TextBlock[] | null
+  let failed = false
   try {
     blocks = await tguDraftBlocks(land, detail, draftPagesOf, bytesOf)
   } catch {
-    return { units, withheld: [], complete: false }
+    blocks = null
+    failed = true
   }
-  const off = undrafted(guardTguUnits(units, blocks))
-  if (!off.size) return { units, withheld: [], complete: true }
+  const guard = guardTguUnits(units, blocks)
+  const off = undrafted(guard)
+  const marks = notHeld(guard)
+  const unchecked = units.flatMap((u, i) => {
+    const reason = marks.get(i)
+    return reason && (u.change === 'changed' || u.change === 'inserted') ? [{ law: u.article, id: u.id, change: u.change, reason }] : []
+  })
   return {
     units: units.filter((_, i) => !off.has(i)),
     withheld: units.flatMap((u, i) => (off.has(i) ? [{ law: u.article, id: u.id, ...(u.fromId && u.fromId !== u.id ? { fromId: u.fromId } : {}), reason: off.get(i)! }] : [])),
-    complete: true,
+    unchecked,
+    complete: !failed && guard.read,
   }
 }
 

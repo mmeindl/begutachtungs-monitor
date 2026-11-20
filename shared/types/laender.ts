@@ -350,6 +350,15 @@ export interface LandLawDiffResponse {
    */
   withheld: { law: string | null; id: string; fromId?: string; reason?: LandWithheldReason }[]
   /**
+   * §§ shown as changed or new whose new text was not held word for word
+   * against the draft's own Gesetzestext (`notHeld` in `landTguGuard.ts`,
+   * 20.11.2026): marked „nicht geprüft" at the §, the reason said once per
+   * law, as the Bund's annex rows (`owesCheck`). Decided on the server; the
+   * page finds each unit by `diffUnitKey`. Absent where every § shown was
+   * held. Only `geltend → entwurf`, and never for Kärnten.
+   */
+  draftUnchecked?: { law: string | null; id: string; change: 'changed' | 'inserted'; reason: LandDraftUncheckedReason }[]
+  /**
    * Instructions of the Novelle that reach §§ they do not name — „Im V.
    * Abschnitt wird jeweils …", „Im ganzen Gesetz …" — quoted per law, so
    * the §§ listed are not read as all it changes (26.10.2026); and the
@@ -448,6 +457,15 @@ export interface LandLawDiffResponse {
  *    (19.11.2026).
  */
 export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'notInDraft' | 'draftDiffers' | 'announced'
+
+/**
+ * Why a § shown was not held word for word against the draft
+ * (`LandLawDiffResponse.draftUnchecked`): its new text could not be assigned
+ * to an instruction of the draft for it; an instruction's wording could not
+ * be read word for word; the § is too long for the word-for-word alignment;
+ * the draft's Gesetzestext was not found or not read.
+ */
+export type LandDraftUncheckedReason = 'unassigned' | 'wording' | 'long' | 'draftUnread'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

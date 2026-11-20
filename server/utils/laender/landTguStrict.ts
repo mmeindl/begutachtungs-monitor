@@ -403,7 +403,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
     for (const run of runs) {
       for (const quote of run.line === null ? [] : quoteRoles(run.line)) {
         if (quote.role === null) {
-          for (const key of keys) at(draft.law, key).unread ??= `Anführung ohne lesbare Rolle: ${run.line!.slice(0, 120)}`
+          for (const key of keys) at(draft.law, key).unread ??= `${STRICT_UNCHECKED.quoteRole}${run.line!.slice(0, 120)}`
           continue
         }
         if (quote.role !== 'new') continue
@@ -421,11 +421,11 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
           if (!keys.includes(piece.key)) into.text.push(standing)
         } else if (keyed) {
           // Text before the first § of a payload that prints §§: a division heading, or what the reader did not cut. Whose it is, is not read.
-          for (const key of keys) at(draft.law, key).unread ??= 'Text vor dem ersten Paragraphen eines Wortlauts, der mehrere druckt'
+          for (const key of keys) at(draft.law, key).unread ??= STRICT_UNCHECKED.beforeFirst
         } else if (keys.length === 1) {
           at(draft.law, keys[0]!).wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false })
         } else {
-          for (const key of keys) at(draft.law, key).unread ??= 'ein Wortlaut für mehrere Paragraphen ohne deren Bezeichnung'
+          for (const key of keys) at(draft.law, key).unread ??= STRICT_UNCHECKED.severalUnnamed
         }
       }
     }
@@ -521,6 +521,24 @@ export interface StrictCheck {
 const unchecked = (reason: string): StrictCheck => ({ state: 'unchecked', reason, notInDraft: [], notShown: [], newWords: 0, draftWords: 0 })
 
 /**
+ * Why a § was not held this way (`StrictCheck.reason`), in the harness's
+ * words — the page says each in its own (`draftUncheckedReason` in
+ * `landTguGuard.ts`). `quoteRole` is followed by the instruction's line.
+ */
+export const STRICT_UNCHECKED = {
+  undiffed: 'die Wortdifferenz dieses Paragraphen wurde nicht berechnet',
+  nothingNew: 'kein neuer Text',
+  unnamed: 'keine Anordnung des Entwurfs nennt den Paragraphen',
+  lawUnnamed: 'das Gesetz ist im Entwurf nicht sicher benannt',
+  twoUnderOne: 'zwei Anordnungen unter einer Ziffer',
+  quoteRole: 'Anführung ohne lesbare Rolle: ',
+  beforeFirst: 'Text vor dem ersten Paragraphen eines Wortlauts, der mehrere druckt',
+  severalUnnamed: 'ein Wortlaut für mehrere Paragraphen ohne deren Bezeichnung',
+  tooLong: 'zu lang für den wortweisen Abgleich',
+  elsewhere: 'neuer Text, den der Entwurf an anderer Stelle des Gesetzes schreibt',
+} as const
+
+/**
  * The right column as the page shows it, each word with whether it is marked
  * new — the § heading first, which the page prints above the text and a
  * payload „samt Überschrift" carries.
@@ -608,9 +626,9 @@ function placesOf(hay: readonly string[], needle: readonly string[]): number[] {
  */
 export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording | undefined)[], law: { general: readonly Wording[]; elsewhere: readonly string[][] } = { general: [], elsewhere: [] }): StrictCheck {
   const shown = shownTokens(unit)
-  if (!shown) return unchecked(unit.change === 'changed' ? 'die Wortdifferenz dieses Paragraphen wurde nicht berechnet' : 'kein neuer Text')
+  if (!shown) return unchecked(unit.change === 'changed' ? STRICT_UNCHECKED.undiffed : STRICT_UNCHECKED.nothingNew)
   const found = wording.filter((w): w is DraftWording => w !== undefined)
-  if (!found.length) return unchecked('keine Anordnung des Entwurfs nennt den Paragraphen')
+  if (!found.length) return unchecked(STRICT_UNCHECKED.unnamed)
   const unread = found.find((w) => w.unread)?.unread
   if (unread) return unchecked(unread)
   // Copies: `respace` rewrites them for this § alone.
@@ -639,7 +657,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   draft.forEach((_, j) => {
     if (ownAt(draft, j)) optional[j] = true
   })
-  if (shown.length * draft.length > MAX_ALIGN_CELLS) return unchecked('zu lang für den wortweisen Abgleich')
+  if (shown.length * draft.length > MAX_ALIGN_CELLS) return unchecked(STRICT_UNCHECKED.tooLong)
   // A stretch quoted in an instruction's line accounts for each place it stands at…
   const placed = shown.map(() => false)
   for (const w of [...all.filter((x) => x.repeats), ...general]) {
@@ -701,7 +719,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
       foreign = run.length >= MIN_FOREIGN_RUN && law.elsewhere.some((t) => contains(t, run))
       i = b
     }
-    if (foreign) return unchecked('neuer Text, den der Entwurf an anderer Stelle des Gesetzes schreibt')
+    if (foreign) return unchecked(STRICT_UNCHECKED.elsewhere)
   }
   const notShown = draft.filter((_, j) => !optional[j] && !aligned.draft[j])
   for (const w of all) if (w.repeats && w.once && !contains(words, w.tokens)) notShown.push(...w.tokens)

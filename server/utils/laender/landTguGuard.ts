@@ -44,14 +44,14 @@
  * to hold against the draft — what the rule would compare is the Novelle
  * against its own reprint.
  */
-import type { LawDiffUnit } from '../../../shared/types'
+import type { LandDraftUncheckedReason, LawDiffUnit } from '../../../shared/types'
 import type { TextBlock } from '../lawtext/lawUnits'
 import type { ComparisonRow } from '../annex/comparisonRows'
 import { designationKey } from '../annex/annexText'
 import { draftBags, draftReference, draftWordBag, rightColumnCheck, type DraftBags, type RightColumnCheck, type WordBag } from '../annex/rightColumn'
 import { draftUnits } from '../annex/annexDraft'
 import { bareLawName } from './landTgu'
-import { draftWording, strictCheck, type LawWording, type StrictCheck } from './landTguStrict'
+import { STRICT_UNCHECKED, draftWording, strictCheck, type LawWording, type StrictCheck } from './landTguStrict'
 
 /** „§5" → „§ 5"; an article or annex id as it stands („Art. 46a", „Anlage 2"). */
 const designationOf = (id: string): string => id.replace(/^§\s*/, '§ ')
@@ -215,6 +215,44 @@ export function undrafted(guard: TguGuard): Map<number, 'notInDraft' | 'draftDif
   return out
 }
 
+/**
+ * The page's reason for a § the strict check could not hold
+ * (`StrictCheck.reason`): four, each true of every case it covers — the new
+ * text could not be assigned to an instruction for the § (none names it,
+ * the law is not named in the draft, two instructions share a number, a
+ * payload's text is not cut to its §, or the new text stands at another
+ * § of the draft); an instruction's quotation could not be read as old or
+ * new wording, or leaves the wording to the reader's grammar; the § is too
+ * long for the alignment or its word difference was not computed. A reason
+ * this table does not know is said as the first: the mark stands either way.
+ */
+export function draftUncheckedReason(reason: string | null): Exclude<LandDraftUncheckedReason, 'draftUnread'> {
+  if (reason?.startsWith(STRICT_UNCHECKED.quoteRole)) return 'wording'
+  if (reason === STRICT_UNCHECKED.undiffed || reason === STRICT_UNCHECKED.tooLong) return 'long'
+  return 'unassigned'
+}
+
+/**
+ * The §§ shown as changed or new whose new text was NOT held word for word
+ * against the draft (20.11.2026), with the page's reason: they carry
+ * „nicht geprüft" at the §, as the Bund's annex rows that owe a check and
+ * got none (`owesCheck`, `annex/gateRows.ts`). Whatever the bag rule said
+ * of them: it passes a wrong word, a changed number and a lost sentence by
+ * construction. Every § where the draft yields no law text (`read` false).
+ * Not a § the rules withhold — it is not shown — nor one shown unchanged
+ * or removed, which neither rule is asked of.
+ */
+export function notHeld(guard: TguGuard): Map<number, LandDraftUncheckedReason> {
+  const off = undrafted(guard)
+  const out = new Map<number, LandDraftUncheckedReason>()
+  for (const i of guard.checks.keys()) {
+    if (off.has(i)) continue
+    if (!guard.read) out.set(i, 'draftUnread')
+    else if (guard.strict.get(i)?.state !== 'holds') out.set(i, draftUncheckedReason(guard.strict.get(i)?.reason ?? null))
+  }
+  return out
+}
+
 /** A law key no draft carries: `draftReference` answers it with the whole draft. */
 const WHOLE_DRAFT = '\u0000whole-draft'
 
@@ -241,9 +279,9 @@ export function guardRow(unit: LawDiffUnit): ComparisonRow | null {
 
 /** One § against the draft's wording for it, under its own number and, renumbered, its old one. */
 function strictOf(u: LawDiffUnit, para: string, lawKey: string | null | undefined, wording: Map<string | null, LawWording>, mixed: Map<string | null, Set<string>>, shown: ReadonlySet<string>): StrictCheck {
-  if (lawKey === undefined) return { state: 'unchecked', reason: 'das Gesetz ist im Entwurf nicht sicher benannt', notInDraft: [], notShown: [], newWords: 0, draftWords: 0 }
+  if (lawKey === undefined) return { state: 'unchecked', reason: STRICT_UNCHECKED.lawUnnamed, notInDraft: [], notShown: [], newWords: 0, draftWords: 0 }
   const keys = [para, ...(u.fromId && u.fromId !== u.id ? [designationOf(u.fromId)] : [])].map((p) => designationKey(p)).filter((k): k is string => k !== null)
-  if (keys.some((k) => mixed.get(lawKey)?.has(k))) return { state: 'unchecked', reason: 'zwei Anordnungen unter einer Ziffer', notInDraft: [], notShown: [], newWords: 0, draftWords: 0 }
+  if (keys.some((k) => mixed.get(lawKey)?.has(k))) return { state: 'unchecked', reason: STRICT_UNCHECKED.twoUnderOne, notInDraft: [], notShown: [], newWords: 0, draftWords: 0 }
   const law = wording.get(lawKey)
   // What the draft writes for §§ the document prints no block of its own for (`draftReference`).
   const elsewhere = [...(law?.generalText ?? []), ...[...(law?.byKey ?? [])].filter(([k]) => !shown.has(k)).flatMap(([, w]) => [...w.wordings.map((x) => x.tokens), ...w.text])]

@@ -26,15 +26,22 @@
     <!-- 19.11.2026: the rule had shipped since 12.11.2026
          (`landTguGuard.ts`, withheld as `notInDraft`) and this text did not
          say so; /genauigkeit measures it. Word for word since 20.11.2026
-         (`landTguStrict.ts`, withheld as `draftDiffers`). -->
+         (`landTguStrict.ts`, withheld as `draftDiffers`). A § that check
+         could not hold is marked at the § since the same day
+         (`landUnchecked.ts`): „müssen die neuen Wörter zumindest im
+         Entwurf vorkommen" was untrue below the bag rule's floor. Kärnten
+         is asked of neither rule (`landTguGuard.ts`). -->
     <div>
       <dt>Und gegen den Entwurf</dt>
       <dd>
         Was die rechte Spalte als neu zeigt, muss Wort für Wort und Zahl
         für Zahl der Wortlaut sein, den der Entwurf des Landes für den
-        Paragraphen schreibt; sonst zeigt der Monitor ihn nicht. Wo der
-        Entwurf den Wortlaut nicht so nennt, dass sich das prüfen lässt,
-        müssen die neuen Wörter zumindest im Entwurf vorkommen.
+        Paragraphen schreibt; sonst zeigt der Monitor ihn nicht. Wo sich
+        das nicht prüfen lässt, steht beim Paragraphen „nicht geprüft“
+        und beim Gesetz der Grund. Kärnten druckt in der rechten Spalte
+        die Änderungsanordnungen der Novelle: Gezeigt wird dort nur, was eine
+        Anordnung ganz abdruckt, und gegen den Entwurf geprüft wird es
+        nicht.
       </dd>
     </div>
     <div>

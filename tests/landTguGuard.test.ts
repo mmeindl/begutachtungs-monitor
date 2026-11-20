@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { draftUnits } from '../server/utils/annex/annexDraft'
-import { articleClauses, draftLawKey, guardTguUnits, installedDesignations, repeatsItsNumber } from '../server/utils/laender/landTguGuard'
+import { articleClauses, draftLawKey, draftUncheckedReason, guardTguUnits, installedDesignations, notHeld, repeatsItsNumber } from '../server/utils/laender/landTguGuard'
+import { STRICT_UNCHECKED } from '../server/utils/laender/landTguStrict'
 
 const unit = (over: Partial<LawDiffUnit>): LawDiffUnit => ({
   article: null, articleKey: null, fromArticleKey: null, id: '§5', fromId: '§5', heading: null, quotedHeading: null,
@@ -109,6 +110,58 @@ describe('guardTguUnits', () => {
   it('asks nothing of an unchanged or removed §', () => {
     const guard = guardTguUnits([unit({ change: 'unchanged' }), unit({ change: 'removed', fromText: 'x' })], blocks)
     expect(guard.checks.size).toBe(0)
+  })
+})
+
+describe('notHeld — „nicht geprüft" at a § shown whose new text was not held word for word (20.11.2026)', () => {
+  const restated = unit({
+    id: '§5',
+    fromText: '(2) Die Landesregierung hat die Fischereiberechtigten zu hören.',
+    toText: '(2) Die Landesregierung hat die Fischereiberechtigten über jede Änderung der Schonzeiten rechtzeitig schriftlich zu informieren und ihnen Gelegenheit zur Stellungnahme zu geben.',
+    segments: [
+      { type: 'equal', text: '(2) Die Landesregierung hat die Fischereiberechtigten ' },
+      { type: 'removed', text: 'zu hören.' },
+      { type: 'inserted', text: 'über jede Änderung der Schonzeiten rechtzeitig schriftlich zu informieren und ihnen Gelegenheit zur Stellungnahme zu geben.' },
+    ],
+  })
+  /* § 9: no instruction of the draft names it; two new words, so the bag rule says nothing either. */
+  const unnamed = unit({ id: '§9', fromId: '§9', fromText: 'a', toText: 'a Kraftfahrzeuge Kennzeichen', segments: [{ type: 'equal', text: 'a ' }, { type: 'inserted', text: 'Kraftfahrzeuge Kennzeichen' }] })
+  /* § 12: changed, but its word difference was not computed (`MAX_DP_CELLS`). */
+  const undiffed = unit({ id: '§12', fromId: '§12', fromText: 'alt', toText: 'neu', segments: null })
+
+  it('marks nothing the strict check held', () => {
+    const guard = guardTguUnits([restated], blocks)
+    expect(guard.strict.get(0)!.state).toBe('holds')
+    expect(notHeld(guard)).toEqual(new Map())
+  })
+
+  it('marks a § the strict check could not hold, whatever the bag rule said, with a reason true of it', () => {
+    const guard = guardTguUnits([restated, unnamed, undiffed, unit({ id: '§3', change: 'unchanged' }), unit({ id: '§4', change: 'removed', fromText: 'x' })], blocks)
+    expect(guard.checks.get(1)!.notInDraft).toBe(false)
+    expect(notHeld(guard)).toEqual(new Map([[1, 'unassigned'], [2, 'long']]))
+  })
+
+  it('marks every § shown as changed or new where the draft yields no law text, and none unchanged or removed', () => {
+    const units = [restated, unit({ id: '§21a', fromId: null, change: 'inserted', toText: 'Neu.' }), unit({ id: '§3', change: 'unchanged' }), unit({ id: '§4', change: 'removed', fromText: 'x' })]
+    for (const read of [null, []]) expect(notHeld(guardTguUnits(units, read))).toEqual(new Map([[0, 'draftUnread'], [1, 'draftUnread']]))
+  })
+
+  it('does not mark a § the rules withhold: that one is not shown', () => {
+    const foreign = unit({
+      id: '§5',
+      fromText: '(2) Die Landesregierung hat die Fischereiberechtigten zu hören.',
+      toText: '(2) Die Landesregierung hat die Fischereiberechtigten zu hören. Die Gemeinde hat binnen vierzehn Tagen ein Verzeichnis sämtlicher Kraftfahrzeuge samt Kennzeichen elektronisch an die Bezirkshauptmannschaft zu übermitteln.',
+      segments: [
+        { type: 'equal', text: '(2) Die Landesregierung hat die Fischereiberechtigten zu hören. ' },
+        { type: 'inserted', text: 'Die Gemeinde hat binnen vierzehn Tagen ein Verzeichnis sämtlicher Kraftfahrzeuge samt Kennzeichen elektronisch an die Bezirkshauptmannschaft zu übermitteln.' },
+      ],
+    })
+    expect(notHeld(guardTguUnits([foreign], blocks))).toEqual(new Map())
+  })
+
+  it('maps every reason the strict check gives to one of the reader\'s', () => {
+    for (const reason of Object.values(STRICT_UNCHECKED)) expect(['unassigned', 'wording', 'long']).toContain(draftUncheckedReason(reason))
+    expect(draftUncheckedReason(`${STRICT_UNCHECKED.quoteRole}„Pflicht“ in der jeweiligen grammatikalischen Form`)).toBe('wording')
   })
 })
 

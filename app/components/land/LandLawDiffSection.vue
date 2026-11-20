@@ -7,7 +7,7 @@ import { formatDateDe } from '#shared/utils/format'
 import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, landShortTitle } from '#shared/utils/laender'
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils/unitName'
-import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
+import { BADGE_CLASS, type DiffBadge, PILL_CLASS, UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
 import { landReasoningGapNote, reasoningGapNote } from '~/utils/reasoningNotes'
@@ -15,6 +15,7 @@ import { comparisonLaws, landReasonsAt, unplacedLandReasons } from '~/utils/land
 import { unitList } from '~/utils/lesefassung'
 import { citeLineDe, dividedText, landTextCiteDe, lawUnitCiteDe } from '#shared/utils/citations'
 import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '~/utils/diffSides'
+import { landUncheckedMarks, landUncheckedNote } from '~/utils/landUnchecked'
 import ListBox from '~/components/ui/ListBox.vue'
 import LandWithheldNotes from '~/components/land/LandWithheldNotes.vue'
 
@@ -232,7 +233,7 @@ interface UnitView { unit: LawDiffUnit; label: string | null }
    reason): the template asked for the Begründung up to five times a row, on
    every keystroke of the search. */
 type Block =
-  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; gap: string | null; reasons: ReturnType<typeof reasonsFor>; cite: { text: string; subject: string } | null } & UnitView)
+  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; gap: string | null; reasons: ReturnType<typeof reasonsFor>; cite: { text: string; subject: string } | null; unchecked: boolean } & UnitView)
   | { kind: 'context'; units: UnitView[] }
 
 const viewOf = (u: LawDiffUnit): UnitView => ({ unit: u, label: unitName(u, null, diffUnitKey(u)) ?? extraHeading(u) })
@@ -248,6 +249,11 @@ const withheldByGroup = computed(() => {
   if (!data.value?.available || query.value.trim()) return new Map<string, LandLawDiffResponse['withheld']>()
   return withheldGroups(data.value.withheld, units.value.map((u) => u.article))
 })
+
+/* §§ shown whose new text was not held word for word against the draft:
+   „nicht geprüft" at the §, the reason under the law's pill — the server's
+   call, as the Bund's (`landUnchecked.ts`, 20.11.2026). */
+const uncheckedMarks = computed(() => landUncheckedMarks(data.value?.available ? data.value.draftUnchecked : undefined))
 
 /* A station pair (19.11.2026): neither the Textgegenüberstellung nor a Landesgesetz's page. */
 const station = computed(() => !ofDraft.value && !ofLaw.value)
@@ -355,12 +361,14 @@ const groups = computed(() => {
         gap: gapOf(u),
         reasons: reasonsFor(u),
         cite: unitCite(u),
+        unchecked: uncheckedMarks.value.has(diffUnitKey(u)),
       })
       shown++
     }
     flush()
+    const marked = g.units.flatMap((u) => uncheckedMarks.value.get(diffUnitKey(u)) ?? [])
     // A group of §§ only withheld, under no law: the reader could not tell which law of the package they are (Kärnten, 25.10.2026).
-    return { ...g, title: groupTitle(g.article) || (g.units.length ? '' : UNFILED), replacedBy: replacedBy.value.get(g.article) ?? null, blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], unread: unreadByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
+    return { ...g, unchecked: marked.length, uncheckedNote: landUncheckedNote(marked), title: groupTitle(g.article) || (g.units.length ? '' : UNFILED), replacedBy: replacedBy.value.get(g.article) ?? null, blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], unread: unreadByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
   })
 })
 
@@ -427,6 +435,8 @@ const hasUnits = computed(() => units.value.length > 0)
           :title="g.title"
           :badges="badgeCounts(g.counts, BADGE_LABEL)"
           :withheld="g.withheld.length"
+          :unchecked="g.unchecked"
+          :unchecked-note="g.uncheckedNote"
           :open="groupOpen(g.article)"
           :more="g.hidden"
           @toggle="toggleGroup(g.article)"
@@ -507,6 +517,13 @@ const hasUnits = computed(() => units.value.length > 0)
                 :from-label="FROM_LABEL"
                 :to-label="TO_LABEL"
               >
+                <!-- Not held word for word against the draft: the Bund's pill
+                     beside the change, its definition under the row. -->
+                <template v-if="b.unchecked" #pill-after>
+                  <TermNote term="nicht-geprueft-entwurf" class="ml-1.5">
+                    <span :class="UNCHECKED_PILL">nicht geprüft</span>
+                  </TermNote>
+                </template>
                 <!-- The Land's reasoning at this change, as the ministry's on
                      the Bund's page: closed, it answers a second question. -->
                 <Disclosure v-if="b.reasoning" size="xs" tone="secondary" class="mt-2">
