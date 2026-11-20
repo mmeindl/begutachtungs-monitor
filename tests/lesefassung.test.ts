@@ -278,6 +278,34 @@ describe('placeAtParagraphs — the block the oracle confirmed a § against', ()
     expect(placement.ends.byGroup.get(law)?.outcomes.map((o) => o.id)).toEqual(['94'])
   })
 
+  // 127/ME XXVIII: „Artikel 90a." left, „Artikel 94a." right, and Art. 94b
+  // new. The server now answers under the numbers the insertion creates;
+  // the page compared numbers through the § reader, which reads no Artikel,
+  // so „90a → 94a" was no renumbering and the vacated 90a stood at the end.
+  it('places a renumbered Artikel under its new number and takes the number it vacated (127/ME XXVIII)', () => {
+    const law = '(Verfassungsbestimmung)'
+    const rows = [
+      row(null, { kind: 'article', law, heading: 'Artikel 1 — Änderung des Bundes-Verfassungsgesetzes', current: '', proposed: '', change: 'unchanged', check: 'unchecked', owesCheck: false }),
+      row('Artikel 53.', { law, gld: null, current: '(3) Alle Organe des Bundes, der Länder, der Gemeinden …', proposed: '(3) Alle Organe des Bundes, der Länder, der Gemeinden … sowie der Bundesstaatsanwaltschaft …' }),
+      row('Artikel 90a.', { law, gld: null, paraAfter: 'Artikel 94a.', current: '', proposed: '2. Staatsanwaltschaftliche Behörden', change: 'inserted' }),
+      row('Artikel 90a.', { law, paraAfter: 'Artikel 94a.', current: 'Staatsanwälte sind Organe der ordentlichen Gerichtsbarkeit. In Verfahren …', proposed: 'Artikel 94a. Die Staatsanwälte sind Organe der ordentlichen Gerichtsbarkeit. Sie sind …' }),
+      row('Artikel 94b.', { law, current: '', proposed: 'Die Bundesstaatsanwaltschaft übt die Fachaufsicht über die Staatsanwaltschaften aus …', change: 'inserted', check: 'unchecked' }),
+    ]
+    const kons = response([shown('53', law)], [held('90a', 'entfaellt', law), held('94', 'verweigert', law), held('94a', 'verweigert', law), held('94b', 'verweigert', law)])
+    const { placement, at } = carried(rows, kons)
+    expect(at).toEqual([['53'], ['verweigert'], ['verweigert']])
+    // Art. 94, the insertion's anchor, has no rows; the vacated 90a is said by its struck rows.
+    expect(placement.ends.byGroup.get(law)?.outcomes.map((o) => o.id)).toEqual(['94'])
+    expect(placement.lost).toEqual([])
+  })
+
+  it('still finds a renumbered Artikel under its old number where nothing stands under the new one', () => {
+    const law = 'Änderung des Bundes-Verfassungsgesetzes'
+    const rows = [row('Artikel 90a.', { law, paraAfter: 'Artikel 94a.' }), row('Artikel 53.', { law })]
+    // The engine changed Art. 90a and knows no 94a: through the § reader both numbers were nothing, „equal", and the lookup stopped.
+    expect(carried(rows, response([shown('53', law)], [held('90a', 'verweigert', law)])).at).toEqual([['verweigert'], ['53']])
+  })
+
   it('keeps „Artikel 1." no unit in a law that sets §§ inside its Artikel, on the page as in the oracle', () => {
     const law = 'Änderung des Begleitgesetzes'
     const rows = [row('Artikel 1.', { law, current: 'Dieses Gesetz gilt für alle alt.' }), row('§ 1.', { law, current: '(1) alt' })]

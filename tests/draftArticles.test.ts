@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { articleBlocks, clauseNameOf, draftArticles, isAmendmentClause, promulgationByArticle } from '../server/utils/lawtext/draftArticles'
+import { articleBlocks, articleNames, clauseNameOf, draftArticles, isAmendmentClause, promulgationByArticle } from '../server/utils/lawtext/draftArticles'
+import { segmentUnits } from '../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 
 /** A package Artikel with its Promulgationsklausel, in RIS's element vocabulary. */
@@ -386,5 +387,50 @@ describe('a clause name ends where the amendment history begins (15.11.2026)', (
     const clause = 'Das Bundesgesetz über die Revision von Erwerbs- und Wirtschaftsgenossenschaften (GenRevG 1997), zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 133/2024, wird wie folgt geändert:'
     expect(clauseNameOf(clause)).toEqual({ name: 'GenRevG 1997', abbreviation: null })
     expect(clauseNameOf('Das Testgesetz geändert durch BGBl. I Nr. 1/2020, wird wie folgt geändert:')).toEqual({ name: 'Testgesetz', abbreviation: null })
+  })
+})
+
+describe('articleNames — what a reader is shown where the key is a qualifier (20.11.2026)', () => {
+  const qualified = (nr: string, title: string | null, clause: string) =>
+    `<ueberschrift typ="g1">${nr}</ueberschrift><ueberschrift typ="g2">(Verfassungsbestimmung)</ueberschrift>` +
+    (title ? `<ueberschrift typ="g2">${title}</ueberschrift>` : '') +
+    `<absatz typ="promkleinlsatz">${clause}</absatz><absatz typ="novao1">1. Art. 90a entfällt.</absatz>`
+  const bvg = 'Das Bundes-Verfassungsgesetz – B-VG, BGBl. Nr. 1/1930, wird wie folgt geändert:'
+
+  // 127/ME XXVIII: Artikel 1 prints the qualifier above the law's name.
+  it('names the law of 127/ME\'s Artikel 1 and leaves the key and the other Artikel alone', () => {
+    const blocks = parseRisXml(doc(
+      qualified('Artikel 1', 'Änderung des Bundes-Verfassungsgesetzes', bvg) +
+      article('Artikel 2', 'Änderung des Verfassungsgerichtshofgesetzes 1953', 'Das Verfassungsgerichtshofgesetz 1953 – VfGG, BGBl. Nr. 85/1953, wird wie folgt geändert:', ['Dem § 94 wird folgender Abs. xx angefügt:']),
+    ))
+    const articles = draftArticles(blocks)
+    expect(articles.map((a) => a.key)).toEqual(['(Verfassungsbestimmung)', 'Änderung des Verfassungsgerichtshofgesetzes 1953'])
+    expect([...articleNames(articles)]).toEqual([['(Verfassungsbestimmung)', 'Änderung des Bundes-Verfassungsgesetzes']])
+    // The units carry the name beside the key they are joined by.
+    const units = segmentUnits(blocks)
+    expect(units.map((u) => [u.article, u.articleName])).toEqual([
+      ['(Verfassungsbestimmung)', 'Änderung des Bundes-Verfassungsgesetzes'],
+      ['Änderung des Verfassungsgerichtshofgesetzes 1953', undefined],
+    ])
+  })
+
+  it('falls back on the Artikel\'s number where it prints nothing but the qualifier', () => {
+    const articles = draftArticles(parseRisXml(doc(qualified('Artikel 5', null, 'Das Landes-Verfassungsgesetz 1999, LGBl. Nr. 25, wird wie folgt geändert:'))))
+    expect([...articleNames(articles)]).toEqual([['(Verfassungsbestimmung)', 'Artikel 5']])
+  })
+
+  // BGBl. I Nr. 41/2019 (cached): Artikel 1 and Artikel 3 both carry the
+  // qualifier and so share the key; the group under it holds both laws.
+  it('names both laws where two Artikel share the qualifier as their key', () => {
+    const articles = draftArticles(parseRisXml(doc(
+      qualified('Artikel 1', 'Änderung des Bundes-Verfassungsgesetzes', bvg) +
+      qualified('Artikel 3', 'Änderung des Heimopferrentengesetzes', 'Das Heimopferrentengesetz, BGBl. I Nr. 69/2017, wird wie folgt geändert:'),
+    )))
+    expect([...articleNames(articles)]).toEqual([['(Verfassungsbestimmung)', 'Änderung des Bundes-Verfassungsgesetzes / Änderung des Heimopferrentengesetzes']])
+  })
+
+  it('has no entry for a key that is a name', () => {
+    const articles = draftArticles(parseRisXml(doc(article('Artikel 1', 'Änderung des Aktiengesetzes', 'Das Aktiengesetz, BGBl. Nr. 98/1965, wird wie folgt geändert:', ['§ 1 lautet:']))))
+    expect(articleNames(articles).size).toBe(0)
   })
 })

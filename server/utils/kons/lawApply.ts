@@ -25,6 +25,7 @@ import { bareParaId, isDivision, isSchedule, unitKey } from '../text/designation
 import { scheduleNumber } from '../../../shared/utils/scheduleNumber'
 import { byParagraphOrder } from './konsGate'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+import { articleUnitId } from '../../../shared/utils/explanationKey'
 
 export interface StandingLaw {
   /** Paragraphs in printed order; insert and append change this list */
@@ -393,13 +394,17 @@ export interface RefusedInstruction {
   reason: string
   inherited: NovaoAddress | null
   /**
-   * The §§ its new text spells out — „Der 3. Unterabschnitt des 2. Abschnitts
+   * The units its new text spells out — „Der 3. Unterabschnitt des 2. Abschnitts
    * lautet:" over §§ 10 to 11, refused for a table in it. The line names none
    * of them, and only the payload says which §§ the refusal leaves unapplied
-   * (`refusedUnits`, `addressedParagraphs`, 26.10.2026).
+   * (`refusedUnits`, `addressedParagraphs`, 26.10.2026). And the Artikel of
+   * new text that opens one as a unit, written „Art. 94a" (`ARTICLE_IN_PAYLOAD`).
    */
   created: string[]
 }
+
+/** Why new text with an Artikel as a unit of its own is refused (`instructionsFromUnits`). */
+export const ARTICLE_IN_PAYLOAD = 'Artikel als Einheit im neuen Text — nur Paragraphen lesbar'
 
 /** The §§ a payload spells out with their own designation, as the draft writes them. */
 function payloadParagraphs(payload: readonly PayloadLine[]): string[] {
@@ -426,6 +431,8 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
     const groups: { line: string; payload: PayloadLine[]; open: boolean }[] = []
     const tables = new Set<number>()
     const pictures = new Set<number>()
+    /** Per group: the Artikel its new text opens as units of their own (`ARTICLE_IN_PAYLOAD`). */
+    const articles = new Map<number, string[]>()
     for (const b of unit.blocks) {
       const last = groups[groups.length - 1]
       if (b.kind === 'novao' && last?.open && last.payload.length === 0) {
@@ -440,6 +447,8 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
         groups[groups.length - 1]!.payload.push(payloadLine(b))
         if (b.cls.startsWith('table:')) tables.add(groups.length - 1)
         if (b.cls.endsWith('/abbobj')) pictures.add(groups.length - 1)
+        const article = articleUnitId(b.gld)
+        if (article !== null) articles.set(groups.length - 1, [...(articles.get(groups.length - 1) ?? []), `Art. ${article}`])
       }
     }
     let container: NovaoAddress | null = null
@@ -448,7 +457,7 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       // table of contents, whose „§ 40a. Bezeichnung" lines are entries and
       // no §§ (116/ME XXVIII: „Im Inhaltsverzeichnis lauten die Einträge zu
       // den §§ 40 bis 40e:", refused for its table).
-      const created = (): string[] => (isTocInstruction(group.line) || (toc[ui] && (gi === 0 || continuesToc(group.line))) ? [] : payloadParagraphs(group.payload))
+      const created = (): string[] => (isTocInstruction(group.line) || (toc[ui] && (gi === 0 || continuesToc(group.line))) ? [] : [...payloadParagraphs(group.payload), ...(articles.get(gi) ?? [])])
       // A table in the new text has no place in the tree — its cells would
       // become Absätze in whatever order the parser met them. Seven §§ of the
       // NEHG diverged that way (BGBl. I Nr. 60/2024, 2026-09-09). Refused.
@@ -477,6 +486,19 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       const onToc = toc[ui] && (gi === 0 ? !isTocInstruction(group.line) : continuesToc(group.line))
       if (onToc) {
         instructions.push({ op: { kind: 'toc' }, payload: [], line: group.line })
+        continue
+      }
+      // New text that opens a unit designated as an Artikel (20.11.2026): the
+      // payload reader knows the § as the only unit, and „Artikel 52a." went
+      // in as words — with the Absatz behind it as the unit's heading
+      // (127/ME XXVIII, „Nach Art. 52 wird folgender Art. 52a eingefügt:").
+      // Refused before it is read, with the Artikel it would have brought
+      // into being, so each is counted and withheld under its own number:
+      // „Nach Art. 94 wird folgender zweiter Unterabschnitt eingefügt:" names
+      // none of its Art. 94a to 94d, and their annex blocks said that no
+      // instruction on them was found.
+      if (articles.has(gi)) {
+        refused.push({ line: group.line, reason: ARTICLE_IN_PAYLOAD, inherited: container, created: created() })
         continue
       }
       const parsed = parseInstruction(group.line, container)

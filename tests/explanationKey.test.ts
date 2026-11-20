@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { annexUnitId, articleUnitId, explanationKey, explanationParaId } from '../shared/utils/explanationKey'
+import { annexUnitId, articleUnitId, explanationKey, explanationParaId, numberedUnitId } from '../shared/utils/explanationKey'
 
 describe('explanationParaId', () => {
   it('normalisiert die Bezeichnung auf beiden Seiten — und nimmt keine Anlage für einen §', () => {
@@ -48,5 +48,14 @@ describe('explanationKey', () => {
   it('trägt das leere Gesetz als echten Wert', () => {
     expect(explanationKey(null, '5')).toBe('#5')
     expect(explanationKey('Änderung der Notariatsordnung', '54c')).toBe('Änderung der Notariatsordnung#54c')
+  })
+})
+
+describe('numberedUnitId', () => {
+  it('reads a § everywhere, an Artikel only in a law whose units are Artikel, and never a schedule', () => {
+    expect(numberedUnitId('§ 54c.')).toBe('54c')
+    expect(numberedUnitId('Artikel 94a.')).toBeNull()
+    expect(numberedUnitId('Artikel 94a.', true)).toBe('94a')
+    expect(numberedUnitId('Anlage 2', true)).toBeNull()
   })
 })

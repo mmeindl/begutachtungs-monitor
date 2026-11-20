@@ -378,6 +378,15 @@ export interface LawDiffResponse {
   stations: LawStationOption[]
   /** `editorial` counts the subset of `changed` that is only citations, numbers, dates, punctuation */
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
+  /**
+   * `article` → the name to print, for the laws whose `article` is a
+   * qualifier and no name: „(Verfassungsbestimmung)" → „Änderung des
+   * Bundes-Verfassungsgesetzes" (127/ME XXVIII, 20.11.2026). `article` is the
+   * join value on units and law lists alike and stays; a label is read
+   * through `lawNameOf` (shared/utils/lawName.ts). Absent where no law of
+   * the pair is keyed so, and in answers cached before the field existed.
+   */
+  lawNames?: Record<string, string>
   /** Laws the later text carries and the earlier one never had — a collective act merged in from other drafts. Their units are NOT in `units` or `stats`. */
   lawsOnlyInTo: LawPackageEntry[]
   /** Laws the earlier text carried and the later one does not. Their units are NOT in `units` or `stats`. */

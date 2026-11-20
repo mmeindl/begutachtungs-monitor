@@ -368,6 +368,15 @@ export interface TextComparisonResponse {
    * says why — the alternative is to divide it wrongly.
    */
   boundaryNote: string | null
+  /**
+   * A row's `law` → the name to print, for the laws of the draft whose key
+   * is a qualifier and no name („(Verfassungsbestimmung)", 20.11.2026). The
+   * annex's own heading titles a law's group; this is for the places that
+   * have only the key: a law the annex prints no group for, a note that
+   * names a law (`lawNameOf` in shared/utils/lawName.ts). Absent where no
+   * law is keyed so.
+   */
+  lawNames?: Record<string, string>
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
   /**
    * What the RIS check made of the annex — **never null while `available` is
