@@ -61,6 +61,7 @@ import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { flattenRisRecord } from '../../server/utils/ris/risRecord'
 import { absatzSequence, standingUnitsOf, oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { installFetchCache } from '../lib/harnessCache'
+import { renditionOfPages, witnessVerdict, type DraftRendition } from '../../server/utils/kons/draftWitness'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { asArray } from '../lib/ris'
@@ -552,6 +553,14 @@ function markerSequence(node: LawNode): string[] {
   return node.children.flatMap((c) => [`${c.level} ${c.marker.replace(/\s+/g, '')}`, ...markerSequence(c)])
 }
 const gateTally = new Map<string, number>()
+/**
+ * The second witness on the bench (20.11.2026): every § the oracle
+ * contradicts that the instructions' own PDF settles, with what RIS says of
+ * it. Here the instructions are the Bundesgesetzblatt's and the PDF is its
+ * authentic print, so a release that is not the law is the witness's error.
+ */
+const witnessTally = new Map<string, number>()
+const witnessLines: string[] = []
 const tally = (map: Map<string, number>, key: string): void => {
   map.set(key, (map.get(key) ?? 0) + 1)
 }
@@ -670,12 +679,17 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict[]> {
   if (!xmlUrl) return [blank('kein XML')]
 
   const blocks = parseRisXml(await getText(xmlUrl))
+  const pdfUrl: string | undefined = asArray<any>(ref.Data.Dokumentliste.ContentReference)
+    .flatMap((c) => asArray<any>(c.Urls.ContentUrl))
+    // RIS names the Bundesgesetzblatt's PDF by what it is: the authentic print.
+    .find((u) => u.DataType === 'Authentisch' || u.DataType === 'Pdf')?.Url
   const parts = articleBlocks(blocks).filter((p) => p.article.amends)
   if (parts.length === 0) return [{ ...blank('keine Promulgationsklausel — kein geändertes Gesetz'), bgbl: bgblNumber || bgblId }]
   const hint = parts.length === 1 ? titleHint : undefined
+  let rendition: Promise<DraftRendition | null> | null = null
   const out: Verdict[] = []
   for (const { blocks: part, article } of parts) {
-    out.push(await verifyLaw(part, article, { bgblId, bgblNumber, kundmachung, titleHint: hint, fallback: String(bundesrecht.Kurztitel ?? ''), package: parts.length > 1 }))
+    out.push(await verifyLaw(part, article, { bgblId, bgblNumber, kundmachung, titleHint: hint, fallback: String(bundesrecht.Kurztitel ?? ''), package: parts.length > 1, rendition: () => (rendition ??= renditionOf(pdfUrl)) }))
   }
   return out
 }
@@ -688,6 +702,27 @@ interface BgblContext {
   fallback: string
   /** Several laws in this BGBl — the oracle then has to pick the right Artikel of the annex */
   package: boolean
+  /** The Bundesgesetzblatt's authentic PDF, the second witness's reading of the instructions. */
+  rendition: () => Promise<DraftRendition | null>
+}
+
+/** A PDF as the witness reads it, through the harness cache. */
+async function renditionOf(url: string | undefined): Promise<DraftRendition | null> {
+  if (!url) return null
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const { extractText, getDocumentProxy } = await import('unpdf')
+    const doc = await getDocumentProxy(new Uint8Array(await res.arrayBuffer()), { verbosity: 0 })
+    try {
+      const { text } = await extractText(doc, { mergePages: false })
+      return renditionOfPages(Array.isArray(text) ? text : [text])
+    } finally {
+      await doc.loadingTask.destroy()
+    }
+  } catch {
+    return null
+  }
 }
 
 async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ctx: BgblContext): Promise<Verdict> {
@@ -934,6 +969,14 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // silently reprinted the plausible subset and the guard looked like it
     // filtered nothing (2026-09-09).
     tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}|${annexPath}`)
+    if (oracle && id && plausible && oracleReport?.verdict === 'widersprochen') {
+      const rendition = await ctx.rendition()
+      const witnessed = rendition
+        ? witnessVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id)), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null)
+        : null
+      tally(witnessTally, `${rendition ? (witnessed!.released ? 'gezeigt' : witnessed!.reason) : 'kein PDF'}|${outcome}`)
+      if (witnessed?.released) witnessLines.push(`${bgblNumber} ${kurztitel.slice(0, 40)} § ${id} — RIS: ${outcome}${unchanged === null ? '' : unchanged ? ', ME=BGBl' : ', ME≠BGBl'} — ${witnessed.places.map((pl) => `Beilage „${pl.annex}" / BGBl „${pl.draft}"`).join('; ').slice(0, 400)}`)
+    }
     // The designations, as the page shows them (`bodyText`): „identisch"
     // compares `plainText`, which leaves out every „(2)", „3." and „b)", so a
     // result whose text is the law under the wrong numbers counted as the
@@ -1188,6 +1231,11 @@ if (unchangedListed.length > 0) {
     for (const [note, n] of [...oracleNotes].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${note}`)
   }
 }
+if (witnessTally.size > 0) {
+  console.log(`\n  Zweiter Zeuge (PDF des BGBl) bei widersprochenen, plausiblen Paragraphen — Ergebnis laut RIS:`)
+  for (const [key, n] of [...witnessTally].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(4)}× ${key.replace('|', ' — ')}`)
+  for (const line of witnessLines) console.log(`      gezeigt: ${line}`)
+}
 for (const [title, map] of [['Grammatik — nicht gelesen', refusalCauses], ['Anwendung — gelesen, nicht ausgeführt', applyCauses]] as const) {
   const total = [...map.values()].reduce((a, b) => a + b, 0)
   if (total === 0) continue
@@ -1228,6 +1276,8 @@ if (jsonFile) {
     unrefused: { checked: sum((v) => v.cleanTotal), identical: sum((v) => v.cleanIdentical), divergent: sum((v) => v.cleanDivergent) },
     gateKey: 'plausibel|orakel|ergebnis|verweigerung|weg',
     gate: Object.fromEntries([...gateTally].sort(([a], [b]) => a.localeCompare(b))),
+    /** The second witness: `Ausgang|Ergebnis` over the plausible §§ the oracle contradicts (20.11.2026). */
+    witness: Object.fromEntries([...witnessTally].sort(([a], [b]) => a.localeCompare(b))),
   }
   writeFileSync(jsonFile, `${JSON.stringify(record, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonFile}`)
