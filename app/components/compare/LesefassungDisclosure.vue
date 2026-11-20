@@ -17,6 +17,8 @@
  */
 import type { ConsolidatedParagraph } from '#shared/types'
 import { absaetze } from '~/utils/absaetze'
+// Imported, not auto-imported: a helper used only in the template is not resolved at runtime.
+import { witnessText } from '~/utils/lesefassung'
 
 defineProps<{ paragraph: ConsolidatedParagraph }>()
 </script>
@@ -50,6 +52,9 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
         </TermNote>
         <ExternalLink v-if="paragraph.risUrl" :href="paragraph.risUrl" class="link-muted">Geltender Text im RIS</ExternalLink>
       </div>
+      <!-- Shown on the draft's own text where the annex reads otherwise
+           (20.11.2026): both wordings, before the text they concern. -->
+      <p v-if="witnessText(paragraph)" class="mt-2 text-xs text-ink-muted">{{ witnessText(paragraph) }}</p>
       <p v-if="paragraph.headingSegments" class="mt-2 text-sm font-semibold text-ink">
         <DiffText :segments="paragraph.headingSegments" removed-normal-weight />
       </p>

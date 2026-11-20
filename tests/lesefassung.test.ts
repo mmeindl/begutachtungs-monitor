@@ -9,6 +9,7 @@ import {
   outcomeIndex,
   unitList,
   unplacedText,
+  witnessText,
 } from '../app/utils/lesefassung'
 
 /** A pair row of § `para`, changed unless told otherwise. */
@@ -200,5 +201,20 @@ describe('the sentences', () => {
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-fremd' }, 'standing')).toBe(true)
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-fremd' }, 'alreadyStanding')).toBe(false)
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-widerspricht' }, 'standing')).toBe(false)
+  })
+})
+
+describe('witnessText — a § shown on the draft\'s own text (20.11.2026)', () => {
+  const shown = (draftWitness?: ConsolidatedParagraph['draftWitness']): ConsolidatedParagraph => ({ id: '94m', segments: [], headingSegments: null, risUrl: null, annexLaw: null, ...(draftWitness ? { draftWitness } : {}) })
+
+  it('says nothing at a § the annex confirms', () => {
+    expect(witnessText(shown())).toBeNull()
+  })
+
+  it('names both wordings at each place, as our reading', () => {
+    expect(witnessText(shown([{ annex: 'dem 30. Juni 2025 begangen', draft: 'dem 30. Juni 2024 begangen' }]))).toBe(
+      'Hier stimmt die Textgegenüberstellung nicht mit dem Gesetzestext des Entwurfs überein: In der Textgegenüberstellung lesen wir „dem 30. Juni 2025 begangen“, im Gesetzestext „dem 30. Juni 2024 begangen“. Gezeigt ist der Gesetzestext; so steht er auch in der PDF-Fassung des Entwurfs im RIS.',
+    )
+    expect(witnessText(shown([{ annex: 'a', draft: 'b' }, { annex: 'c', draft: 'd' }]))).toMatch(/^An zwei Stellen stimmt .*„a“, im Gesetzestext „b“; in der Textgegenüberstellung lesen wir „c“/)
   })
 })
