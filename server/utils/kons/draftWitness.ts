@@ -481,7 +481,11 @@ function settle(
       const annexKey = keyOfTokens([...lead, ...annex, ...tail])
       if (own.length === 0) return 'einheit-nicht-im-pdf'
       if (own.some(([a, b]) => standsBetween(rendition, annexKey, a, b))) return 'beilage-im-pdf'
-      if (own.some(([a, b]) => standsBetween(rendition, oursKey, a, b))) found = true
+      // And the whole new text that holds the place, as our reader read it:
+      // a word lost elsewhere in it can be one that leaves our wording equal
+      // to the annex's there, where no check looks (GSpG § 50, RStDG § 203,
+      // SchUG § 18 in the fault injection).
+      if (own.some(([a, b]) => standsBetween(rendition, oursKey, a, b)) && own.some(([a, b]) => standsBetween(rendition, keyOfTokens(p.tokens), a, b))) found = true
     }
   }
   if (!found) {

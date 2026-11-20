@@ -57,4 +57,13 @@ describe('witnessVerdict', () => {
     const rows = [changed(standing, right)]
     expect(witnessVerdict('21', standing, faulted, rows, ins, renditionOfPages([lines.map((l, i) => `${i + 1}. ${l}`).join('\n')])).released).toBe(false)
   })
+
+  it('needs the whole new text holding a place in the PDF: a word lost elsewhere in it may leave our wording equal to the annex\'s', () => {
+    const standing = 'Eins gilt für alle Fälle der Welt.'
+    const misread = 'Drei gilt ab dem Jahr 2024 und bis zum Ende für alle Fälle der Welt.'
+    const ins: WitnessInstruction[] = [{ op: { kind: 'append', target: { para: '21' } as never, child: 'abs', childIds: ['3'] }, line: 'Dem § 21 wird folgender Abs. 3 angefügt:', payload: [misread] }]
+    const pdf = renditionOfPages(['9. Dem § 21 wird folgender Abs. 3 angefügt:\n„(3) Drei gilt ab dem Jahr 2024 und bis zum Ende nicht für alle Fälle der Welt.“'])
+    const rows = [changed('', '(3) Drei gilt ab dem Jahr 2025 und bis zum Ende für alle Fälle der Welt.')]
+    expect(witnessVerdict('21', standing, `${standing} ${misread}`, rows, ins, pdf)).toEqual({ released: false, reason: 'nicht-im-pdf' })
+  })
 })
