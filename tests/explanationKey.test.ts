@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { annexUnitId, explanationKey, explanationParaId } from '../shared/utils/explanationKey'
+import { annexUnitId, articleUnitId, explanationKey, explanationParaId } from '../shared/utils/explanationKey'
 
 describe('explanationParaId', () => {
   it('normalisiert die Bezeichnung auf beiden Seiten — und nimmt keine Anlage für einen §', () => {
@@ -28,6 +28,19 @@ describe('„§. 39." — the full stop after the sign', () => {
     expect(annexUnitId('§. 320.')).toBe('320')
     // A soft hyphen the text layer left between sign and number is no character a reader sees.
     expect(explanationParaId('§\u00ad 5.')).toBe('5')
+  })
+})
+
+// 82/ME and 127/ME XXVIII: the B-VG's units are Artikel.
+describe('„Artikel 53." — an Artikel as the unit itself', () => {
+  it('is the unit „53" only where the caller says the law counts its units as Artikel', () => {
+    expect(articleUnitId('Artikel 53.')).toBe('53')
+    expect(articleUnitId('Art. 52A')).toBe('52a')
+    expect(articleUnitId('Artikel 2 — Änderung des GmbH-Gesetzes')).toBeNull()
+    expect(annexUnitId('Artikel 53.')).toBeNull()
+    expect(annexUnitId('Artikel 53.', true)).toBe('53')
+    // A § designation stays a §, whatever the law.
+    expect(annexUnitId('§ 5.', true)).toBe('5')
   })
 })
 

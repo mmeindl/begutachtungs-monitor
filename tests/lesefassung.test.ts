@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheld, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
-import { annexUnitId } from '#shared/utils/explanationKey'
-import { paraIdOfGld } from '../server/utils/kons/tguOracle'
+import { annexUnitId, articleUnitLaws } from '#shared/utils/explanationKey'
+import { paraIdOfGld, paragraphRows, rowsByParagraph } from '../server/utils/kons/tguOracle'
 import { annexParas, groupAnnexRows, placeAtParagraphs } from '../app/utils/annexGroups'
 import {
   lesefassungLine,
@@ -57,7 +57,7 @@ describe('annexUnitId', () => {
 
 describe('outcomeIndex', () => {
   it('finds a single-law draft\'s § under a row that carries a law, and the unnumbered schedule at the numbered one', () => {
-    const index = outcomeIndex(response([shown('4'), shown('Anl.')], []), () => true)!
+    const index = outcomeIndex(response([shown('4'), shown('Anl.')], []), { soleSchedule: () => true })!
     expect(index.at('Änderung des Testgesetzes', '§ 4.')).toMatchObject({ lesefassung: { kind: 'shown' } })
     expect(index.at('Änderung des Testgesetzes', 'Anlage 2')).toMatchObject({ lesefassung: { kind: 'shown' } })
   })
@@ -66,7 +66,7 @@ describe('outcomeIndex', () => {
     // 571847EF: the refusal of the unnumbered „Anlage" also stood at the
     // law's Anhänge 2 and 4, which no instruction touches.
     expect(outcomeIndex(response([], [held('Anl.', 'verweigert')]))!.at(null, 'Anhang 2')).toBeNull()
-    expect(outcomeIndex(response([], [held('Anl.', 'verweigert')]), () => true)!.at(null, 'Anhang 2')).toMatchObject({ lesefassung: { cause: 'verweigert' } })
+    expect(outcomeIndex(response([], [held('Anl.', 'verweigert')]), { soleSchedule: () => true })!.at(null, 'Anhang 2')).toMatchObject({ lesefassung: { cause: 'verweigert' } })
   })
 
   it('says „ungeteilt" where an undivided annex leaves a number two laws share', () => {
@@ -230,5 +230,30 @@ describe('placeAtParagraphs — the block the oracle confirmed a § against', ()
     expect(at).toEqual([['39']])
     expect(placement.byRow.get(rows[2]!)!.explanations).toEqual([begruendung])
     expect(placement.ends.byGroup.get(law)?.outcomes ?? []).toEqual([])
+  })
+
+  // 127/ME XXVIII: the B-VG is divided into Artikel. The oracle keyed
+  // „Artikel 53." as the engine's „53" in such a law; the page read no unit.
+  it('finds „Artikel 53." in a law whose units are Artikel, and says „nicht gefunden" at an Artikel no instruction we read names (127/ME XXVIII)', () => {
+    const law = '(Verfassungsbestimmung)'
+    const rows = [
+      row(null, { kind: 'article', law, heading: law, current: '', proposed: '', change: 'unchanged', check: 'unchecked', owesCheck: false }),
+      row('Artikel 53.', { law, current: '(1) und (2) …', proposed: '(1) und (2) …', change: 'unchanged', elided: true }),
+      row('Artikel 53.', { law, gld: null, current: '(3) Alle Organe des Bundes, der Länder, der Gemeinden …', proposed: '(3) Alle Organe des Bundes, der Länder, der Gemeinden … sowie der Bundesstaatsanwaltschaft …' }),
+      row('Artikel 94b.', { law, current: '', proposed: 'Die Bundesstaatsanwaltschaft übt die Fachaufsicht über die Staatsanwaltschaften aus …', change: 'inserted', check: 'unchecked' }),
+    ]
+    expect(articleUnitLaws(rows)).toEqual(new Set([law]))
+    const grouped = rowsByParagraph(rows.map((r) => ({ ...r, proposed: r.proposed ?? '', current: r.current ?? '' })) as never)
+    expect(paragraphRows(grouped, '53', law)).toHaveLength(2)
+    const { placement, at } = carried(rows, response([shown('53', law)], [held('94', 'verweigert', law)]))
+    expect(at).toEqual([['53'], ['nicht-gefunden']])
+    expect(placement.ends.byGroup.get(law)?.outcomes.map((o) => o.id)).toEqual(['94'])
+  })
+
+  it('keeps „Artikel 1." no unit in a law that sets §§ inside its Artikel, on the page as in the oracle', () => {
+    const law = 'Änderung des Begleitgesetzes'
+    const rows = [row('Artikel 1.', { law, current: 'Dieses Gesetz gilt für alle alt.' }), row('§ 1.', { law, current: '(1) alt' })]
+    expect(articleUnitLaws(rows)).toEqual(new Set())
+    expect(carried(rows, response([shown('1', law)], [])).at).toEqual([[], ['1']])
   })
 })

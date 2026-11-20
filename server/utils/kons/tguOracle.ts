@@ -48,7 +48,7 @@ import { punctuationTokens } from '../text/punctuationTokens'
 import { isSchedule, unitKey } from '../text/designation'
 import { bodyText, type LawNode } from '../lawtext/konsTree'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
-import { explanationParaId } from '../../../shared/utils/explanationKey'
+import { articleUnitId, articleUnitLaws, explanationParaId } from '../../../shared/utils/explanationKey'
 import { expandRange } from './novao'
 
 export type OracleVerdict =
@@ -126,12 +126,12 @@ function paraIdOf(gld: string | null): string | null {
 export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, ComparisonRow[]> {
   const out = new Map<string, ComparisonRow[]>()
   // A law whose units are Artikel — the B-VG — keys „Artikel 52." as the
-  // engine names it, „52" (`articleLaws`).
-  const byArticle = articleLaws(rows)
+  // engine names it, „52" (`articleUnitLaws`, decided for the page alike).
+  const byArticle = articleUnitLaws(rows)
   const paraIdOfGld = (gld: string | null, law: string | null = null): string | null => {
     const id = paraIdOf(gld)
     if (id !== null || !byArticle.has(law ?? '')) return id
-    return ARTICLE_GLD_RE.exec(normalizeText(gld ?? ''))?.[1] ?? null
+    return articleUnitId(normalizeText(gld ?? ''))
   }
   const struck = new Set<ComparisonRow>()
   const position = new Map<ComparisonRow, number>()
@@ -217,32 +217,6 @@ function drawerOf(id: string, opener: ComparisonRow, law: string | null, idOf: (
   if (opener.paraAfter === opener.para) return { key: paragraphKey(id, law), struck: false }
   if (opener.paraAfter === null) return { key: paragraphKey(id, law), struck: true }
   return { key: paragraphKey(idOf(opener.paraAfter) ?? id, law), struck: false }
-}
-
-/** „Artikel 52.", „Art. 52a" — an Artikel as the unit itself, with its number. */
-const ARTICLE_GLD_RE = /^Art(?:ikel|\.)\s*(\d+[a-z]*)\.?$/i
-
-/**
- * The laws of an annex whose units are Artikel (20.11.2026): rows designated
- * „Artikel 52." and not one row of that law designated as a §. The B-VG is
- * divided so; its rows opened nothing, and 127/ME XXVIII's Art. 53, 92, 134,
- * 138b and 147 went out as `anhang-schweigt` beside the annex that prints
- * them. A law that carries §§ inside its Artikel („Art. 1 § 3") keeps them
- * apart: there „Artikel 1." is no unit the engine addresses.
- */
-function articleLaws(rows: readonly ComparisonRow[]): Set<string> {
-  const articles = new Set<string>()
-  const paragraphs = new Set<string>()
-  for (const row of rows) {
-    if (row.kind !== 'pair') continue
-    const law = row.law ?? ''
-    for (const gld of [row.gld, row.para]) {
-      if (!gld) continue
-      if (paraIdOf(gld) !== null && !isSchedule(normalizeText(gld))) paragraphs.add(law)
-      else if (ARTICLE_GLD_RE.test(normalizeText(gld))) articles.add(law)
-    }
-  }
-  return new Set([...articles].filter((law) => !paragraphs.has(law)))
 }
 
 /**

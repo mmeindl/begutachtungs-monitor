@@ -11,7 +11,7 @@
  * rule; they share one pass now.
  */
 import type { AnnexWithheldCause, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
-import { annexUnitId, explanationKey, explanationParaId } from '#shared/utils/explanationKey'
+import { annexUnitId, articleUnitLaws, explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { type DiffBadge, paragraphBadge } from './diffBadges'
 import { readsSideBySide, splitSegments } from './diffSides'
 import { outcomeIndex, showsInstructedChange, type LawEnd, type Lesefassung, type Outcome } from './lesefassung'
@@ -573,7 +573,10 @@ export function placeAtParagraphs(
       if (unit?.startsWith('anl.')) schedulesOf.set(law, (schedulesOf.get(law) ?? new Set()).add(unit))
     }
   }
-  const outcomes = outcomeIndex(consolidated, (law) => schedulesOf.get(law)?.size === 1)
+  // The laws whose units are Artikel, decided as the oracle decides it: a
+  // block „Artikel 53." of the B-VG is the unit the oracle confirmed.
+  const articleLaws = articleUnitLaws(rows)
+  const outcomes = outcomeIndex(consolidated, { soleSchedule: (law) => schedulesOf.get(law)?.size === 1, articleLaws })
 
   // The passages under the key the section looks them up by: the law the
   // Erläuterungen file them under, and the bare §.
@@ -678,7 +681,7 @@ export function placeAtParagraphs(
     // Named by the number it stands under afterwards: 20/ME XXVIII's old
     // § 82 is § 83, and „§ 82" belongs to the old § 81 beside it.
     // Never where the unit's outcome stands at another of its blocks.
-    if (outcomes && b.found.length === 0 && b.standsAfter !== null && annexUnitId(b.standsAfter) && showsInstructedChange(b.rows)) {
+    if (outcomes && b.found.length === 0 && b.standsAfter !== null && annexUnitId(b.standsAfter, articleLaws.has(b.rows[0]!.law ?? '')) && showsInstructedChange(b.rows)) {
       lesefassungen.push({ designation: b.standsAfter, lesefassung: { kind: 'withheld', cause: 'nicht-gefunden' } })
     }
     const placement: ParaPlacement = { explanations: distinctPassages(b.matched), lesefassungen, outcomeElsewhere: elsewhere }

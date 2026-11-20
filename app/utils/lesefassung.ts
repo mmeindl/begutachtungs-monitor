@@ -89,12 +89,23 @@ export interface OutcomeIndex {
   untaken(): Outcome[]
 }
 
-/**
- * `soleSchedule` says for a law (as the annex rows name it) whether its annex
- * prints exactly one schedule — the condition of lookup 3. Without it, no
- * block takes the unnumbered „Anl.", and it stands at the end of its law.
- */
-export function outcomeIndex(response: ConsolidatedTextResponse | null, soleSchedule: (law: string | null) => boolean = () => false): OutcomeIndex | null {
+/** What the annex rows say about a law, for `outcomeIndex`. */
+export interface AnnexLawShape {
+  /**
+   * Whether a law (as the annex rows name it) prints exactly one schedule —
+   * the condition of lookup 3. Without it, no block takes the unnumbered
+   * „Anl.", and it stands at the end of its law.
+   */
+  soleSchedule?: (law: string | null) => boolean
+  /**
+   * The laws whose units are Artikel (`articleUnitLaws`, the oracle's own
+   * decision): there a block designated „Artikel 53." stands for the unit
+   * „53".
+   */
+  articleLaws?: ReadonlySet<string>
+}
+
+export function outcomeIndex(response: ConsolidatedTextResponse | null, { soleSchedule = () => false, articleLaws = new Set() }: AnnexLawShape = {}): OutcomeIndex | null {
   if (!response || response.notRun) return null
   const all: Outcome[] = [
     ...response.paragraphs.map((p): Outcome => ({ id: p.id, law: p.annexLaw, lesefassung: { kind: 'shown', paragraph: p } })),
@@ -111,7 +122,7 @@ export function outcomeIndex(response: ConsolidatedTextResponse | null, soleSche
   const taken = new Set<Outcome>()
   return {
     at(law, designation) {
-      const unit = annexUnitId(designation)
+      const unit = annexUnitId(designation, articleLaws.has(law ?? ''))
       if (!unit) return null
       const found = byKey.get(explanationKey(law, unit)) ??
         (law !== null ? byKey.get(explanationKey(null, unit)) : undefined) ??
