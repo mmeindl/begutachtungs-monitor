@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, renumberingOf, sameWording, tokenSimilarity } from '../server/utils/diff/wordDiff'
+import { compareKey } from '../server/utils/lawtext/normalize'
 
 describe('diffTokens', () => {
   it('finds word-level changes and a similarity', () => {
@@ -263,6 +264,24 @@ describe('editorial vs substantive', () => {
     // A sign inside quotation marks or brackets is the same sign.
     expect(isEditorialChange(seg('Hypertonie (> 140/90mmHg)', 'Hypertonie (< 140/90mmHg)'))).toBe(false)
     expect(isEditorialChange(seg('der Betrag "100 €" durch', 'der Betrag "100 %" durch'))).toBe(false)
+  })
+  it('the unit key and the badge read a separator between two digits alike (20.11.2026)', () => {
+    // The filled Fundstelle makes each unit changed for another reason, so
+    // the badge answers for the separator alone — and must forgive exactly
+    // what `compareKey` forgives.
+    const pairs: [string, string][] = [
+      ['Z 1 3', 'Z 13'],
+      ['§§ 3-5', '§§ 35'],
+      ['3 000 Euro', '30 00 Euro'],
+      ['§§ 3-5', '§§ 3 - 5'],
+      ['§§ 3 -5', '§§ 3- 5'],
+      ['Covid-19', 'Covid 19'],
+      ['die E-Mail', 'die EMail'],
+    ]
+    for (const [a, b] of pairs) {
+      const forgiven = isEditorialChange(seg(`BGBl. I Nr. xxx/2026 gilt ${a} weiter`, `BGBl. I Nr. 31/2026 gilt ${b} weiter`))
+      expect({ a, b, forgiven }).toEqual({ a, b, forgiven: compareKey(a) === compareKey(b) })
+    }
   })
   it('punctuation, quotation marks, a bullet and a filled placeholder stay editorial beside the signs (20.11.2026)', () => {
     // A comma for a semicolon behind a designation: the number stays the number.

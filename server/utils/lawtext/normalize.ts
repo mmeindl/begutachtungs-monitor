@@ -103,8 +103,9 @@ function foldDotRuns(t: string): string {
 /** A token that is nothing but dots — the omission mark, in whichever spelling. */
 const DOT_TOKEN_RE = /^[.…]+$/
 
-/** A hyphen BETWEEN letters or digits: the one `compareKey` folds away, „E-Mail" → „EMail". */
+/** A hyphen BETWEEN letters or digits: the one `compareKey` folds away, „E-Mail" → „EMail" — but not between two digits (`foldSpacing`). */
 const INNER_HYPHEN_RE = /(?<=[\p{L}\p{N}])-+(?=[\p{L}\p{N}])/gu
+const DIGIT_RE = /\d/
 /**
  * The space a source sets in front of the punctuation mark that closes a
  * sentence or a list item.
@@ -155,9 +156,34 @@ const SPACE_BEFORE_PUNCT_RE = /\s+([.,;:])(?![.…])/g
  */
 export function compareKey(t: string): string {
   // An image is not compared, so its mark decides nothing (`withoutFigures`).
-  const s = foldDotRuns(normalizeText(withoutFigures(t)))
-  // A minus sign is no spacing: „-18" against „18" is a change (19.11.2026).
-  return s.replace(/[\s-]+/g, (run, at: number) => (isSign(s, run, at) ? '-' : ''))
+  return foldSpacing(foldDotRuns(normalizeText(withoutFigures(t))))
+}
+
+/**
+ * A text with its spacing folded the way the unit key folds it — every run
+ * of spaces and hyphens gone, but for the two that carry meaning:
+ *
+ *  - **between two digits** a run stays a separator: one that holds a hyphen
+ *    is a range and reads „-" („3-5", „3 - 5", „3 -5" alike), one of spaces
+ *    alone reads „ " („1 3"). Neither is the number „35" or „13";
+ *  - **a minus sign** before a number stays „-" (`isSign`, 19.11.2026).
+ *
+ * **One function for the unit key and the badge, since 20.11.2026.**
+ * `compareKey` folded every run but a sign, so „Z 1 3" equalled „Z 13",
+ * „§§ 3-5" equalled „§§ 35" and „3 000" equalled „30 00", while the word
+ * level kept a separator between two digits (`spacingOnly` in
+ * `diff/wordDiff.ts`) — the unit and its badge disagreed, against „what the
+ * unit key forgives, the badge forgives". Both now read this, and
+ * `compareToken` keeps the hyphen between two digits for the same reason.
+ *
+ * Whole runs, decided by their two neighbours: a lookbehind pattern would
+ * backtrack into „1 - 3" and take it apart piece by piece.
+ */
+export function foldSpacing(s: string): string {
+  return s.replace(/[\s-]+/g, (run, at: number) => {
+    if (DIGIT_RE.test(s[at - 1] ?? '') && DIGIT_RE.test(s[at + run.length] ?? '')) return run.includes('-') ? '-' : ' '
+    return isSign(s, run, at) ? '-' : ''
+  })
 }
 
 /**
@@ -226,7 +252,9 @@ export function displayTokens(t: string): string[] {
  * parliament that nobody had earned.
  */
 export function compareToken(word: string): string {
-  const folded = word.replace(INNER_HYPHEN_RE, '')
+  // Between two digits the hyphen is a range and stays one, as in the unit
+  // key (`foldSpacing`): „3-5" folded to „35" aligned as `equal` with „35".
+  const folded = word.replace(INNER_HYPHEN_RE, (run: string, at: number) => (DIGIT_RE.test(word[at - 1] ?? '') && DIGIT_RE.test(word[at + run.length] ?? '') ? '-' : ''))
   // „..." and „…" are one notation in two spellings, and „…." is it with the
   // sentence's full stop behind it. Compared as written, the same omission on
   // the two sides of a Gegenüberstellung reads as a changed word.

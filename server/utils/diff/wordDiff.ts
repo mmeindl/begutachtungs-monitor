@@ -13,7 +13,7 @@
  * are measured decisions.
  */
 import type { LawDiffSegment } from '../../../shared/types'
-import { compareToken, displayTokens, isSign } from '../lawtext/normalize'
+import { compareToken, displayTokens, foldSpacing } from '../lawtext/normalize'
 import { bareParaId } from '../text/designation'
 import { withoutFigures } from '../../../shared/utils/figureMark'
 
@@ -646,18 +646,6 @@ export function isEditorialChange(segments: readonly LawDiffSegment[] | null, co
 }
 
 /**
- * A run with the spacing taken out that `compareKey` forgives at the unit
- * level — every space and every hyphen — but not one between two digits:
- * „1 3" is not „13", and the word level must not copy the one fold of the
- * unit key that can join two numbers.
- */
-function spacingKey(text: string): string {
-  // Whole runs, decided by their two neighbours: a lookbehind pattern would
-  // backtrack into „1 - 3" and take it apart piece by piece.
-  return text.replace(/[\s-]+/g, (run, at: number) => (DIGIT_RE.test(text[at - 1] ?? '') && DIGIT_RE.test(text[at + run.length] ?? '') ? run : isSign(text, run, at) ? '-' : ''))
-}
-
-/**
  * Is this removed run, with the inserted run after it, the same text spaced
  * differently?
  *
@@ -676,9 +664,14 @@ function spacingKey(text: string): string {
  * difference is true and visible — and an `equal` run is emitted from the
  * EARLIER text, so folding the pair there would print the earlier spelling
  * as the agreed one.
+ *
+ * **The unit key's own fold, since 20.11.2026** (`foldSpacing`). This kept
+ * its own copy, which left a separator between two digits as it stood while
+ * the unit key dropped it: „1 3" and „13" were one unit and two words, „3-5"
+ * and „3 - 5" one unit and a changed word. One function now decides both.
  */
 function spacingOnly(s: LawDiffSegment, next: LawDiffSegment | undefined): boolean {
-  return s.type === 'removed' && next?.type === 'inserted' && spacingKey(s.text) === spacingKey(next.text)
+  return s.type === 'removed' && next?.type === 'inserted' && foldSpacing(s.text) === foldSpacing(next.text)
 }
 
 /**

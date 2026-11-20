@@ -111,6 +111,39 @@ describe('compareKey', () => {
     expect(compareKey('BT-06')).toBe(compareKey('BT06'))
     expect(compareKey('§§ 3-5')).toBe(compareKey('§§ 3 - 5'))
   })
+
+  it('never folds the separator between two digits away (20.11.2026)', () => {
+    // Every run of spaces and hyphens fell out of the key, so two numbers
+    // read as one: „Z 1 3" equal to „Z 13", a range „§§ 3-5" equal to „§ 35".
+    expect(compareKey('Z 1 3')).not.toBe(compareKey('Z 13'))
+    expect(compareKey('§§ 3-5')).not.toBe(compareKey('§§ 35'))
+    expect(compareKey('3 000 Euro')).not.toBe(compareKey('30 00 Euro'))
+    // A run that holds a hyphen is a range, however it is spaced …
+    expect(compareKey('§§ 3-5')).toBe(compareKey('§§ 3 - 5'))
+    expect(compareKey('§§ 3–5')).toBe(compareKey('§§ 3 -5'))
+    // … and not two numbers side by side.
+    expect(compareKey('§§ 3 - 5')).not.toBe(compareKey('§§ 3 5'))
+    // A run of spaces alone stays one separator, whatever its width.
+    expect(compareKey('Z 1 3')).toBe(compareKey('Z 1  3'))
+  })
+
+  it('folds the separator between a digit and a letter as before', () => {
+    expect(compareKey('Covid-19')).toBe(compareKey('Covid 19'))
+    expect(compareKey('Covid-19')).toBe(compareKey('Covid19'))
+    expect(compareKey('Abs. 2 a')).toBe(compareKey('Abs. 2a'))
+  })
+})
+
+describe('compareToken and the hyphen between two digits (20.11.2026)', () => {
+  // The word diff aligns on `compareToken`. Folding „3-5" to „35" there
+  // aligned a range with a different number as `equal`, so a unit the key
+  // calls changed would show no changed word at all.
+  it('keeps a hyphen between two digits, as the unit key does', () => {
+    expect(compareToken('3-5')).not.toBe(compareToken('35'))
+    expect(compareToken('3--5')).toBe(compareToken('3-5'))
+    expect(compareToken('Covid-19')).toBe(compareToken('Covid19'))
+    expect(compareToken('BT-06')).toBe('BT06')
+  })
 })
 
 describe('compareKey and the leader dots', () => {
