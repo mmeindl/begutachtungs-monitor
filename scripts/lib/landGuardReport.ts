@@ -46,6 +46,20 @@ export function floorFailed(rows: readonly FloorRow[]): boolean {
 }
 
 /**
+ * The floor's closing line, each verdict by its own name. Until 20.11.2026
+ * the harness counted every class it did not hold as „nicht gehalten" and
+ * printed a tick beside a failed run: „✓ 11 von 14 …; 3 nicht gehalten",
+ * where the three were below the floor. Zero of zero is no all-clear.
+ */
+export function floorLine(rows: readonly FloorRow[], pct: number): string {
+  const n = (v: FloorVerdict) => rows.filter((r) => r.verdict === v).length
+  const unheld = n('nicht gehalten') ? `; ${n('nicht gehalten')} nicht gehalten (weniger als ${MIN_TRIES} Versuche)` : ''
+  if (n('unter dem Boden')) return `✗ ${n('unter dem Boden')} von ${rows.length} Fehlerklassen unter ${pct} %${unheld}`
+  if (!n('gehalten')) return `? keine Fehlerklasse mit mindestens ${MIN_TRIES} Versuchen — der Boden hat nichts gehalten`
+  return `✓ ${n('gehalten')} von ${rows.length} Fehlerklassen mit mindestens ${MIN_TRIES} Versuchen zu mindestens ${pct} % gefangen${unheld}`
+}
+
+/**
  * A § the comparison withholds, as `LandLawDiffResponse.withheld` names it.
  * `reason` undefined: RIS refused the left column's text in force
  * (`compareTgu`, `why`) — named „leftCheck" in the baseline.

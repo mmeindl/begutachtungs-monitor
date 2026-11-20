@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf, landRecord, reachByLand } from '../scripts/lib/landGuardReport'
+import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf, landRecord, reachByLand, floorLine } from '../scripts/lib/landGuardReport'
 
 /**
  * The verdicts of the Land harness (`scripts/harness/landGuard.ts`), against
@@ -186,5 +186,23 @@ describe('documents requested and reached, per Land', () => {
       ooe: { requested: 3, answered: 2, incomplete: 1, noDetail: 0, noTgu: 0, pdfMissing: 1, failed: 0 },
       sbg: { requested: 3, answered: 0, incomplete: 0, noDetail: 1, noTgu: 1, pdfMissing: 0, failed: 1 },
     })
+  })
+})
+
+describe('floorLine: the closing line of the floor names each verdict by its own name', () => {
+  const rows = (tallies: [string, number, number][]) => floorRows(tallies.map(([key, tried, caught]) => ({ key, tried, caught })), 95)
+
+  it('a failed floor is a ✗, and the classes below it are not called „nicht gehalten"', () => {
+    const line = floorLine(rows([['R-neu', 100, 99], ['Zahl', 100, 90], ['Satz weg', 5, 5]]), 95)
+    expect(line).toMatch(/^✗ 1 von 3 Fehlerklassen unter 95 %/)
+    expect(line).toContain('1 nicht gehalten')
+  })
+
+  it('a held floor is a ✓ that still names the classes it could not hold', () => {
+    expect(floorLine(rows([['R-neu', 100, 99], ['Satz weg', 5, 5]]), 95)).toBe('✓ 1 von 2 Fehlerklassen mit mindestens 20 Versuchen zu mindestens 95 % gefangen; 1 nicht gehalten (weniger als 20 Versuche)')
+  })
+
+  it('zero of zero is no all-clear', () => {
+    expect(floorLine(rows([['Satz weg', 5, 5]]), 95)).toMatch(/^\? keine Fehlerklasse/)
   })
 })

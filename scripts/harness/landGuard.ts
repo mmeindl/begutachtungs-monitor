@@ -89,7 +89,7 @@ import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag, argPair } from '../lib/args'
-import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, landRecord, reachByLand, toLandBaseline, unaccountedInstructed, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
+import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorLine, floorRows, landBaselineFindings, landRecord, reachByLand, toLandBaseline, unaccountedInstructed, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
@@ -898,11 +898,7 @@ if (floorTable) {
     else if (r.verdict === 'nicht gehalten') console.log(`  ? nicht gehalten (weniger als ${MIN_TRIES} Versuche): ${r.key} — ${r.caught}/${r.tried}`)
   }
   if (floorFailed(floorTable)) failed = true
-  const held = floorTable.filter((r) => r.verdict === 'gehalten').length
-  // Zero of zero is no all-clear: a run too small for the floor says that it held nothing.
-  console.log(held
-    ? `  ✓ ${held} von ${floorTable.length} Fehlerklassen mit mindestens ${MIN_TRIES} Versuchen zu mindestens ${floor} % gefangen${held < floorTable.length ? `; ${floorTable.length - held} nicht gehalten` : ''}`
-    : `  ? keine Fehlerklasse mit mindestens ${MIN_TRIES} Versuchen — der Boden hat nichts gehalten`)
+  console.log(`  ${floorLine(floorTable, floor!)}`)
 }
 console.log(`\n## Seitenbilanz\n  ${accountingTotals.compared} verglichen, ${accountingTotals.shown} gezeigt, ${accountingTotals.withheld} zurückgehalten über ${accountingTotals.documents} Entwürfe`)
 for (const a of broken) console.log(`  ✗ ${a.draft}: beide ${a.both.join('; ') || '–'} | keine ${a.neither.join('; ') || '–'} | nie verglichen ${a.unknownShown.join('; ') || '–'}`)
