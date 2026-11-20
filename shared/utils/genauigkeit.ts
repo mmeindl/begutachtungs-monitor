@@ -184,6 +184,8 @@ export const RESULT_WORDS = ['Wort-weg', 'Wort-weg-Sinn', 'Wort-neu', 'Wort-taus
 export const RESULT_STRUCTURE = ['E', 'E-neben', 'Reihe', 'Fehlt', 'Lücke', 'Zurück', 'Zurück-gleich'] as const
 /** …a unit missing that RIS lacks too and the annex skips in silence: a blind spot by construction. */
 export const RESULT_BLIND = ['Lücke-beide'] as const
+/** …a § shown on the draft's own text (`draftWitness`): its new text misread by our reader — a word lost, a figure, two words swapped, cut at a line's end (20.11.2026). */
+export const RESULT_WITNESS = ['Payload'] as const
 
 /** The annex: a sentence of another § in the right column, old or proposed text. */
 export const ANNEX_MISFILED = ['R-alt', 'R-neu'] as const

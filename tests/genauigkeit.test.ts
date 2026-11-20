@@ -13,6 +13,7 @@ import {
   LAND_OWN_DRAFT,
   RESULT_BLIND,
   RESULT_STRUCTURE,
+  RESULT_WITNESS,
   RESULT_WORDS,
   WEG_BEISPIEL,
   funnelRows,
@@ -54,7 +55,7 @@ describe('rangeDe', () => {
 
 describe('the fault classes', () => {
   it('places every class the record carries in exactly one group, so a new one needs a decision', () => {
-    const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND] as string[]
+    const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND, ...RESULT_WITNESS] as string[]
     const annex = [...ANNEX_MISFILED, ...ANNEX_LOST, ...ANNEX_BLIND] as string[]
     const land = [...LAND_OWN_DRAFT, ...LAND_OTHER_DRAFT, ...LAND_BLIND] as string[]
     for (const [groups, keys] of [
