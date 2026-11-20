@@ -663,6 +663,23 @@ export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[], w
   return out
 }
 
+/**
+ * Units whose pairing is known before the comparison — RIS's two versions
+ * of one § of a Landesgesetz, the one that ended the day before the other
+ * began (`landLawChangesService.ts`, 20.11.2026): each pair one unit, in
+ * the order given, never re-paired by heading or likeness. Through
+ * `diffLawUnits` 46 of 1,937 such §§ stood twice, „neu" beside „entfallen"
+ * or beside another §'s change — a § reworded beyond `alignUnits`' bar,
+ * recorded as „Entfallen", or renumbered around (`harness/landLawChanges.ts`).
+ */
+export function diffKnownPairs(pairs: readonly (readonly [LawUnit | null, LawUnit | null])[], words: DiffOptions = {}): LawDiffUnit[] {
+  return pairs.flatMap(([from, to]) => {
+    if (from && to) return [compareKey(from.text) === compareKey(to.text) ? toUnit('unchanged', from, to, null) : toUnit('changed', from, to, diffTokens(from.text, to.text, words))]
+    if (to) return [toUnit('inserted', null, to, null)]
+    return from ? [toUnit('removed', from, null, null)] : []
+  })
+}
+
 export interface LawPackageDiff {
   units: LawDiffUnit[]
   lawsOnlyInTo: LawPackageEntry[]

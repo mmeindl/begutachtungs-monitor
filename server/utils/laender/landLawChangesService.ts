@@ -16,12 +16,12 @@ import type { LandCode, LandLawDiffResponse } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
 import { SETTLED_TTL_S } from '../cache/ttl'
-import { summarizeDiff } from '../diff/lawDiff'
+import { diffKnownPairs, summarizeDiff } from '../diff/lawDiff'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { mapWithConcurrency } from '../pool'
 import { upstreamText } from '../upstream/fetch'
 import { konsParagraphHistory, konsRefsOfLgbl, lgblNummer } from './landKonsLaws'
-import { diffLandDraft, lgblUnits } from './landLawDiff'
+import { comparedText, lgblUnits } from './landLawDiff'
 import {
   instructionLawFor,
   lgblInstructedParagraphs,
@@ -81,8 +81,8 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   const instructionLaws = [...instructions.keys()]
   const withheld: LandLawDiffResponse['withheld'] = []
   let complete = searchComplete
-  const oldUnits: LawUnit[] = []
-  const newUnits: LawUnit[] = []
+  // Each § as RIS pairs its two versions: the earlier wording (none for a new §) and the later one (none for a repeal).
+  const pairs: [LawUnit | null, LawUnit | null][] = []
 
   const entries = [...byKey.values()]
   await mapWithConcurrency(entries, CONCURRENCY, async (vs) => {
@@ -100,7 +100,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
       })
       if (unit === undefined) return void withheld.push({ law: v.law, id: v.key, reason: 'unchecked' })
       if (!unit) return void withheld.push({ law: v.law, id: v.key, reason: 'enactedUnread' })
-      newUnits.push(unit)
+      pairs.push([null, unit])
       return
     }
     const lawKey = instructionLawFor(v.law, instructionLaws, laws.length)
@@ -120,8 +120,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
       // Neither side read: a repeal (no new wording) of a § whose history holds no earlier one (`new`)
       // pushed nothing and was dropped uncounted until 20.11.2026.
       if ((pair.kind === 'pair' && !oldUnit) || (!repeal && !newUnit) || (!oldUnit && !newUnit)) return void withheld.push({ law: v.law, id: v.key, reason: 'unpaired' })
-      if (oldUnit) oldUnits.push(oldUnit)
-      if (newUnit) newUnits.push(newUnit)
+      pairs.push([oldUnit, newUnit])
     } catch {
       complete = false
       withheld.push({ law: v.law, id: v.key, reason: 'unchecked' })
@@ -138,13 +137,17 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
     }
   }
 
-  const byOrder = (a: LawUnit, b: LawUnit) => (a.article ?? '').localeCompare(b.article ?? '', 'de') || a.id.localeCompare(b.id, 'de', { numeric: true })
-  oldUnits.sort(byOrder)
-  newUnits.sort(byOrder)
-  if (!oldUnits.length && !newUnits.length) {
+  const unitOfPair = ([a, b]: [LawUnit | null, LawUnit | null]) => (b ?? a)!
+  const byOrder = (x: [LawUnit | null, LawUnit | null], y: [LawUnit | null, LawUnit | null]) => (unitOfPair(x).article ?? '').localeCompare(unitOfPair(y).article ?? '', 'de') || unitOfPair(x).id.localeCompare(unitOfPair(y).id, 'de', { numeric: true })
+  pairs.sort(byOrder)
+  if (!pairs.length) {
     return { value: { ...off(gapDe('unreadable', 'Keinen Paragraphen dieses Landesgesetzblatts konnte der Monitor sicher vergleichen.')).value, withheld }, complete }
   }
-  const units = diffLandDraft(oldUnits, newUnits)
+  // Compared pair by pair, as RIS pairs them (20.11.2026): the § comparison's own alignment re-paired the
+  // two versions of one § by heading and likeness, and 46 of 1,937 §§ stood twice, „neu" beside „entfallen".
+  // The texts cleaned as every Land comparison cleans them (`comparedText`).
+  const clean = (u: LawUnit | null): LawUnit | null => u && { ...u, text: comparedText(u.text), blocks: u.blocks.map((b) => ({ ...b, text: comparedText(b.text) })) }
+  const units = diffKnownPairs(pairs.map(([a, b]) => [clean(a), clean(b)] as const))
   const s = summarizeDiff(units)
   const single = laws.length === 1 ? laws[0]! : null
   return {

@@ -54,6 +54,33 @@ describe('compareLandLawChanges — a law the Landesgesetzblatt enacts anew (19.
   })
 })
 
+describe('compareLandLawChanges — RIS’s two versions of one § are one unit (20.11.2026)', () => {
+  beforeEach(() => {
+    XML['novelle2.xml'] = '<risdok><nutzdaten><absatz typ="novao1">1. § 66a lautet: „§ 66a …“</absatz><absatz typ="novao1">2. § 29 entfällt.</absatz></nutzdaten></risdok>'
+    XML['66a-old.xml'] = '<risdok><nutzdaten><ueberschrift typ="para" ct="text">Schriftverkehr</ueberschrift><absatz typ="abs" ct="text">Der im Zusammenhang mit der Funktionsausübung stehende Schriftverkehr hat nach Maßgabe der technischen Möglichkeiten elektronisch zu erfolgen.</absatz></nutzdaten></risdok>'
+    XML['66a-new.xml'] = '<risdok><nutzdaten><ueberschrift typ="para" ct="text">Elektronische Kommunikation</ueberschrift><absatz typ="abs" ct="text">(1) Die Ausübung der zustehenden Rechte und die Übermittlung von Einladungen erfolgen elektronisch.</absatz><absatz typ="abs" ct="text">(2) Auf Verlangen ist schriftlich zuzustellen.</absatz></nutzdaten></risdok>'
+    XML['29-old.xml'] = '<risdok><nutzdaten><absatz typ="abs" ct="text">(1) Die Vorsitzenden erhalten eine angemessene Entschädigung.</absatz></nutzdaten></risdok>'
+    XML['29-new.xml'] = '<risdok><nutzdaten><absatz typ="abs" ct="text">Entfallen</absatz></nutzdaten></risdok>'
+  })
+
+  it('compares a § reworded beyond likeness, or recorded as „Entfallen“, with its own earlier wording — never „neu“ beside „entfallen“', async () => {
+    const version = (para: string, xml: string, from: string, to: string | null, organ: string) => {
+      const r = ref(para, xml, from)
+      Object.assign(r.Data.Metadaten.Landesrecht.LrKons, { Kundmachungsorgan: organ, StammnormBgblnummer: '91/1990', Ausserkrafttretensdatum: to })
+      return r
+    }
+    const new66a = version('§ 66a', '66a-new.xml', '2026-09-01', null, 'LGBl. Nr. 91/1990 zuletzt geändert durch LGBl. Nr. 56/2026')
+    const old66a = version('§ 66a', '66a-old.xml', '2020-01-01', '2026-08-31', 'LGBl. Nr. 91/1990 zuletzt geändert durch LGBl. Nr. 3/2020')
+    const new29 = version('§ 29', '29-new.xml', '2026-09-01', null, 'LGBl. Nr. 91/1990 zuletzt geändert durch LGBl. Nr. 56/2026')
+    const old29 = version('§ 29', '29-old.xml', '2020-01-01', '2026-08-31', 'LGBl. Nr. 91/1990 zuletzt geändert durch LGBl. Nr. 3/2020')
+    konsRefsOfLgbl.mockResolvedValue({ refs: [new66a, new29], complete: true })
+    konsParagraphHistory.mockImplementation(async (_land, _nr, key) => (key === '§66a' ? [old66a, new66a] : [old29, new29]))
+    const { value } = await compareLandLawChanges('ooe', 'LGBl. Nr. 56/2026', 'novelle2.xml', null, '2026-08-20')
+    expect(value.units.map((u) => [u.id, u.fromId, u.change])).toEqual([['§29', '§29', 'changed'], ['§66a', '§66a', 'changed']])
+    expect(value.withheld).toEqual([])
+  })
+})
+
 describe('compareLandLawChanges — a § the Landesgesetzblatt repeals (20.11.2026)', () => {
   beforeEach(() => {
     XML['novelle.xml'] = '<risdok><nutzdaten><absatz typ="novao1">1. § 2 entfällt.</absatz></nutzdaten></risdok>'
