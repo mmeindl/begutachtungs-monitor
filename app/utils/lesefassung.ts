@@ -347,18 +347,34 @@ export function laterAmendmentLine(lesefassung: Lesefassung, designation: string
 
 const COUNT_DE = ['', 'einer', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf']
 
+/** What the page says at a § shown on the draft's own Gesetzestext: a sentence, the places, and what is shown. */
+export interface WitnessNote {
+  lead: string
+  /** Both wordings at each place, a few words around the difference. */
+  places: { annex: string; draft: string }[]
+  close: string
+}
+
 /**
- * The sentence at a § shown on the draft's own Gesetzestext where the annex
- * did not confirm it (`draftWitness`, `server/utils/kons/draftWitness.ts`,
+ * The note at a § shown on the draft's own Gesetzestext where the annex did
+ * not confirm it (`draftWitness`, `server/utils/kons/draftWitness.ts`,
  * 20.11.2026) — null at every other §. Per case, with both wordings at each
- * place: never a claim about ministries. „lesen wir": the annex's wording is
- * our reading of the annex, and where it is a PDF our reader can be the one
- * that differs (a struck word read with the new one, 76/ME XXVIII IFG § 100).
+ * place: never a claim about ministries. „wie wir sie lesen": the annex's
+ * wording is our reading of the annex, and where it is a PDF our reader can
+ * be the one that differs (a struck word read with the new one, 76/ME XXVIII
+ * IFG § 100).
+ *
+ * The places are a list, not a clause each in one sentence: with four places
+ * the sentence was a block of small grey text in which no reader found the
+ * second wording that belongs to the first.
  */
-export function witnessText(paragraph: ConsolidatedParagraph): string | null {
+export function witnessNote(paragraph: ConsolidatedParagraph): WitnessNote | null {
   const places = paragraph.draftWitness ?? []
   if (places.length === 0) return null
   const where = places.length === 1 ? 'Hier' : `An ${COUNT_DE[places.length] ?? places.length} Stellen`
-  const each = places.map((p) => `in der Textgegenüberstellung lesen wir „${p.annex}“, im Gesetzestext „${p.draft}“`).join('; ')
-  return `${where} stimmt die Textgegenüberstellung nicht mit dem Gesetzestext des Entwurfs überein: ${each.charAt(0).toUpperCase()}${each.slice(1)}. Gezeigt ist der Gesetzestext; so steht er auch in der PDF-Fassung des Entwurfs im RIS.`
+  return {
+    lead: `${where} stimmt die Textgegenüberstellung, wie wir sie lesen, nicht mit dem Gesetzestext des Entwurfs überein:`,
+    places,
+    close: 'Gezeigt ist der Gesetzestext; so steht er auch in der PDF-Fassung des Entwurfs im RIS.',
+  }
 }

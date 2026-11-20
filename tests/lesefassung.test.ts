@@ -12,7 +12,7 @@ import {
   outcomeIndex,
   unitList,
   unplacedText,
-  witnessText,
+  witnessNote,
 } from '../app/utils/lesefassung'
 
 /** A pair row of § `para`, changed unless told otherwise. */
@@ -315,17 +315,22 @@ describe('placeAtParagraphs — the block the oracle confirmed a § against', ()
   })
 })
 
-describe('witnessText — a § shown on the draft\'s own text (20.11.2026)', () => {
+describe('witnessNote — a § shown on the draft\'s own text (20.11.2026)', () => {
   const shown = (draftWitness?: ConsolidatedParagraph['draftWitness']): ConsolidatedParagraph => ({ id: '94m', segments: [], headingSegments: null, risUrl: null, annexLaw: null, ...(draftWitness ? { draftWitness } : {}) })
 
   it('says nothing at a § the annex confirms', () => {
-    expect(witnessText(shown())).toBeNull()
+    expect(witnessNote(shown())).toBeNull()
   })
 
-  it('names both wordings at each place, as our reading', () => {
-    expect(witnessText(shown([{ annex: 'dem 30. Juni 2025 begangen', draft: 'dem 30. Juni 2024 begangen' }]))).toBe(
-      'Hier stimmt die Textgegenüberstellung nicht mit dem Gesetzestext des Entwurfs überein: In der Textgegenüberstellung lesen wir „dem 30. Juni 2025 begangen“, im Gesetzestext „dem 30. Juni 2024 begangen“. Gezeigt ist der Gesetzestext; so steht er auch in der PDF-Fassung des Entwurfs im RIS.',
-    )
-    expect(witnessText(shown([{ annex: 'a', draft: 'b' }, { annex: 'c', draft: 'd' }]))).toMatch(/^An zwei Stellen stimmt .*„a“, im Gesetzestext „b“; in der Textgegenüberstellung lesen wir „c“/)
+  it('names both wordings at each place, as our reading, and what is shown', () => {
+    const one = [{ annex: 'dem 30. Juni 2025 begangen', draft: 'dem 30. Juni 2024 begangen' }]
+    expect(witnessNote(shown(one))).toEqual({
+      lead: 'Hier stimmt die Textgegenüberstellung, wie wir sie lesen, nicht mit dem Gesetzestext des Entwurfs überein:',
+      places: one,
+      close: 'Gezeigt ist der Gesetzestext; so steht er auch in der PDF-Fassung des Entwurfs im RIS.',
+    })
+    const two = witnessNote(shown([{ annex: 'a', draft: 'b' }, { annex: 'c', draft: 'd' }]))!
+    expect(two.lead).toMatch(/^An zwei Stellen stimmt /)
+    expect(two.places).toHaveLength(2)
   })
 })

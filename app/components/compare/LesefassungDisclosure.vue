@@ -19,7 +19,7 @@ import type { ConsolidatedParagraph } from '#shared/types'
 import { absaetze } from '~/utils/absaetze'
 import type { UnitKind } from '#shared/utils/unitWord'
 // Imported, not auto-imported: a helper used only in the template is not resolved at runtime.
-import { laterAmendmentText, lesefassungSummary, witnessText } from '~/utils/lesefassung'
+import { laterAmendmentText, lesefassungSummary, witnessNote } from '~/utils/lesefassung'
 
 /** `unit`: what the law counts in, where that is not Paragraphen („Ganzer Artikel …", the B-VG). */
 defineProps<{ paragraph: ConsolidatedParagraph; unit?: UnitKind }>()
@@ -62,8 +62,19 @@ defineProps<{ paragraph: ConsolidatedParagraph; unit?: UnitKind }>()
            which text this is. -->
       <p v-if="paragraph.laterAmendment" class="mt-1 text-xs text-ink-muted">{{ laterAmendmentText(paragraph.laterAmendment, true, null, unit) }}</p>
       <!-- Shown on the draft's own text where the annex reads otherwise
-           (20.11.2026): both wordings, before the text they concern. -->
-      <p v-if="witnessText(paragraph)" class="mt-2 text-xs text-ink-muted">{{ witnessText(paragraph) }}</p>
+           (20.11.2026): both wordings at each place, before the text they
+           concern. A list, each place with its two wordings under each
+           other, so the eye finds the difference between two lines. -->
+      <div v-if="witnessNote(paragraph)" class="mt-3 text-sm text-ink-secondary">
+        <p>{{ witnessNote(paragraph)!.lead }}</p>
+        <ul role="list" class="mt-1.5 list-none space-y-2 pl-0">
+          <li v-for="(place, i) in witnessNote(paragraph)!.places" :key="i" class="border-l-2 border-hairline pl-3">
+            <p><span class="text-ink-muted">Textgegenüberstellung:</span> „{{ place.annex }}“</p>
+            <p><span class="text-ink-muted">Gesetzestext:</span> „{{ place.draft }}“</p>
+          </li>
+        </ul>
+        <p class="mt-1.5">{{ witnessNote(paragraph)!.close }}</p>
+      </div>
       <p v-if="paragraph.headingSegments" class="mt-2 text-sm font-semibold text-ink">
         <DiffText :segments="paragraph.headingSegments" removed-normal-weight />
       </p>

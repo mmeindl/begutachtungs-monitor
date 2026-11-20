@@ -1051,7 +1051,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   instruction, and so does the whole payload, and the annex's wording does
   not; everything is compared in the oracle's comparison form; and with
   the places replaced, the oracle confirms the §. Such a § carries both
-  wordings at the § („lesen wir": the annex's wording is our reading of
+  wordings at the § as a list of places („wie wir sie lesen": the annex's wording is our reading of
   it) and is never counted as confirmed. The Gesetzestext is shown also
   where it carries its own typo: it is what was proposed. Measured: +181
   §§ of 522 contradicted, none lost; at 60 promulgated laws 152 released,
