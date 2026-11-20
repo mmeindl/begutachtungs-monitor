@@ -31,6 +31,14 @@
 # question — did RIS touch something retroactively — the run has to happen
 # without the cache; that is handwork and not a weekly job.
 #
+# The one request the cache never answers is the Begut list
+# (`isBegutSearch` in `scripts/lib/harnessCache.ts`, 20.11.2026). It is a
+# constant URL per page, and served from the carried cache it froze the
+# window at the list of whichever week the cache lineage began — the alarm
+# then measured the same drafts every week and could not see a new one.
+# Each report names its window, and class A reports one whose newest Beginn
+# lies more than 35 days before the run.
+#
 # **The baseline reminds us of itself.** From an age of 60 days the run
 # reports a finding of class `wartung` — with the command that fixes it — and
 # opens an issue for it like for any other finding. Pulling it up stays
@@ -183,7 +191,7 @@ jobs:
                 echo
                 echo "---"
                 echo "Was die Klassen bedeuten, steht in \`scripts/lib/annexReport.ts\`."
-                echo "Nachmessen lässt sich das lokal offline: \`pnpm harness:annex --xml\` und ohne \`--xml\` (braucht \`.harness-cache\`)."
+                echo "Nachmessen lässt sich das lokal: \`pnpm harness:annex --xml\` und ohne \`--xml\` (braucht \`.harness-cache\`; die Liste kommt frisch aus dem RIS, offline mit \`--liste-aus-cache\`)."
               } > body.md
               gh issue create --repo "$GITHUB_REPOSITORY" --label "$LABEL" \
                 --title "Beilage: $SUMMARY" --body-file body.md
