@@ -206,6 +206,29 @@ describe('consolidate — a law RIS files by Artikel (20.11.2026)', () => {
   })
 })
 
+describe('consolidate — one number under two Artikel (20.11.2026)', () => {
+  // 40/ME XXVIII: „Artikel I lautet" beside „Artikel II § 1 …" and „Artikel
+  // II § 6 …". RIS holds „Art. 1" and „Art. 2 § 1" under one bare id.
+  const I = 'Änderung des Testgesetzes'
+  const blocks = draft(artikel('1', I,
+    '<absatz typ="novao1">1. Artikel I lautet:</absatz><absatz typ="abs">&bdquo;Artikel I. Neu.&ldquo;</absatz>' +
+    '<absatz typ="novao1">2. In Artikel II &sect; 1 wird das Wort &bdquo;Eins&ldquo; durch das Wort &bdquo;Ein&ldquo; ersetzt.</absatz>' +
+    '<absatz typ="novao1">3. In Artikel II &sect; 6 wird das Wort &bdquo;Zwei&ldquo; durch das Wort &bdquo;Drei&ldquo; ersetzt.</absatz>'))
+  const ref = (label: string, nor: string, id: string) => ({ nor, label, id, inkrafttreten: null, ausserkrafttreten: null, kundmachungsorgan: null, stammnorm: null, gesetzesnummer: '10000001', xmlUrl: `https://www.ris.bka.gv.at/${nor}.xml` })
+  const law: KonsLawAtDate = { ...LAW, paragraphs: { 'Art. 1': ref('Art. 1', 'NA1', '1'), 'Art. 2 § 1': ref('Art. 2 § 1', 'NA2', '1'), 'Art. 2 § 6': ref('Art. 2 § 6', 'NA6', '6') } }
+  const doc = (gld: string, text: string) => `<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>${gld}</gldsym> ${text}</absatz></abschnitt></nutzdaten></risdok>`
+  const xml: Record<string, string> = { NA1: doc('Artikel I.', 'Alt.'), NA2: doc('§ 1.', 'Eins gilt.'), NA6: doc('§ 6.', 'Zwei gilt.') }
+  const rows = [pair(I, '§ 6. Zwei gilt.', '§ 6. Drei gilt.', '§ 6.')]
+
+  it('withholds the doubled number and runs the other §§ of the Artikel', async () => {
+    const r = await consolidate(who, blocks, '2026-01-01', { resolveLaw: async () => law, paragraphXml: async (ref) => xml[ref.nor]!, annexRows: async () => rows })
+    expect(r.paragraphs.map((p) => p.id)).toEqual(['6'])
+    expect(r.paragraphs[0]!.segments.filter((s) => s.type !== 'removed').map((s) => s.text).join(' ')).toMatch(/Drei gilt/)
+    expect(r.withheld.map((w) => [w.id, w.cause])).toEqual([['1', 'nummer-doppelt']])
+    expect(consolidationBalance(r).balanced).toBe(true)
+  })
+})
+
 describe('consolidate — a repeal held against the annex (19.11.2026)', () => {
   const T = 'Änderung des Testgesetzes'
   const blocks = draft(artikel('1', T, '<absatz typ="novao1">1. &sect; 5 entf&auml;llt.</absatz>'))

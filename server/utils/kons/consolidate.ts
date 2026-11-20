@@ -166,7 +166,10 @@ interface ArticleWork {
   instructions: Instruction[]
   refused: RefusedInstruction[]
   addressed: string[]
-  labels: Map<string, string> | null
+  /** The RIS label of every addressed § but the doubled ones (`addressedLabels`). */
+  labels: Map<string, string>
+  /** Numbers the Artikel names under two labels: withheld as `nummer-doppelt`, nothing fetched for them. */
+  doubled: ReadonlySet<string>
   /** §§ a refused line on the whole text reaches, by the annex (`wholeTextParagraphs`). */
   locked: Set<string>
 }
@@ -193,7 +196,7 @@ function wholeTextParagraphs(w: ArticleWork, annex: AnnexOf): void {
   const refused = w.refused.some((r) => addressesWholeText(r.line))
   if (!read && !refused) return
   const labels = w.labels
-  if (!labels || [...labels.values()].some((label) => /^Art\./.test(label))) return
+  if (w.doubled.size > 0 || [...labels.values()].some((label) => /^Art\./.test(label))) return
   const added = annexChangedUnits(annex.rows, annex.law, w.article.key).filter((id) => !w.addressed.includes(id))
   if (added.length === 0) return
   for (const id of added) labels.set(id, isSchedule(id) ? id : `§ ${id}`)
@@ -274,9 +277,10 @@ export async function consolidate(
     // statement and not an intermediate result. The refusals go in whole,
     // with the container a refused sub-instruction stands under.
     // The RIS labels beside the denominator, and from the same pure step:
-    // a law divided into Artikel files its § 3 as „Art. 2 § 3", and null
-    // here means two addressed §§ would collide under one id.
-    return [{ article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels: addressedLabels(instructions, refused), locked: new Set<string>() }]
+    // a law divided into Artikel files its § 3 as „Art. 2 § 3", and a
+    // number addressed under two labels has none (`doubled`).
+    const { labels, doubled } = addressedLabels(instructions, refused)
+    return [{ article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels, doubled, locked: new Set<string>() }]
   })
   /**
    * The §§ of a law the draft enacts anew that the annex shows changing
@@ -391,9 +395,10 @@ export async function consolidate(
     if (!law) return { kind: 'failed' as const, w, cause: 'gesetz-unbekannt' as const }
     // Two §§ of this Artikel share a number under different Artikel of the
     // standing law. The stock is held by bare id, so one of them would
-    // answer for the other; nothing is shown rather than the wrong text.
+    // answer for the other: that number is fetched for neither and withheld
+    // (`doubled`), the rest of the Artikel runs.
     const labels = w.labels
-    if (!labels) return { kind: 'failed' as const, w, cause: 'nummer-doppelt' as const }
+    const fetched = w.addressed.filter((id) => !w.doubled.has(id))
 
     // Where the budget bites, it should bite the §§ that could show
     // nothing anyway.
@@ -414,7 +419,7 @@ export async function consolidate(
     // Asked for under the label RIS prints, not under the bare designation:
     // in a law divided into Artikel there is no document called „§ 3", and
     // a lookup without the Artikel comes back empty rather than wide.
-    const labelOf = new Map(w.addressed.map((id) => [id, anlageLabelKey(labels.get(id) ?? `§ ${id}`)]))
+    const labelOf = new Map(fetched.map((id) => [id, anlageLabelKey(labels.get(id) ?? `§ ${id}`)]))
     // „Anl." without a number is an instruction saying „the schedule",
     // which only a law with exactly one can mean („Z 1 lit. n des
     // Anhangs"). Here the law's labels are known, so this is the place that
@@ -441,7 +446,7 @@ export async function consolidate(
       if (artikel === null || [...labelOf.values()].includes(artikel)) continue
       labelOf.set(id, artikel)
     }
-    const wanted = new Map(w.addressed.map((id) => [labelOf.get(id)!, covered(id)]))
+    const wanted = new Map(fetched.map((id) => [labelOf.get(id)!, covered(id)]))
     const refs = Object.entries(law.paragraphs)
       .filter(([label]) => wanted.has(anlageLabelKey(label)))
       .sort(([a], [b]) => Number(wanted.get(anlageLabelKey(b))) - Number(wanted.get(anlageLabelKey(a))))
@@ -525,8 +530,12 @@ export async function consolidate(
         held.push({ id, annexLaw: annexLawOf(w), cause })
       }
       for (const id of addressed) {
-      // Our own ceiling first: a document we never fetched is not a refusal
-      // of the engine.
+        if (w.doubled.has(id)) {
+          hold(id, 'nummer-doppelt')
+          continue
+        }
+        // Our own ceiling first: a document we never fetched is not a refusal
+        // of the engine.
         if (skipped.has(labelOf.get(id)!)) {
           hold(id, 'nicht-geladen')
           continue
