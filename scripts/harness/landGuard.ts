@@ -88,6 +88,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
+import { harnessStamp } from '../lib/harnessRecord'
 import { argAssigned, argFlag, argPair } from '../lib/args'
 import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorLine, floorRows, landBaselineFindings, landRecord, reachByLand, toLandBaseline, unaccountedInstructed, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
@@ -851,7 +852,8 @@ const baselineFindings = baseline
   : null
 if (baselineFindings) writeFileSync(join(outDir, 'baseline-findings.txt'), baselineFindings.map((f) => `${f}\n`).join(''))
 writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
-  at: new Date().toISOString(),
+  // `at` and `commit`: the builder of /genauigkeit takes only records of one clean commit (`scripts/lib/genauigkeitRound.ts`).
+  ...harnessStamp(),
   lands: LANDS,
   documents: new Set(units.map((u) => u.draft)).size,
   // The §§ the product shows as changed or new: neither rule withholds them.
