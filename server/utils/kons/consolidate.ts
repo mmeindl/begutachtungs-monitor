@@ -500,6 +500,13 @@ export async function consolidate(
   await mapWithConcurrency([...chains.values()], CONCURRENCY, async (chain) => {
     /** What the Artikel before left of each unit, under the key the stock is held by (`unitsByKey`). */
     const carried = new Map<string, LawNode>()
+    /**
+     * The units an Artikel before refused or locked (20.11.2026): what it left
+     * of them lacks a change the draft makes, so no later Artikel composes
+     * them either. Until then each Artikel locked only its own, and a Teil II
+     * built on a § whose Teil I instruction was refused could be shown.
+     */
+    const refusedBefore = new Set<string>()
     for (const job of chain) {
       const { w, law, queue, skipped, labelOf, inRis, joined } = job
       const { instructions, refused, addressed } = w
@@ -527,6 +534,8 @@ export async function consolidate(
 
       const refusedIds = refusedUnits(unresolved, refused, unitKey)
       for (const id of w.locked) refusedIds.add(id)
+      for (const id of refusedBefore) refusedIds.add(id)
+      for (const id of refusedIds) refusedBefore.add(id)
 
       // Read once instead of once per §: the designation every instruction
       // addresses, and the §§ its payload inserts (80 §§ × 500 instructions).

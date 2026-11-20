@@ -83,6 +83,25 @@ describe('consolidate — two Artikel amending one law', () => {
     expect(r.notRun).toBeNull()
   })
 
+  it('withholds a § under the second Artikel where the first refused an instruction on it (20.11.2026)', async () => {
+    // Teil I's instruction finds no „Fünf" in § 5 and is refused; Teil II would
+    // start from a § 5 without that change, and its annex elides the Absatz
+    // the change was in, so nothing else would notice.
+    const refusing = draft(
+      artikel('1', I, '<absatz typ="novao1">1. In &sect; 5 Abs. 2 wird das Wort &bdquo;F&uuml;nf&ldquo; durch das Wort &bdquo;Sechs&ldquo; ersetzt.</absatz>') +
+      artikel('2', II, '<absatz typ="novao1">1. Dem &sect; 5 wird folgender Abs. 3 angef&uuml;gt:</absatz><absatz typ="abs">&bdquo;(3) Vier gilt.&ldquo;</absatz>'),
+    )
+    const r = await consolidate(who, refusing, '2026-01-01', sources([
+      pair(I, '§ 5. (1) …', '§ 5. (1) …', '§ 5.', true),
+      pair(I, '(2) Fünf gilt.', '(2) Sechs gilt.', null),
+      pair(II, '§ 5. (1) bis (2) …', '§ 5. (1) bis (2) …', '§ 5.', true),
+      pair(II, '', '(3) Vier gilt.', null),
+    ]))
+    expect(r.paragraphs).toEqual([])
+    expect(r.withheld).toEqual([{ id: '5', annexLaw: I, cause: 'verweigert' }, { id: '5', annexLaw: II, cause: 'verweigert' }])
+    expect(consolidationBalance(r)).toEqual({ balanced: true, missing: 0, twice: [] })
+  })
+
   it('names the reason a draft without an amending Artikel has no run', async () => {
     const r = await consolidate(who, draft('<ueberschrift typ="titel">Bundesgesetz über etwas Neues</ueberschrift><absatz typ="abs"><gldsym>§ 1.</gldsym> Dieses Gesetz gilt.</absatz>'), '2026-01-01', sources(rows))
     expect(r).toMatchObject({ touched: 0, notRun: 'keine-novelle' })
