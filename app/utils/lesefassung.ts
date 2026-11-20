@@ -17,7 +17,8 @@
  * names that — never the ministry.
  */
 import { gapDe, type GapKind } from '#shared/utils/gaps'
-import type { AnnexWithheldCause, ConsolidatedNotRun, ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheldCause, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
+import { formatDateDe } from '#shared/utils/format'
+import type { AnnexWithheldCause, ConsolidatedLaterAmendment, ConsolidatedNotRun, ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheldCause, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
 import { annexUnitId, explanationKey } from '#shared/utils/explanationKey'
 
 /**
@@ -29,7 +30,7 @@ export type LesefassungCause = ConsolidatedWithheldCause | 'nicht-gefunden'
 
 export type Lesefassung =
   | { kind: 'shown'; paragraph: ConsolidatedParagraph }
-  | { kind: 'withheld'; cause: LesefassungCause }
+  | { kind: 'withheld'; cause: LesefassungCause; laterAmendment?: ConsolidatedLaterAmendment }
 
 /** One outcome of the server, as the placement takes it. */
 export interface Outcome {
@@ -98,7 +99,7 @@ export function outcomeIndex(response: ConsolidatedTextResponse | null, soleSche
   if (!response || response.notRun) return null
   const all: Outcome[] = [
     ...response.paragraphs.map((p): Outcome => ({ id: p.id, law: p.annexLaw, lesefassung: { kind: 'shown', paragraph: p } })),
-    ...(response.withheld ?? []).map((w): Outcome => ({ id: w.id, law: w.annexLaw, lesefassung: { kind: 'withheld', cause: w.cause } })),
+    ...(response.withheld ?? []).map((w): Outcome => ({ id: w.id, law: w.annexLaw, lesefassung: { kind: 'withheld', cause: w.cause, ...(w.laterAmendment ? { laterAmendment: w.laterAmendment } : {}) } })),
   ]
   const byKey = new Map<string, Outcome>()
   const byUnit = new Map<string, Outcome[]>()
@@ -261,3 +262,30 @@ export function mergesIntoNotice(lesefassung: Lesefassung | null, annexCause: An
 
 /** The sentence the annex notice then ends with. */
 export const NOTICE_LESEFASSUNG_TOO = 'Den ganzen Paragraphen in der vorgeschlagenen Fassung zeigen wir deshalb auch nicht.'
+
+/**
+ * The sentence at a § whose standing text is not what RIS returns today for
+ * the first day of the Begutachtung: RIS files for that day a version that a
+ * Bundesgesetzblatt issued later brought, and the composition starts from the
+ * text that stood then (`standingOnDay`, 20.11.2026). Not a gap sentence —
+ * nothing is missing; it says which text the § starts from, beside the link
+ * to RIS, which shows the later one.
+ *
+ * It reports RIS's record, not a retroactive change in law: RIS dates some
+ * such versions back to the law's first day (the Pensionskassenvorsorgegesetz
+ * of BGBl. I Nr. 88/2026, „BBG" become „BBezG", from 01.08.1997) or files an
+ * Inkrafttretens-§ from its earliest date, and what took effect when only the
+ * BGBl itself says. On a shown § it adds that the later text is not in it;
+ * on a withheld one it stands beside the reason. `designation` names the §
+ * where a block carries more than one.
+ */
+export function laterAmendmentText(note: ConsolidatedLaterAmendment, shown: boolean, designation: string | null = null): string {
+  const what = designation ? designation.replace(/\.$/, '') : 'diesen Paragraphen'
+  const issued = note.issued ? ` vom ${formatDateDe(note.issued)}` : ''
+  return `Ausgangstext ist die Fassung vom Beginn der Begutachtung (${formatDateDe(note.asOf)}). Für diesen Tag führt das RIS ${what} heute in einer Fassung, die erst das ${note.cite}${issued} gebracht hat${shown ? '; sie ist hier nicht eingearbeitet' : ''}.`
+}
+
+/** The same sentence for a withheld § at its block, or null where none is owed. */
+export function laterAmendmentLine(lesefassung: Lesefassung, designation: string | null = null): string | null {
+  return lesefassung.kind === 'withheld' && lesefassung.laterAmendment ? laterAmendmentText(lesefassung.laterAmendment, false, designation) : null
+}

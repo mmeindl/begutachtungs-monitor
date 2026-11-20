@@ -21,6 +21,7 @@
  * the Prüfstand holds every draft to (`consolidationBalance`).
  */
 import type {
+  ConsolidatedLaterAmendment,
   ConsolidatedNotRun,
   ConsolidatedParagraph,
   ConsolidatedTextResponse,
@@ -536,8 +537,16 @@ export async function consolidate(
 
       const found: ConsolidatedParagraph[] = []
       const held: ConsolidatedWithheld[] = []
+      // A § whose standing text is not RIS's answer for the day
+      // (`standingOnDay`): said at it, shown or withheld, wherever that text
+      // was read — not for a § never fetched (`nicht-geladen`, `nummer-doppelt`).
+      const later = laterAmendments(law, asOf)
+      const laterOf = (id: string): { laterAmendment?: ConsolidatedLaterAmendment } => {
+        const hit = later.get(labelOf.get(id) ?? '')
+        return hit ? { laterAmendment: hit } : {}
+      }
       const hold = (id: string, cause: ConsolidatedWithheldCause): void => {
-        held.push({ id, annexLaw: annexLawOf(w), cause })
+        held.push({ id, annexLaw: annexLawOf(w), cause, ...(cause === 'nicht-geladen' || cause === 'nummer-doppelt' ? {} : laterOf(id)) })
       }
       for (const id of addressed) {
         if (w.doubled.has(id)) {
@@ -645,6 +654,8 @@ export async function consolidate(
           // `law.kurztitel` but the Beilage's own law line. The page hangs
           // the § under exactly the § group it was checked against.
           annexLaw: annexLawOf(w),
+          // A renumbered § was composed from the one it came from.
+          ...laterOf(origin !== null && labelOf.has(origin) ? origin : id),
         })
       }
       shownBy.set(w, found)
@@ -653,6 +664,11 @@ export async function consolidate(
   })
 
   return result()
+}
+
+/** `KonsLawAtDate.superseded` under the key `labelOf` asks with (`anlageLabelKey`), each with the day the law was read at. */
+function laterAmendments(law: KonsLawAtDate, asOf: string): Map<string, ConsolidatedLaterAmendment> {
+  return new Map(Object.entries(law.superseded ?? {}).map(([label, { cite, issued }]) => [anlageLabelKey(label), { cite, issued, asOf }]))
 }
 
 /**

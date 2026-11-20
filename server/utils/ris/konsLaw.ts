@@ -161,6 +161,19 @@ export interface KonsLawAtDate {
    * so the lookup worked exactly once and then silently returned nothing.
    */
   paragraphs: Record<string, KonsParagraphRef>
+  /**
+   * The §§, by label, whose version RIS returns for the day `standingOnDay`
+   * replaced by the text that stood then: a Bundesgesetzblatt issued later
+   * brought RIS's version, and the page says so at the § (20.11.2026).
+   * Absent where nothing was replaced.
+   */
+  superseded?: Record<string, KonsSupersession>
+}
+
+/** The Bundesgesetzblatt that brought the version of a § `standingOnDay` set aside, and its issue date (null where RIS does not tell). */
+export interface KonsSupersession {
+  cite: string
+  issued: string | null
 }
 
 /**
@@ -646,6 +659,10 @@ function dayBefore(iso: string): string {
  * it too has to be issued by `date`. Anything undecided — an issue date not
  * found, a repeal, no predecessor — keeps RIS's answer: the oracle still
  * holds it against the annex.
+ *
+ * What it replaced it names in `superseded`, with the later BGBl and its
+ * issue date: the composed § then lacks the text RIS files for that day
+ * today, and the page says so at the §.
  */
 export async function standingOnDay(law: KonsLawAtDate, date: string, sources: StandingSources): Promise<KonsLawAtDate> {
   const year = Number(date.slice(0, 4))
@@ -671,6 +688,7 @@ export async function standingOnDay(law: KonsLawAtDate, date: string, sources: S
     return v ? [v] : []
   }
   const paragraphs = { ...law.paragraphs }
+  const superseded: Record<string, KonsSupersession> = {}
   for (const [label, ref] of late) {
     const start = ref.inkrafttreten
     if (!start) continue
@@ -686,10 +704,17 @@ export async function standingOnDay(law: KonsLawAtDate, date: string, sources: S
       if (issued === null) break
       if (!issued) continue
       paragraphs[label] = v
+      // `late` holds only versions `madeBy` reads a BGBl from. Its issue
+      // date is asked only for the page's sentence (a BGBl of a later year
+      // decided by its year above): a failure there costs the date, which
+      // the sentence then leaves out, not the law.
+      const cite = madeBy(ref.kundmachungsorgan)!.cite
+      if (!issuedOn.has(cite)) issuedOn.set(cite, await sources.issued(cite).catch(() => null))
+      superseded[label] = { cite, issued: issuedOn.get(cite) ?? null }
       break
     }
   }
-  return { ...law, paragraphs }
+  return Object.keys(superseded).length ? { ...law, paragraphs, superseded } : { ...law, paragraphs }
 }
 
 /** A version's BGBl as a number that orders inside one Teil and year — enough among the versions of one § that begin on one day. */

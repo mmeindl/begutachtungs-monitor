@@ -21,7 +21,7 @@ import { UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { annexBadge, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexPara, type PlacedLesefassung } from '~/utils/annexGroups'
 import { enactedHaystack, newLawGroups } from '~/utils/newLawGroups'
 import { annexParagraphCiteDe, citeLineDe } from '#shared/utils/citations'
-import { NOTICE_LESEFASSUNG_TOO, lesefassungLine, lesefassungNotRunText, mergesIntoNotice } from '~/utils/lesefassung'
+import { NOTICE_LESEFASSUNG_TOO, laterAmendmentLine, lesefassungLine, lesefassungNotRunText, mergesIntoNotice } from '~/utils/lesefassung'
 import {
   annexDoubtfulGroupNote,
   annexDoubtfulNote,
@@ -625,6 +625,13 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                 <LesefassungDisclosure :paragraph="l.lesefassung.paragraph" />
               </div>
               <p v-else-if="lineFor(p, l)" class="mt-3 text-xs text-ink-muted">{{ lineFor(p, l) }}</p>
+              <!-- A withheld § for whose day RIS files a later BGBl's
+                   version says so beside its reason, as the shown one
+                   does inside its disclosure — also where the reason line
+                   merged into the annex notice above. -->
+              <p v-if="laterAmendmentLine(l.lesefassung)" :class="lineFor(p, l) ? 'mt-1' : 'mt-3'" class="text-xs text-ink-muted">
+                {{ laterAmendmentLine(l.lesefassung, p.lesefassungen.length > 1 ? l.designation : null) }}
+              </p>
             </template>
           </section>
           <!-- The §§ of this law no block took, once the group is shown
