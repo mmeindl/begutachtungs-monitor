@@ -146,6 +146,8 @@ export interface EuWindowActionView {
   quote: { text: string; source: string } | null
   /** A gap sentence where the button cannot be offered (a Citizens' Initiative whose register entry names no link to sign); absent otherwise. */
   gap?: string | null
+  /** The windows' name before the heading („Sondierung"), only where a second door card stands beside this one; absent or null otherwise. */
+  station?: string | null
 }
 
 /** The door again, for the section where the decision to act is made: only with an address to go to. */
@@ -181,8 +183,8 @@ export interface EuInitiativeView {
   actType: string | null
   /** The card's heading: where the initiative stands. */
   status: string
-  /** The door card under the state card: only while a window is open. */
-  action: EuWindowActionView | null
+  /** The door cards under the state card, one per closing day, soonest first; empty while no window is open. */
+  actions: EuWindowActionView[]
   heading: string
   stations: EuRailStation[]
   sections: EuRailSection[]
@@ -323,33 +325,42 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
   current.current = true
 
   const open = i.publications.filter((p) => isOpen(p, today))
-  // The soonest closing day: two windows open at once closed on the same day in every case of 15.11.2026; where they differ, each section names its own.
-  const end = open.map((p) => p.feedbackEnd).filter((e): e is string => e !== null).sort()[0] ?? null
-  // The windows the door counts down to: those that close on its day (all open ones where none names a day).
-  const counted = end ? open.filter((p) => p.feedbackEnd === end) : open
-  const action: EuWindowActionView | null = open.length
-    ? {
-        end,
-        heading: end ? null : DE.status.openNoEnd,
-        href: i.url,
-        label: DE.action.label,
-        note: null,
-        quote: feedbackQuoteOf(counted.map((p) => ({ stage: p.stage, onProposal: track === 'gesetz' && isProposalFeedback(p) }))),
-      }
-    : null
-  // The door again, at the end of the section that holds its window: „Konsultation" for a stage before the draft, the Commission's own station otherwise. Two windows in two sections on the same day: the later section, where the reading ends.
-  const door = doorOf(action)
-  if (door) {
-    const ids = new Set(counted.map((p): EuRailStationId => (CONSULTATION_STAGES.has(p.stage) && showConsultation ? 'konsultation' : 'vorschlag')))
+  // One door per closing day (`DraftDoorCard`, „One door card per open window", 20.11.2026): windows that close on the
+  // same day share a door, as they share a countdown; a window that closes later gets its own card, not the soonest
+  // one's countdown. Two windows open at once closed on the same day in every case of 15.11.2026, so one door is the
+  // rule. Soonest first; a window without a day last.
+  const days = [...new Set(open.map((p) => p.feedbackEnd))].sort((a, b) => (a === null ? 1 : b === null ? -1 : a.localeCompare(b)))
+  const several = days.length > 1
+  const actions: EuWindowActionView[] = days.map((end) => {
+    // The windows this door counts down to.
+    const counted = open.filter((p) => p.feedbackEnd === end)
+    return {
+      end,
+      heading: end ? null : DE.status.openNoEnd,
+      href: i.url,
+      label: DE.action.label,
+      note: null,
+      quote: feedbackQuoteOf(counted.map((p) => ({ stage: p.stage, onProposal: track === 'gesetz' && isProposalFeedback(p) }))),
+      // Named only beside another door: alone, the state card above says which window runs.
+      station: several ? [...new Set(counted.map((p) => (isProposalFeedback(p) ? EU_RAIL_DE.portal.proposalFeedback : stageDe(p))))].join(' und ') : null,
+    }
+  })
+  // Each door again, at the end of the section that holds its windows: „Konsultation" for a stage before the draft,
+  // the Commission's own station otherwise. Windows of one door in two sections: the later section, where the reading
+  // ends. Two doors in one section are one door there: both lead to the same page of the portal.
+  days.forEach((end, n) => {
+    const door = doorOf(actions[n]!)
+    if (!door) return
+    const ids = new Set(open.filter((p) => p.feedbackEnd === end).map((p): EuRailStationId => (CONSULTATION_STAGES.has(p.stage) && showConsultation ? 'konsultation' : 'vorschlag')))
     const target = [...sections].reverse().find((s) => ids.has(s.id))
-    if (target) target.door = door
-  }
+    if (target && !target.door) target.door = door
+  })
   return {
     title: i.titleDe ?? i.title ?? DE.untitled(i.id),
     titleNote: !i.titleDe && i.title ? DE.englishTitle : null,
     actType: actTypeDe(i.actType) ? DE.actType(actTypeDe(i.actType)!) : null,
     status: statusOf(i, today),
-    action,
+    actions,
     heading: DE.heading,
     stations,
     sections,

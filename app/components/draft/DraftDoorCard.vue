@@ -21,6 +21,19 @@ import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
  * means an instrument one operates, not a place to act — while the
  * Anliegen's door, equally without a Frist, was already blue.
  *
+ * ONE CARD PER WINDOW (20.11.2026). Where two windows are open at once —
+ * a draft's Begutachtung and its Regierungsvorlage, two EU feedback
+ * windows that close on different days — each gets its own card, stacked,
+ * each with its own heading, tone and buttons, all solid. The tone is the
+ * Frist's: a window without one on the urgency ground of another reads as
+ * closing on the other's day, and a calendar button in a shared row reads
+ * as belonging to both. `station` names the window in the heading
+ * („Begutachtung · Noch 5 Tage · bis …") — only where a second card stands
+ * beside it; alone, the page says which window it is. Until then the
+ * second window's buttons stepped back to an outline in the first card's
+ * row, which on the toned ground read as the lesser door.
+ * `docs/decisions.md`, „One door card per open window".
+ *
  * Slots, in the card's order: `heading`; the default slot, the body under
  * it; `after-context`; the button row
  * — `filing` (the door itself, a `DoorButton` while `filingHref` is set),
@@ -33,6 +46,10 @@ const props = defineProps<{
   icsHref?: string | null
   /** Where the door leads; its label is the `filing` slot. Shown while the Frist runs. */
   filingHref?: string | null
+  /** The window's name before the heading, where a second door card stands beside this one. */
+  station?: string | null
+  /** A further card of a stack (`station` set on every card): closer under the one above. */
+  stacked?: boolean
 }>()
 
 /* Decision and sign convention live in app/utils/deadlines.ts, next to
@@ -49,6 +66,9 @@ const fristHeading = computed(() => {
   return props.deadline && days !== null && days > 0 ? `${label} · bis ${formatDateWeekdayDe(props.deadline)}` : label
 })
 
+/* The second card of a stack sits close under the first: one group of doors. */
+const stacked = computed(() => Boolean(props.stacked))
+
 const doorClass = computed(() =>
   props.frist
     ? deadlineCardClass(deadlineTone(props.deadline, true))
@@ -57,12 +77,12 @@ const doorClass = computed(() =>
 </script>
 
 <template>
-  <div class="mt-6 rounded-xl border p-4" :class="doorClass">
+  <div class="rounded-xl border p-4" :class="[doorClass, stacked ? 'mt-3' : 'mt-6']">
     <!-- A heading, not a paragraph (18.09.2026): this is the only action
          the page offers, and for heading navigation it did not appear in
          the outline at all. Countdown, then date (`fristHeading`). -->
     <h2 class="font-sans text-base font-semibold text-ink">
-      <slot name="heading">{{ fristHeading }}</slot>
+      <template v-if="station">{{ station }} · </template><slot name="heading">{{ fristHeading }}</slot>
     </h2>
     <slot />
     <slot name="after-context" />

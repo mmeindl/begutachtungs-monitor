@@ -22,14 +22,18 @@ import type { EuWindowActionView } from '~/utils/euInitiative'
  * the source names no address to go to, there is no button, and a gap
  * sentence says so.
  *
+ * Several windows open at once with different last days are several cards,
+ * one per day, each naming its windows (`station`, `stacked`): one
+ * countdown can only count to one day (`DraftDoorCard`, 20.11.2026).
+ *
  * The same door stands once more at the end of the section where the
  * decision is made (`EuStationSection`, `EuRailSection.door`).
  */
-defineProps<{ action: EuWindowActionView }>()
+defineProps<{ action: EuWindowActionView; stacked?: boolean }>()
 </script>
 
 <template>
-  <DraftDoorCard frist :deadline="action.end" :filing-href="action.href">
+  <DraftDoorCard frist :deadline="action.end" :filing-href="action.href" :station="action.station" :stacked="stacked">
     <template v-if="action.heading" #heading>
       {{ action.heading }}
     </template>

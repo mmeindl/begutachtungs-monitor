@@ -2506,6 +2506,21 @@ the reasoning in full stands in that component's header comment.
   end of the section where the decision to file is made, solid, with the
   card's label (`DoorButton`). It lands in the form („A door lands in the
   form", below).
+- **One door card per open window** (20.11.2026, `DraftDoorCard`). Where
+  two windows are open at once, each gets its own card, stacked: a draft's
+  Begutachtung and its Regierungsvorlage (7 of 91 Vorlagen in GP XXVIII
+  arrived while the Frist ran), two EU feedback windows that close on
+  different days. Each card has its own heading, tone and buttons, all
+  solid; the window's name leads the heading only where a second card
+  stands beside it („Begutachtung · Noch 5 Tage · bis …"). The tone and
+  the calendar belong to the window with the Frist: a window without one,
+  on another's urgency ground or with a calendar button in its row, reads
+  as closing on the other's day. Windows that close on the same day share
+  a card, as they share a countdown. Several actions in one window are one
+  card, grouped by action (an Anliegen's Unterstützen and Stellungnahme,
+  `AnliegenDoor`). Rejected: the second window's buttons as outlines in the
+  first card's row (15.–20.11.2026): on the toned ground they read as the
+  lesser door, and the white calendar button outweighed them.
 - **A box says what one does with it** (03.10.2026, the docblock of
   `FactList`): the accent-washed box is the door you act on, the white card
   an instrument you operate (state card, comparison, statement tables), the

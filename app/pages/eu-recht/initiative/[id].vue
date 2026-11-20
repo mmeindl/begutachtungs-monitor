@@ -125,8 +125,9 @@ const routesLink = computed(() => {
             </template>
           </ProcedureCard>
 
-          <!-- The door: under the state card, where a draft's page has it. -->
-          <EuWindowAction v-if="view.action" :action="view.action" />
+          <!-- The doors: under the state card, where a draft's page has them;
+               one card per closing day, soonest first (`DraftDoorCard`). -->
+          <EuWindowAction v-for="(action, n) in view.actions" :key="action.end ?? 'ohne-tag'" :action="action" :stacked="n > 0" />
 
           <EuStationSection v-for="sec in view.sections" :key="sec.id" :section="sec" />
         </template>

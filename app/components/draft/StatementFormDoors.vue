@@ -8,31 +8,26 @@
  * The rule: `docs/decisions.md`, „A door lands in the form".
  *
  * Each label names the whole action, so it reads alone in a link list.
- * `subject` names the item only where a card offers two of these pairs —
- * the draft's and the Regierungsvorlage's — so no two buttons read alike.
- * Alone, the card's heading or the section names the item, and the subject
- * only made the buttons long (15.11.2026).
- * Both buttons share one weight: two equal ways to one action. `variant`
- * steps the pair back as a whole, where a second window's pair stands
- * beside the first's.
+ * The item is named by the door card's heading, never by the label: two
+ * open windows are two cards, each headed by its own window (20.11.2026;
+ * from 15.11. a shared card named the Vorlage in its pair's labels).
+ * Both buttons share one weight: two equal ways to one action. A second
+ * window's pair gets its own door card, never a lighter style
+ * (`DraftDoorCard`, 20.11.2026).
  * No wrapper: the buttons join the row they are placed in.
  */
 import { statementFormUrl } from '#shared/utils/statementForm'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   /** The item's page at Parliament. */
   itemUrl: string
-  /** „zur Regierungsvorlage" → „Stellungnahme zur Regierungsvorlage als Privatperson". */
-  subject?: string
-  variant?: 'solid' | 'outline'
-}>(), { subject: undefined, variant: 'solid' })
+}>()
 
-const lead = computed(() => (props.subject ? `Stellungnahme ${props.subject}` : 'Stellungnahme'))
 const personUrl = computed(() => statementFormUrl(props.itemUrl, 'person'))
 const organisationUrl = computed(() => statementFormUrl(props.itemUrl, 'organisation'))
 </script>
 
 <template>
-  <DoorButton :href="personUrl" :variant="variant">{{ lead }} als Privatperson</DoorButton>
-  <DoorButton :href="organisationUrl" :variant="variant">{{ lead }} für eine Organisation</DoorButton>
+  <DoorButton :href="personUrl">Stellungnahme als Privatperson</DoorButton>
+  <DoorButton :href="organisationUrl">Stellungnahme für eine Organisation</DoorButton>
 </template>

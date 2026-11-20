@@ -234,7 +234,7 @@ describe('the initiative\'s page', () => {
     expect(v.title).toBe(closed.titleDe)
     expect(v.actType).toBe('Vorgesehen: Vorschlag für eine Richtlinie')
     expect(v.status).toBe('Vorschlag liegt vor')
-    expect(v.action).toBeNull()
+    expect(v.actions).toEqual([])
     expect(v.stations.map((s) => [s.id, s.name, !!s.ahead, s.current])).toEqual([
       ['konsultation', 'Konsultation', false, false],
       ['vorschlag', 'Vorschlag', false, true],
@@ -281,9 +281,9 @@ describe('the initiative\'s page', () => {
     expect(v.sections.map((s) => s.id)).toEqual(['konsultation'])
     expect(JSON.stringify(v.sections)).not.toMatch(/[Vv]eröffentlicht/)
     expect(v.status).toBe('Sondierung läuft')
-    expect(v.action?.end).toBe('2027-01-08')
+    expect(v.actions[0]?.end).toBe('2027-01-08')
     // The Sondierung's sentence over the door, and the door once more at the end of „Konsultation".
-    expect(v.action?.quote?.text).toBe('Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.')
+    expect(v.actions[0]?.quote?.text).toBe('Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.')
     expect(v.sections.find((s) => s.id === 'konsultation')!.door).toEqual({ href: planned.url, label: 'Rückmeldung im Portal der Kommission geben' })
   })
 
@@ -324,7 +324,8 @@ describe('the initiative\'s page', () => {
     }
     const v = euInitiativeView(open, TODAY)
     expect(v.status).toBe('Sondierung läuft · Öffentliche Konsultation läuft')
-    expect(v.action).toEqual({
+    expect(v.actions).toHaveLength(1)
+    expect(v.actions[0]).toEqual({
       end: '2027-02-09',
       heading: null,
       href: open.url,
@@ -333,6 +334,8 @@ describe('the initiative\'s page', () => {
       note: null,
       // Two windows close on the door's day: the Sondierung's sentence is the first of the consultation's, so the door quotes what holds for both — not the consultation's report.
       quote: { text: 'Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.', source: 'Europäische Kommission' },
+      // One door: its windows need no name, the state card says which run.
+      station: null,
     })
     // Sentences that share no opening (a consultation and a draft act), or a window without one: no quote.
     expect(feedbackQuoteOf([{ stage: 'OPC_LAUNCHED', onProposal: false }, { stage: 'ISC_WORKFLOW', onProposal: false }])).toBeNull()
@@ -351,7 +354,7 @@ describe('the initiative\'s page', () => {
     expect(v.stations[1]!.gap).toBe('Das Portal verzeichnet zu diesem Vorhaben noch keinen Entwurf eines Rechtsakts.')
     // The day after it closed, the window is a fact, no action and no second door.
     const after = euInitiativeView(open, '2027-02-10')
-    expect(after.action).toBeNull()
+    expect(after.actions).toEqual([])
     expect(after.sections.some((s) => s.door)).toBe(false)
   })
 
@@ -364,7 +367,7 @@ describe('the initiative\'s page', () => {
     const door = { href: url, label: 'Rückmeldung im Portal der Kommission geben' }
     const placed = (i: EuInitiative) => {
       const v = euInitiativeView(i, TODAY)
-      return { quote: v.action?.quote ?? null, doors: v.sections.filter((s) => s.door).map((s) => [s.id, s.door]) }
+      return { quote: v.actions[0]?.quote ?? null, doors: v.sections.filter((s) => s.door).map((s) => [s.id, s.door]) }
     }
 
     it('quotes the Commission\'s own sentence for the open stage, signed „Europäische Kommission"', () => {
@@ -395,12 +398,22 @@ describe('the initiative\'s page', () => {
       expect(placed(one('PROP_REG', pub('INIT_PLANNED', '2027-01-08')))).toEqual({ quote: null, doors: [['konsultation', door]] })
     })
 
-    it('quotes for the window the door counts down to, and places the door at that window\'s section', () => {
-      // The Sondierung closes first: the door counts to it, quotes it and stands at „Konsultation" — not at the draft act's.
-      expect(placed(one('REG_DEL', pub('PLANNING_WORKFLOW', '2026-12-01'), pub('ISC_WORKFLOW', '2027-01-08')))).toEqual({
-        quote: { text: 'Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.', source: 'Europäische Kommission' },
-        doors: [['konsultation', door]],
-      })
+    it('gives each closing day its own door, named, with its own quote and its own second place (20.11.2026)', () => {
+      // The Sondierung closes first, the draft act later: two cards, soonest first, each counting to its own day.
+      const v = euInitiativeView(one('REG_DEL', pub('PLANNING_WORKFLOW', '2026-12-01'), pub('ISC_WORKFLOW', '2027-01-08')), TODAY)
+      expect(v.actions.map((a) => [a.end, a.station, a.quote?.text])).toEqual([
+        ['2026-12-01', 'Sondierung', 'Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.'],
+        ['2027-01-08', 'Entwurf eines Rechtsakts', 'Die Rückmeldungen werden bei der Fertigstellung dieser Initiative berücksichtigt.'],
+      ])
+      // Each door once more, at the end of its own window's section.
+      expect(v.sections.filter((s) => s.door).map((s) => s.id)).toEqual(['konsultation', 'vorschlag'])
+      // Two days in one section: one door there, both lead to the same page.
+      const both = euInitiativeView(one('PROP_REG', pub('PLANNING_WORKFLOW', '2026-12-01'), pub('OPC_LAUNCHED', '2027-01-08')), TODAY)
+      expect(both.actions.map((a) => a.station)).toEqual(['Sondierung', 'Öffentliche Konsultation'])
+      expect(both.sections.filter((s) => s.door).map((s) => [s.id, s.door])).toEqual([['konsultation', door]])
+    })
+
+    it('quotes for the windows a door counts down to', () => {
       // Two windows on the same day in two sections, with two sentences: no quote; the door once, in the later section, where the reading ends.
       expect(placed(one('REG_DEL', pub('PLANNING_WORKFLOW', '2027-01-08'), pub('ISC_WORKFLOW', '2027-01-08')))).toEqual({ quote: null, doors: [['vorschlag', door]] })
     })

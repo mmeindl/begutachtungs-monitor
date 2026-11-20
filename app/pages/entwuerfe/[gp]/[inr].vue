@@ -144,11 +144,9 @@ const windows = computed(() => ({
   vorlage: Boolean(data.value?.enactment?.filingOpen),
 }))
 
-/* What a Stellungnahme brings, in the words of Parliament's form, above the
- * door's buttons (`statementQuote.ts`): the Begutachtung's while its Frist
- * runs — its pair comes first when both windows are open — else the
- * Vorlage's. */
-const doorQuote = computed(() => (windows.value.begutachtung ? STATEMENT_QUOTE_BEGUTACHTUNG : STATEMENT_QUOTE_PARLAMENT))
+/* What a Stellungnahme brings, in the words of Parliament's form, stands
+ * above each door card's buttons (`statementQuote.ts`): the Begutachtung's
+ * form on its card, the Vorlage's on the Vorlage's. */
 
 /* Which station sections render after the Begutachtung — each one's `v-if`,
  * named ONCE (04.10.2026). The template and the bar's anchors below read
@@ -433,44 +431,35 @@ const ministryLinks = computed(() => {
             </template>
           </SectionCredits>
 
-          <!-- Deadline, action and calendar welded into one card: the page's
-             door, shown while any window for input is open. The Begutachtung
-             while its Frist runs; the Regierungsvorlage while the Nationalrat
-             takes Stellungnahmen on it (the second window most readers do not
-             know exists); both when both are open — see `windows` above for
-             why neither hides the other. Closed, the card goes — the source
-             link lives in the header's provenance line.
+          <!-- The page's doors, one card per open window (`DraftDoorCard`,
+             20.11.2026): the Begutachtung while its Frist runs; the
+             Regierungsvorlage while the Nationalrat takes Stellungnahmen on it
+             (the second window most readers do not know exists); both when
+             both are open — see `windows` above for why neither hides the
+             other. Two windows, two cards: the Frist's tone and its calendar
+             belong to the Begutachtung only, and the Vorlage's pair is as solid
+             as the draft's. Until 20.11.2026 one card held both, the Vorlage's
+             pair as outlines in the Frist's row. Closed, the cards go — the
+             source link lives in the header's provenance line.
 
-             This card is the ONE deliberate break with the station order
+             The cards are the ONE deliberate break with the station order
              below: the Entwurf section with its Gegenüberstellung can run
-             long, and the page's action must not sink below it. The door
-             stays at the front and follows the window that is open. Since
-             30.09.2026 it stands directly under the spine, above „Worum geht
-             es?" too, as on the RIS page: it is the page's one countdown since
-             the badge beside the title went, and under a long Kurzinformation
-             it sat a screen and a half down. -->
+             long, and the page's action must not sink below it. The doors
+             stay at the front and follow the windows that are open. Since
+             30.09.2026 they stand directly under the spine, above „Worum geht
+             es?" too, as on the RIS page: the page's one countdown since the
+             badge beside the title went. -->
           <DraftDoorCard
-            v-if="windows.begutachtung || windows.vorlage"
-            :frist="windows.begutachtung"
+            v-if="windows.begutachtung"
+            frist
             :deadline="data.deadline"
             :ics-href="`/entwuerfe/${gp}/${inr}/frist.ics`"
+            :station="windows.vorlage ? 'Begutachtung' : null"
           >
-            <!-- The second window alone: the Begutachtung is over, parliament
-               still listens. No date, because upstream publishes none — the
-               form closes with the end of the parliamentary procedure, the
-               Bundesrat's Beschluss, and the card says exactly that. -->
-            <!-- Short since 30.09.2026: that the Begutachtung is over and when
-               it ended stands in the bar directly above. -->
-            <template v-if="!windows.begutachtung" #heading>
-              Stellungnahme zur Regierungsvorlage {{ data.enactment?.rvCitation }} möglich
-            </template>
-            <p v-if="windows.vorlage && !windows.begutachtung" class="mt-2 text-sm text-ink-secondary">
-              Ohne Frist – {{ SECOND_ROUND_CLAUSE }}.
-            </p>
             <!-- Directly under the date it qualifies, above the CTA: whoever is
                about to submit reads it before acting, and the sentence ends by
                naming the date that governs. -->
-            <p v-if="windows.begutachtung && divergence" class="mt-2 text-sm text-ink">
+            <p v-if="divergence" class="mt-2 text-sm text-ink">
               Das RIS nennt als Fristende
               <ExternalLink
                 v-if="divergence.url"
@@ -485,32 +474,36 @@ const ministryLinks = computed(() => {
                 Maßgeblich ist der {{ formatDateDe(data.deadline) }}: eingebracht
                 wird beim Parlament.</template><template v-else> Eingebracht wird beim Parlament.</template>
             </p>
-            <SourceQuote :text="doorQuote" :source="STATEMENT_QUOTE_SOURCE" />
-            <template #after-context>
-              <!-- Both windows open: stated as a sequence of facts, not as a
-                 verdict on the ministry (framing rule). The reader gets both
-                 doors and the fact that makes the second one matter. -->
-              <p v-if="windows.begutachtung && windows.vorlage" class="mt-2 text-sm text-ink">
-                Die Regierungsvorlage {{ data.enactment?.rvCitation }} liegt schon im
-                Nationalrat; auch zu ihr ist eine Stellungnahme möglich.
-              </p>
-            </template>
+            <SourceQuote :text="STATEMENT_QUOTE_BEGUTACHTUNG" :source="STATEMENT_QUOTE_SOURCE" />
             <!-- Two doors, one per Parliament form, each landing in its form
                opened (`StatementFormDoors`, 15.11.2026). -->
             <template #primary>
               <StatementFormDoors :item-url="data.parliamentUrl" />
             </template>
+          </DraftDoorCard>
+          <!-- The second window: parliament still listens. No date, because
+             upstream publishes none — the form closes with the end of the
+             parliamentary procedure, the Bundesrat's Beschluss, and the card
+             says exactly that. Beside the Begutachtung's card it says, as a
+             fact and not as a verdict on the ministry (framing rule), that
+             the Vorlage is already in the Nationalrat. The target is the
+             Vorlage's page, where parliament renders the form. -->
+          <DraftDoorCard
+            v-if="windows.vorlage && data.enactment"
+            :frist="false"
+            :deadline="null"
+            :stacked="windows.begutachtung"
+          >
+            <template #heading>
+              Stellungnahme zur Regierungsvorlage {{ data.enactment.rvCitation }} möglich
+            </template>
+            <p class="mt-2 text-sm text-ink-secondary">
+              <template v-if="windows.begutachtung">Liegt schon im Nationalrat, ohne Frist</template><template v-else>Ohne Frist</template>
+              – {{ SECOND_ROUND_CLAUSE }}.
+            </p>
+            <SourceQuote :text="STATEMENT_QUOTE_PARLAMENT" :source="STATEMENT_QUOTE_SOURCE" />
             <template #actions>
-              <!-- Primary when it is the only door; beside the Begutachtung's
-                 button it steps back to an outline, first things first. The
-                 target is the Vorlage's page, where parliament renders the
-                 form — the same way the Begutachtung's button works. -->
-              <StatementFormDoors
-                v-if="windows.vorlage && data.enactment"
-                :item-url="data.enactment.rvUrl"
-                :subject="windows.begutachtung ? 'zur Regierungsvorlage' : undefined"
-                :variant="windows.begutachtung ? 'outline' : 'solid'"
-              />
+              <StatementFormDoors :item-url="data.enactment.rvUrl" />
             </template>
           </DraftDoorCard>
 

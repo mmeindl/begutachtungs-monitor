@@ -17,7 +17,6 @@
  * Solid, as the card's (03.10.2026; outline for its first hours). Weight
  * is judged per screen, not per page: the card is screens above, and here
  * this is the one action in view — an outline would call it optional.
- * Outline stays what it is in the card: a second button in the same row.
  * Two solid buttons on one short page are the same action with the same
  * label, so they do not pull in different directions.
  *
@@ -26,8 +25,10 @@
  * copied, not paraphrased.
  *
  * The card's own buttons are this one too, so the door and its repetition
- * cannot drift apart. `variant` is for the card's row only: there the
- * Vorlage's button steps back to an outline beside the Begutachtung's.
+ * cannot drift apart. Always solid since 20.11.2026: a second window's
+ * buttons stood as outlines in the first window's row until then; now each
+ * open window has its own card (`DraftDoorCard`, „One door card per open
+ * window").
  *
  * An `href` that `isSafeLinkHref` refuses renders no button at all — the
  * same as a missing one, which every caller already hides behind a `v-if`.
@@ -37,10 +38,7 @@
  */
 import { isSafeLinkHref } from '#shared/utils/safeExternalUrl'
 
-const props = withDefaults(defineProps<{
-  href: string
-  variant?: 'solid' | 'outline'
-}>(), { variant: 'solid' })
+const props = defineProps<{ href: string }>()
 
 const safe = computed(() => isSafeLinkHref(props.href))
 </script>
@@ -52,7 +50,7 @@ const safe = computed(() => isSafeLinkHref(props.href))
     target="_blank"
     rel="noopener"
     color="primary"
-    :variant="variant"
+    variant="solid"
     class="min-h-target"
   >
     <slot /><span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
