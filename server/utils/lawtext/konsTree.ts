@@ -420,6 +420,10 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   let footnotes = false
   /** Closing parts read out of `erltext` (below), to be told from text between list items afterwards. */
   const fromErltext = new Set<LawNode>()
+  /** Closing parts that lead into a dash list below them (`leadsIntoDashes`), the same way afterwards. */
+  const leadIns = new Set<LawNode>()
+  /** The list depth each Ziffer and Litera was read at, for a lead-in to hand on to the dashes behind it. */
+  const itemEbene = new Map<LawNode, number | null>()
 
   const blocks = [...body.matchAll(BLOCK_RE)].filter((b) => b[1] === 'table' || /ct="text"/.test(b[2]!))
   /** Whether a list item with this symbol follows block `from` before the next numbered Absatz (`INLINE_Z_RE`). */
@@ -470,6 +474,19 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       else if (root === null) {
         const t = text(inner)
         if (t) context.push(t)
+      } else if (typ === 'erll' && opensNumberedAbsatz(blocks[at + 1])) {
+        // **An Absatz's own heading inside the §** (20.11.2026): „Antrag
+        // auf Erstattung von Vorsteuerbeträgen in einem anderen
+        // Mitgliedstaat" over UStG 1994 § 21 Abs. 11, „5 Beilagen" over a
+        // Tarifpost of GebG § 14 — law text, printed by the ressort in both
+        // columns of its annex. Dropped, the oracle found the left column
+        // nowhere and 61/ME XXVIII's § 21 was withheld as `anhang-fremd`.
+        // Read where it stands, between the Absätze, as a node of the § that
+        // no Absatz address takes along. Only right above a numbered Absatz
+        // (30 of 32.890 cached § documents): a heading inside a schedule's
+        // list would land behind the list it heads, and stays out.
+        const t = text(inner)
+        if (t) para().children.push(makeNode('schluss', 'ueberschrift', '', t))
       }
       continue
     }
@@ -477,7 +494,28 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     if (tag === 'schlussteil' || tag === 'schluss') {
       const t = text(inner)
       const ebene = tag === 'schlussteil' ? (/ebene="([^"]+)"/.exec(attrs)?.[1] ?? null) : null
-      if (currentAbs && t) closingHost(currentAbs, typ, ebene).children.push(makeNode('schluss', 'schluss', '', t))
+      if (currentAbs && t) {
+        const host = closingHost(currentAbs, typ, ebene)
+        const node = makeNode('schluss', 'schluss', '', t)
+        host.children.push(node)
+        // **A lead-in, not a closing part, where dashes follow it**
+        // (20.11.2026): „Als inländische Dienstleister kommen in Betracht:"
+        // closes nothing in EStG 1988 § 95 Abs. 2 Z 3 — the dashes below it
+        // are its list. They hung off lit. b, the last item read, and so
+        // stood in front of the sentence that introduces them: the order
+        // the annex's left column was looked for in (61/ME XXVIII, withheld
+        // as `anhang-fremd`). They go behind it, under the unit it belongs
+        // to; behind an Absatz's closing part they are that Absatz's.
+        if (leadsIntoDashes(blocks[at + 1])) {
+          if (host.level === 'abs') {
+            leadIns.add(node)
+            lastItem = null
+          } else if (itemEbene.get(host) !== undefined && itemEbene.get(host) !== null) {
+            leadIns.add(node)
+            lastItem = { node: host, abs: currentAbs, ebene: itemEbene.get(host)! }
+          }
+        }
+      }
       continue
     }
 
@@ -494,6 +532,7 @@ export function parseKonsParagraph(xml: string): LawNode | null {
         zNode.children.push(litNode)
         absatz().children.push(zNode)
         lastItem = { node: litNode, abs: absatz(), ebene: ebeneAt(m.index) }
+        itemEbene.set(litNode, lastItem.ebene)
         continue
       }
       const opens = ABS_Z_MARKER_RE.exec(marker)
@@ -513,7 +552,10 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       // Litera hang off the Ziffer above them, Ziffern off the Absatz.
       const host = sub ? lastItem!.node : node.level === 'lit' ? (lastChild(absatz(), 'z') ?? absatz()) : absatz()
       host.children.push(node)
-      if (!sub) lastItem = { node, abs: absatz(), ebene }
+      if (!sub) {
+        lastItem = { node, abs: absatz(), ebene }
+        itemEbene.set(node, ebene)
+      }
       continue
     }
 
@@ -647,11 +689,23 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // the slot „Im Schlussteil" finds (`kons/lawApply.ts`, `sentenceSlots`);
   // under its own id it is text in its place, and no sentence of that
   // Absatz is counted across it.
-  for (const node of fromErltext) {
+  for (const node of [...fromErltext, ...leadIns]) {
     const host = root ? lawTextNodes(root).find((n) => n.children.includes(node)) : undefined
     if (host && host.children.slice(host.children.indexOf(node) + 1).some((c) => c.level !== 'schluss')) node.id = 'zwischentext'
   }
   return root
+}
+
+/** The block a heading stands over opens a numbered Absatz: „(11) Ein im Inland …". */
+function opensNumberedAbsatz(next: RegExpMatchArray | undefined): boolean {
+  return next !== undefined && next[1] === 'absatz' && ABS_MARKER_RE.test(text(next[3]!.replace(GLD_RE, ' ')))
+}
+
+/** The block behind a closing part is an unnumbered list item: a dash, a bullet. */
+function leadsIntoDashes(next: RegExpMatchArray | undefined): boolean {
+  if (next === undefined || next[1] !== 'listelem') return false
+  const sym = SYMBOL_RE.exec(next[3]!)
+  return /^[–—\-•·]$/.test(sym ? text(sym[1]!) : '')
 }
 
 /**
