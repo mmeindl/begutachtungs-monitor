@@ -138,3 +138,46 @@ export function landPairChecks(i: LandPairInput): { breaches: Breach[]; symmetry
     symmetry: i.back ? symmetryBreaches(pkg(i.served), pkg(i.back)) : [],
   }
 }
+
+/** How a pair of the harness ended: compared, no comparison to offer, a PDF not in the cache, or an error. */
+export type PairState = 'verglichen' | 'nicht verfügbar' | 'fehlt' | 'Fehler'
+
+/** Per Land: its drafts, those whose detail the cache lacks, those offering pairs; the pairs requested, and how many were compared, unavailable, missing a PDF, errored. */
+export interface LandPairCount {
+  drafts: number
+  uncached: number
+  withPairs: number
+  requested: number
+  compared: number
+  unavailable: number
+  missing: number
+  errored: number
+}
+
+/**
+ * Per Land, what was requested and what was reached, the Länder in code
+ * order (20.11.2026). The table per station pair adds the Länder up, and a
+ * Land that reached nothing vanished in it: Tirol's three pairs, each
+ * missing a PDF the cache does not hold, stood as three „fehlt" among 372;
+ * a Land whose drafts offer no pair, or whose draft detail the cache lacks
+ * (30 of Steiermark's 40), stood nowhere at all.
+ */
+export function pairsPerLand(drafts: readonly { land: string; cached: boolean; pairs: number }[], lines: readonly { land: string; state: PairState }[]): Record<string, LandPairCount> {
+  const out: Record<string, LandPairCount> = {}
+  const of = (land: string) => (out[land] ??= { drafts: 0, uncached: 0, withPairs: 0, requested: 0, compared: 0, unavailable: 0, missing: 0, errored: 0 })
+  for (const d of [...drafts].sort((a, b) => a.land.localeCompare(b.land))) {
+    const c = of(d.land)
+    c.drafts++
+    if (!d.cached) c.uncached++
+    if (d.pairs > 0) c.withPairs++
+  }
+  for (const l of lines) {
+    const c = of(l.land)
+    c.requested++
+    if (l.state === 'verglichen') c.compared++
+    else if (l.state === 'nicht verfügbar') c.unavailable++
+    else if (l.state === 'fehlt') c.missing++
+    else c.errored++
+  }
+  return out
+}

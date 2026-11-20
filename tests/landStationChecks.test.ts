@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { landPairChecks, numbersOnly, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
+import { landPairChecks, numbersOnly, pairsPerLand, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
 import { comparedText, diffLandDraft, landDraftUnits } from '../server/utils/laender/landLawDiff'
 import type { LawUnit } from '../server/utils/lawtext/lawUnits'
 
@@ -111,5 +111,31 @@ describe('landPairChecks — the Bund\'s checks over a Land pair (20.11.2026)', 
   it('names a unit of a side the comparison lost', () => {
     const served = diffLandDraft(lgbl, lgbl)
     expect(landPairChecks({ from: lgbl, to: lgbl, served, before: [], back: null, compared: comparedText }).breaches.map((b) => b.kind)).toEqual(['vollständigkeit', 'vollständigkeit'])
+  })
+})
+
+describe('pairsPerLand — per Land, what was requested and what was reached (20.11.2026)', () => {
+  it('counts each Land\'s drafts and pairs, so a Land that reached nothing says so', () => {
+    const drafts = [
+      { land: 'sbg', cached: true, pairs: 3 },
+      { land: 'stmk', cached: false, pairs: 0 },
+      { land: 'stmk', cached: true, pairs: 0 },
+      { land: 't', cached: true, pairs: 2 },
+      { land: 'ktn', cached: true, pairs: 1 },
+    ]
+    const lines = [
+      { land: 'sbg', state: 'verglichen' as const },
+      { land: 'sbg', state: 'nicht verfügbar' as const },
+      { land: 'sbg', state: 'Fehler' as const },
+      { land: 't', state: 'fehlt' as const },
+      { land: 't', state: 'fehlt' as const },
+      { land: 'ktn', state: 'verglichen' as const },
+    ]
+    expect(pairsPerLand(drafts, lines)).toEqual({
+      ktn: { drafts: 1, uncached: 0, withPairs: 1, requested: 1, compared: 1, unavailable: 0, missing: 0, errored: 0 },
+      sbg: { drafts: 1, uncached: 0, withPairs: 1, requested: 3, compared: 1, unavailable: 1, missing: 0, errored: 1 },
+      stmk: { drafts: 2, uncached: 1, withPairs: 0, requested: 0, compared: 0, unavailable: 0, missing: 0, errored: 0 },
+      t: { drafts: 1, uncached: 0, withPairs: 1, requested: 2, compared: 0, unavailable: 0, missing: 2, errored: 0 },
+    })
   })
 })

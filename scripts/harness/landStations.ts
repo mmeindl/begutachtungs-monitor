@@ -82,7 +82,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
-import { landPairChecks, numbersOnly, recurringRuns } from '../lib/landStationChecks'
+import { landPairChecks, numbersOnly, pairsPerLand, recurringRuns, type PairState } from '../lib/landStationChecks'
 import type { Breach } from '../lib/stationChecks'
 import { comparedText, diffLandDraft } from '../../server/utils/laender/landLawDiff'
 
@@ -171,7 +171,7 @@ interface ComparisonLine {
   land: LandCode
   draft: string
   pair: string
-  state: 'verglichen' | 'nicht verfügbar' | 'fehlt' | 'Fehler'
+  state: PairState
   reason: string | null
   from: string | null
   to: string | null
@@ -185,6 +185,8 @@ interface ComparisonLine {
   symmetry: string[]
 }
 const lines: ComparisonLine[] = []
+/** Every draft of the population: its detail in the cache, and the pairs it offers (`pairsPerLand`). */
+const draftsRun: { land: LandCode; cached: boolean; pairs: number }[] = []
 const segmentsOf = (u: LawDiffUnit): string[] =>
   u.change === 'unchanged'
     ? []
@@ -197,9 +199,13 @@ for (const item of items) {
   const number = item.id.slice(item.id.indexOf('-') + 1)
   const file = `${EU}/server/${sha1(`/api/laender/${item.land}/${encodeURIComponent(number)}`)}.json`
   done++
-  if (!existsSync(file)) continue
+  if (!existsSync(file)) {
+    draftsRun.push({ land: item.land, cached: false, pairs: 0 })
+    continue
+  }
   const detail = JSON.parse(readFileSync(file, 'utf8')) as LandDraftDetail
   const pairs = (detail.comparisons ?? []).filter(([a]) => a !== 'geltend' && a !== 'vorher')
+  draftsRun.push({ land: item.land, cached: true, pairs: pairs.length })
   if (!pairs.length) continue
   const sources = textSources(item.land, detail, pagesOf)
   for (const [from, to] of pairs as [LandTextStation, LandTextStation][]) {
@@ -274,6 +280,11 @@ for (const [pair, ls] of [...byPair].sort()) {
   const sum = (k: keyof LandLawDiffResponse['stats']) => ok.reduce((n, l) => n + (l.stats?.[k] ?? 0), 0)
   out.push(`| ${pair} | ${ls.length} | ${ok.length} | ${ls.filter((l) => l.state === 'nicht verfügbar').length} | ${ls.filter((l) => l.state === 'fehlt').length} | ${ls.filter((l) => l.state === 'Fehler').length} | ${sum('total')} | ${sum('changed')} | ${sum('inserted')} | ${sum('removed')} |`)
 }
+out.push('')
+out.push('| Land | Entwürfe | Detail nicht im Cache | mit Paaren | Paare angefragt | verglichen | nicht verfügbar | fehlt (PDF nicht im Cache) | Fehler |')
+out.push('|---|---|---|---|---|---|---|---|---|')
+const perLand = pairsPerLand(draftsRun, lines)
+for (const [land, c] of Object.entries(perLand)) out.push(`| ${land} | ${c.drafts} | ${c.uncached} | ${c.withPairs} | ${c.requested} | ${c.compared} | ${c.unavailable} | ${c.missing} | ${c.errored} |`)
 out.push('')
 out.push('## Invarianten')
 out.push('')
@@ -358,6 +369,7 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   at: new Date().toISOString(),
   pairs: lines.length,
   compared: lines.filter((l) => l.state === 'verglichen').length,
+  lands: perLand,
   units: lines.reduce((n, l) => n + (l.stats?.total ?? 0), 0),
   hits: hits.length,
   accepted: accepted.length,
