@@ -1928,6 +1928,7 @@ if (jsonPath) {
     at: new Date().toISOString(),
     gp,
     path: xmlMode ? 'table' : 'pdf',
+    window: listWindow,
     drafts,
     annex: [faults.L, faults.Rold, faults.Rnew, faults.U].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.shipped })),
     result: [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses, oracleFaults.Payload].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f) })),

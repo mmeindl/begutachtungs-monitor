@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, windowLine, windowOf, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
+import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, reportHeading, summarize, toBaseline, windowLine, windowOf, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
 
 /**
  * The alarm itself, against invented reports.
@@ -270,5 +270,18 @@ describe('das Fenster eines Laufs', () => {
     expect(windowLine({ newest: '2026-09-08', oldest: '2024-04-29', listFetchedAt: sept.toISOString(), fromCache: true })).toBe('Beginn 29.04.2024 bis 08.09.2026, Liste aus dem Cache, abgerufen am 09.09.2026')
     expect(windowLine({ newest: '2026-11-19', oldest: '2025-01-02', listFetchedAt: '2026-11-20T08:00:00.000Z', fromCache: false })).toBe('Beginn 02.01.2025 bis 19.11.2026, Liste frisch abgerufen am 20.11.2026')
     expect(windowLine({ newest: null, oldest: null, listFetchedAt: null, fromCache: false })).toBe('Beginn unbekannt, Abruf der Liste unbekannt')
+  })
+})
+
+describe('der Kopf eines Berichts', () => {
+  it('nennt Pfad, Lauf und Fenster', () => {
+    const r = report([], { window: { newest: '2026-09-08', oldest: '2024-04-29', listFetchedAt: '2026-09-09T14:49:43.948Z', fromCache: true } })
+    expect(reportHeading(r)).toBe(`Tabellenpfad (GP XXVIII, ${r.drafts.length} Entwürfe mit Beilage, gemessen 2026-09-16; Beginn 29.04.2024 bis 08.09.2026, Liste aus dem Cache, abgerufen am 09.09.2026)`)
+  })
+
+  it('sagt es, wenn ein älterer Bericht sein Fenster nicht kennt', () => {
+    const { window: _, ...older } = report([], { path: 'pdf' })
+    expect(reportHeading(older)).toContain('PDF-Pfad')
+    expect(reportHeading(older)).toContain('Fenster nicht im Bericht')
   })
 })

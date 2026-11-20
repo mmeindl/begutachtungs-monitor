@@ -21,7 +21,7 @@
  *   pnpm ci:annex-drift -- --grundlinie-schreiben=g.json bericht.json … — neu ziehen
  */
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
-import { classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexBaseline, type AnnexReport, type Finding } from '../lib/annexReport'
+import { classAFindings, classBFindings, maintenanceFindings, reportHeading, summarize, toBaseline, type AnnexBaseline, type AnnexReport, type Finding } from '../lib/annexReport'
 import { argAssigned } from '../lib/args'
 
 const paths = process.argv.slice(2).filter((a) => !a.startsWith('--') && a.endsWith('.json'))
@@ -71,8 +71,7 @@ for (const report of reports) {
   total += findings.length
   all.push(...findings)
 
-  const label = `${report.path === 'xml' ? 'Tabellenpfad' : 'PDF-Pfad'} (GP ${report.gp}, ${report.drafts.length} Entwürfe mit Beilage, gemessen ${report.at.slice(0, 10)})`
-  lines.push(`## ${label}`)
+  lines.push(`## ${reportHeading(report)}`)
   if (findings.length === 0) lines.push('Ohne Befund.')
   else for (const f of findings) lines.push(`- **${f.kind}**${f.draft ? ` · \`${f.draft}\`` : ''}: ${f.text}`)
   lines.push('')

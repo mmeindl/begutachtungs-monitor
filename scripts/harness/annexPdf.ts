@@ -775,6 +775,7 @@ if (jsonPath) {
     path: xmlMode ? 'xml' : 'pdf',
     limit,
     records: docs.length,
+    window: listWindow,
     // `results`, not `gated` or `scored`: a draft whose annex was refused can
     // have lost pages all the same, and its assurances hold just as much. The
     // prose report's filters are there for percentages, not for assurances.

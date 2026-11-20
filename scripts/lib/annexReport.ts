@@ -156,7 +156,16 @@ export interface AnnexReport {
   limit: number
   /** Records RIS delivered at all */
   records: number
+  /** Which drafts the run measured (20.11.2026); absent in older reports, which did not know it */
+  window?: AnnexWindow
   drafts: AnnexDraftReport[]
+}
+
+/** The head of a report in the drift log: path, run and window. */
+export function reportHeading(report: AnnexReport): string {
+  const run = `GP ${report.gp}, ${report.drafts.length} Entwürfe mit Beilage, gemessen ${report.at.slice(0, 10)}`
+  const window = report.window ? windowLine(report.window) : 'Fenster nicht im Bericht'
+  return `${report.path === 'xml' ? 'Tabellenpfad' : 'PDF-Pfad'} (${run}; ${window})`
 }
 
 export interface Finding {
