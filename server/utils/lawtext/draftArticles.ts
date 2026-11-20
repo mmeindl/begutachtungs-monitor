@@ -125,7 +125,8 @@ export interface DraftArticle {
    * The key `segmentUnits` and `promulgationByArticle` use (`articleTitle ??
    * articleNumber`), qualifier and all, so a row joins onto the diff units
    * without a second convention. Null only where both are — a draft that
-   * neither numbers its Artikel nor names itself.
+   * neither numbers its Artikel nor names itself. A join value, never a
+   * label: where it is the qualifier, a reader is shown `articleNames`.
    */
   key: string | null
   /**
@@ -274,6 +275,33 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   }
   close()
   return out
+}
+
+/**
+ * Key → the name to print, for every Artikel whose key is a qualifier and no
+ * name: „(Verfassungsbestimmung)" → „Änderung des Bundes-Verfassungsgesetzes".
+ *
+ * The key is the join value and stays (`DraftArticle.key`); this is what a
+ * reader is shown in its place (`lawNameOf` in `shared/utils/lawName.ts`).
+ * The Artikel's title, or its number where it prints nothing but the
+ * qualifier under it („Artikel 5"). Other keys are their own name and have
+ * no entry.
+ *
+ * Two Artikel of one text can carry the qualifier, and then share the key
+ * (4 of the 17 cached texts with such a key, 20.11.2026): the group the page
+ * builds under it holds the units of both, so its name is both names, in
+ * printed order.
+ */
+export function articleNames(articles: readonly DraftArticle[]): Map<string, string> {
+  const names = new Map<string, string[]>()
+  for (const a of articles) {
+    if (a.key === null || !QUALIFIER_RE.test(a.key.trim())) continue
+    const name = a.title ?? a.number
+    if (name === null) continue
+    const seen = names.get(a.key) ?? []
+    if (!seen.includes(name)) names.set(a.key, [...seen, name])
+  }
+  return new Map([...names].map(([key, list]) => [key, list.join(' / ')]))
 }
 
 /**

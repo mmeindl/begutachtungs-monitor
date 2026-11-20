@@ -13,7 +13,7 @@
 import { parseParliamentHtml } from './parliamentHtml'
 import { normalizeText, stripQuotes } from './normalize'
 import { parseRisXml } from './risXml'
-import { promulgationByArticle } from './draftArticles'
+import { articleNames, draftArticles, promulgationByArticle } from './draftArticles'
 import type { BgblCitation } from './bgblCitation'
 
 export type BlockKind =
@@ -40,6 +40,12 @@ export interface TextBlock {
 export interface LawUnit {
   /** Article title if the package has Artikel, else the law title, else null */
   article: string | null
+  /**
+   * The name to print for the Artikel where `article`, the key, is a
+   * qualifier and no name — „(Verfassungsbestimmung)" above „Änderung des
+   * Bundes-Verfassungsgesetzes" (`articleNames`). Absent otherwise.
+   */
+  articleName?: string
   /** "Artikel 3" when the package has Artikel, else null */
   articleNumber: string | null
   /** "§5", "Art.3" or "Z4" (Novellierungsanordnung number) */
@@ -553,9 +559,12 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
 
   // Keyed as the units are (`articleTitle ?? articleNumber`), by contract.
   const clauses = promulgationByArticle(blocks)
+  const names = articleNames(draftArticles(blocks))
   for (const u of units) {
     u.text = u.blocks.map((x) => x.text).join(' ')
     u.stammnorm = clauses.get(u.article) ?? null
+    const name = u.article === null ? undefined : names.get(u.article)
+    if (name !== undefined) u.articleName = name
   }
   return units
 }

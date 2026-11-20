@@ -369,9 +369,13 @@ const readLawDiff = defineCachedFunction(
     if (units.length === 0) {
       return answer(gapDe('unreadable', 'Der Gesetzestext ließ sich nicht in Paragraphen gliedern.'), { fromSource, toSource })
     }
+    // The printed name of a law keyed by a qualifier, from either text; the
+    // later one's where both name it (`LawDiffResponse.lawNames`).
+    const lawNames = Object.fromEntries([...fromUnits, ...toUnits].flatMap((u) => (u.article !== null && u.articleName ? [[u.article, u.articleName]] : [])))
     return answer(null, {
       fromSource,
       toSource,
+      ...(Object.keys(lawNames).length ? { lawNames } : {}),
       stats: summarizeDiff(units),
       lawsOnlyInTo,
       lawsOnlyInFrom,
