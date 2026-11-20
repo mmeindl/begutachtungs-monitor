@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bridgeVersionGap, oneCharApart, pickByName, promulgatedBeforeInForce, soleUnlessContradicted, type KonsVersion } from '../server/utils/ris/konsLaw'
+import { bridgeVersionGap, oneCharApart, pickByEqualName, pickByName, promulgatedBeforeInForce, soleUnlessContradicted, type KonsVersion } from '../server/utils/ris/konsLaw'
 
 /**
  * Which law of a Bundesgesetzblatt a caller meant.
@@ -44,6 +44,24 @@ describe('pickByName', () => {
   it('separates a law from its own annex, which is a near-namesake', () => {
     const m = laws('Umsatzsteuergesetz 1994', 'Umsatzsteuergesetz 1994 - Anhang (Binnenmarkt)')
     expect(pickByName(m, 'Änderung des Umsatzsteuergesetzes 1994')?.[1].kurztitel).toBe('Umsatzsteuergesetz 1994')
+  })
+})
+
+describe('pickByEqualName — equality where the score cannot decide (20.11.2026)', () => {
+  // BGBl. Nr. 311/1985 created both, and both are „StbG" (152/ME XXVIII).
+  const stbg = new Map([
+    ['10005579', { kurztitel: 'Staatsbürgerschaftsgesetz 1985', abkuerzung: 'StbG' }],
+    ['10005577', { kurztitel: 'Staatsbürgerschafts-Übergangsrecht 1985', abkuerzung: 'StbG' }],
+  ])
+  it('takes the law whose Kurztitel is the name, its year aside', () => {
+    expect(pickByName(stbg, 'Staatsbürgerschaftsgesetz')).toBeNull()
+    expect(pickByEqualName(stbg, 'Staatsbürgerschaftsgesetz')?.[0]).toBe('10005579')
+    expect(pickByEqualName(stbg, 'Staatsbürgerschaftsgesetz 1985')?.[0]).toBe('10005579')
+  })
+  it('refuses a name two laws carry, and a name that is only near', () => {
+    expect(pickByEqualName(stbg, 'StbG')).toBeNull()
+    expect(pickByEqualName(stbg, 'Änderung des Staatsbürgerschaftsgesetzes')).toBeNull()
+    expect(pickByEqualName(stbg, '')).toBeNull()
   })
 })
 
