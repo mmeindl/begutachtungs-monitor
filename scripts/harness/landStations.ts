@@ -41,7 +41,12 @@
  *  - `Kopfzeile`: the Land's running head (a file path, Word's save stamp)
  *    in a unit's text;
  *  - `Unteranweisung neu`: an instruction shown as new whose text opens
- *    with a sub-instruction's number („1.1. In der Z 6 …").
+ *    with a sub-instruction's number („1.1. In der Z 6 …");
+ *  - `Wiederkehrender Einschub`: a unit changed by nothing but a short run
+ *    that changed units of three drafts of its Land insert, or remove, too
+ *    (`recurringRuns`, 20.11.2026) — a page's furniture read as law, known
+ *    by its recurrence rather than its shape: Kärnten's session stamp
+ *    „REG.SITZG." stood in 198 units, and `Kopfzeile` knows Salzburg's head.
  * A hit fails the run (exit 1) and is printed with its comparison — unless
  * `landStationsAccepted.json` names it with the reason it is the documents'
  * own (19.11.2026: K-TDBG § 10 enumerates in the Landesgesetzblatt what the
@@ -69,6 +74,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
+import { recurringRuns } from '../lib/landStationChecks'
 
 const outDir = argPair('out')
 const onlyLand = argPair('land') as LandCode | undefined
@@ -127,8 +133,8 @@ const pagesOf = (url: string) => {
 }
 
 // --- The invariants ------------------------------------------------------
-type Invariant = '#dup' | 'Nur Ziffern neu' | 'Kopfzeile' | 'Unteranweisung neu'
-const INVARIANTS: Invariant[] = ['#dup', 'Nur Ziffern neu', 'Kopfzeile', 'Unteranweisung neu']
+type Invariant = '#dup' | 'Nur Ziffern neu' | 'Kopfzeile' | 'Unteranweisung neu' | 'Wiederkehrender Einschub'
+const INVARIANTS: Invariant[] = ['#dup', 'Nur Ziffern neu', 'Kopfzeile', 'Unteranweisung neu', 'Wiederkehrender Einschub']
 /** A running head of Salzburg's template: a drive or network path, or Word's save stamp „….docx \ 27.11.2025 07:29:00". */
 const HEAD_RE = /(?:^|\s)(?:[A-Z]:\\|\\\\)\S|\.docx?\s*\\\s*\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}/
 /** What the instruction's number leaves when the parser takes only its first level: „1.1. In der Z 6", „1a. …", „2 Abs 3". */
@@ -215,6 +221,16 @@ for (const item of items) {
 }
 process.stderr.write('\n')
 
+// --- Across pairs: the same short run in a Land's drafts (`recurringRuns`) ---
+const recurring = recurringRuns(lines.flatMap((l) => l.units.map((u) => ({
+  land: l.land,
+  draft: l.draft,
+  change: u.change,
+  segments: u.segments.map((s) => ({ type: s.startsWith('+') ? 'inserted' as const : 'removed' as const, text: s.slice(1) })),
+  line: u,
+}))))
+for (const r of recurring) for (const u of r.only) if (!u.line.violations.includes('Wiederkehrender Einschub')) u.line.violations.push('Wiederkehrender Einschub')
+
 // --- Output --------------------------------------------------------------
 writeFileSync(join(outDir, 'comparisons.jsonl'), lines.map((l) => JSON.stringify(l)).join('\n') + '\n')
 const out: string[] = []
@@ -248,6 +264,7 @@ for (const inv of INVARIANTS) {
   const a = accepted.filter((x) => x.u.violations.includes(inv)).length
   out.push(`- ${inv}: ${h.length} Einheiten in ${new Set(h.map((x) => `${x.l.draft} ${x.l.pair}`)).size} Vergleichen${a ? ` (dazu ${a} angenommen, landStationsAccepted.json)` : ''}`)
 }
+for (const r of recurring) out.push(`  - ${r.land} ${r.side === 'inserted' ? '+' : '-'}„${r.text}" in ${r.drafts} Entwürfen, ${r.units} Einheiten, einzige Änderung in ${r.only.length}`)
 out.push('')
 for (const { l, u } of hits) out.push(`- [${u.violations.join(', ')}] ${l.draft} ${l.pair} ${u.article ?? '-'} ${u.fromId && u.fromId !== u.id ? `${u.fromId} → ` : ''}${u.id} ${u.change}${u.editorial ? ' (redaktionell)' : ''} ${u.segments.slice(0, 4).join(' | ').slice(0, 300)}`)
 for (const k of stale) out.push(`- [angenommen, tritt nicht mehr auf] ${k} — ${acceptedRecord.accepted[k]}`)
