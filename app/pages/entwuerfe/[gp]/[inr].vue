@@ -558,7 +558,7 @@ const ministryLinks = computed(() => {
                  implements, their deadlines beside the Begutachtung —
                  in the order of the Entwurf station's line, one credit line
                  under the frame. -->
-              <EntwurfFrame :laws="amendedLaws" :eu="euRecht" :timeline="euTimelineCtx" />
+              <EntwurfFrame :laws="amendedLaws" :eu="euRecht" :timeline="euTimelineCtx" :documents="data.documents" :cite-as="draftCitationDe(data.citation, data.gp)" />
 
               <!-- The ressort's own comparison, available from day one.
                  `#gegenueberstellung` is kept as the anchor because that link is

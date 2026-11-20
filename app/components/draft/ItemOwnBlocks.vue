@@ -48,7 +48,7 @@ defineProps<{
 
 <template>
   <!-- The law in force it would change, as on the draft page. -->
-  <EntwurfFrame :laws="amendedLaws" :carried="carried" />
+  <EntwurfFrame :laws="amendedLaws" :carried="carried" :documents="item.documents" :cite-as="citeAs" />
   <!-- „Zitieren" at a § only for a Vorlage's annex, which cites as its
        Beilage; an Antrag's is Parliament's working copy, no document of the
        Antrag to cite it by. -->

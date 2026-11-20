@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { AmendedLawsResponse, EuRechtResponse, LandBundesrechtResponse } from '#shared/types'
+import type { AmendedLawsResponse, DraftDocument, EuRechtResponse, LandBundesrechtResponse } from '#shared/types'
 import { formatDateDe } from '#shared/utils/format'
 import type { Component } from 'vue'
-import { entwurfFrameCredits, entwurfFrameView, type CarriedDraftLine, type EntwurfFrameMethod } from '~/utils/entwurfFrame'
+import { entwurfFrameCredits, entwurfFrameView, NEW_LAW_DE, type CarriedDraftLine, type EntwurfFrameMethod } from '~/utils/entwurfFrame'
 import type { EuTimelineContext } from '~/utils/euRecht'
 import { BUNDESRECHT_FACT_ANCHOR, EU_FACT_ANCHOR } from '~/utils/origin'
 import MethodBundLand from '~/components/method/MethodBundLand.vue'
@@ -16,7 +16,10 @@ import MethodEuRecht from '~/components/method/MethodEuRecht.vue'
  * „Setzt EU-Recht um" (the marker's own words: acts, related counts, the
  * deadline strip and its footnotes inside the frame, as the Frist bar sits
  * in the Begutachtung's) · on a Land's draft „Führt aus" (Grundsatzgesetze)
- * and „Setzt um" (Art.-15a agreements).
+ * and „Setzt um" (Art.-15a agreements). A draft that creates a law has
+ * „Neues Gesetz" in the place of „Ändert", its Gesetzestext linked
+ * (20.11.2026): the one text such a draft has, which stood only in the
+ * folded „Dokumente".
  *
  * Keeps `id="recht"`: that anchor is in circulation; the rows carry
  * `eu-recht-fakt` and `bundesrecht-fakt`. A Sammelgesetz names forty laws;
@@ -32,6 +35,10 @@ const props = defineProps<{
   publisher?: string | null
   /** An Initiativantrag's page: the consulted draft whose text it carries (`carriedDraftDe`). */
   carried?: CarriedDraftLine | null
+  /** The draft's documents: „Neues Gesetz" links its Gesetzestext from them. */
+  documents?: DraftDocument[] | null
+  /** The draft as its documents are cited („Ministerialentwurf 120/ME XXVIII. GP"). */
+  citeAs?: string | null
 }>()
 
 const LAW_FOLD_AT = 5
@@ -51,6 +58,16 @@ const METHOD: Record<EntwurfFrameMethod, Component> = { 'eu-recht': MethodEuRech
         <p class="mt-1 text-ink-secondary">
           {{ carried.before }}<NuxtLink :to="carried.link.href" class="link-inline">{{ carried.link.label }}</NuxtLink>{{ carried.after }}
         </p>
+      </template>
+      <!-- Built like a law in `AmendedLawLine`: the link, „Zitieren", and
+           the fact under it. Without a Gesetzestext among the documents (an
+           Antrag publishes only itself) the row keeps its sentence. -->
+      <template v-if="view.newLaw" #value-neu>
+        <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink">
+          <ExternalLink :href="view.newLaw.url" class="link-inline">{{ view.newLaw.title }} ({{ view.newLaw.format }})</ExternalLink>
+          <CiteButton v-if="view.newLaw.cite" :text="view.newLaw.cite" :subject="view.newLaw.title" />
+        </p>
+        <p class="mt-0.5 text-xs text-ink-muted">{{ NEW_LAW_DE }}</p>
       </template>
       <template v-if="laws" #value-recht>
         <ul role="list" class="mt-1 space-y-2">

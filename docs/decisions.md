@@ -2244,6 +2244,16 @@ not yet followed, or the EU cycle, starts there.
   lesbar", never „neues Recht"; a text it could not identify (a motion's
   „Gesetzesantrag" or „Antrag") is a stated gap in the frame, never a
   missing frame.
+- **A new law's row links its text** (20.11.2026, `newLawText` in
+  `entwurfFrame.ts`): „Neues Gesetz" stands where „Ändert" would, its value
+  the draft's „Gesetzestext" (the PDF, else the HTML) with „Zitieren", as a
+  law in force is linked there. Until then the row said „Geltendes Recht:
+  Keines" — what the draft is not — and its one text stood only in the
+  folded „Dokumente". The document is found by its title, exact or prefix:
+  „Gesetzestext" on a Ministerialentwurf and a Regierungsvorlage alike
+  (120/ME XXVIII, 352/ME XXVII, 250 d.B. XXVIII). Without one (an Antrag
+  publishes only itself) the row keeps its sentence, never an empty value.
+  The credit names Parliament, whose document list it is.
 - **A law is named from a title or a clause only by an exact match**
   (14.11.2026, `titleLaws.ts`, `law-by-name`): where no clause cites a
   Stammnorm, the title „…, mit dem das X (und das Y) geändert wird" names

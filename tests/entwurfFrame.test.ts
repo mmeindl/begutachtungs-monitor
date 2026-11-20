@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AmendedLawsResponse, BundesrechtFinding, EuRechtResponse } from '../shared/types'
-import { entwurfFrameCredits, entwurfFrameView } from '../app/utils/entwurfFrame'
+import { entwurfFrameCredits, entwurfFrameView, NEW_LAW_DE, newLawText } from '../app/utils/entwurfFrame'
 
 const act = { kind: 'richtlinie' as const, label: 'Richtlinie (EU) 2024/1069', celex: '32024L1069', eurLexUrl: 'https://eur-lex.europa.eu', isNew: true, base: false, transposition: { deadline: '2026-05-07', otherDates: [] }, adopted: null, title: null }
 const eu = (acts = [act]): EuRechtResponse => ({ available: true, unavailableReason: null, marker: 'umsetzung', markerSource: 'vorblatt', vorblattSentence: null, acts, actsSource: 'gesetzestext', begutachtungStart: '2026-01-01', sources: [{ label: 'Erläuterungen', url: 'https://land/erl.pdf' }] })
@@ -40,5 +40,29 @@ describe('the opening frame of „Der Entwurf"', () => {
     expect(entwurfFrameView({ laws: unread('no-text') }).facts[0]!.text).toMatch(/^Nicht lesbar: Der Monitor fand keinen Gesetzestext/)
     // No RIS Fassung is linked, so none is credited.
     expect(entwurfFrameCredits({ laws: unread('unnamed') }, v)).toMatchObject({ items: [], asOf: null })
+  })
+
+  it('links a new law\'s Gesetzestext in „Neues Gesetz", PDF first, and credits Parliament (20.11.2026)', () => {
+    const neu = { createsNewLaw: true, laws: [], asOf: '2026-01-01', unread: null } as unknown as AmendedLawsResponse
+    const documents = [
+      { title: 'Kurzinformation', formats: [{ type: 'pdf' as const, url: 'https://www.parlament.gv.at/k.pdf' }] },
+      { title: 'Gesetzestext', formats: [{ type: 'html' as const, url: 'https://www.parlament.gv.at/g.html' }, { type: 'pdf' as const, url: 'https://www.parlament.gv.at/g.pdf' }] },
+    ]
+    const input = { laws: neu, documents, citeAs: 'Ministerialentwurf 120/ME XXVIII. GP' }
+    const v = entwurfFrameView(input)
+    expect(v.facts).toEqual([{ key: 'neu', title: 'Neues Gesetz', text: NEW_LAW_DE }])
+    expect(v.newLaw).toEqual({ title: 'Gesetzestext', url: 'https://www.parlament.gv.at/g.pdf', format: 'PDF', cite: 'Gesetzestext zu Ministerialentwurf 120/ME XXVIII. GP, https://www.parlament.gv.at/g.pdf' })
+    expect(entwurfFrameCredits(input, v)).toMatchObject({ items: ['Gesetzestext (Parlament)'], asOf: null })
+  })
+
+  it('keeps „Neues Gesetz" in words where no Gesetzestext can be linked, and links none on an amending draft', () => {
+    const neu = { createsNewLaw: true, laws: [], asOf: '2026-01-01', unread: null } as unknown as AmendedLawsResponse
+    const antrag = [{ title: 'Antrag', formats: [{ type: 'pdf' as const, url: 'https://www.parlament.gv.at/a.pdf' }] }]
+    expect(entwurfFrameView({ laws: neu, documents: antrag })).toMatchObject({ facts: [{ key: 'neu', text: NEW_LAW_DE }], newLaw: null })
+    const unsafe = [{ title: 'Gesetzestext', formats: [{ type: 'pdf' as const, url: 'javascript:alert(1)' }] }]
+    expect(entwurfFrameView({ laws: neu, documents: unsafe }).newLaw).toBeNull()
+    expect(newLawText([{ title: 'Gesetzestext', formats: [{ type: 'html' as const, url: 'https://www.parlament.gv.at/g.html' }] }])).toMatchObject({ format: 'HTML', cite: null })
+    const gesetz = [{ title: 'Gesetzestext', formats: [{ type: 'pdf' as const, url: 'https://www.parlament.gv.at/g.pdf' }] }]
+    expect(entwurfFrameView({ laws, documents: gesetz }).newLaw).toBeNull()
   })
 })
