@@ -227,7 +227,9 @@ export function headingZiffern(heading: string, known: readonly string[] = []): 
 function ownArticles(heading: string): { article: string | null; several: boolean } {
   let address = heading
   for (let i = 0; i < 2; i++) address = address.replace(/\([^()]*\)/g, ' ')
-  address = address.split(':')[0] ?? address
+  // A bracket left open ran on into the prose and the next line: „Zu Z 6 (§ 21
+  // Abs. 3 Diese Bestimmung regelt … Artikel 26 Änderung des …" (Burgenland).
+  address = (address.split(':')[0] ?? address).replace(/\(.*$/, ' ')
   const out = new Set<string>()
   let range = false
   for (const m of address.matchAll(/(?<![a-zäöü])Art(?:ikel)?\.?\s*([IVXL]+|\d+)(?![\da-z])\s*(\S*)/gi)) {

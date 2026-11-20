@@ -30,7 +30,7 @@ describe('a Land\'s Erläuterungen', () => {
     const units = [unit('Z11', '§ 7 Abs. 2 lautet:'), unit('Z11a', 'Im § 9 Abs. 1 entfällt der zweite Satz.'), unit('Z12', '§ 10 lautet:')]
     const entry = (heading: string) => ({ article: null, paras: [], heading, text: ['Die Änderung ist redaktionell.'] })
     const parse = { general: [], labelled: true, particular: [entry('Zu Z 11a:'), entry('Zu Z 11 bis 12:')] }
-    expect(explainedParagraphs(parse, units, ['Salzburger Testgesetz']).map((e) => e.paras)).toEqual([['9'], ['7', '9', '10']])
+    expect(explainedParagraphs(parse, units, 'Gesetz, mit dem das Salzburger Testgesetz geändert wird').map((e) => e.paras)).toEqual([['9'], ['7', '9', '10']])
   })
 
   it('splits the general part from the entries, without the page furniture', () => {

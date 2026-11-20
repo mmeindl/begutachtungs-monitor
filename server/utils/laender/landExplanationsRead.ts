@@ -27,7 +27,7 @@ import { addressOf } from '../diff/lawDiff'
 import { landDraftUnits } from './landLawDiff'
 import { headingZiffern, parseLandExplanations, type LandExplanationsParse } from './landExplanations'
 import type { LawUnit } from '../lawtext/lawUnits'
-import { amendedLawsOf } from './landTgu'
+import { amendedLawsOf, packageArticles } from './landTgu'
 import { draftByContent, draftCandidates, draftExplanationsDocument, isDraftWithExplanations, landPdfBytes, NOT_A_DRAFT, notADraft, pagesOfBytes, type PagesReader } from './texts/read'
 import { styledPages } from './texts/styledPages'
 import type { LandDraftRecord } from './texts/stations'
@@ -41,22 +41,37 @@ function romanValue(r: string): number {
   }
   return total
 }
+/** A title's verbs for a law the draft does not amend (`amendedLawsOf`). */
+const OTHER_VERB_RE = /\b(?:erlassen|aufgehoben|aufgelöst)\b/
+/** „II" → 2, „2" → 2. */
+const articleValue = (numeral: string) => (/^\d+$/.test(numeral) ? Number(numeral) : romanValue(numeral))
 
 /**
  * Each „Zu …" entry with the §§ it explains: from its brackets, or — where it
  * names only the draft's Ziffern — from the instructions those Ziffern are
- * (`units`, the text's own `landDraftUnits`). The law: the one the draft
- * amends, or in a package the one its Artikel number stands for.
+ * (`units`, the text's own `landDraftUnits`).
+ *
+ * The law: the one the entry's Artikel amends in the draft's own text
+ * (`draftText`, `packageArticles`: „Artikel II Das Salzburger Ygesetz, LGBl
+ * …, wird geändert wie folgt:"); where the draft opens fewer than two laws
+ * so and its title names one, that law — where the title enacts or repeals
+ * another, only for the one Artikel that numbers instructions (and for an
+ * entry under no Artikel); otherwise none. Until
+ * 20.11.2026 the Artikel's place in the title's list (`amendedLawsOf`)
+ * decided, and the list leaves out what the draft enacts or repeals: with
+ * one amended law every Artikel was that law — Kärnten 79014 enacts two
+ * Abgabengesetze in Artikel I and II, and their passages explained §§ 1 to
+ * 14 of the Motorbootabgabegesetz Artikel III amends.
  */
-export function explainedParagraphs(parse: LandExplanationsParse, units: readonly LawUnit[] | null, laws: readonly string[]): LandExplanationsResponse['particular'] {
+export function explainedParagraphs(parse: LandExplanationsParse, units: readonly LawUnit[] | null, title: string, draftText: string | null = null): LandExplanationsResponse['particular'] {
+  const laws = amendedLawsOf(title)
   const byZiffer = new Map<string, string>()
   for (const u of units ?? []) {
     // „Z11a" under „11a", never under „11": a lettered instruction is its own (`segmentUnits`, 19.11.2026).
     const n = /^Z(\d+[a-z]*)$/.exec(u.id)?.[1]
     const para = /^§(\d+[a-z]*)/.exec(addressOf(u.heading) ?? '')?.[1]
     // „Artikel II" or — in the Land's own PDFs — „Artikel 2".
-    const numbered = /Artikel\s+([IVXL]+|\d+)/.exec(u.articleNumber ?? '')?.[1] ?? 'I'
-    const article = /^\d+$/.test(numbered) ? Number(numbered) : romanValue(numbered)
+    const article = articleValue(/Artikel\s+([IVXL]+|\d+)/.exec(u.articleNumber ?? '')?.[1] ?? 'I')
     if (n && para) byZiffer.set(`${article}|${n}`, para)
   }
   /** The Ziffern the draft's instructions number in one Artikel, for a range („Z 3 bis 5" holds „3a"). */
@@ -65,11 +80,19 @@ export function explainedParagraphs(parse: LandExplanationsParse, units: readonl
   // Ziffern in one Artikel (the Novelle beside its Inkrafttreten); in a
   // package its Ziffer could be any law's, and none is looked up (20.11.2026).
   const zifferArticles = new Set([...byZiffer.keys()].map((k) => k.slice(0, k.indexOf('|'))))
+  const opened = new Map(packageArticles(draftText ?? '', laws).flatMap((a) => (a.numeral && a.key ? [[articleValue(a.numeral), a.key] as const] : [])))
+  const lawOf = (article: number | null, named: boolean): string | null => {
+    if (opened.size) return article === null ? null : opened.get(article) ?? null
+    if (laws.length !== 1) return null
+    // A title that enacts or repeals nothing names every law of the draft: its other Artikel are the Inkrafttreten's.
+    if (!OTHER_VERB_RE.test(title)) return laws[0]!
+    if (!named) return zifferArticles.size <= 1 ? laws[0]! : null
+    return zifferArticles.size === 1 && zifferArticles.has(String(article)) ? laws[0]! : null
+  }
   return parse.particular.map((e) => {
-    const article = e.article ? (/^\d+$/.test(e.article) ? Number(e.article) : romanValue(e.article)) : zifferArticles.size > 1 ? null : 1
+    const article = e.article ? articleValue(e.article) : zifferArticles.size > 1 ? null : 1
     const paras = e.paras.length || article === null ? e.paras : [...new Set(headingZiffern(e.heading, zifferOf(article)).map((z) => byZiffer.get(`${article}|${z}`)).filter((p): p is string => Boolean(p)))]
-    const law = laws.length === 1 ? laws[0]! : (e.article && article ? laws[article - 1] ?? null : null)
-    return { law, paras, heading: e.heading, text: e.text }
+    return { law: lawOf(e.article ? article : null, e.article !== null), paras, heading: e.heading, text: e.text }
   })
 }
 
@@ -167,8 +190,8 @@ export async function readLandExplanations(
     draftRead = ofDraft(draftPages)
   }
   if (!parse) return done(unavailable(gapDe('unreadable', 'In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.'), publisher, document), draftFailed)
-  const units = draftRead && !(candidates.length === 1 && notADraft(draftRead)) ? draftRead.units : null
+  const ofText = draftRead && !(candidates.length === 1 && notADraft(draftRead)) ? draftRead : null
 
-  const particular = explainedParagraphs(parse, units, amendedLawsOf(detail.draft.title))
+  const particular = explainedParagraphs(parse, ofText?.units ?? null, detail.draft.title, ofText?.text ?? null)
   return done({ available: true, unavailableReason: null, document, publisher, labelled: parse.labelled, general: parse.general, particular }, draftFailed)
 }

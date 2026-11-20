@@ -16,7 +16,6 @@ import { landDraftUnits } from './landLawDiff'
 import { cachedLandComparison } from './landLawDiffService'
 import { parseLandExplanations } from './landExplanations'
 import { explainedParagraphs } from './landExplanationsRead'
-import { amendedLawsOf } from './landTgu'
 import { draftExplanationsDocument, NOT_A_DRAFT, type PagesReader } from './texts/read'
 import { cachedPdfPages } from './texts/pdfPagesService'
 import { textSources } from './texts/stations'
@@ -32,12 +31,12 @@ const unavailable = (reason: string): LandReasoningResponse => ({ available: fal
  * through the cached read: the comparison beside it reads the same two
  * PDFs, the Erläuterungen section the draft's (`pdfPagesService.ts`).
  */
-async function reasonsByParagraph(lawUrl: string, explanationsUrl: string | null, laws: readonly string[], pagesOf: PagesReader): Promise<Map<string, string>> {
+async function reasonsByParagraph(lawUrl: string, explanationsUrl: string | null, title: string, pagesOf: PagesReader): Promise<Map<string, string>> {
   const [pages, lawPages] = await Promise.all([pagesOf(explanationsUrl ?? lawUrl), explanationsUrl ? pagesOf(lawUrl) : null])
   const parse = parseLandExplanations(pages)
   const out = new Map<string, string>()
   if (!parse) return out
-  for (const e of explainedParagraphs(parse, landDraftUnits(lawPages ?? pages), laws)) {
+  for (const e of explainedParagraphs(parse, landDraftUnits(lawPages ?? pages), title, (lawPages ?? pages).join('\n'))) {
     for (const p of e.paras) out.set(p.toLowerCase(), [out.get(p.toLowerCase()), ...e.text].filter(Boolean).join(' '))
   }
   return out
@@ -59,13 +58,12 @@ export async function compareLandReasoning(
   const draftUrl = sources.entwurf?.document.url
   const rvUrl = sources.rv?.document.url
   if (!draftUrl || !rvUrl) return unavailable(gapDe('notPublished', 'Einen der beiden Texte hat das Land nicht veröffentlicht.'))
-  const laws = amendedLawsOf(detail.draft.title)
   // Their own documents, where the Land files them so: the draft's „Erläuterungen", the Vorlage's „Regierungsvorlage, Erläuterungen".
   const docs = detail.draft.documents
   const urlOf = (doc: { url: string } | null | undefined) => (doc ? safeExternalUrl(doc.url) : null)
   const [before, after, comparison] = await Promise.all([
-    reasonsByParagraph(draftUrl, urlOf(draftExplanationsDocument(docs)), laws, read.pagesOf),
-    reasonsByParagraph(rvUrl, urlOf(docs.find((d) => /^Regierungsvorlage, Erläuterungen$/.test(d.title))), laws, read.pagesOf),
+    reasonsByParagraph(draftUrl, urlOf(draftExplanationsDocument(docs)), detail.draft.title, read.pagesOf),
+    reasonsByParagraph(rvUrl, urlOf(docs.find((d) => /^Regierungsvorlage, Erläuterungen$/.test(d.title))), detail.draft.title, read.pagesOf),
     read.comparison(),
   ])
   // What the Land filed as the draft and evidently is none: said as the comparison says it (`notADraft`).

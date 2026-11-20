@@ -16,6 +16,6 @@ describe('explainedParagraphs: a Ziffer is looked up under its own number', () =
   const parse = { general: [], labelled: false, particular: [{ article: null, paras: [], heading: 'Zu Z 1:', text: ['Die Änderung ist redaktionell.'] }] }
 
   it('„Zu Z 1" is the § instruction 1 changes, not the one of 1a', () => {
-    expect(explainedParagraphs(parse, units, ['Salzburger Testgesetz'])[0]!.paras).toEqual(['3'])
+    expect(explainedParagraphs(parse, units, 'Gesetz, mit dem das Salzburger Testgesetz geändert wird')[0]!.paras).toEqual(['3'])
   })
 })
