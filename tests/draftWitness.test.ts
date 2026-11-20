@@ -46,4 +46,15 @@ describe('witnessVerdict', () => {
     const rows = [changed(standing, 'Nach diesem Gesetz ist die zuständige Behörde und prüft die Maßnahmen der Lufttüchtigkeit jährlich.')]
     expect(witnessVerdict('21', standing, faulted, rows, ins, renditionOfPages([`16. ${wide}`])).released).toBe(false)
   })
+
+  it('places a phrase payload only where the standing text held the old wording between the same words (ApoBetrO § 60a)', () => {
+    const standing = 'Die Aufzeichnungen gemäß Abs. 1 bis 4 sind elektronisch zu führen. Die Pflicht gemäß Abs. 3 gilt immer weiter. Nach Abs. 2 gilt Eins.'
+    const lines = ['In § 21 wird die Zeichenfolge „bis 4“ durch die Zeichenfolge „und 2“ ersetzt.', 'In § 21 wird die Zeichenfolge „Abs. 3“ durch die Zeichenfolge „Abs. 2“ ersetzt.', 'In § 21 entfällt der Satz „Nach Abs. 2 gilt Eins.“']
+    const phrase = (from: string, to: string, line: string): WitnessInstruction => ({ op: { kind: 'replacePhrase', target: { para: '21' } as never, from, to, everywhere: false, eachUnit: false, wordBound: true }, line, payload: [] })
+    const ins: WitnessInstruction[] = [phrase('bis 4', 'und 2', lines[0]!), phrase('Abs. 3', 'Abs. 2', lines[1]!), { op: { kind: 'deletePhrase', target: { para: '21' } as never, text: 'Nach Abs. 2 gilt Eins.', eachUnit: false, wordBound: true }, line: lines[2]!, payload: [] }]
+    const right = 'Die Aufzeichnungen gemäß Abs. 1 und 2 sind elektronisch zu führen. Die Pflicht gemäß Abs. 2 gilt immer weiter.'
+    const faulted = right.replace('Abs. 1 und 2', 'Abs. 2 und 2')
+    const rows = [changed(standing, right)]
+    expect(witnessVerdict('21', standing, faulted, rows, ins, renditionOfPages([lines.map((l, i) => `${i + 1}. ${l}`).join('\n')])).released).toBe(false)
+  })
 })

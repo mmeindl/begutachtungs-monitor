@@ -252,6 +252,28 @@ function written(ins: WitnessInstruction, tokens: readonly string[], all: readon
   return same
 }
 
+/** Tokens of the result on each side of a phrase payload that the standing text has to carry around the old wording. */
+const NEIGHBOURS = 3
+
+/**
+ * Whether a phrase instruction can have written its payload at `o` of the
+ * result: the standing text holds, between the same neighbouring tokens,
+ * the wording the replacement takes out — or nothing, for an insertion.
+ * Measured on the table path: a word fault turned „gemäß Abs. 1 und 2"
+ * into „gemäß Abs. 2 und 2", and „Abs. 2" is what another line of the §
+ * writes into another Absatz (ApoBetrO § 60a); the counts held, since a
+ * deleted Absatz had taken an „Abs. 2" with it. A unit's new text is
+ * counted (`written`), not placed: it is the unit.
+ */
+function wroteHere(ins: WitnessInstruction, o: number, length: number, before: readonly string[], got: readonly string[]): boolean {
+  const { op } = ins
+  if (op.kind !== 'replacePhrase' && op.kind !== 'insertPhrase') return true
+  const old = op.kind === 'replacePhrase' ? tokensOf(op.from) : []
+  const lead = got.slice(Math.max(0, o - NEIGHBOURS), o)
+  const tail = got.slice(o + length, o + length + NEIGHBOURS)
+  return runsOf(before, [...lead, ...old, ...tail]).length > 0
+}
+
 /** The texts an instruction names that are not new: the wording it replaces or anchors on. */
 function namedTexts(ins: WitnessInstruction): string[] {
   const { op } = ins
@@ -335,7 +357,7 @@ export function witnessVerdict(
   // another line of the § writes) were shown on the witness until then.
   const payloads: PayloadRun[] = all
     .filter((p) => runsOf(gotTokens, p.tokens).length - runsOf(beforeTokens, p.tokens).length <= written(touching[p.instruction]!, p.tokens, all, beforeTokens, gotTokens))
-    .map((p) => ({ ...p, at: runsOf(gotTokens, p.tokens) }))
+    .map((p) => ({ ...p, at: runsOf(gotTokens, p.tokens).filter((o) => wroteHere(touching[p.instruction]!, o, p.tokens.length, beforeTokens, gotTokens)) }))
   const sources = touching.map((ins) => tokensOf(`${ins.line} ${ins.payload.join(' ')}`))
   const regions = touching.map((ins, i) => regionsOf(rendition, ins, keyOfTokens(sources[i]!).length))
   const named = touching.map((ins) => namedTexts(ins).map((t) => tokensOf(t)).filter((t) => t.length > 0))
