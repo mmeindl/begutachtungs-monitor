@@ -100,7 +100,7 @@ export async function pagesOfBytes(bytes: Uint8Array): Promise<string[]> {
  * „ﬂ" is lost to the normalisation here („Strafle") — what is restored is
  * every „§" and every umlaut.
  */
-function repairMacRoman(pages: string[]): string[] {
+export function repairMacRoman(pages: string[]): string[] {
   const text = pages.join('')
   const misread = (text.match(/[¸‰ˆ]/g) ?? []).length
   const real = (text.match(/[äöüÄÖÜ§]/g) ?? []).length
@@ -109,7 +109,11 @@ function repairMacRoman(pages: string[]): string[] {
   const paraSigns = (text.match(/ß\s*\d/g) ?? []).length
   const realParas = (text.match(/§/g) ?? []).length
   const byParas = paraSigns >= 10 && paraSigns >= 5 * realParas
-  if (!byParas && (misread < 20 || misread < 20 * real)) return pages
+  // Or a short text in which not one sign reads right: Tirol's 576/2026
+  // draft, one page, 9 misread and not one umlaut or „§" (20.11.2026). Of
+  // the 855 cached Land PDFs no other has misread signs and no right one.
+  const noneRight = real === 0 && misread >= 5
+  if (!byParas && !noneRight && (misread < 20 || misread < 20 * real)) return pages
   return pages.map((page) => page.split('\n').map(fromMacRoman).join('\n'))
 }
 
@@ -175,9 +179,20 @@ export function draftDocument(documents: readonly LandDocument[]): LandDocument 
   return draftCandidates(documents)[0] ?? null
 }
 
+/**
+ * A document of another station, or none of law text, that a Land lists in
+ * the draft's record (20.11.2026): Kärnten and Tirol add the Vorlage's
+ * documents to it, titled „Regierungsvorlage" (`kaernten.ts`, `tirol.ts`),
+ * and Tirol its „Leicht Lesen". Where the Entwurf read no unit, the choice
+ * by content went on to them, and Entwurf → Regierungsvorlage held Tirol's
+ * 576/2026 Vorlage against itself. Never a candidate: where the Entwurf
+ * cannot be read, the page says so.
+ */
+const NOT_THE_DRAFT_RE = /^Regierungsvorlage\b|^Leicht Lesen$/i
+
 /** Every document that may be the draft's own text, in the order `draftDocument` takes them: titled „Entwurf" first. */
 export function draftCandidates(documents: readonly LandDocument[]): LandDocument[] {
-  const candidates = documents.filter((d) => !COMPANION_RE.test(d.title) || isDraftWithExplanations(d.title))
+  const candidates = documents.filter((d) => !NOT_THE_DRAFT_RE.test(d.title.trim()) && (!COMPANION_RE.test(d.title) || isDraftWithExplanations(d.title)))
   return [...candidates.filter((d) => /entwurf/i.test(d.title)), ...candidates.filter((d) => !/entwurf/i.test(d.title))]
 }
 

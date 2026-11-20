@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { diffLandDraft, landDraftUnits, lgblUnits, packageChanges } from '../server/utils/laender/landLawDiff'
-import { draftByContent, draftDocument, draftSource, notADraft } from '../server/utils/laender/texts/read'
+import { draftByContent, draftCandidates, draftDocument, draftSource, notADraft, repairMacRoman } from '../server/utils/laender/texts/read'
 
 /* Pages as the PDF's text layer gives them: one string per page, a line per
    printed line, „Seite n" on top. The texts are built for the rules, each
@@ -449,6 +449,43 @@ describe('draftByContent — the draft among several, by what it holds (14.11.20
   it('fails where a candidate it has to read fails — a document not read is not one without law text', async () => {
     const failing = async (url: string) => (url.endsWith('/vo') ? Promise.reject(new Error('503')) : pagesOf(url))
     await expect(draftByContent(docs, failing)).rejects.toThrow('503')
+  })
+})
+
+// Tirol 2026-576 (20.11.2026): the Entwurf's text layer is Mac Roman, too
+// short for the repair, and read no unit; the choice went on to „Leicht
+// Lesen" and then to the „Regierungsvorlage" listed in the same record —
+// Entwurf → Regierungsvorlage would have held the Vorlage against itself.
+// Kärnten lists its Vorlage in the draft's record the same way.
+describe('the draft is never read from another station\'s document', () => {
+  const ENTWURF_576 = '1 von 1\nVD-1590/1/33-2026 Fassung vom 24. August 2026\nE n t w u r f\nGesetz vom …………, mit dem der Tiroler Landeswohnbaufonds aufgelˆst und das Gesetz\n¸ber die Errichtung eines Tiroler Landeswohnbaufonds aufgehoben werden\nDer Landtag hat beschlossen:\nß 1\nAuflˆsung\n(1) Der mit dem Gesetz ¸ber die Errichtung eines Tiroler Landeswohnbaufonds, LGBl. Nr. 27/1951,\nzuletzt ge‰ndert durch das Gesetz LGBl. Nr. 50/1970, errichtete Tiroler Landeswohnbaufonds wird mit\ndem Ablauf des 30. Dezember 2026 aufgelˆst.\n(2) Das Land Tirol tritt mit 31. Dezember 2026 in das Vermˆgen, die Forderungen und die\nVerbindlichkeiten dieses Fonds ein.\nß 2\nAufhebung\nDas Gesetz ¸ber die Errichtung eines Tiroler Landeswohnbaufonds, LGBl. Nr. 27/1951, zuletzt\nge‰ndert durch das Gesetz LGBl. Nr. 50/1970, wird aufgehoben.\nß 3\nInkrafttreten\n(1) Dieses Gesetz tritt mit dem Ablauf des Tages der Kundmachung in Kraft, soweit im Abs. 2 nichts\nanderes bestimmt ist.\n(2) ß 2 tritt mit 31. Dezember 2026 in Kraft.'
+  const VORLAGE = page('Gesetz vom …, mit dem der Tiroler Landeswohnbaufonds aufgelöst wird', 'Der Landtag hat beschlossen:', '§ 1', 'Auflösung', '(1) Der Fonds wird aufgelöst.', '§ 2', 'Inkrafttreten', 'Dieses Gesetz tritt in Kraft.')
+  const record = (n: string) => `https://lte.tirol.gv.at/public/ggs/risLink.xhtml?gn=576&gj=2026#dok=${n}`
+  const docs = [
+    { title: 'Entwurf', url: record('Begutachtungsentwurf') },
+    { title: 'Erläuterungen', url: record('Begutachtungsentwurf%2FErl%C3%A4uternde%20Bemerkungen') },
+    { title: 'Leicht Lesen', url: record('Begutachtungsentwurf%2FLeicht%20Lesen') },
+    { title: 'Regierungsvorlage', url: record('Regierungsvorlage') },
+    { title: 'Regierungsvorlage, Erläuterungen', url: record('Regierungsvorlage%2FErl%C3%A4uternde%20Bemerkungen') },
+  ]
+
+  it('admits neither the Vorlage nor the easy-language version as a candidate', () => {
+    expect(draftCandidates(docs).map((d) => d.title)).toEqual(['Entwurf'])
+    expect(draftCandidates([{ title: 'Entwurf', url: 'a' }, { title: 'Erläuterungen', url: 'b' }, { title: 'Regierungsvorlage', url: 'c' }]).map((d) => d.title)).toEqual(['Entwurf'])
+  })
+
+  it('reads the Entwurf where it holds no unit, and never the Vorlage in its place', async () => {
+    const pagesOf = async (url: string) => [url.endsWith('#dok=Regierungsvorlage') ? VORLAGE : url.endsWith('#dok=Begutachtungsentwurf') ? '1 von 1\nE n t w u r f\nGesetz vom …' : 'Leicht Lesen']
+    const read = await draftSource(docs, 'Land Tirol', pagesOf)!.read()
+    expect(read.document).toBeUndefined()
+    expect(read.units ?? []).toEqual([])
+  })
+
+  it('repairs a short text layer read as Mac Roman in which not one sign reads right', () => {
+    const [repaired] = repairMacRoman([ENTWURF_576])
+    expect(repaired).toContain('§ 1\nAuflösung')
+    expect(repaired).toContain('über die Errichtung')
+    expect(landDraftUnits([repaired!])?.map((u) => u.id)).toEqual(['§1', '§2', '§3'])
   })
 })
 
