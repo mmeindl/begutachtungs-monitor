@@ -68,7 +68,7 @@ import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { asArray } from '../lib/ris'
 import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
-import { harnessKey, kindKey, matchArticle, scoredKey, unchangedClass, UNCHANGED_CLASSES, type UnchangedClass } from './konsJudge'
+import { harnessKey, kindKey, matchArticle, misnumberedShown, scoredKey, unchangedClass, UNCHANGED_CLASSES, type UnchangedClass } from './konsJudge'
 
 interface Verdict {
   bgbl: string
@@ -547,7 +547,7 @@ const oracleNotes = new Map<string, number>()
 const sameTally = new Map<string, number>()
 /** oracle verdict × harness verdict × refusal */
 const oracleTally = new Map<string, number>()
-/** identical §§ × whether their designations are too × oracle verdict × plausible */
+/** identical §§ × whether their designations are too × oracle verdict × plausible × released by the second witness */
 const markerTally = new Map<string, number>()
 /** Every designation below the §, in printed order: „abs (2)", „z 3.", „lit b)". */
 function markerSequence(node: LawNode): string[] {
@@ -973,12 +973,14 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // silently reprinted the plausible subset and the guard looked like it
     // filtered nothing (2026-09-09).
     tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}|${annexPath}`)
+    let witnessShown = false
     if (oracle && id && plausible && oracleReport?.verdict === 'widersprochen') {
       const rendition = await ctx.rendition()
       const witnessed = rendition
         ? witnessVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id)), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null)
         : null
       tally(witnessTally, `${rendition ? (witnessed!.released ? 'gezeigt' : witnessed!.reason) : 'kein PDF'}|${outcome}`)
+      witnessShown = witnessed?.released === true
       if (witnessed?.released) witnessLines.push(`${bgblNumber} ${kurztitel.slice(0, 40)} § ${id} — RIS: ${outcome}${unchanged === null ? '' : unchanged ? ', ME=BGBl' : ', ME≠BGBl'} — ${witnessed.places.map((pl) => `Beilage „${pl.annex}" / BGBl „${pl.draft}"`).join('; ').slice(0, 400)}`)
     }
     // The designations, as the page shows them (`bodyText`): „identisch"
@@ -990,10 +992,10 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       const theirs = markerSequence(best.tree)
       const at = mine.findIndex((m, i) => m !== theirs[i])
       const differs = at >= 0 || mine.length !== theirs.length
-      tally(markerTally, `${differs ? 'abweichend' : 'gleich'}|${oracleKey}|${plausible ? 'plausibel' : 'unplausibel'}`)
-      if (differs && (verbose || oracleKey === 'bestätigt')) {
+      tally(markerTally, `${differs ? 'abweichend' : 'gleich'}|${oracleKey}|${plausible ? 'plausibel' : 'unplausibel'}|${witnessShown ? 'gezeigt' : '—'}`)
+      if (differs && (verbose || oracleKey === 'bestätigt' || witnessShown)) {
         const i = at >= 0 ? at : Math.min(mine.length, theirs.length)
-        console.log(`        ↳ Gliederung § ${id} [Orakel: ${oracleKey}${plausible ? ', plausibel' : ''}]: Engine ${mine.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'} — RIS ${theirs.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'}`)
+        console.log(`        ↳ Gliederung § ${id} [Orakel: ${oracleKey}${plausible ? ', plausibel' : ''}${witnessShown ? ', vom Zeugen gezeigt' : ''}]: Engine ${mine.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'} — RIS ${theirs.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'}`)
       }
     }
     // A confirmed § that is not the RIS text is the row the gate table sums
@@ -1222,7 +1224,7 @@ if (unchangedListed.length > 0) {
     line('Orakel bestätigt, egal ob plausibel', (p) => p[1] === 'bestätigt')
     const marked = (pred: (parts: string[]) => boolean): number => sumKeys(markerTally, pred)
     console.log(`\n  Gliederung der identischen Paragraphen (Absatz-, Ziffer-, Literabezeichnungen, wie die Seite sie zeigt):`)
-    console.log(`    gleich ${marked((p) => p[0] === 'gleich')}, abweichend ${marked((p) => p[0] === 'abweichend')}; abweichend und Orakel bestätigt: ${marked((p) => p[0] === 'abweichend' && p[1] === 'bestätigt')} (muss 0 sein), davon plausibel, also gezeigt: ${marked((p) => p[0] === 'abweichend' && p[1] === 'bestätigt' && p[2] === 'plausibel')}`)
+    console.log(`    gleich ${marked((p) => p[0] === 'gleich')}, abweichend ${marked((p) => p[0] === 'abweichend')}; abweichend und Orakel bestätigt: ${marked((p) => p[0] === 'abweichend' && p[1] === 'bestätigt')} (muss 0 sein), davon plausibel, also gezeigt: ${marked((p) => p[0] === 'abweichend' && p[1] === 'bestätigt' && p[2] === 'plausibel')}; abweichend und vom Zeugen gezeigt: ${marked((p) => p[0] === 'abweichend' && p[3] === 'gezeigt')} (muss 0 sein)`)
     console.log(`\n  Orakel nach Herkunft der Anweisungen (identische Anweisungen im ME und im BGBl → ein Widerspruch ist ein Fehler des Orakels):`)
     const sameLine = (name: string, pred: (parts: string[]) => boolean) => {
       const total = sumKeys(sameTally, pred)
@@ -1296,11 +1298,21 @@ if (jsonFile) {
     /**
      * The designations of every § whose text is the law's (`markerSequence`,
      * 20.11.2026): „abweichend|bestätigt|…" is a confirmed § under the wrong
-     * numbers, which the builder of `/genauigkeit` refuses.
+     * numbers, which the builder of `/genauigkeit` refuses, and
+     * „abweichend|…|gezeigt" one the second witness releases so.
      */
-    markerKey: 'gliederung|orakel|plausibel',
+    markerKey: 'gliederung|orakel|plausibel|zeuge',
     markers: Object.fromEntries([...markerTally].sort(([a], [b]) => a.localeCompare(b))),
   }
   writeFileSync(jsonFile, `${JSON.stringify(record, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonFile}`)
+}
+
+// A § the page would show under designations the law does not carry fails
+// the run (audit of 20.11.2026): the line above said „muss 0 sein" and the
+// run exited 0 whatever it counted. After the record, so the run is kept.
+const misnumbered = misnumberedShown(Object.fromEntries(markerTally))
+if (misnumbered > 0) {
+  console.error(`\n✗ ${misnumbered} gezeigte(r) Paragraph(en) mit dem Text des Gesetzes unter anderen Bezeichnungen (Gliederung oben)`)
+  process.exitCode = 1
 }

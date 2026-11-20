@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kindKey, loadKey, matchArticle, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
+import { kindKey, loadKey, matchArticle, misnumberedShown, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 
 // The BGBl bench's own bookkeeping (19.11.2026): what it got wrong is how a
@@ -84,5 +84,22 @@ describe('loadKey', () => {
     expect(loadKey('Anhang')).toBe('Anl.')
     expect(loadKey('§ 8')).toBe('§ 8')
     expect(loadKey('Art. 2 § 3')).toBe('Art. 2 § 3')
+  })
+})
+
+// The designations as the page shows them (`markerSequence`): a confirmed §
+// under the wrong „(2)", „3." or „b)" would be shown as the law, and so
+// would a § the second witness releases (audit of 20.11.2026). The bench
+// printed the line „muss 0 sein" and exited 0 either way.
+describe('misnumberedShown: the §§ the bench fails on for their designations', () => {
+  it('counts a confirmed § and a witness-shown § whose designations differ', () => {
+    expect(misnumberedShown({ 'abweichend|bestätigt|plausibel|—': 1 })).toBe(1)
+    expect(misnumberedShown({ 'abweichend|bestätigt|unplausibel|—': 1 })).toBe(1)
+    expect(misnumberedShown({ 'abweichend|widersprochen|plausibel|gezeigt': 2 })).toBe(2)
+  })
+  it('does not count a withheld § or one whose designations are the law', () => {
+    // LMSVG § 28 of BGBl. I Nr. 75/2026: misnumbered, contradicted, not released.
+    expect(misnumberedShown({ 'abweichend|widersprochen|plausibel|—': 1, 'abweichend|stumm|unplausibel|—': 2 })).toBe(0)
+    expect(misnumberedShown({ 'gleich|bestätigt|plausibel|—': 459, 'gleich|widersprochen|plausibel|gezeigt': 152 })).toBe(0)
   })
 })

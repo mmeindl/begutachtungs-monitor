@@ -71,6 +71,23 @@ export function unchangedClass(at: { refused: boolean; named: boolean; schedule:
 }
 
 /**
+ * The §§ whose text is the law's and whose designations are not, that the
+ * page would show: the oracle confirmed them, or the second witness released
+ * them — from the bench's tally keyed `gliederung|orakel|plausibel|zeuge`.
+ * The bench fails on any (audit of 20.11.2026); until then it printed the
+ * count with „muss 0 sein" and exited 0, and a witness-released § was held
+ * to no designation at all.
+ */
+export function misnumberedShown(markers: Readonly<Record<string, number>>): number {
+  return Object.entries(markers)
+    .filter(([key]) => {
+      const [designations, oracle, , witness] = key.split('|')
+      return designations === 'abweichend' && (oracle === 'bestätigt' || witness === 'gezeigt')
+    })
+    .reduce((n, [, count]) => n + count, 0)
+}
+
+/**
  * The draft's Artikel that amends the same law as this BGBl Artikel.
  *
  * The Stammnorm decides: it is the citation both Promulgationsklauseln print
