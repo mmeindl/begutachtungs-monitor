@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { paraIdOfGld, paragraphRows, rowsByParagraph } from '../server/utils/kons/tguOracle'
+import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, unaccountedStretch, containmentKey } from '../server/utils/kons/tguOracle'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
+import { printedStretches } from '../server/utils/annex/elision'
 import { comparableTokens } from '../server/utils/annex/annexText'
 import { parseKonsParagraph, plainText } from '../server/utils/lawtext/konsTree'
 import { draftArticles } from './helpers/builders'
@@ -48,5 +49,37 @@ describe('„§. 517.": the designation of the ZPO and the JN', () => {
     // The heading above the designation stays the §'s heading (JN § 121, BGBl. I Nr. 62/2026).
     expect(parseKonsParagraph(xml)!.heading).toBe('Beglaubigung von Unterschriften und Abschriften')
     expect(plainText(parseKonsParagraph(xml)!)).not.toContain('121')
+  })
+})
+
+describe('the foot of a row', () => {
+  const standing = containmentKey('Der Dritte hat Auskunft zu geben. Die übrigen Absätze bleiben.')
+
+  it('leaves out schedules named by their Roman numerals in front of the mark (58/ME XXVIII, BVergG 2018 § 382)', () => {
+    expect(printedStretches('zu erstellen. … Anhang I und Anhang II [...]')).toEqual(['zu erstellen.'])
+    expect(printedStretches('zu erstellen. … Anhang XI bis Anhang XIV …')).toEqual(['zu erstellen.'])
+    expect(printedStretches('zu erstellen. … Anhang I gilt.')).toEqual(['zu erstellen.', 'Anhang I gilt.'])
+  })
+
+  it('passes over the next §\'s heading standing alone behind a mark, and the next group\'s number (21/ME, 108/ME XXVIII)', () => {
+    expect(unaccountedStretch(standing, '(3) Der Dritte hat Auskunft zu geben. (4) bis (6)… Eintragung und Weiterleitung von Daten in Register')).toBeNull()
+    expect(unaccountedStretch(standing, '(3) Der Dritte hat Auskunft zu geben. (4) bis (8) ... IV.')).toBeNull()
+  })
+
+  it('passes over a lettered next heading behind the last sentence (148/ME XXVIII, BAO § 153g)', () => {
+    expect(unaccountedStretch(standing, 'Der Dritte hat Auskunft zu geben. E. Beistandspflicht.')).toBeNull()
+  })
+
+  it('still holds law text there: a sentence, a number, a lower-case continuation', () => {
+    expect(unaccountedStretch(standing, '(3) Der Dritte hat Auskunft zu geben. (4) ... Dies gilt sinngemäß.')).not.toBeNull()
+    expect(unaccountedStretch(standing, '(3) Der Dritte hat Auskunft zu geben. (4) ... Frist von 14 Tagen')).not.toBeNull()
+    expect(unaccountedStretch(standing, '(3) Der Dritte hat Auskunft zu geben. (4) ... und den Nachweis')).not.toBeNull()
+    expect(unaccountedStretch(standing, 'Der Dritte hat Auskunft zu geben. E. Beistandspflicht gilt immer.')).not.toBeNull()
+  })
+
+  it('confirms nothing the right column changes at the foot', () => {
+    const got = 'Der Dritte hat Auskunft zu geben. Die übrigen Absätze bleiben.'
+    const rows = [pair('§ 3. Der Dritte hat Auskunft zu geben. (4) ... Eintragung', '§ 3. Der Dritte hat Information zu geben. (4) ... Eintragung', '§ 3.')]
+    expect(oracleVerdict('3', got, got, rows).verdict).not.toBe('bestätigt')
   })
 })

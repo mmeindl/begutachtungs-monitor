@@ -215,7 +215,15 @@ export function elisionOpens(current: string, proposed: string): string | null {
  */
 const ELISION_RUN_RE = /\[\s*(?:\.{2,}|…+)\s*\]|\.{2,}|…+/g
 const DESIGNATION_TOKEN = String.raw`(?:\(\s*\d+[a-z]*\s*\)|${PARAGRAPH_NUMBER}\.?|[a-z]{1,2}[).]|x{2,4}\.?)`
-const DESIGNATION_PART = String.raw`(?:§+\s*)?(?:(?:Abs|Z|lit|Art|Artikel|Anlage|Anhang|Teil|Abschnitt|Unterabschnitt|Hauptstück|Kapitel)\b\.?\s*)?${DESIGNATION_TOKEN}`
+/**
+ * A schedule named by its Roman numeral, „Anhang XI", „Anlage IV" (20.11.2026):
+ * „Anhang I und Anhang II […]" at the foot of BVergG 2018 § 382 leaves two
+ * schedules out, and read as text of the § it stood nowhere in it (58/ME
+ * XXVIII, three §§ `anhang-fremd`). Only behind the schedule's word: a bare
+ * „I" is a word as often as a number.
+ */
+const SCHEDULE_ROMAN = String.raw`(?:Anlage|Anhang)\s+[IVXLC]+(?![\p{L}\d])`
+const DESIGNATION_PART = String.raw`(?:${SCHEDULE_ROMAN}|(?:§+\s*)?(?:(?:Abs|Z|lit|Art|Artikel|Anlage|Anhang|Teil|Abschnitt|Unterabschnitt|Hauptstück|Kapitel)\b\.?\s*)?${DESIGNATION_TOKEN})`
 /** „bis", „und" — or a plain space, which is how a compound designation joins („(5) Z 1 …"). */
 const DESIGNATION_JOIN = String.raw`(?:\s*(?:bis|und|sowie|oder|,|[-–—])\s*|\s+)`
 /**
@@ -226,9 +234,9 @@ const DESIGNATION_JOIN = String.raw`(?:\s*(?:bis|und|sowie|oder|,|[-–—])\s*|
  * `withoutElision` records one function above.
  */
 /** The chain as the whole stretch: „(2) bis (4)", „§ 16 Abs. 1 bis 24", „(1) Z 1 bis 18". */
-const ELISION_HEAD_ALONE_RE = new RegExp(String.raw`^\s*${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'i')
+const ELISION_HEAD_ALONE_RE = new RegExp(String.raw`^\s*${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'iu')
 /** The chain from a space to the end of the stretch — tried at every space, the leftmost permitted start wins. */
-const ELISION_HEAD_FROM_RE = new RegExp(String.raw`^\s${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'i')
+const ELISION_HEAD_FROM_RE = new RegExp(String.raw`^\s${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'iu')
 /**
  * The §'s own designation after its heading, which the PDF path prints in
  * front of the marks — „Inkrafttreten § 11. …", „Begriffsbestimmungen § 2.

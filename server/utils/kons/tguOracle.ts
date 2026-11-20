@@ -965,6 +965,39 @@ function isNextHeading(stretch: string): boolean {
 }
 
 /**
+ * The same with the letter of the group it opens and the old full stops,
+ * „… zu erlassen. E. Beistandspflicht." (BAO § 153g, 148/ME XXVIII,
+ * 20.11.2026): one capital and its stop, then a title of at most six words,
+ * every one capitalised but the words that join a title („und", „der",
+ * „für" …) — „E. Beistandspflicht gilt immer." is a sentence.
+ */
+const LETTERED_NEXT_HEADING_RE = /(?<=[.;!?])\s+\p{Lu}\.\s+\p{Lu}[^.;:!?§\d]*\.?$/u
+const TITLE_JOINER_RE = /^(?:und|oder|sowie|der|die|das|des|dem|den|von|vom|für|zur|zum|im|in|bei|mit|aus|über|nach|gegen|auf|an)$/
+
+function isLetteredNextHeading(stretch: string): boolean {
+  const trailer = LETTERED_NEXT_HEADING_RE.exec(stretch)?.[0]
+  if (trailer === undefined) return false
+  const words = trailer.trim().replace(/\.$/, '').split(/\s+/).slice(1)
+  return words.length <= 6 && words.every((w) => /^[\p{Lu}(]/u.test(w) || TITLE_JOINER_RE.test(w.replace(/,$/, '')))
+}
+
+/**
+ * A stretch of its own behind an omission mark, last in the cell, that can
+ * only head what follows (20.11.2026): „(4) bis (6) … Eintragung und
+ * Weiterleitung von Daten in Register und Verzeichnis" — the next §'s heading
+ * at the foot of SchFG § 112 (21/ME XXVIII) — and the bare number of the next
+ * group, „(1) bis (8) ... IV." (BWG § 9, 108/ME). Law text behind a mark ends
+ * in a sign: a sentence, a list item's comma or semicolon. This ends in
+ * none, opens with a capital and carries no digit or § — or is a Roman
+ * numeral and its stop alone.
+ */
+function isHeadingAfterMark(stretch: string): boolean {
+  const t = stretch.trim()
+  if (/^[IVXLC]+\.$/.test(t)) return true
+  return /^\p{Lu}[^.;:!?§\d]*$/u.test(t) && t.split(/\s+/).length <= 14
+}
+
+/**
  * „… wenn das Zertifikat wieder auflebt. 2. Hauptstück" — the next group's
  * heading in the same stretch as the last sentence of this §, with no mark
  * between them. Only after a sentence's end, only numbered or counted in
@@ -1074,10 +1107,15 @@ function placedStretches(text: string, cell: string, from: number, anchor: ((at:
     // Nor does a stretch that is nothing but a group heading — wherever it
     // stands, since the next group's heading comes at the foot of a §.
     if (found < 0 && isGroupHeadingOnly(stretch)) continue
+    // The next §'s heading or group number as the last stretch, behind a
+    // mark (`isHeadingAfterMark`).
+    if (found < 0 && index > 0 && index === stretches.length - 1 && isHeadingAfterMark(stretch)) continue
     // The next §'s heading, wrapped at the foot of the cell: only the last
-    // stretch, only after a finished sentence (`NEXT_HEADING_RE`).
-    if (found < 0 && index === stretches.length - 1 && isNextHeading(stretch)) {
-      const trimmed = key(stretch.replace(NEXT_HEADING_RE, ''))
+    // stretch, only after a finished sentence (`NEXT_HEADING_RE`), or with
+    // its group's letter (`LETTERED_NEXT_HEADING_RE`).
+    const nextHeading = index === stretches.length - 1 ? (isNextHeading(stretch) ? NEXT_HEADING_RE : isLetteredNextHeading(stretch) ? LETTERED_NEXT_HEADING_RE : null) : null
+    if (found < 0 && nextHeading) {
+      const trimmed = key(stretch.replace(nextHeading, ''))
       const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)
       if (retry >= 0) {
         piece = trimmed
