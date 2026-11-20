@@ -127,7 +127,7 @@ const figure = (count: number) => `${formatNumberDe(count)} Paragraphen (${((100
           />
           <!-- Shown on the draft's own text, not confirmed by the annex (20.11.2026): said beside the figure, never folded into it unsaid. -->
           <p v-if="step.key === 'gezeigt' && funnel.witnessed" class="mt-2 text-sm text-ink-secondary">
-            Davon {{ formatNumberDe(funnel.witnessed) }} nach dem Gesetzestext des Entwurfs, wo die Textgegenüberstellung anders lautet.
+            Davon {{ formatNumberDe(funnel.witnessed) }} nach der zweiten Lesung des Gesetzestexts: Dort lautet die Textgegenüberstellung anders, und am Paragraphen stehen beide Wortlaute.
           </p>
         </div>
       </li>

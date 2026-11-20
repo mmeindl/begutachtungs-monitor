@@ -209,7 +209,10 @@ const contact = useContact()
           Novellen vergleicht er die Änderungs<em>anweisungen</em>; wie das
           Gesetz danach lautet, zeigt der Monitor nur für die
           Paragraphen, die die Textgegenüberstellung des Ministeriums
-          bestätigt. Im Zweifel gilt das verlinkte Original. Welche Fehler
+          bestätigt oder bei denen der Gesetzestext des Entwurfs in zwei
+          Fassungen (XML und PDF) dasselbe sagt wie unser Ergebnis; dort
+          steht beim Paragraphen, worin die Textgegenüberstellung abweicht.
+          Im Zweifel gilt das verlinkte Original. Welche Fehler
           seine Prüfungen fangen und welche nicht, steht unter
           <NuxtLink to="/genauigkeit" class="link-inline">Genauigkeit</NuxtLink>.
         </li>

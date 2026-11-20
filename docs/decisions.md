@@ -1035,13 +1035,62 @@ gets an entry of its own only where it carries a reason the rule does not.
   units are Artikel. Through `explanationParaId` alone „Artikel 90a." and
   „Artikel 94a." were both nothing and therefore equal, and no Artikel was
   ever renumbered. Never a schedule's number.
-- **An Artikel's key is a join value, never a label** (20.11.2026). Where
-  the key is a qualifier („(Verfassungsbestimmung)", 17 of the cached
-  texts, 127/ME XXVIII), the reader is shown the Artikel's title, or its
-  number where it prints nothing else (`articleNames`, `lawNameOf`); the
-  responses carry the map as `lawNames`. Open: two Artikel of one text can
-  share that key (4 of the 17), and then their units share one group; and
-  the cause sentences say „Paragraph" at an Artikel block.
+- **A § the annex contradicts is shown where the draft's own Gesetzestext
+  settles every place** (20.11.2026, `kons/draftWitness.ts`; the second
+  signal that was deferred, started on the maintainer's word). The second
+  reading is the draft's PDF in the same RIS record, printed from the
+  ministry's own document; RIS's HTML is rendered from the XML the engine
+  reads and is no witness. Parliament's copy is not read. A place counts
+  only where all of this holds: our wording lies inside a payload an
+  instruction on the § wrote there (strictly inside if a side is empty; no
+  more often than the instruction can have written it, a payload inside
+  its own old wording counted as gone; for a phrase, the standing text
+  carried the old wording between the same three tokens); the annex's
+  wording is nothing the instructions name; our wording, with two to four
+  tokens of instruction text on each side, stands in the PDF at that
+  instruction, and so does the whole payload, and the annex's wording does
+  not; everything is compared in the oracle's comparison form; and with
+  the places replaced, the oracle confirms the §. Such a § carries both
+  wordings at the § („lesen wir": the annex's wording is our reading of
+  it) and is never counted as confirmed. The Gesetzestext is shown also
+  where it carries its own typo: it is what was proposed. Measured: +181
+  §§ of 522 contradicted, none lost; at 60 promulgated laws 152 released,
+  all identical to the law (read there from the BGBl's own PDF, which also
+  releases changes made after the draft); the new fault class „Payload"
+  96 to 97 % caught. Blind, with the oracle: a digit inside a BGBl
+  placeholder („xxx/2025"). Rejected: the design without the four payload
+  conditions (the fault injection got a swapped word and a cut payload
+  through it); the RIS HTML as a witness.
+- **A sentence about a unit takes the unit's word** (20.11.2026):
+  „Paragraph", or „Artikel" in a law whose units are Artikel
+  (`shared/utils/unitWord.ts`; 82/ME and 127/ME XXVIII). The word is
+  passed in, not replaced by a neutral one. Which unit a block is comes
+  from `articleUnitLaws` alone and is handed down by the placement
+  (`ParaPlacement.unit`, `LawEnd.unit`); no sentence reads it off a
+  designation. Without a unit every sentence says „Paragraph"
+  (/genauigkeit). A sentence about the whole draft takes the plural over
+  the annex's laws: „Paragraphen", „Artikel", or „Paragraphen und Artikel"
+  where the draft carries both. The list at the end of a law writes
+  „Art. 94". Left in Paragraphen: the Begründung's summary at a law's end
+  (passages are keyed by § alone) and the § comparison.
+- **An Artikel's key is the first line under its number that is no
+  qualifier** (20.11.2026). „(Verfassungsbestimmung)" above „Änderung des
+  Bundes-Verfassungsgesetzes" was the key, the reader saw it as a law's
+  name (127/ME XXVIII), and two or three laws of one text shared it:
+  BGBl. I Nr. 41/2026 held the B-VG's units and the
+  Heimopferrentengesetz's in one group. The qualifier is passed over and
+  the line directly below it is the key; where nothing but the qualifier
+  is printed, the key is the Artikel's number, unique in its text. Only
+  the line directly below: a heading further down is the law's own. One
+  rule in `draftArticles` and `segmentUnits`, one test for the line
+  (`isQualifierLine`), shared with the annex's reader. Measured over
+  37,360 cached legistic texts: 17 distinct texts (28 files) change and no
+  other; four had a collision and now have one group per law. Census of
+  164 drafts unchanged; only 127/ME's 17 B-VG units carry a new key, with
+  the outcomes they had. 60-BGBl bench identical. No pair of cached texts
+  matches fewer units; the Ministerialentwurf against 301 d.B. XXVI pairs
+  four laws for one. Not proven: three Salzburg Landesgesetzblätter
+  (10/2018, 12/2020, 82/2018) against their PDF drafts.
 - **A schedule is keyed by its own number, a Roman one in Arabic**
   (19.11.2026): „Anhang XIV" is „Anl. 14" on the engine's side and the
   page's, because RIS files every schedule so; a letter or an unreadable

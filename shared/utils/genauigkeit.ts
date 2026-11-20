@@ -278,6 +278,7 @@ export function landList(codes: readonly string[]): string {
 
 export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): GenauigkeitArt[] {
   const bench = r.lesefassung.bench
+  const witnessed = r.lesefassung.funnel.witnessed ?? 0
   const notLaw = bench.shown - bench.identical
   const blind = total(classes(r.lesefassung.faults, RESULT_BLIND))
   const annexBlind = classes(r.annex.faults, ANNEX_BLIND)
@@ -293,15 +294,20 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
     {
       id: 'lesefassung',
       heading: 'Ganzer Paragraph in der vorgeschlagenen Fassung',
-      against: 'Geprüft an der Textgegenüberstellung des Ministeriums.',
+      against: 'Geprüft an der Textgegenüberstellung des Ministeriums und, wo sie abweicht, am Gesetzestext des Entwurfs als PDF.',
       result: [
         `Getestet an ${n(bench.bgbl)} Gesetzen, die schon kundgemacht sind, also im Bundesgesetzblatt veröffentlicht und gültig: Der Monitor hätte dort ${n(bench.shown)} ganze Paragraphen gezeigt, ${n(bench.identical)} davon stimmen Wort für Wort mit dem Gesetz überein.`,
         // The trade-off, in the open (20.11.2026): a first-time reader found it only under the fold, and it is what the share shown is paid for.
         `Die Prüfung ist streng. Ohne sie hätte der Monitor bei diesen Gesetzen ${n(bench.ungated.shown)} Paragraphen gezeigt, ${n(bench.ungated.shown - bench.ungated.identical)} davon mit Abweichungen vom Gesetz.`,
+        ...(witnessed
+          ? [`Bei ${n(witnessed)} gezeigten Paragraphen der Entwürfe lautet die Textgegenüberstellung anders als unser Ergebnis. Gezeigt sind sie, weil der Gesetzestext des Entwurfs auch in seiner PDF-Fassung genau unser Ergebnis sagt. Am Paragraphen stehen beide Wortlaute.`]
+          : []),
       ],
       faults: [
         bar('Ein Wort, eine Zahl, ein Datum oder ein Verweis falsch', classes(r.lesefassung.faults, RESULT_WORDS)),
         bar('Ein Absatz zu viel, vertauscht oder ausgelassen', classes(r.lesefassung.faults, RESULT_STRUCTURE)),
+        // The second reading (20.11.2026): the draft's instruction misread, where the annex contradicts and the draft's PDF decides.
+        bar('Zweite Lesung am PDF: der neue Text des Entwurfs falsch gelesen', classes(r.lesefassung.faults, RESULT_WITNESS)),
         bar('Ein Textteil fehlt, und weder RIS noch Textgegenüberstellung enthalten ihn', classes(r.lesefassung.faults, RESULT_BLIND), true),
       ],
       consequence: 'Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen.',
@@ -313,6 +319,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       ],
       missed: [
         `Fehlt unserem Ergebnis ein Teil, den auch der geltende Text im RIS nicht hat und den die Gegenüberstellung stillschweigend überspringt, fällt das kaum auf: ${blind.caught === 0 ? 'keiner' : n(blind.caught)} von ${n(blind.tried)} Versuchen gefangen.`,
+        'Bei der zweiten Lesung am PDF: eine Ziffer in einem Platzhalter für ein künftiges Bundesgesetzblatt („BGBl. I Nr. xxx/2025“) vergleicht keine der Prüfungen.',
       ],
     },
     {
@@ -488,7 +495,7 @@ export const FUNNEL_GROUP_OF: Record<ConsolidatedWithheldCause, FunnelGroup> = {
 export const FUNNEL_GROUP_WHY_DE: Record<Exclude<FunnelGroup, 'nichts'>, string> = {
   geltend: 'Manchmal findet der Monitor das Gesetz oder den Paragraphen im RIS nicht eindeutig. Dann schreibt er den ganzen Paragraphen nicht aus.',
   anweisung: 'Nicht jede Anweisung ist so einfach wie diese. Der Monitor wendet eine Anweisung nur an, wenn er sie sicher lesen kann und sie im geltenden Text auf genau eine Stelle passt. Sonst rät er nicht.',
-  pruefung: 'Passen unser Ergebnis und die Textgegenüberstellung nicht zusammen, zeigt der Monitor den ganzen Paragraphen nicht. Welcher der beiden Texte abweicht, lässt sich daraus allein nicht sagen.',
+  pruefung: 'Passen unser Ergebnis und die Textgegenüberstellung nicht zusammen, liest der Monitor den Gesetzestext des Entwurfs ein zweites Mal, aus seinem PDF. Steht dort genau unser Ergebnis, zeigt er den Paragraphen und nennt beide Wortlaute. Sonst zeigt er ihn nicht.',
   beilage: 'Oft zeigt die Textgegenüberstellung nur Ausschnitte eines Paragraphen. Für den Rest gibt es nichts, womit der Monitor sein Ergebnis vergleichen kann.',
 }
 

@@ -28,6 +28,10 @@
         </ul>
         Weil die Gegenüberstellung oft nur Auszüge druckt, kann sie nur
         bestätigen, was sie abdruckt.
+        Weicht sie an einer Stelle von unserem Ergebnis ab, lesen wir den
+        Gesetzestext des Entwurfs ein zweites Mal, aus seinem PDF im RIS.
+        Sagt er dort genau, was unser Ergebnis sagt, zeigen wir den
+        Paragraphen und nennen beide Wortlaute.
       </dd>
     </div>
     <div>
