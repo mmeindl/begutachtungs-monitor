@@ -15,7 +15,7 @@ vi.mock('../server/utils/laender/landKonsLaws', async (importOriginal) => ({
 }))
 vi.mock('../server/utils/upstream/fetch', () => ({ upstreamText: vi.fn() }))
 
-const { konsRefsOfLgbl } = vi.mocked(await import('../server/utils/laender/landKonsLaws'))
+const { konsRefsOfLgbl, konsParagraphHistory } = vi.mocked(await import('../server/utils/laender/landKonsLaws'))
 const { upstreamText } = vi.mocked(await import('../server/utils/upstream/fetch'))
 const { compareLandLawChanges } = await import('../server/utils/laender/landLawChangesService')
 
@@ -51,5 +51,22 @@ describe('compareLandLawChanges — a law the Landesgesetzblatt enacts anew (19.
     konsRefsOfLgbl.mockResolvedValue({ refs: [ref('§ 1', 'p1.xml'), ref('§ 1', 'p1.xml', '2027-01-01')], complete: true })
     const { value } = await compareLandLawChanges('ooe', 'LGBl. Nr. 56/2026', 'lgbl.xml', null, '2026-06-30')
     expect(value.withheld).toEqual([{ law: LAW, id: '§1', reason: 'enactedUnread' }])
+  })
+})
+
+describe('compareLandLawChanges — a § the Landesgesetzblatt repeals (20.11.2026)', () => {
+  beforeEach(() => {
+    XML['novelle.xml'] = '<risdok><nutzdaten><absatz typ="novao1">1. § 2 entfällt.</absatz></nutzdaten></risdok>'
+  })
+
+  it('names a repealed § whose history holds no earlier version, never drops it uncounted', async () => {
+    // RIS's record of the repeal, from the day it takes effect, of a law LGBl. Nr. 12/2001 enacted.
+    const repeal = ref('§ 2', 'p2.xml', '2026-07-01')
+    Object.assign(repeal.Data.Metadaten.Landesrecht.LrKons, { Kundmachungsorgan: 'LGBl. Nr. 12/2001 aufgehoben durch LGBl. Nr. 56/2026', StammnormBgblnummer: '12/2001' })
+    konsRefsOfLgbl.mockResolvedValue({ refs: [repeal], complete: true })
+    // The §'s history holds that record alone: no earlier version to pair it with (`pairOf` → „new").
+    konsParagraphHistory.mockResolvedValue([repeal])
+    const { value } = await compareLandLawChanges('ooe', 'LGBl. Nr. 56/2026', 'novelle.xml', null, '2026-06-30')
+    expect(value.withheld).toEqual([{ law: LAW, id: '§2', reason: 'unpaired' }])
   })
 })

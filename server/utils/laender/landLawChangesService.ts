@@ -117,7 +117,9 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
         pair.kind === 'pair' ? unitOf(pair.old) : Promise.resolve(null),
         repeal ? Promise.resolve(null) : unitOf(v),
       ])
-      if ((pair.kind === 'pair' && !oldUnit) || (!repeal && !newUnit)) return void withheld.push({ law: v.law, id: v.key, reason: 'unpaired' })
+      // Neither side read: a repeal (no new wording) of a § whose history holds no earlier one (`new`)
+      // pushed nothing and was dropped uncounted until 20.11.2026.
+      if ((pair.kind === 'pair' && !oldUnit) || (!repeal && !newUnit) || (!oldUnit && !newUnit)) return void withheld.push({ law: v.law, id: v.key, reason: 'unpaired' })
       if (oldUnit) oldUnits.push(oldUnit)
       if (newUnit) newUnits.push(newUnit)
     } catch {
@@ -168,5 +170,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-7', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-8', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
 )
