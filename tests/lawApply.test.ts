@@ -1653,6 +1653,53 @@ describe('„jeweils" über eine Liste: jede Fundstelle in jeder Einheit (20.11.
   })
 })
 
+describe('Satzbereiche (20.11.2026)', () => {
+  const six = (): StandingLaw => ({ paragraphs: [para('4', 'S', ['Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier. Fünf ist hier. Sechs ist hier.'])] })
+  it.each([
+    ['In § 4 Abs. 1 entfallen der zweite, der dritte und der vierte Satz.', 'Eins ist hier. Fünf ist hier. Sechs ist hier.'],
+    ['In § 4 Abs. 1 entfallen der zweite und der dritte Satz.', 'Eins ist hier. Vier ist hier. Fünf ist hier. Sechs ist hier.'],
+    ['In § 4 Abs. 1 entfallen die Sätze vier bis sechs.', 'Eins ist hier. Zwei ist hier. Drei ist hier.'],
+    ['In § 4 Abs. 1 entfallen die Sätze sechs und sieben.', null],
+    ['In § 4 Abs. 1 entfallen die Sätze fünf und sechs.', 'Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier.'],
+    ['In § 4 Abs. 1 entfallen die beiden letzten Sätze.', 'Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier.'],
+    ['In § 4 Abs. 1 entfallen der vorletzte und der letzte Satz.', 'Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier.'],
+  ])('„%s"', (line, expected) => {
+    const { law: out, results } = run(six(), instr(line))
+    if (expected === null) {
+      expect(results[0]!.reason).toMatch(/nicht auffindbar/)
+      expect(plainText(out.paragraphs[0]!.children[0]!)).toContain('Sechs ist hier.')
+      return
+    }
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe(expected)
+  })
+
+  it('replaces a run named one by one', () => {
+    const { law: out, results } = run(six(), instr('In § 4 Abs. 1 lauten der vierte und der fünfte Satz:', ['Neu vier. Neu fünf.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Eins ist hier. Zwei ist hier. Drei ist hier. Neu vier. Neu fünf. Sechs ist hier.')
+  })
+
+  // Cut after „sowie" but not at the semicolon, the run reached the reader as
+  // the anchor of the insertion behind it, and the deletion it belongs to
+  // was dropped without a refusal (BVergG 2018 § 350, BGBl. I Nr. 8/2026).
+  it('keeps refusing a run that is the object of another clause', () => {
+    const parsed = parseInstruction('In § 4 Abs. 5 entfallen die Wortfolge "ist" im ersten Satz sowie die beiden letzten Sätze; nach Abs. 5 werden folgende Abs. 6 und 7 eingefügt:')
+    expect(parsed.reason).toMatch(/Teil nicht gelesen/)
+  })
+
+  it('refuses a gap', () => {
+    expect(parseInstruction('In § 4 Abs. 1 entfallen der zweite und der vierte Satz.').ops).toHaveLength(0)
+    expect(parseInstruction('In § 4 Abs. 1 entfallen die Sätze zwei und vier.').ops).toHaveLength(0)
+  })
+
+  // A phrase operation over the pair stays two places, each with the phrase.
+  it('leaves a phrase operation over a pair as two places', () => {
+    const ops = parseInstruction('In § 4 Abs. 1 wird im zweiten und im dritten Satz das Wort "ist" durch das Wort "war" ersetzt.').ops
+    expect(ops.map((o) => ('target' in o ? [o.target.satz, o.target.satzCount] : null))).toEqual([['dritter', 1], ['zweiter', 1]])
+  })
+})
+
 describe('Umbenennungslisten und „eingereiht" (20.11.2026)', () => {
   const chain = (): StandingLaw => ({ paragraphs: [para('92a', 'A', ['a.']), para('92b', 'B', ['b.']), para('92c', 'C', ['c.']), para('93', 'D', ['d.'])] })
 

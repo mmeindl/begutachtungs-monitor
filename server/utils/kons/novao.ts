@@ -984,6 +984,68 @@ export function parseAddressList(text: string, inherited?: NovaoAddress | null):
  * „vorletzter" first. „zweiter und vorletzter" counts from both ends — one
  * sentence or either order — and is refused.
  */
+/**
+ * **A run of sentences named one by one or by count** (20.11.2026): „der
+ * zweite und der dritte Satz", „der zweite, der dritte und der vierte
+ * Satz", „die Sätze vier bis sechs", „die Sätze sechs und sieben", „die
+ * beiden letzten Sätze", „der vorletzte und der letzte Satz". Read as ONE
+ * place, a run (`satzCount`), exactly as „erster und zweiter Satz" has been —
+ * and only where the sentences follow one another without a gap. Eleven
+ * §§ of period XXVIII were refused over these.
+ *
+ * **Unit operations only** — the caller decides. A phrase operation over
+ * „der zweite und der dritte Satz" is two places, each of which has to
+ * carry the phrase (`sentencePairPlaces`); read as a run, the phrase would
+ * have to be unique across both. A gap („der zweite und der vierte Satz")
+ * stays refused: run one after the other, the second deletion counts a
+ * sentence the first has moved.
+ */
+const CARDINAL_INDEX: Record<string, number> = { eins: 0, zwei: 1, drei: 2, vier: 3, fünf: 4, sechs: 5, sieben: 6, acht: 7, neun: 8, zehn: 9 }
+const RUN_ORDINAL = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte)'
+const ORDINAL_RUN_RE = new RegExp(`\\b(?:(?:der|die|den)\\s+)?(${RUN_ORDINAL})[rnsm]?((?:\\s*,\\s*(?:(?:der|die|den)\\s+)?${RUN_ORDINAL}[rnsm]?)*)\\s+und\\s+(?:(?:der|die|den)\\s+)?(${RUN_ORDINAL})[rnsm]?\\s+Satz(?:es)?\\b`, 'i')
+const CARDINAL_RUN_RE = /\b(?:die\s+)?Sätze\s+(eins|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn)\s+(bis|und)\s+(eins|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn)\b/i
+const LAST_RUN_RE = /\b(?:die\s+)?beiden\s+letzten\s+Sätze\b|\b(?:der\s+)?vorletzte[rn]?\s+und\s+(?:der\s+)?letzte[rn]?\s+Satz(?:es)?\b/i
+
+/**
+ * The run is the object of the clause's own verb, and that verb deletes or
+ * restates sentences. „In § 350 Abs. 5 entfallen die Wortfolge ‚…' im ersten
+ * Satz sowie die beiden letzten Sätze; nach Abs. 5 werden folgende Abs. 6
+ * und 7 eingefügt" reaches the reader cut after „sowie" and not at the
+ * semicolon (BVergG 2018, BGBl. I Nr. 8/2026): read there, the run became the
+ * anchor of the insertion and the deletion it belongs to vanished without a
+ * refusal.
+ */
+const SENTENCE_RUN_VERB_RE = /\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|\bgestrichen\b|\blaute[nt]\b|\bersetzt\b/i
+const SENTENCE_RUN_OTHER_VERB_RE = /\beingefügt\b|\bangefügt\b|\beingereiht\b|\bvorangestellt\b|\bhinzugefügt\b|\berh(?:äl|al)t(?:en)?\b/i
+
+function sentenceRun(text: string): { at: number; len: number; satz: string; count: number } | null {
+  const last = LAST_RUN_RE.exec(text)
+  if (last) return { at: last.index, len: last[0].length, satz: 'letzter', count: 2 }
+  const cardinal = CARDINAL_RUN_RE.exec(text)
+  if (cardinal) {
+    const a = CARDINAL_INDEX[cardinal[1]!.toLowerCase()]!
+    const b = CARDINAL_INDEX[cardinal[3]!.toLowerCase()]!
+    const count = cardinal[2]!.toLowerCase() === 'bis' ? b - a + 1 : b === a + 1 ? 2 : 0
+    return count >= 2 ? { at: cardinal.index, len: cardinal[0].length, satz: ORDINAL_BY_INDEX[a]!, count } : null
+  }
+  const ordinal = ORDINAL_RUN_RE.exec(text)
+  if (!ordinal) return null
+  const middle = [...(ordinal[2] ?? '').matchAll(new RegExp(RUN_ORDINAL, 'gi'))].map((m) => m[0])
+  const idx = [ordinal[1]!, ...middle, ordinal[3]!].map((w) => ORDINAL_INDEX[w.toLowerCase()])
+  if (idx.some((i, k) => i === undefined || (k > 0 && i !== idx[k - 1]! + 1))) return null
+  return { at: ordinal.index, len: ordinal[0].length, satz: ORDINAL_BY_INDEX[idx[0]!]!, count: idx.length }
+}
+
+function sentenceRunPlaces(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
+  const norm = normalizeText(text)
+  const masked = norm.replace(/"[^"]*"/g, (m) => '\u0000'.repeat(m.length))
+  const run = sentenceRun(masked)
+  if (!run) return null
+  const places = parseAddressList(`${norm.slice(0, run.at)} ${run.satz} Satz ${norm.slice(run.at + run.len)}`, inherited)
+  if (!places || places.length !== 1 || places[0]!.satz !== run.satz || places[0]!.satzCount !== 1 || places[0]!.siblings.length > 0) return null
+  return [{ ...places[0]!, satzCount: run.count }]
+}
+
 function sentencePairPlaces(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
   const norm = normalizeText(text)
   // Masked to the same length, so the match indexes the unmasked text.
@@ -2311,7 +2373,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   const filed = EINGEREIHT_RE.exec(maskQuotes(scope || head))
   const addressBase = filed ? (scope || head).slice(0, filed.index) + (scope || head).slice(filed.index + filed[0].length) : scope || head
   const addressText = redundantLocator ? addressBase.replace(locator[0], `${locator[1]} `) : namedAs ? addressBase.replace(namedAs[0], 'bezeichnet') : paraRenamed ? addressBase.replace(paraRenamed[0], '') : addressBase
-  const targets = spreadSentence(head, payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : null)))
+  const targets = spreadSentence(head, payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : SENTENCE_RUN_VERB_RE.test(maskQuotes(head)) && !SENTENCE_RUN_OTHER_VERB_RE.test(maskQuotes(head)) ? sentenceRunPlaces(addressText, inherited) : null)))
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
     // two Strich forms are perfectly readable addresses that this model has no

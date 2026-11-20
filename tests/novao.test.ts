@@ -965,12 +965,19 @@ describe('two sentences of one unit (30.09.2026)', () => {
     for (const line of [
       // Deleted the fourth, or the last, alone.
       'In § 2 Abs. 2 entfallen der zweite und der vierte Satz.',
-      'In § 23 Abs. 3 entfallen der vorletzte und der letzte Satz.',
       '§ 3 Abs. 1b zweiter und letzter Satz lautet:',
       'In § 5 Abs. 1 wird im ersten und letzten Satz jeweils der Punkt durch einen Strichpunkt ersetzt.',
       'In § 5 Abs. 1 wird im zweiten und vorletzten Satz jeweils das Wort "A" durch das Wort "B" ersetzt.',
     ]) expect(parseInstruction(line).ops, line).toEqual([])
   })
+})
+
+// „der vorletzte und der letzte Satz" stood in the list above until
+// 20.11.2026, against the bug of deleting one of the two. It names the last
+// two sentences without a gap, as „die letzten beiden Sätze" does, and is
+// read as that run since (`sentenceRunPlaces`; 116/ME XXVIII, UFG § 23).
+it('reads „der vorletzte und der letzte Satz" of a deletion as the last two', () => {
+  expect(parseInstruction('In § 23 Abs. 3 entfallen der vorletzte und der letzte Satz.').ops).toMatchObject([{ kind: 'delete', target: { abs: '3', satz: 'letzter', satzCount: 2 } }])
 })
 
 describe('two clauses under one participle (30.09.2026)', () => {
