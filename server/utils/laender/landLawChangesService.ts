@@ -104,8 +104,10 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
       return
     }
     const lawKey = instructionLawFor(v.law, instructionLaws, laws.length)
-    const named = lawKey === undefined ? null : isNamed(instructions.get(lawKey), v.key)
-    if (named === null) return void withheld.push({ law: v.law, id: v.key, reason: 'unpaired' })
+    // No instruction's law matched to this one (or none read at all): whether an instruction names the § is
+    // not known. Named „unpaired" until 20.11.2026, whose sentence says an instruction names it.
+    if (lawKey === undefined) return void withheld.push({ law: v.law, id: v.key, reason: 'lawUnmatched' })
+    const named = isNamed(instructions.get(lawKey), v.key)
     if (!named) return void withheld.push({ law: v.law, id: v.key, reason: 'uninstructed' })
     if (vs.length !== 1) return void withheld.push({ law: v.law, id: v.key, reason: 'unpaired' })
     try {
@@ -173,5 +175,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-8', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-9', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
 )

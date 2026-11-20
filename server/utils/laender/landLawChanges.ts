@@ -17,7 +17,8 @@
  * sub-instructions names before its quoted text). The rest is counted and named, never dropped silently:
  * §§ RIS ties to the Landesgesetzblatt that no instruction names
  * (`uninstructed`), §§ an instruction names that found no pair
- * (`unpaired`). A law the Landesgesetzblatt enacts anew has no instructions
+ * (`unpaired`), §§ of a law no instruction's law could be matched to
+ * (`lawUnmatched`, 20.11.2026). A law the Landesgesetzblatt enacts anew has no instructions
  * and no earlier version: its §§ stand as new.
  *
  * Measured before it was built as a set per law (10.11.2026: 57 of 176

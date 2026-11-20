@@ -435,11 +435,14 @@ export interface LandLawDiffResponse {
  *    instruction names it;
  *  - `unpaired`: an instruction names it, its wording before and after is
  *    not certain in RIS;
+ *  - `lawUnmatched`: RIS ties its version to the Landesgesetzblatt, and no
+ *    instruction's law could be matched to its law, so whether one names it
+ *    is not known (20.11.2026);
  *  - `enactedUnread`: a § of a law the Landesgesetzblatt enacts anew whose
  *    text RIS holds in no single version the monitor reads with certainty
  *    (19.11.2026).
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'enactedUnread' | 'notInDraft' | 'draftDiffers' | 'announced'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'notInDraft' | 'draftDiffers' | 'announced'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

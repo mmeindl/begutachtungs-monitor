@@ -84,6 +84,18 @@ describe('withheldNotes — the causes of 26.10.2026', () => {
   })
 })
 
+describe('withheldNotes — a Landesgesetz\'s page (20.11.2026)', () => {
+  it('says of a § whose law no instruction was matched to nothing an instruction would say, and of an unpaired § nothing of a wording after', () => {
+    const [unmatched] = withheldNotes([{ law: 'X', id: '§3', reason: 'lawUnmatched' }])
+    expect(unmatched!.text).not.toMatch(/nennt ihn/)
+    expect(unmatched!.text).toMatch(/Anweisungen/)
+    // True of a § the Landesgesetzblatt repeals, which has no wording after it.
+    const [unpaired] = withheldNotes([{ law: 'X', id: '§3', reason: 'unpaired' }])
+    expect(unpaired!.text).not.toMatch(/danach/)
+    expect(withheldNotes([{ law: 'X', id: '§3', reason: 'unpaired' }, { law: 'X', id: '§4', reason: 'lawUnmatched' }]).map((n) => n.cause)).toEqual(['unpaired', 'lawUnmatched'])
+  })
+})
+
 describe('withheldNotes — a law title (26.10.2026)', () => {
   it('names a changed title after everything else, as what RIS cannot check, and refers to it as „ihn"', () => {
     const notes = withheldNotes([{ law: 'O', id: 'Titel', reason: 'title' }, { law: 'O', id: 'Anlage 1', reason: 'annex' }])

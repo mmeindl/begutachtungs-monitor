@@ -81,6 +81,18 @@ describe('compareLandLawChanges — RIS’s two versions of one § are one unit 
   })
 })
 
+describe('compareLandLawChanges — a law no instruction could be matched to (20.11.2026)', () => {
+  it('names its §§ as such, never as §§ an instruction names', async () => {
+    // A Novelle of a law LGBl. Nr. 12/2001 enacted, whose Landesgesetzblatt yields no instruction the monitor reads.
+    const amended = ref('§ 3', 'p1.xml', '2026-07-01')
+    Object.assign(amended.Data.Metadaten.Landesrecht.LrKons, { Kundmachungsorgan: 'LGBl. Nr. 12/2001 zuletzt geändert durch LGBl. Nr. 56/2026', StammnormBgblnummer: '12/2001' })
+    konsRefsOfLgbl.mockResolvedValue({ refs: [amended], complete: true })
+    const { value } = await compareLandLawChanges('ooe', 'LGBl. Nr. 56/2026', 'lgbl.xml', null, '2026-06-30')
+    expect(value.withheld).toEqual([{ law: LAW, id: '§3', reason: 'lawUnmatched' }])
+    expect(konsParagraphHistory).not.toHaveBeenCalled()
+  })
+})
+
 describe('compareLandLawChanges — a § the Landesgesetzblatt repeals (20.11.2026)', () => {
   beforeEach(() => {
     XML['novelle.xml'] = '<risdok><nutzdaten><absatz typ="novao1">1. § 2 entfällt.</absatz></nutzdaten></risdok>'

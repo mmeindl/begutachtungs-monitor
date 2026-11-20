@@ -132,10 +132,17 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     one: 'Das RIS ordnet seine Fassung diesem Landesgesetzblatt zu, aber keine Anweisung des Landesgesetzblatts nennt ihn',
     many: 'Das RIS ordnet ihre Fassung diesem Landesgesetzblatt zu, aber keine Anweisung des Landesgesetzblatts nennt sie',
   },
+  // „Seine Fassungen", not „seine Fassung davor und danach" (20.11.2026): a § the Landesgesetzblatt repeals has none after it.
   unpaired: {
     lead: 'Nicht verglichen:',
-    one: 'Eine Anweisung des Landesgesetzblatts nennt ihn; seine Fassung davor und danach fand der Monitor im RIS nicht eindeutig',
-    many: 'Anweisungen des Landesgesetzblatts nennen sie; ihre Fassung davor und danach fand der Monitor im RIS nicht eindeutig',
+    one: 'Eine Anweisung des Landesgesetzblatts nennt ihn; seine Fassungen im RIS fand der Monitor nicht so, dass er sie eindeutig gegenüberstellen kann',
+    many: 'Anweisungen des Landesgesetzblatts nennen sie; ihre Fassungen im RIS fand der Monitor nicht so, dass er sie eindeutig gegenüberstellen kann',
+  },
+  // No instruction's law matched to the §'s law, or no instruction read at all (20.11.2026): nothing is said of an instruction naming it.
+  lawUnmatched: {
+    lead: 'Nicht verglichen:',
+    one: 'Das RIS ordnet seine Fassung diesem Landesgesetzblatt zu, aber welche Anweisungen des Landesgesetzblatts sein Gesetz betreffen, konnte der Monitor nicht sicher feststellen',
+    many: 'Das RIS ordnet ihre Fassung diesem Landesgesetzblatt zu, aber welche Anweisungen des Landesgesetzblatts ihr Gesetz betreffen, konnte der Monitor nicht sicher feststellen',
   },
   // A law the Landesgesetzblatt enacts anew (19.11.2026): no instruction names its §§, and there is nothing before.
   enactedUnread: {
@@ -152,7 +159,7 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'draftDiffers', 'announced', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
+const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'lawUnmatched', 'uninstructed', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'draftDiffers', 'announced', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
  * The numbers other §§ of a group move to: „§ 34 → § 33" makes § 33 one
