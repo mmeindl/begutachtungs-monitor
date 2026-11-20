@@ -159,11 +159,18 @@ export async function landLawsOfLgbl(land: LandCode, nr: string): Promise<{ laws
   return { laws: landLawsOfRefs(land, refs, nummer, context), repealed: landRepealedOfRefs(refs, nummer) }
 }
 
-/** Every version of one § of one law (`Abschnitt` = that § number), for the comparison's earlier wording. Throws when RIS fails. */
+/**
+ * Every version of one § of one law (`Abschnitt` = that § number), for the
+ * comparison's earlier wording. Throws when RIS fails, and where the pages
+ * fall short of RIS's own count (20.11.2026): `Abschnitt` takes digits only,
+ * so §§ 5, 5a and 5b share the count, and until then one page of 100 was
+ * read and its `Hits` never compared. Measured over 588 cached single-law
+ * answers: none past one page, the largest 85.
+ */
 export async function konsParagraphHistory(land: LandCode, gesetzesnummer: string, key: string): Promise<any[]> {
   const m = /^(§|Art\.)(\d+)/.exec(key)
   if (!m) return []
-  const params = new URLSearchParams({
+  const params = {
     Applikation: 'LrKons',
     [`Bundesland_SucheIn${RIS_LAND[land]}`]: 'true',
     Gesetzesnummer: gesetzesnummer,
@@ -171,9 +178,18 @@ export async function konsParagraphHistory(land: LandCode, gesetzesnummer: strin
     'Abschnitt.Von': m[2]!,
     'Abschnitt.Bis': m[2]!,
     DokumenteProSeite: 'OneHundred',
-  })
-  const body = await risJson<any>(`${LANDESRECHT_API}?${params}`, POLICY)
-  return asArray<any>(body?.OgdDocumentResults?.OgdDocumentReference)
+  }
+  const refs: any[] = []
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    // Page 1 at the address it always had.
+    const query = new URLSearchParams(page === 1 ? params : { ...params, Seitennummer: String(page) })
+    const results = (await risJson<any>(`${LANDESRECHT_API}?${query}`, POLICY))?.OgdDocumentResults
+    const pageRefs = asArray<any>(results?.OgdDocumentReference)
+    refs.push(...pageRefs)
+    if (refs.length >= Number(results?.Hits?.['#text'] ?? 0)) return refs
+    if (!pageRefs.length) break
+  }
+  throw new Error(`LrKons ${gesetzesnummer} ${key}: ${refs.length} Fassungen gelesen, weniger als das RIS zählt`)
 }
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
