@@ -194,6 +194,24 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
     expect(law()).toContain('(2) Das Format .docx ist zulässig.')
   })
 
+  it('drops Kärnten\'s session stamp at a page\'s head, from the Artikel\'s title and from an instruction (ktn-104907-2025-32, Vorlage pages 1–2 and 4–5, 20.11.2026)', () => {
+    const vorlage = (stamp: string[]) => [
+      page(...stamp, '1 von 20', 'Regierungsvorlage', 'Gesetz vom ………….…….., mit dem die Kärntner Landesverfassung,', 'Der Landtag von Kärnten hat beschlossen:', 'Artikel II', 'Änderung des Kärntner Dienstrechtsgesetzes 1994'),
+      page(...stamp, '2 von 20', 'Das Kärntner Dienstrechtsgesetz 1994 – K-DRG 1994, LGBl. Nr. 71, zuletzt in der Fassung des',
+        'Gesetzes LGBl. Nr. 43/2026, wird wie folgt geändert:', '1. In § 4 Abs. 1 wird jeweils das Zitat „§ 3 Abs. 2“ durch das Zitat', '„§ 3 Abs. 4“ ersetzt.',
+        '2. In § 5 Abs. 2 wird der letzte Satz durch folgende Bestimmungen ersetzt:', '„§ 10f Abs. 1 bis 5 gelten sinngemäß.“'),
+      page(...stamp, '3 von 20', '3. § 5 Abs. 4 lautet:', '„(4) § 10g Abs. 1 und 2, Abs. 3 letzter Satz, Abs. 4 bis 7 sowie § 10h gelten sinngemäß.“'),
+    ]
+    const units = landDraftUnits(vorlage(['REG.SITZG.']))!
+    expect(units.map((u) => `${u.article} ${u.id} ${u.text}`).join(' | ')).not.toMatch(/SITZG/)
+    expect(units).toEqual(landDraftUnits(vorlage([]))!)
+    // The other two spellings the cached Vorlagen print.
+    for (const stamp of ['REG.SITZG', 'REG-SITZG.']) expect(landDraftUnits(vorlage([stamp]))).toEqual(units)
+    // Only at the head: the same line inside a page is not furniture by its place.
+    const inside = lawBlocksFromPdfPages([page('Gesetz vom ………….…….., mit dem die Kärntner Landesverfassung,', 'Der Landtag von Kärnten hat beschlossen:', 'Artikel I', 'Das Gesetz wird wie folgt geändert:', '1. § 1 lautet:', 'REG.SITZG.', '„§ 1 Text.“')])!
+    expect(inside.map((b) => b.text).join(' ')).toContain('REG.SITZG.')
+  })
+
   it('says null where no enacting clause marks a legal text', () => {
     expect(lawBlocksFromPdfPages([page('Erläuterungen', 'Allgemeiner Teil')])).toBeNull()
   })

@@ -54,10 +54,26 @@ const BARE_NUMBER_RE = /^\d+$/
  */
 const RUNNING_HEAD_RE = /^(?:[A-Z]:\\|\\\\)\S|\.docx?\s*\\\s*\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}(?::\d{2})?$/
 
-/** A page's lines of law text: without its running head and footer, and without a bare number at its edge (`BARE_NUMBER_RE`). */
+/**
+ * Kärnten's session stamp, „REG.SITZG.", over every page of a Vorlage for
+ * the Regierungssitzung (20.11.2026). Joined to the line before it, it read
+ * as law: in an instruction across a page break, in an Artikel's title
+ * („Artikel II Änderung des Kärntner Dienstrechtsgesetzes 1994 REG.SITZG.")
+ * — against the draft and against the Landesgesetzblatt 198 units of
+ * Kärnten's station pairs showed it inserted or removed, 128 changed by
+ * nothing else (ktn-104907-2025-32). Measured over 848 cached Land PDFs:
+ * 170 lines in 34 PDFs, every one Kärnten's, every one the stamp alone —
+ * „REG.SITZG." 161, „REG.SITZG" 7, „REG-SITZG." 2 — and every one the
+ * page's first line once its page number („1 von 20") is dropped. So only
+ * there: a page's own furniture by its place, as the bare number is.
+ */
+const SESSION_STAMP_RE = /^REG[.-]SITZG\.?$/
+
+/** A page's lines of law text: without its running head and footer, a session stamp at its head, and a bare number at its edge (`BARE_NUMBER_RE`). */
 function pageLines(page: string): string[] {
-  const lines = page.split('\n').map((l) => l.replace(/\s+/g, ' ').trim())
+  const all = page.split('\n').map((l) => l.replace(/\s+/g, ' ').trim())
     .filter((l) => l && !RUNNING_HEAD_RE.test(l) && (BARE_NUMBER_RE.test(l) || !NOISE_RE.test(l)))
+  const lines = SESSION_STAMP_RE.test(all[0] ?? '') ? all.slice(1) : all
   return lines.filter((l, k) => !BARE_NUMBER_RE.test(l) || (k > 0 && k < lines.length - 1))
 }
 
