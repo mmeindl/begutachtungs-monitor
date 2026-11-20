@@ -50,6 +50,8 @@ import { comparisonText, oracleVerdict, type StandingUnits } from './tguOracle'
 
 /** Tokens of instruction text on either side of a stretch, as the PDF has to carry them. */
 export const CONTEXT = 4
+/** …and at the least, where the instruction's text ends sooner: a place at its very edge is not tied. */
+const MIN_CONTEXT = 2
 
 /** One instruction that acted on the §, as the guard is handed it. */
 export interface WitnessInstruction {
@@ -84,6 +86,7 @@ export type WitnessRefusal =
   | 'nicht-im-entwurfstext'
   | 'einheit-nicht-im-pdf'
   | 'nicht-im-pdf'
+  | 'rand'
   | 'beilage-im-pdf'
   | 'nicht-abbildbar'
   | 'pruefung'
@@ -235,7 +238,11 @@ function written(ins: WitnessInstruction, tokens: readonly string[], all: readon
   const { op } = ins
   if (op.kind === 'replacePhrase') {
     const from = tokensOf(op.from)
-    return from.length === 0 ? 0 : runsOf(before, from).length - runsOf(got, from).length
+    // Each replacement takes the payload's own occurrences in the old
+    // wording with it: „Verkehrssicherheit, der Lufttüchtigkeit oder der
+    // Betriebstüchtigkeit" by „Lufttüchtigkeit" adds none (119/ME, LFG § 21).
+    if (from.length === 0) return 0
+    return (runsOf(before, from).length - runsOf(got, from).length) * (1 - runsOf(from, tokens).length)
   }
   if (op.kind === 'insertPhrase') {
     const anchor = tokensOf(op.anchor)
@@ -434,6 +441,7 @@ function settle(
   }
   // 3. and 4., for the instruction whose payload holds the place.
   let found = false
+  let tied = false
   for (const { p, o } of holders) {
     const source = sources[p.instruction]!
     const own = regions[p.instruction]!
@@ -442,6 +450,11 @@ function settle(
       const ue = u + (d.ge - o)
       const lead = source.slice(Math.max(0, us - CONTEXT), us)
       const tail = source.slice(ue, ue + CONTEXT)
+      // Too near the end of what our reader read to tie it: a payload cut
+      // short at a line's end ends inside the PDF's longer text, and the
+      // window, with nothing after it, stands there all the same.
+      if (lead.length < MIN_CONTEXT || tail.length < MIN_CONTEXT) continue
+      tied = true
       const oursKey = keyOfTokens([...lead, ...source.slice(us, ue), ...tail])
       const annexKey = keyOfTokens([...lead, ...annex, ...tail])
       if (own.length === 0) return 'einheit-nicht-im-pdf'
@@ -451,7 +464,7 @@ function settle(
   }
   if (!found) {
     const inSource = holders.some(({ p }) => runsOf(sources[p.instruction]!, p.tokens).length > 0)
-    return inSource ? 'nicht-im-pdf' : 'nicht-im-entwurfstext'
+    return !inSource ? 'nicht-im-entwurfstext' : tied ? 'nicht-im-pdf' : 'rand'
   }
   return null
 }

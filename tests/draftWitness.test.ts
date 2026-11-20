@@ -27,4 +27,23 @@ describe('witnessVerdict', () => {
   it('says why without a rendition', () => {
     expect(witnessVerdict('21', before, before, annex, touching, null)).toEqual({ released: false, reason: 'keine-fassung' })
   })
+
+  it('ties no place at the very end of what our reader read: a payload cut short at a line\'s end', () => {
+    const standing = 'Eins gilt für alle Fälle. Nachher gilt Vier für alle Fälle.'
+    const cut = 'Drei gilt ab dem heutigen Tag so lange, bis der Verstoß endet und die Behörde'
+    const insert: WitnessInstruction[] = [{ op: { kind: 'insertAfter', anchor: { para: '21', abs: '1' } as never, child: 'abs', childIds: ['3'], where: 'after' }, line: 'In § 21 wird nach Abs. 1 folgender Abs. 3 eingefügt:', payload: [cut] }]
+    const full = renditionOfPages(['7. In § 21 wird nach Abs. 1 folgender Abs. 3 eingefügt:\n„(3) Drei gilt ab dem heutigen Tag so lange, bis der Verstoß endet und die Behörde entschieden hat.“'])
+    const rows = [changed('(1) Eins gilt für alle Fälle. (4) Nachher gilt Vier für alle Fälle.', '(1) Eins gilt für alle Fälle. (3) Drei gilt ab dem heutigen Tag nie. (4) Nachher gilt Vier für alle Fälle.')]
+    expect(witnessVerdict('21', standing, `Eins gilt für alle Fälle. ${cut} Nachher gilt Vier für alle Fälle.`, rows, insert, full)).toEqual({ released: false, reason: 'rand' })
+  })
+
+  it('counts the payload\'s own occurrences in the wording it replaces as gone (119/ME, LFG § 21)', () => {
+    const standing = 'Nach diesem Gesetz ist die zuständige Behörde und prüft die Maßnahmen der Verkehrssicherheit, der Lufttüchtigkeit oder der Betriebstüchtigkeit jährlich.'
+    const from = 'Verkehrssicherheit, der Lufttüchtigkeit oder der Betriebstüchtigkeit'
+    const wide = 'In § 21 wird die Wortfolge „Verkehrssicherheit, der Lufttüchtigkeit oder der Betriebstüchtigkeit“ durch das Wort „Lufttüchtigkeit“ ersetzt.'
+    const ins: WitnessInstruction[] = [{ op: { kind: 'replacePhrase', target: { para: '21' } as never, from, to: 'Lufttüchtigkeit', everywhere: false, eachUnit: false, wordBound: true }, line: wide, payload: [] }]
+    const faulted = 'Nach diesem Gesetz ist die zuständige Lufttüchtigkeit und prüft die Maßnahmen der Lufttüchtigkeit jährlich.'
+    const rows = [changed(standing, 'Nach diesem Gesetz ist die zuständige Behörde und prüft die Maßnahmen der Lufttüchtigkeit jährlich.')]
+    expect(witnessVerdict('21', standing, faulted, rows, ins, renditionOfPages([`16. ${wide}`])).released).toBe(false)
+  })
 })
