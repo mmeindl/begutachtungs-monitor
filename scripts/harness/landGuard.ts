@@ -64,6 +64,14 @@
  * printed and recorded as „nicht gehalten", never passed in silence
  * (`lib/landGuardReport.ts`).
  *
+ * „Nicht geprüft" (20.11.2026, `notHeld`): a § shown whose new text the
+ * strict check did not hold carries the mark on the page. So a fault in the
+ * right column ends one of three ways — withheld, shown with the mark,
+ * shown without it — each asked of the shipped functions, and the floor of
+ * the five right-column classes holds the share NOT shown without the mark,
+ * over the §§ that carried no mark before the fault (`unmarkedFloor`). The
+ * cuts of the left column are withheld or not; no mark is said there.
+ *
  * `--baseline=<file>` (20.11.2026): every § the comparison withholds, by
  * document, law and § with its cause, and per document whether it was
  * answered and how many §§ it shows, compared for equality with the file —
@@ -90,11 +98,11 @@ import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '..
 import { installFetchCache } from '../lib/harnessCache'
 import { harnessStamp } from '../lib/harnessRecord'
 import { argAssigned, argFlag, argPair } from '../lib/args'
-import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorLine, floorRows, landBaselineFindings, landRecord, reachByLand, toLandBaseline, unaccountedInstructed, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
+import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorLine, floorRows, landBaselineFindings, landRecord, markTallies, reachByLand, toLandBaseline, unaccountedInstructed, unmarkedFloor, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument, type MarkOutcome } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
-import { articleClauses, draftLawKey, guardTguUnits, landDraftBags, undrafted } from '../../server/utils/laender/landTguGuard'
+import { articleClauses, draftLawKey, guardTguUnits, landDraftBags, notHeld, undrafted } from '../../server/utils/laender/landTguGuard'
 import { lawInForce, paragraphText } from '../../server/utils/laender/landKons'
 import { comparableWords, cutShort, standsInRis } from '../../server/utils/laender/landTgu'
 import { draftUnits } from '../../server/utils/annex/annexDraft'
@@ -195,6 +203,8 @@ interface UnitRecord {
   strictNotShown: string[]
   /** Whether the product shows the §: neither rule withholds it. */
   shown: boolean
+  /** …and shows it with „nicht geprüft": its new text was not held word for word (`notHeld`). */
+  marked: boolean
   undiffed: number
   missing: string[]
   /** …of those, the ones the WHOLE draft lacks too: zero means the words are in the draft, under another address. */
@@ -421,6 +431,7 @@ for (const item of items) {
     // `value.units` no longer holds what the product withheld; the rules are asked of the §§ before that (`compared`), as the product asks them.
     const guard = guardTguUnits(compared, blocks)
     const off = undrafted(guard)
+    const marks = notHeld(guard)
     rec.guardMs = performance.now() - t0
     rec.instructions = guard.units
     corpus.push({ land: item.land, draft: item.id, layout, blocks, units: compared })
@@ -452,6 +463,7 @@ for (const item of items) {
         strictNotInDraft: strict?.notInDraft ?? [],
         strictNotShown: strict?.notShown ?? [],
         shown: !off.has(i),
+        marked: marks.has(i),
         undiffed: check.undiffed,
         missing: check.missing,
         wholeMissing: blocks ? check.missing.filter((w) => !draftBags(blocks!).whole.has(w) && !draftBags(blocks!).whole.has(w.replace(/-/g, ''))) : check.missing,
@@ -483,8 +495,8 @@ const toks = (t: string) => comparableTokens(normalizeText(t))
 const sentenceOf = (text: string | null, minTokens = 8): string | null => (text ?? '').split(SENTENCE_SPLIT).find((s) => toks(s).length >= minTokens) ?? null
 
 type Fault = 'R-neu' | 'R-fremd' | 'Zahl' | 'Wort' | 'Satz weg'
-/** `caught`: the product withholds the § with the fault in it. `bag`: the rule „nicht im Entwurf“ alone does — the product until 20.11.2026. `judged`/`strict`: what the two rules made of the § without the fault. */
-interface FaultRecord { fault: Fault; land: LandCode; layout: Layout; draft: string; id: string; caught: boolean; bag: boolean; judged: boolean; strict: UnitRecord['strict']; applied: boolean; newWords: number; missingWords: number; donor: string; lacks: string }
+/** `caught`: the product withholds the § with the fault in it. `bag`: the rule „nicht im Entwurf“ alone does — the product until 20.11.2026. `judged`/`strict`: what the two rules made of the § without the fault. `markedBefore`: the § carried „nicht geprüft" without the fault; `outcome`: where the fault ended (`MarkOutcome`). */
+interface FaultRecord { fault: Fault; land: LandCode; layout: Layout; draft: string; id: string; caught: boolean; bag: boolean; judged: boolean; strict: UnitRecord['strict']; markedBefore: boolean; outcome: MarkOutcome; applied: boolean; newWords: number; missingWords: number; donor: string; lacks: string }
 const faults: FaultRecord[] = []
 
 /** The unit with `extra` shown as new at its end, as the word diff would show an appended sentence. */
@@ -514,16 +526,17 @@ for (const [n, site] of sites.entries()) {
   const { record, unit, blocks, all } = site
   const at = all.indexOf(unit)
   const ask = (u: LawDiffUnit) => guardTguUnits(all.map((x) => (x === unit ? u : x)), blocks, at)
-  const base = { land: record.land, layout: record.layout, draft: record.draft, id: record.id, judged: record.judged, strict: record.strict }
+  const base = { land: record.land, layout: record.layout, draft: record.draft, id: record.id, judged: record.judged, strict: record.strict, markedBefore: record.marked }
   const push = (fault: Fault, u: LawDiffUnit | null, donor: string) => {
     if (!u) {
-      faults.push({ fault, ...base, caught: false, bag: false, applied: false, newWords: 0, missingWords: 0, donor, lacks: '' })
+      faults.push({ fault, ...base, caught: false, bag: false, outcome: 'unmarked', applied: false, newWords: 0, missingWords: 0, donor, lacks: '' })
       return
     }
     const guard = ask(u)
     const c = guard.checks.get(at)!
     const st = guard.strict.get(at)
-    faults.push({ fault, ...base, caught: undrafted(guard).has(at), bag: c.notInDraft, applied: true, newWords: c.newWords, missingWords: c.missingWords, donor: donor.slice(0, 300), lacks: `${st?.state ?? ''} ${st?.reason ?? ''} | neu, nicht im Entwurf: ${(st?.notInDraft ?? []).slice(0, 12).join(' ')} | im Entwurf, nicht gezeigt: ${(st?.notShown ?? []).slice(0, 12).join(' ')}` })
+    const caught = undrafted(guard).has(at)
+    faults.push({ fault, ...base, caught, bag: c.notInDraft, outcome: caught ? 'withheld' : notHeld(guard).has(at) ? 'marked' : 'unmarked', applied: true, newWords: c.newWords, missingWords: c.missingWords, donor: donor.slice(0, 300), lacks: `${st?.state ?? ''} ${st?.reason ?? ''} | neu, nicht im Entwurf: ${(st?.notInDraft ?? []).slice(0, 12).join(' ')} | im Entwurf, nicht gezeigt: ${(st?.notShown ?? []).slice(0, 12).join(' ')}` })
   }
   // R-neu: another § of the same draft, its new text.
   const own = all.filter((x) => x !== unit && x.change !== 'unchanged' && x.change !== 'removed').map((x) => sentenceOf(x.toText)).find((s) => s !== null) ?? null
@@ -720,6 +733,22 @@ for (const fault of FAULTS) {
     lines.push(`| ${fault} | ${land} | ${j.length} | ${n(j, (x) => x.bag)} | ${n(j, (x) => x.caught)} | ${f.length} | ${n(f, (x) => x.caught)} | ${h.length} | ${n(h, (x) => x.caught)} |`)
   }
 }
+/* Where each fault ended, the page's mark included (20.11.2026): only „ohne
+   Marke" passes a wrong text as checked. The floor reads the columns over
+   the §§ without a mark before the fault. */
+const applied = faults.filter((x) => x.applied)
+const markTable = markTallies(applied.map((x) => ({ key: x.fault, markedBefore: x.markedBefore, outcome: x.outcome })), FAULTS)
+const population = { shown: sites.length, withoutMark: sites.filter((x) => !x.record.marked).length, withMark: sites.filter((x) => x.record.marked).length }
+lines.push('')
+lines.push(`### Wo der Fehler endet: zurückgehalten, gezeigt mit „nicht geprüft", gezeigt ohne (an ${population.shown} gezeigten §§, ${population.withoutMark} ohne Marke, ${population.withMark} mit)`)
+lines.push('')
+lines.push('| Fehler | alle: angewandt | zurückgehalten | mit Marke | ohne Marke | ohne Marke vorher: angewandt | zurückgehalten | mit Marke | ohne Marke | nicht ohne Marke |')
+lines.push('|---|---|---|---|---|---|---|---|---|---|')
+for (const t of markTable) {
+  const b = t.beforeUnmarked
+  lines.push(`| ${t.key} | ${t.tried} | ${t.withheld} | ${t.marked} | ${t.unmarked} | ${b.tried} | ${b.withheld} | ${b.marked} | ${b.unmarked} | ${pct(b.tried - b.unmarked, b.tried)} |`)
+}
+for (const x of applied.filter((f) => !f.markedBefore && f.outcome === 'unmarked')) lines.push(`- ohne Marke durchgegangen (${x.fault}): ${x.draft} ${x.id} — ${x.lacks.slice(0, 200)}`)
 lines.push('')
 lines.push('## Beide Spalten gekürzt (linke Spalte gegen RIS)')
 lines.push('')
@@ -815,10 +844,8 @@ for (const m of instructedMissing.filter((x) => !x.anchor)) lines.push(`  - ${m.
 /* The floor (`--mindestens`): every class the run injects — the right
    column's faults, the left column's cuts — against it. */
 const tallies: FaultTally[] = [
-  ...FAULTS.map((fault) => {
-    const f = faults.filter((x) => x.fault === fault && x.applied)
-    return { key: fault, tried: f.length, caught: f.filter((x) => x.caught).length }
-  }),
+  // Over the §§ without a mark before the fault: caught is what is not shown without the mark (`unmarkedFloor`).
+  ...markTable.map(unmarkedFloor),
   ...CUTS.map((kind) => {
     const c = cuts.filter((x) => x.cut === kind)
     return { key: `Beide gekürzt: ${kind}`, tried: c.length, caught: c.filter((x) => x.refused).length }
@@ -874,7 +901,11 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
       return { key: fault, tried: f.length, bag: f.filter((x) => x.bag).length, caught: f.filter((x) => x.caught).length }
     }),
   },
-  // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten".
+  // Where each fault ended (20.11.2026): withheld, shown with „nicht geprüft", shown without it — over every § shown and over
+  // those without a mark before the fault (`beforeUnmarked`, what the floor holds); `population`: the §§ faults went into.
+  mark: { population, faults: markTable },
+  // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten". The five right-column
+  // classes since 20.11.2026 over the §§ without a mark, caught = not shown without it (`mark.faults[].beforeUnmarked`).
   floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },
   // Per Land, Kärnten included: documents requested, and where each ended (`Reach`); `incomplete`: answered, a read beneath it failed.
   reach,

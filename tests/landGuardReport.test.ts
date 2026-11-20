@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf, landRecord, reachByLand, floorLine } from '../scripts/lib/landGuardReport'
+import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf, landRecord, reachByLand, floorLine, markTallies, unmarkedFloor } from '../scripts/lib/landGuardReport'
 
 /**
  * The verdicts of the Land harness (`scripts/harness/landGuard.ts`), against
@@ -34,6 +34,29 @@ describe('floorRows (--mindestens)', () => {
 
   it('exactly 20 tries are enough to be held', () => {
     expect(floorRows([{ key: 'R-fremd', tried: MIN_TRIES, caught: 18 }], 95)[0]!.verdict).toBe('unter dem Boden')
+  })
+})
+
+describe('a fault ends withheld, shown with „nicht geprüft", or shown without it (20.11.2026)', () => {
+  const f = (key: string, markedBefore: boolean, outcome: 'withheld' | 'marked' | 'unmarked') => ({ key, markedBefore, outcome })
+  const faults = [
+    f('Zahl', false, 'withheld'), f('Zahl', false, 'withheld'), f('Zahl', false, 'unmarked'),
+    // A § already marked: a fault there never counts against the floor, wherever it ends.
+    f('Zahl', true, 'marked'), f('Zahl', true, 'unmarked'),
+    // The fault itself turns a held § unchecked: shown, but with the mark.
+    f('R-neu', false, 'marked'),
+  ]
+
+  it('counts the three outcomes per class, over all §§ shown and over those without a mark before', () => {
+    expect(markTallies(faults, ['Zahl', 'R-neu', 'Wort'])).toEqual([
+      { key: 'Zahl', tried: 5, withheld: 2, marked: 1, unmarked: 2, beforeUnmarked: { tried: 3, withheld: 2, marked: 0, unmarked: 1 } },
+      { key: 'R-neu', tried: 1, withheld: 0, marked: 1, unmarked: 0, beforeUnmarked: { tried: 1, withheld: 0, marked: 1, unmarked: 0 } },
+      { key: 'Wort', tried: 0, withheld: 0, marked: 0, unmarked: 0, beforeUnmarked: { tried: 0, withheld: 0, marked: 0, unmarked: 0 } },
+    ])
+  })
+
+  it('holds the floor to what is not shown without the mark, over the §§ without one before', () => {
+    expect(markTallies(faults, ['Zahl', 'R-neu']).map(unmarkedFloor)).toEqual([{ key: 'Zahl', tried: 3, caught: 2 }, { key: 'R-neu', tried: 1, caught: 1 }])
   })
 })
 

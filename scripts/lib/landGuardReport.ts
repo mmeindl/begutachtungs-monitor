@@ -60,6 +60,48 @@ export function floorLine(rows: readonly FloorRow[], pct: number): string {
 }
 
 /**
+ * Where a fault in a § shown ends (20.11.2026): withheld; shown with
+ * „nicht geprüft" (`notHeld` in `landTguGuard.ts`), so the page says its new
+ * text was not held against the draft; or shown without it — the only
+ * outcome that passes a wrong text as checked.
+ */
+export type MarkOutcome = 'withheld' | 'marked' | 'unmarked'
+
+/** One injected fault: its class, whether its § carried the mark before, and where it ended. */
+export interface MarkedFault { key: string; markedBefore: boolean; outcome: MarkOutcome }
+
+interface MarkCounts { tried: number; withheld: number; marked: number; unmarked: number }
+export interface MarkTally extends MarkCounts {
+  key: string
+  /** The same over the §§ that carried no mark before the fault: those the floor holds. */
+  beforeUnmarked: MarkCounts
+}
+
+/** The three outcomes per class, in the order of `keys`, over every § and over those without a mark before. */
+export function markTallies(faults: readonly MarkedFault[], keys: readonly string[]): MarkTally[] {
+  const count = (list: readonly MarkedFault[]): MarkCounts => ({
+    tried: list.length,
+    withheld: list.filter((f) => f.outcome === 'withheld').length,
+    marked: list.filter((f) => f.outcome === 'marked').length,
+    unmarked: list.filter((f) => f.outcome === 'unmarked').length,
+  })
+  return keys.map((key) => {
+    const of = faults.filter((f) => f.key === key)
+    return { key, ...count(of), beforeUnmarked: count(of.filter((f) => !f.markedBefore)) }
+  })
+}
+
+/**
+ * The floor's tally of a class (`--mindestens`): over the §§ without a mark
+ * before the fault, caught is every fault NOT shown without the mark. A §
+ * already marked says of itself that it was not held; a fault that turns a
+ * held § into a marked one is said on the page.
+ */
+export function unmarkedFloor(t: MarkTally): FaultTally {
+  return { key: t.key, tried: t.beforeUnmarked.tried, caught: t.beforeUnmarked.tried - t.beforeUnmarked.unmarked }
+}
+
+/**
  * A § the comparison withholds, as `LandLawDiffResponse.withheld` names it.
  * `reason` undefined: RIS refused the left column's text in force
  * (`compareTgu`, `why`) — named „leftCheck" in the baseline.
