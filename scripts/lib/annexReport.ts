@@ -327,6 +327,13 @@ export function summarize(findings: readonly Finding[]): string {
  * engine without pulling the baseline up, or RIS touched a record after the
  * fact (a consolidation can be corrected retroactively). Telling those apart
  * is reading work on the finding, not a rule.
+ *
+ * The four fields of 19.11.2026 (`lostDiffering`, `frontMatterLaws`,
+ * `withheldRepealUnproven`, `withheldRepeated`) stood in the report and were
+ * compared by nobody. A baseline drawn before they were added does not hold
+ * them, and is not compared on them (`classBFindings`): it is only ever
+ * redrawn from a CI artefact after a push, and until then a field it lacks
+ * would be a finding about every draft at once.
  */
 const BASELINE_FIELDS = {
   note: 'Vermerk',
@@ -336,6 +343,8 @@ const BASELINE_FIELDS = {
   substantialClean: 'davon ≥99 % gedeckt',
   noLaw: 'Zeilen außerhalb jeder Artikelgrenze',
   droppedPages: 'nicht gelesene Seiten',
+  lostDiffering: 'Spaltenzeilen ohne Zeile, von der anderen Spalte verschieden',
+  frontMatterLaws: 'Gesetze mit abweichendem Vorspann',
   ran: 'geprüft',
   notRunReason: 'Grund, warum nicht geprüft wurde',
   verifiedParas: 'bestätigt',
@@ -343,6 +352,8 @@ const BASELINE_FIELDS = {
   withheldStanding: 'einbehalten (geltende Fassung steht so nicht im RIS)',
   withheldAlreadyStanding: 'einbehalten (Geltendes als neu gezeigt)',
   withheldNotInDraft: 'einbehalten (Text, den der Entwurf nicht anordnet)',
+  withheldRepealUnproven: 'einbehalten (als aufgehoben gezeigt, Aufhebung nicht angeordnet)',
+  withheldRepeated: 'einbehalten (mehrfach gedruckt, nicht zuzuordnen)',
   uncheckedParas: 'ungeprüft',
   rowsNoPara: 'Zeilen ohne Paragraphenangabe',
   changeRowsNoPara: 'davon als Änderung gezeigt',
@@ -404,6 +415,8 @@ export function classBFindings(report: AnnexReport, baseline: AnnexBaseline): Fi
     const moved: string[] = []
     for (const field of Object.keys(BASELINE_FIELDS) as BaselineField[]) {
       const before = was[field]
+      // A field the baseline does not hold yet: nothing to compare against.
+      if (before === undefined) continue
       const now = d[field]
       if (before !== now) moved.push(`${BASELINE_FIELDS[field]}: ${JSON.stringify(before)} → ${JSON.stringify(now)}`)
     }

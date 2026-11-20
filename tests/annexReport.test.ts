@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { MAX_BASELINE_AGE_DAYS, MAX_WINDOW_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, reportHeading, summarize, toBaseline, windowLine, windowOf, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
+import { MAX_BASELINE_AGE_DAYS, MAX_WINDOW_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, reportHeading, summarize, toBaseline, windowLine, windowOf, type AnnexBaseline, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
 
 /**
  * The alarm itself, against invented reports.
@@ -324,5 +325,41 @@ describe('ein Fenster, das stehen geblieben ist', () => {
   it('prüft die Entwürfe trotzdem', () => {
     const found = classAFindings(report([sound({ cite: 'A/ME', verdictless: 1 })], { at, window: stale }))
     expect(found.map((f) => f.kind)).toEqual(['messung', 'zusicherung'])
+  })
+})
+
+describe('Klasse B: die Felder, die der Bericht seit dem 19.11.2026 trägt', () => {
+  const fields = { lostDiffering: 2, frontMatterLaws: 1, withheldRepealUnproven: 1, withheldRepeated: 1 } as const
+  const now = sound({ id: 'BEGUT_A', cite: 'A/ME', withheldParas: 4, withheldStanding: 1, ...fields })
+
+  it('vergleicht sie, wo die Grundlinie sie hält', () => {
+    const baseline = toBaseline([report([sound({ id: 'BEGUT_A', cite: 'A/ME', withheldParas: 4, withheldStanding: 1, lostDiffering: 0, frontMatterLaws: 0, withheldRepealUnproven: 2, withheldRepeated: 0 })])])
+    const found = classBFindings(report([now]), baseline)
+    expect(found).toHaveLength(1)
+    expect(found[0]!.text).toContain('Spaltenzeilen ohne Zeile, von der anderen Spalte verschieden: 0 → 2')
+    expect(found[0]!.text).toContain('Gesetze mit abweichendem Vorspann: 0 → 1')
+    expect(found[0]!.text).toContain('einbehalten (als aufgehoben gezeigt, Aufhebung nicht angeordnet): 2 → 1')
+    expect(found[0]!.text).toContain('einbehalten (mehrfach gedruckt, nicht zuzuordnen): 0 → 1')
+  })
+
+  it('zieht sie mit in die Grundlinie', () => {
+    expect(toBaseline([report([now])]).paths.xml['BEGUT_A']).toMatchObject(fields)
+  })
+
+  it('vergleicht nicht, was eine ältere Grundlinie noch nicht hält', () => {
+    const before = report([sound({ id: 'BEGUT_A', cite: 'A/ME', withheldParas: 4, withheldStanding: 1 })])
+    expect(classBFindings(report([now]), toBaseline([before]))).toEqual([])
+  })
+
+  it('lässt die eingecheckte Grundlinie gelten, wie sie ist', () => {
+    // Written from a CI artefact on 19.11.2026, before these four fields
+    // were compared. Every draft it holds, measured exactly as it says and
+    // carrying the new fields, is no finding.
+    const fixture = JSON.parse(readFileSync('tests/fixtures/annex-baseline.json', 'utf8')) as AnnexBaseline
+    for (const path of ['xml', 'pdf'] as const) {
+      const drafts = Object.entries(fixture.paths[path]).map(([id, entry]) => ({ ...sound(), ...entry, id, source: path, ...fields }))
+      expect(drafts.length).toBeGreaterThan(MIN_DRAFTS_WITH_ANNEX)
+      expect(classBFindings({ ...report([]), path, drafts }, fixture)).toEqual([])
+    }
   })
 })
