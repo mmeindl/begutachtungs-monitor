@@ -62,7 +62,7 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
     // „Die §§ 12a und 13 entfallen" failed on § 13, which was never fetched (AsylG 2005).
     expect(addressedParagraphs(instr('Die §§ 12a und 13 entfallen samt Überschriften.'), [])).toEqual(['12a', '13'])
     expect(addressedParagraphs(instr('Die §§ 34a bis 34c samt Überschriften lauten:', ['§ 34a. A.', '§ 34b. B.', '§ 34c. C.']), [])).toEqual(['34a', '34b', '34c'])
-    expect([...addressedLabels(instr('Die §§ 12a und 13 entfallen samt Überschriften.'), [])!.values()]).toEqual(['§ 12a', '§ 13'])
+    expect([...addressedLabels(instr('Die §§ 12a und 13 entfallen samt Überschriften.'), []).labels.values()]).toEqual(['§ 12a', '§ 13'])
   })
 
   it('counts a § the draft inserts, which the standing law does not have', () => {
@@ -81,45 +81,67 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
 
 describe('addressedLabels — unter welchem Etikett das RIS den § führt', () => {
   it('keys an ordinary § by its bare designation', () => {
-    const labels = addressedLabels(instr('§ 5 Abs. 1 lautet:', ['(1) Neu.']), [])
-    expect(labels?.get('5')).toBe('§ 5')
+    const { labels } = addressedLabels(instr('§ 5 Abs. 1 lautet:', ['(1) Neu.']), [])
+    expect(labels.get('5')).toBe('§ 5')
   })
 
   // Under "§ 3" RIS carries no document in such a law at all — leaving the
   // Artikel off does not widen the search, it empties it.
   it('keys a § of a law divided into Artikel the way RIS prints it', () => {
-    const labels = addressedLabels(instr('Art. II § 3 Abs. 2 lautet:', ['(2) Neu.']), [])
-    expect(labels?.get('3')).toBe('Art. 2 § 3')
+    const { labels } = addressedLabels(instr('Art. II § 3 Abs. 2 lautet:', ['(2) Neu.']), [])
+    expect(labels.get('3')).toBe('Art. 2 § 3')
   })
 
   it('keys a refused line by the Artikel it names', () => {
-    const labels = addressedLabels([], ['In Artikel II § 7 wird etwas Unlesbares getan.'])
-    expect(labels?.get('7')).toBe('Art. 2 § 7')
+    const { labels } = addressedLabels([], ['In Artikel II § 7 wird etwas Unlesbares getan.'])
+    expect(labels.get('7')).toBe('Art. 2 § 7')
   })
 
   // The stock is held by bare id, so two Artikel with a § 3 would put two
   // documents under one key and the first one fetched would answer for both.
   it('refuses where two Artikel of one law share a § number', () => {
     const both = [...instr('Art. II § 3 lautet:', ['§ 3. Neu.']), ...instr('Art. III § 3 lautet:', ['§ 3. Auch neu.'])]
-    expect(addressedLabels(both, [])).toBeNull()
+    const { labels, doubled } = addressedLabels(both, [])
+    expect([...doubled]).toEqual(['3'])
+    expect(labels.has('3')).toBe(false)
   })
 
   it('refuses where the same § is named once with and once without its Artikel', () => {
     const both = [...instr('Art. II § 3 lautet:', ['§ 3. Neu.']), ...instr('§ 3 lautet:', ['§ 3. Auch neu.'])]
-    expect(addressedLabels(both, [])).toBeNull()
+    expect([...addressedLabels(both, []).doubled]).toEqual(['3'])
+  })
+
+  // 40/ME XXVIII: „(Verfassungsbestimmung) Artikel I lautet" beside „In
+  // Artikel II § 1 Abs. 1, § 6, …" — § 1 is the only number named twice, and
+  // until 20.11.2026 every § of the Artikel was refused with it.
+  it('refuses the doubled number only, never the other §§ of its Artikel (20.11.2026)', () => {
+    const lines = [...instr('Artikel I lautet:', ['Artikel I. Neu.']), ...instr('Artikel II § 1 Abs. 5 lautet:', ['(5) Neu.']), ...instr('Artikel II § 6 lautet:', ['§ 6. Neu.'])]
+    const { labels, doubled } = addressedLabels(lines, [])
+    expect([...doubled]).toEqual(['1'])
+    expect([...labels]).toEqual([['6', 'Art. 2 § 6']])
   })
 
   // It produces no operation and no node, so it cannot put a second document
   // into the stock — and refusing the Artikel over it cost 116/ME one of its
   // 65 laws.
   it('lets a refused line fill a gap but never contradict an instruction', () => {
-    const labels = addressedLabels(instr('Art. II § 3 lautet:', ['§ 3. Neu.']), ['In § 3 wird etwas Unlesbares getan.'])
-    expect(labels?.get('3')).toBe('Art. 2 § 3')
+    const { labels } = addressedLabels(instr('Art. II § 3 lautet:', ['§ 3. Neu.']), ['In § 3 wird etwas Unlesbares getan.'])
+    expect(labels.get('3')).toBe('Art. 2 § 3')
+  })
+
+  // 127/ME XXVIII: every line on the B-VG was refused against an empty stock,
+  // because „Art. 52" was looked up as „§ 52"; in the UStG, „Art. 25a" of the
+  // Binnenmarkt-Anhang fetched the UStG's own § 25a (148/ME).
+  it('files an Artikel addressed as the unit itself as „Art. N", never as „§ N" (20.11.2026)', () => {
+    expect(addressedLabels(instr('Art. 90a entfällt.'), []).labels.get('90a')).toBe('Art. 90a')
+    expect(addressedLabels(instr('Nach Art. VI Abs. 1 Z 17 wird folgende Z 18 angefügt:', ['18. Neu.']), []).labels.get('6')).toBe('Art. 6')
+    expect(addressedLabels(instr('Nach Art. 52 wird folgender Art. 52a eingefügt:', ['Artikel 52a. Neu.']), []).labels.get('52a')).toBe('Art. 52a')
+    expect(addressedLabels([], ['Die Art. 52a und 52b erhalten die Bezeichnungen "Artikel 52b." und "Artikel 52c." .']).labels.get('52b')).toBe('Art. 52b')
   })
 
   it('files a § an instruction creates under the Artikel that instruction addresses', () => {
-    const labels = addressedLabels(instr('Nach Art. II § 12 wird folgender § 12a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 12a. (1) Neu.']), [])
-    expect(labels?.get('12a')).toBe('Art. 2 § 12a')
+    const { labels } = addressedLabels(instr('Nach Art. II § 12 wird folgender § 12a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 12a. (1) Neu.']), [])
+    expect(labels.get('12a')).toBe('Art. 2 § 12a')
   })
 })
 
@@ -230,9 +252,9 @@ describe('a refused line locks every unit it names, not its first § (22.10.2026
   })
 
   it('labels every § of a refused line, under the Artikel it names', () => {
-    const labels = addressedLabels([], ['In Artikel II § 8 und § 9 Abs. 1 wird etwas Unlesbares getan.'])
-    expect(labels?.get('8')).toBe('Art. 2 § 8')
-    expect(labels?.get('9')).toBe('Art. 2 § 9')
+    const { labels } = addressedLabels([], ['In Artikel II § 8 und § 9 Abs. 1 wird etwas Unlesbares getan.'])
+    expect(labels.get('8')).toBe('Art. 2 § 8')
+    expect(labels.get('9')).toBe('Art. 2 § 9')
   })
 })
 
@@ -311,7 +333,7 @@ describe('an Abschnitt is no § of its number (02.10.2026)', () => {
     expect([...refusedUnits(['Abschnitt 4'], ['Die Überschrift des 4. Abschnitts lautet:'], unitKey)]).toEqual(['Abschnitt 4'])
     const instructions = [...instr('Die Überschrift des 4. Abschnitts lautet:'), ...instr('§ 5 lautet:')]
     expect(addressedParagraphs(instructions, [])).toEqual(['5'])
-    expect([...(addressedLabels(instructions, []) ?? new Map()).keys()]).toEqual(['5'])
+    expect([...addressedLabels(instructions, []).labels.keys()]).toEqual(['5'])
   })
 })
 
@@ -323,7 +345,7 @@ describe('the denominator counts what the draft brings into being (26.10.2026)',
       ...instr('Nach Anlage 2 wird folgende Anlage 3 samt Überschrift angefügt:', ['Anlage 3', 'Inhalt.']),
     ]
     expect(addressedParagraphs(instructions, [])).toEqual(['14a', '15', '42', '42a', '42b', 'Anl. 2', 'Anl. 3'])
-    expect(addressedLabels(instructions, [])?.get('42b')).toBe('§ 42b')
+    expect(addressedLabels(instructions, []).labels.get('42b')).toBe('§ 42b')
   })
 
   it('counts what a refused line would have created, in its words and in its new text', () => {

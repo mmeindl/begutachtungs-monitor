@@ -341,6 +341,11 @@ export function addressedParagraphs(
   return [...out].sort(byParagraphOrder)
 }
 
+/** „Art. 52", „Artikel I": the designation names an Artikel as the unit, not a § inside one. */
+function isArticleUnit(para: string): boolean {
+  return /^Art(?:ikel\b|\.)/.test(para.trim())
+}
+
 /**
  * The label RIS files each addressed § under — „§ 3" ordinarily, „Art. 2 § 3"
  * where the standing law is itself divided into Artikel.
@@ -352,28 +357,40 @@ export function addressedParagraphs(
  * alone RIS carries no document in such a law at all — leaving the Artikel
  * off does not widen the search, it empties it.
  *
- * **Null as soon as two addressed §§ carry one number under different
- * labels.** The stock is held by bare id, so two Artikel with a § 3 would put
- * two documents under one key and the first one fetched would answer for
- * both — a § with the wrong law's text under a right-looking number. The same
- * trade as everywhere in this engine: a refusal beats half an application.
- * Costs nothing measurable — no Ministerialentwurf of the corpus
- * addresses two Artikel of one law (300 Entwürfe, 25.09.2026).
+ * **A number addressed under two labels is `doubled`, and has none.** The
+ * stock is held by bare id, so two Artikel with a § 3 would put two documents
+ * under one key and the first one fetched would answer for both — a § with
+ * the wrong law's text under a right-looking number. The same trade as
+ * everywhere in this engine: a refusal beats half an application. Only that
+ * number, not the Artikel (20.11.2026): until then one collision refused
+ * every § of the draft's Artikel, and 40/ME and 75/ME XXVIII lost 37 §§ —
+ * „(Verfassungsbestimmung) Artikel I lautet" beside „Artikel II § 1 …" made
+ * § 1 the only number named twice, and §§ 3 to 26 of Artikel II, which the
+ * draft names with their Artikel, stood refused with it. The other §§ are
+ * fetched under their own labels; no document is fetched for a doubled
+ * number, so a line on it finds nothing and is refused.
+ *
+ * **An Artikel addressed as the unit itself is filed as „Art. 52"**
+ * (20.11.2026): the B-VG, the Notariatsordnung's Art. I to IX. Read through
+ * its bare number it was „§ 52", which RIS carries in no such law, and every
+ * line of 127/ME XXVIII on the B-VG was refused against an empty stock; in a
+ * law that carries both („§ 21" and the UStG's Binnenmarkt „Art. 21") the
+ * bare number fetched the wrong one.
  */
 export function addressedLabels(
   instructions: readonly Instruction[],
   refusedLines: readonly RefusedLine[],
-): Map<string, string> | null {
+): { labels: Map<string, string>; doubled: Set<string> } {
   const out = new Map<string, string>()
-  const add = (id: string, artikel: string | null): boolean => {
+  const doubled = new Set<string>()
+  const add = (id: string, artikel: string | null, para: string): void => {
     // A schedule is already written the way RIS files it („Anl. 2"), and the
     // unnumbered „Anl." is resolved where the law's labels are known
     // (`kons/konsService.ts`) — a law with one schedule needs no number.
-    const label = isSchedule(id) ? id : artikel ? `Art. ${artikel} § ${id}` : `§ ${id}`
+    const label = isSchedule(id) ? id : artikel ? `Art. ${artikel} § ${id}` : isArticleUnit(para) ? `Art. ${id}` : `§ ${id}`
     const seen = out.get(id)
-    if (seen !== undefined && seen !== label) return false
-    out.set(id, label)
-    return true
+    if (seen !== undefined && seen !== label) doubled.add(id)
+    else out.set(id, label)
   }
   for (const { op, payload, line } of instructions) {
     const address = opAddress(op)
@@ -381,14 +398,17 @@ export function addressedLabels(
       // Nothing to fetch for an Abschnitt: RIS files no document under it.
       if (isDivision(para)) continue
       const id = unitKey(para)
-      if (id && !add(id, address!.artikel)) return null
+      if (id) add(id, address!.artikel, para)
     }
     // A § this instruction CREATES lives in the Artikel the instruction
-    // addresses — it has no designation of its own to read one from.
+    // addresses — it has no designation of its own to read one from. And
+    // beside an Artikel it is one: `createdParagraphs` writes every new unit
+    // as „§ N", and „Nach Art. 52 wird folgender Art. 52a eingefügt" makes
+    // an Artikel.
     for (const para of [...createdParagraphs(op, payload, line), ...createdUnits(line)]) {
       if (isDivision(para)) continue
       const id = unitKey(para)
-      if (id && !add(id, address?.artikel ?? null)) return null
+      if (id) add(id, address?.artikel ?? null, address?.para && isArticleUnit(address.para) ? address.para : para)
     }
   }
   // A refused line fills a gap and never contradicts one. It produces no
@@ -406,9 +426,10 @@ export function addressedLabels(
     for (const para of [...refusedLineUnits(refused), ...createdBy(refused)]) {
       if (isDivision(para)) continue
       const id = unitKey(para)
-      if (!id || out.has(id)) continue
-      out.set(id, isSchedule(id) ? id : numeral ? `Art. ${articleNumberKey(numeral) ?? numeral} § ${id}` : `§ ${id}`)
+      if (!id || out.has(id) || doubled.has(id)) continue
+      out.set(id, isSchedule(id) ? id : numeral ? `Art. ${articleNumberKey(numeral) ?? numeral} § ${id}` : isArticleUnit(para) ? `Art. ${id}` : `§ ${id}`)
     }
   }
-  return out
+  for (const id of doubled) out.delete(id)
+  return { labels: out, doubled }
 }

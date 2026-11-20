@@ -96,6 +96,24 @@ const LIT_DOT_MARKER_RE = /^([a-z])\.$/
  * 1" of Abs. 2, Abs. 3 did not exist.
  */
 const ABS_Z_MARKER_RE = /^\((\d+[a-z]*)\)\s*(\d+[a-z]*)\.$/
+/**
+ * „3. a)" — a Ziffer and its first Litera in one symbol, where the Ziffer
+ * opens straight into its list (GrEStG 1987 § 9, § 7 Abs. 1; UStG 1994 § 6
+ * Abs. 1, § 10 Abs. 3; EStG 1988 § 3 Abs. 1; 1.192 symbols in 350 of 26.443
+ * cached § documents, 20.11.2026). Read as one Litera „3. a" of the Ziffer
+ * above, Z 3 did not exist, and „§ 9 Z 3 lautet" was refused (16/ME XXVIII).
+ */
+const Z_LIT_MARKER_RE = /^(\d+[a-z]*)\.\s*([a-z]{1,2})\)$/
+/**
+ * „(1) 1. a) Ein Erwerb gilt als" / „(3) 1. Für …" — an Absatz that opens
+ * straight into its first Ziffer, or its first Ziffer's first Litera, in its
+ * own line, the list going on below (GrEStG 1987 § 7 Abs. 1; BewG 1955 § 30,
+ * KStG 1988 § 24a, BAO § 323: 49 of 26.443 cached § documents, 20.11.2026).
+ * Read as the Absatz's text, „§ 7 Abs. 1 Z 1 lit. a" found nothing
+ * (16/ME XXVIII). Taken only where the list goes on with the next
+ * designation (`followedBy`): „(2) 1. Jänner …" is a date.
+ */
+const INLINE_Z_RE = /^(\d+)\.\s+(?:([a-z])\)\s+)?(\S[\s\S]*)$/
 /** A list opening and its depth: `<aufzaehlung ebene="3">`, `<ziffernliste ebene="1">`. */
 const LIST_OPEN_RE = /<(?:aufzaehlung|[a-z]*liste)\b[^>]*\bebene="(\d+)"/g
 
@@ -404,6 +422,16 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   const fromErltext = new Set<LawNode>()
 
   const blocks = [...body.matchAll(BLOCK_RE)].filter((b) => b[1] === 'table' || /ct="text"/.test(b[2]!))
+  /** Whether a list item with this symbol follows block `from` before the next numbered Absatz (`INLINE_Z_RE`). */
+  const followedBy = (from: number, symbol: string): boolean => {
+    for (const b of blocks.slice(from + 1)) {
+      if (b[1] === 'absatz' && ABS_MARKER_RE.test(text(b[3]!.replace(GLD_RE, ' ')))) return false
+      if (b[1] !== 'listelem') continue
+      const sym = SYMBOL_RE.exec(b[3]!)
+      if (sym && text(sym[1]!) === symbol) return true
+    }
+    return false
+  }
   for (const [at, m] of blocks.entries()) {
     const tag = m[1]!
     const attrs = m[2]!
@@ -457,6 +485,17 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       const sym = SYMBOL_RE.exec(inner)
       const marker = sym ? text(sym[1]!) : ''
       const t = text(sym ? inner.replace(sym[0], ' ') : inner)
+      const zLit = Z_LIT_MARKER_RE.exec(marker)
+      if (zLit) {
+        // The Ziffer carries no text of its own; its first Litera does, and
+        // the Literae below hang off it as off any Ziffer (`lastChild`).
+        const zNode = makeNode('z', zLit[1]!, `${zLit[1]}.`, '')
+        const litNode = makeNode('lit', zLit[2]!, `${zLit[2]})`, t)
+        zNode.children.push(litNode)
+        absatz().children.push(zNode)
+        lastItem = { node: litNode, abs: absatz(), ebene: ebeneAt(m.index) }
+        continue
+      }
       const opens = ABS_Z_MARKER_RE.exec(marker)
       if (opens) {
         para()
@@ -563,6 +602,18 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     if (am) {
       currentAbs = makeNode('abs', am[1]!, `(${am[1]})`, rest.slice(am[0].length))
       root!.children.push(currentAbs)
+      const inline = INLINE_Z_RE.exec(currentAbs.text)
+      const next = inline ? (inline[2] ? `${String.fromCharCode(inline[2].charCodeAt(0) + 1)})` : `${Number(inline[1]) + 1}.`) : null
+      if (inline && next && followedBy(at, next)) {
+        currentAbs.text = ''
+        const zNode = makeNode('z', inline[1]!, `${inline[1]}.`, inline[2] ? '' : inline[3]!)
+        currentAbs.children.push(zNode)
+        if (inline[2]) {
+          const litNode = makeNode('lit', inline[2], `${inline[2]})`, inline[3]!)
+          zNode.children.push(litNode)
+          lastItem = { node: litNode, abs: currentAbs, ebene: 2 }
+        } else lastItem = { node: zNode, abs: currentAbs, ebene: 1 }
+      }
     } else if (currentAbs) {
       // A continuation paragraph of the same Absatz (Satz block) — and behind
       // a list its closing part. RIS writes the text that follows the
@@ -640,6 +691,12 @@ export function renderNode(node: LawNode): string {
     for (const c of rest) parts.push(renderNode(c))
     return parts.join('\n')
   }
+  // A Ziffer with no text of its own opens straight into its first Litera,
+  // an Absatz into its first Ziffer, and RIS prints them on one line („3. a)
+  // …", „(1) 1. a) …"; `Z_LIT_MARKER_RE`, `INLINE_Z_RE`, `ABS_Z_MARKER_RE`).
+  const [first, ...rest] = node.children
+  const opensInto = node.level === 'z' ? 'lit' : node.level === 'abs' ? 'z' : null
+  if (opensInto && node.marker && node.text === '' && first?.level === opensInto) return [`${node.marker} ${renderNode(first)}`.trim(), ...rest.map(renderNode)].join('\n')
   const own = `${node.marker} ${node.text}`.trim()
   return [own, ...node.children.map(renderNode)].join('\n')
 }

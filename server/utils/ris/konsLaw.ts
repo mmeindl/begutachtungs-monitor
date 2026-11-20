@@ -211,7 +211,7 @@ export async function resolveLawByBgbl(
     entry.paragraphs[p.label] ??= p
     byLaw.set(p.gesetzesnummer!, entry)
   }
-  const choose = (by: string | null | undefined) => (byLaw.size === 0 ? null : byLaw.size === 1 ? soleUnlessContradicted([...byLaw][0]!, by) : by ? pickByName(byLaw, by) : null)
+  const choose = (by: string | null | undefined) => (byLaw.size === 0 ? null : byLaw.size === 1 ? soleUnlessContradicted([...byLaw][0]!, by) : by ? (pickByName(byLaw, by) ?? pickByEqualName(byLaw, by)) : null)
   const chosen = choose(name) ?? (clause ? (choose(clause.name) ?? (clause.abbreviation ? choose(clause.abbreviation) : null)) : null)
   if (chosen) {
     const [gesetzesnummer, entry] = chosen
@@ -332,6 +332,94 @@ async function misquotedStammnorm(bgbl: BgblCitation, date: string, clause: Clau
   return resolveLawByBgbl(stammnorm!, date, clause.name, undefined, read)
 }
 
+/** Pages of a title search read before the name counts as too broad to decide anything. */
+const NAME_PAGES = 5
+
+/**
+ * The law a Promulgationsklausel names without a Stammnorm we can read, by
+ * its name alone — or null (20.11.2026).
+ *
+ * „Das Bundesgesetz vom 12. Juni 1981 über die Presse … (Mediengesetz -
+ * MedienG), zuletzt geändert durch … BGBl. I Nr. 21/2026" cites only the
+ * last amendment (146/ME XXVIII), „BGBl I 2013/105" is a citation form the
+ * reader does not take (145/ME, Biozidproduktegesetz), „BGBl. I Nr.
+ * 29/200" a typo (61/ME, Werbeabgabegesetz 2000). Every § of the three
+ * went out as „law unknown", 24 §§.
+ *
+ * Searched by the clause's name, and taken only where exactly one law in
+ * force on `date` carries the clause's name or abbreviation **as** its
+ * Kurztitel or Abkürzung — equality, not a score, as in
+ * `misquotedStammnorm`: the search is fuzzy (it returns the
+ * Pflichtablieferungsverordnung for „Mediengesetz"), and two laws may share
+ * an abbreviation (the Staatsbürgerschaftsgesetz 1985 and the
+ * Staatsbürgerschafts-Übergangsrecht 1985 are both „StbG"), which then
+ * decides nothing. A search with more than `NAME_PAGES` pages decides
+ * nothing either.
+ *
+ * The law is then read by its Gesetzesnummer, not by a Stammnorm: RIS's
+ * per-§ Stammnorm field is not one value per law (seven §§ of the
+ * Mediengesetz carry the BGBl that inserted them).
+ */
+export async function resolveLawByName(clause: ClauseName, date: string): Promise<KonsLawAtDate | null> {
+  const wanted = [clause.name, clause.abbreviation].filter((n): n is string => !!n).map(normName)
+  const pages = await readPages(
+    (page) => konsJson(konsQuery({ Titel: clause.name, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) })),
+    konsPageCount,
+    NAME_PAGES,
+  )
+  const first = await pages.get(1)
+  const hits = Number(first?.OgdSearchResult?.OgdDocumentResults?.Hits?.['#text'] ?? 0)
+  if (hits > NAME_PAGES * 100) return null
+  const found = new Set<string>()
+  for (let page = 1, seen = 0; page <= NAME_PAGES && seen < hits; page++) {
+    const refs = asArray<any>((await pages.get(page))?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference)
+    if (refs.length === 0) break
+    seen += refs.length
+    for (const r of refs) {
+      const p = konsRefOf(r)
+      const meta = r?.Data?.Metadaten?.Bundesrecht
+      if (!p?.gesetzesnummer) continue
+      const names = [meta?.Kurztitel, meta?.BrKons?.Abkuerzung].filter((n): n is string => typeof n === 'string' && n.trim() !== '').map(normName)
+      if (names.some((n) => wanted.includes(n))) found.add(p.gesetzesnummer)
+    }
+  }
+  if (found.size !== 1) return null
+  return lawOfNummer([...found][0]!, date)
+}
+
+/**
+ * One law as it stood on `date`, by its Gesetzesnummer — every § version in
+ * force then, the first RIS returns per label (`resolveLawByBgbl` keeps the
+ * same). Null where RIS returns nothing of it on that day. A record of
+ * another law means the filter was ignored, and throws.
+ */
+async function lawOfNummer(gesetzesnummer: string, date: string): Promise<KonsLawAtDate | null> {
+  const pages = await readPages(
+    (page) => konsJson(konsQuery({ Gesetzesnummer: gesetzesnummer, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) })),
+    konsPageCount,
+    NUMMER_PAGES,
+  )
+  const paragraphs: Record<string, KonsParagraphRef> = {}
+  let kurztitel = ''
+  let seen = 0
+  for (let page = 1; page <= NUMMER_PAGES; page++) {
+    const results = (await pages.get(page))?.OgdSearchResult?.OgdDocumentResults
+    const hits = Number(results?.Hits?.['#text'] ?? 0)
+    if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für Gesetzesnummer ${gesetzesnummer}`)
+    const refs = asArray<any>(results?.OgdDocumentReference)
+    for (const r of refs) {
+      const p = konsRefOf(r)
+      if (!p) continue
+      if (p.gesetzesnummer !== gesetzesnummer) throw new Error(`RIS ignorierte den Filter: Gesetzesnummer ${p.gesetzesnummer} statt ${gesetzesnummer}`)
+      kurztitel ||= String(r?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '')
+      paragraphs[p.label] ??= p
+    }
+    seen += refs.length
+    if (seen >= hits || refs.length === 0) break
+  }
+  return Object.keys(paragraphs).length === 0 ? null : { gesetzesnummer, kurztitel, paragraphs }
+}
+
 /**
  * The only law of a BGBl — unless the caller's name shares not one word with
  * it. A single candidate used to be taken on the number alone, and a draft
@@ -350,6 +438,26 @@ export function soleUnlessContradicted<T extends { kurztitel: string; abkuerzung
   if (!name || !(entry.kurztitel || entry.abkuerzung)) return only
   const fits = bestNameScore(name, [entry.kurztitel, entry.abkuerzung]) > 0 || namesCompatible(name, entry.kurztitel)
   return fits ? only : null
+}
+
+/**
+ * Of several laws born from the same BGBl, the one whose Kurztitel or
+ * Abkürzung **is** the caller's name, a trailing year aside — or none
+ * (20.11.2026).
+ *
+ * BGBl. Nr. 311/1985 created the Staatsbürgerschaftsgesetz 1985 and the
+ * Staatsbürgerschafts-Übergangsrecht 1985, both „StbG". 152/ME XXVIII's
+ * clause names the „Staatsbürgerschaftsgesetz": `pickByName` scores it 0.5
+ * against the first (the year halves the overlap) and 0 against the second,
+ * below its threshold, and the law stayed unknown. Equality decides where
+ * the score cannot, and only for exactly one law; the year is dropped from
+ * RIS's name only, never matched loosely.
+ */
+export function pickByEqualName<T extends { kurztitel: string; abkuerzung?: string }>(byLaw: Map<string, T>, name: string): [string, T] | null {
+  const wanted = normName(name)
+  if (!wanted) return null
+  const fits = [...byLaw].filter(([, e]) => [e.kurztitel, e.kurztitel.replace(/\s+\d{4}\s*$/, ''), e.abkuerzung ?? ''].some((n) => n.trim() !== '' && normName(n) === wanted))
+  return fits.length === 1 ? fits[0]! : null
 }
 
 /** A name is evidence only when it fits one law of the BGBl clearly better than any other. */

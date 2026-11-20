@@ -36,7 +36,7 @@
  * limits do not add up (`cache/stale.ts`).
  */
 import type { ClauseName } from '../lawtext/draftArticles'
-import { getText, konsRecordsOfNummer, paragraphHistory, resolveLawByBgbl, type KonsRecord } from '../ris/konsLaw'
+import { getText, konsRecordsOfNummer, paragraphHistory, resolveLawByBgbl, resolveLawByName, type KonsRecord } from '../ris/konsLaw'
 import { lawsOfBgbl } from '../ris/bgblLaws'
 import { DERIVED_ANALYSIS_TTL_S, KONS_HISTORY_STALE_S, KONS_RECENT_DAYS, KONS_RECORDS_STALE_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { storageKeyOf } from '../cache/key'
@@ -118,7 +118,11 @@ export const readKonsRecords = defineCachedFunction(
  */
 export const resolveKonsLaw = defineCachedFunction(
   async (organ: string, nummer: string, date: string, title: string, clause: ClauseName | null = null) =>
-    resolveLawByBgbl({ organ, nummer }, date, title || undefined, clause, async (n, d) => (await readKonsRecords(n, d)).records),
+    // No number: the clause cites no Stammnorm we can read, and the law is
+    // looked up by the name it gives (`resolveLawByName`, 20.11.2026).
+    !nummer
+      ? (clause ? resolveLawByName(clause, date) : null)
+      : resolveLawByBgbl({ organ, nummer }, date, title || undefined, clause, async (n, d) => (await readKonsRecords(n, d)).records),
   {
     name: 'kons-law-by-bgbl',
     base: DERIVED_CACHE,

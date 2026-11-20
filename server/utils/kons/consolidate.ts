@@ -81,7 +81,12 @@ const CONCURRENCY = 4
  * would be an outage reported as a cause on the page.
  */
 export interface KonsSources {
-  /** The law a Stammnorm names on a date — null where RIS knows none or cannot tell two apart. */
+  /**
+   * The law a Stammnorm names on a date — null where RIS knows none or cannot
+   * tell two apart. Asked with an empty `organ` and `nummer` where the clause
+   * cites no Stammnorm we can read: then the law is the one the clause names
+   * (`resolveLawByName` in `ris/konsLaw.ts`).
+   */
   resolveLaw(organ: string, nummer: string, date: string, title: string, clause: ClauseName | null): Promise<KonsLawAtDate | null>
   /** One § document's XML (called only for a ref that carries an XML URL). */
   paragraphXml(ref: KonsParagraphRef): Promise<string>
@@ -166,7 +171,10 @@ interface ArticleWork {
   instructions: Instruction[]
   refused: RefusedInstruction[]
   addressed: string[]
-  labels: Map<string, string> | null
+  /** The RIS label of every addressed § but the doubled ones (`addressedLabels`). */
+  labels: Map<string, string>
+  /** Numbers the Artikel names under two labels: withheld as `nummer-doppelt`, nothing fetched for them. */
+  doubled: ReadonlySet<string>
   /** §§ a refused line on the whole text reaches, by the annex (`wholeTextParagraphs`). */
   locked: Set<string>
 }
@@ -193,7 +201,7 @@ function wholeTextParagraphs(w: ArticleWork, annex: AnnexOf): void {
   const refused = w.refused.some((r) => addressesWholeText(r.line))
   if (!read && !refused) return
   const labels = w.labels
-  if (!labels || [...labels.values()].some((label) => /^Art\./.test(label))) return
+  if (w.doubled.size > 0 || [...labels.values()].some((label) => /^Art\./.test(label))) return
   const added = annexChangedUnits(annex.rows, annex.law, w.article.key).filter((id) => !w.addressed.includes(id))
   if (added.length === 0) return
   for (const id of added) labels.set(id, isSchedule(id) ? id : `§ ${id}`)
@@ -274,9 +282,10 @@ export async function consolidate(
     // statement and not an intermediate result. The refusals go in whole,
     // with the container a refused sub-instruction stands under.
     // The RIS labels beside the denominator, and from the same pure step:
-    // a law divided into Artikel files its § 3 as „Art. 2 § 3", and null
-    // here means two addressed §§ would collide under one id.
-    return [{ article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels: addressedLabels(instructions, refused), locked: new Set<string>() }]
+    // a law divided into Artikel files its § 3 as „Art. 2 § 3", and a
+    // number addressed under two labels has none (`doubled`).
+    const { labels, doubled } = addressedLabels(instructions, refused)
+    return [{ article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels, doubled, locked: new Set<string>() }]
   })
   /**
    * The §§ of a law the draft enacts anew that the annex shows changing
@@ -387,13 +396,19 @@ export async function consolidate(
     // *throws* where RIS is unreachable. An error caught into null would be
     // an outage cached as a verdict about the draft; that is exactly what
     // `annex/annexGuardService.ts` cost once already.
-    const law = article.bgbl ? await sources.resolveLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '', article.clause) : null
+    // A clause that names its law and cites no Stammnorm we can read
+    // („zuletzt geändert durch … BGBl. I Nr. 21/2026" alone, „BGBl I
+    // 2013/105", „29/200") is looked up by that name (20.11.2026).
+    const law = article.bgbl
+      ? await sources.resolveLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '', article.clause)
+      : article.clause ? await sources.resolveLaw('', '', asOf, article.title ?? '', article.clause) : null
     if (!law) return { kind: 'failed' as const, w, cause: 'gesetz-unbekannt' as const }
     // Two §§ of this Artikel share a number under different Artikel of the
     // standing law. The stock is held by bare id, so one of them would
-    // answer for the other; nothing is shown rather than the wrong text.
+    // answer for the other: that number is fetched for neither and withheld
+    // (`doubled`), the rest of the Artikel runs.
     const labels = w.labels
-    if (!labels) return { kind: 'failed' as const, w, cause: 'nummer-doppelt' as const }
+    const fetched = w.addressed.filter((id) => !w.doubled.has(id))
 
     // Where the budget bites, it should bite the §§ that could show
     // nothing anyway.
@@ -414,7 +429,7 @@ export async function consolidate(
     // Asked for under the label RIS prints, not under the bare designation:
     // in a law divided into Artikel there is no document called „§ 3", and
     // a lookup without the Artikel comes back empty rather than wide.
-    const labelOf = new Map(w.addressed.map((id) => [id, anlageLabelKey(labels.get(id) ?? `§ ${id}`)]))
+    const labelOf = new Map(fetched.map((id) => [id, anlageLabelKey(labels.get(id) ?? `§ ${id}`)]))
     // „Anl." without a number is an instruction saying „the schedule",
     // which only a law with exactly one can mean („Z 1 lit. n des
     // Anhangs"). Here the law's labels are known, so this is the place that
@@ -432,7 +447,16 @@ export async function consolidate(
       labelOf.set(id, dotless)
       joined.set(dotless, id)
     }
-    const wanted = new Map(w.addressed.map((id) => [labelOf.get(id)!, covered(id)]))
+    // A law RIS files by Artikel answers a bare „§ 99" under „Art. 1 § 99"
+    // (Finanzstrafgesetz, Datenschutzgesetz, Arbeitslosenversicherungsgesetz
+    // 1977), and the drafts cite it without the Artikel. Joined only where
+    // exactly one Artikel of the law holds that number (`artikelLabelOf`).
+    for (const [id, label] of labelOf) {
+      const artikel = inRis.has(label) ? null : artikelLabelOf(label, inRis)
+      if (artikel === null || [...labelOf.values()].includes(artikel)) continue
+      labelOf.set(id, artikel)
+    }
+    const wanted = new Map(fetched.map((id) => [labelOf.get(id)!, covered(id)]))
     const refs = Object.entries(law.paragraphs)
       .filter(([label]) => wanted.has(anlageLabelKey(label)))
       .sort(([a], [b]) => Number(wanted.get(anlageLabelKey(b))) - Number(wanted.get(anlageLabelKey(a))))
@@ -516,8 +540,12 @@ export async function consolidate(
         held.push({ id, annexLaw: annexLawOf(w), cause })
       }
       for (const id of addressed) {
-      // Our own ceiling first: a document we never fetched is not a refusal
-      // of the engine.
+        if (w.doubled.has(id)) {
+          hold(id, 'nummer-doppelt')
+          continue
+        }
+        // Our own ceiling first: a document we never fetched is not a refusal
+        // of the engine.
         if (skipped.has(labelOf.get(id)!)) {
           hold(id, 'nicht-geladen')
           continue
@@ -665,6 +693,30 @@ const REPEAL_ONLY_RE = /^(?:[^.()[\]]{0,80}?\s)?(?:(?:§+\s*[\w.]+|(?:Anlage|Anh
 export function annexKeepsUnit(rows: readonly Pick<ComparisonRow, 'proposed' | 'paraAfter'>[]): boolean {
   const text = rows.filter((r) => r.paraAfter !== null).map((r) => r.proposed).join(' ').replace(/\s+/g, ' ').trim()
   return text !== '' && !REPEAL_ONLY_RE.test(text)
+}
+
+/**
+ * The label a law RIS files by Artikel carries a bare „§ 99" under — „Art. 1
+ * § 99" — or null (20.11.2026).
+ *
+ * The drafts cite such a law's §§ without its Artikel („In § 99 Abs. 3a
+ * lautet …", 97/ME XXVIII on the Finanzstrafgesetz), and under „§ 99" RIS
+ * holds no document there: the stock came out without the §, and every line
+ * on it was refused — 52 §§ of GP XXVIII's drafts in the FinStrG, the GGG,
+ * the BEinstG, the AlVG, the DSG, the PreisG and the NBG. Taken only where
+ * exactly one Artikel of the law holds the number: the DSG's „§ 1" is
+ * „Art. 1 § 1" because Art. 2 starts at § 4, and where two Artikel hold
+ * „§ 1" (Lebensmittelbewirtschaftungsgesetz Art. II § 1 beside Art. I) the
+ * bare number names neither and is refused as before.
+ */
+export function artikelLabelOf(label: string, inRis: ReadonlySet<string>): string | null {
+  const m = /^§ (\S+)$/.exec(label)
+  if (!m) return null
+  const found = [...inRis].filter((l) => {
+    const art = /^Art\. \S+ § (\S+)$/.exec(l)
+    return art !== null && art[1] === m[1]
+  })
+  return found.length === 1 ? found[0]! : null
 }
 
 /** The key `unitsByKey` holds a node under — a schedule as „Anl. 1", a § by its number. */
