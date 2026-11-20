@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { isTirolDocumentUrl, parseTirolList, parseTirolRecord, parseTirolVoSearch, tirolDocumentUrl, tirolFilingEmail, tirolRecordUrl, tirolStatementUrl, tirolVoOf } from '../server/utils/laender/tirol'
 import { LandSourceError } from '../server/utils/laender/gate'
+
+// The Landesgesetzblatt's index is a cached Nitro function; no Kundmachung is read here.
+vi.mock('../server/utils/laender/lgblIndex', () => ({ lgblXmlUrl: vi.fn() }))
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/laender/${name}`, import.meta.url), 'utf8')
 const LIST = fixture('tirol-liste-2026-10-23.html')
@@ -45,6 +48,24 @@ describe('Tirol — the Landtag\'s record of one Gegenstand', () => {
     expect(r.stage).toMatchObject({ station: 'rv', date: '2026-09-29' })
     expect(r.statements.map((s) => s.name)).toEqual(['AK Tirol', 'Bundesministerium für Bildung', 'Tiroler Gemeindeverband'])
     expect(r.landtag?.committee).toBe('Ausschuss für Wohnen, Raumordnung, Rechts- und Gemeindeangelegenheiten')
+  })
+
+  // A Vorlage whose record lists no „Regierungsvorlage" document (yet): the
+  // step pointed at the record page, which the comparison read as the
+  // Vorlage's PDF — a read that could only fail, every time. 573's record
+  // with that row taken out.
+  it('as a Vorlage whose document is not listed: the step names no text', async () => {
+    expect(parseTirolRecord(VORLAGE, url('573')).procedure.find((s) => s.station === 'rv')?.url).toBe(tirolDocumentUrl(url('573'), 'Regierungsvorlage'))
+    const unlisted = VORLAGE.replace('<span>Regierungsvorlage</span>', '')
+    expect(unlisted).not.toBe(VORLAGE)
+    const r = parseTirolRecord(unlisted, url('573'))
+    const rv = r.procedure.find((s) => s.station === 'rv')
+    expect(rv).toMatchObject({ date: '2026-09-29', label: 'Regierungsvorlage, GZ 573/2026, eingebracht' })
+    expect(rv!.url).toBeNull()
+    const { textSources } = await import('../server/utils/laender/texts/stations')
+    const t = textSources('t', { draft: { documents: [{ title: 'Entwurf', url: tirolDocumentUrl(url('573'), 'Begutachtungsentwurf') }], stage: r.stage }, procedure: r.procedure, landtag: r.landtag } as never)
+    expect(t.entwurf).toBeDefined()
+    expect(t.rv).toBeUndefined()
   })
 
   it('links each Stellungnahme by its number, never by the label that names its submitter', () => {

@@ -229,7 +229,10 @@ export function parseTirolRecord(html: string, recordUrl: string): TirolRecord {
 
   const procedure: LandProcedureStep[] = []
   const vorlage = labels.find((l) => /^Regierungsvorlage$/.test(l))
-  if (isVorlage) procedure.push({ date: filedAt, label: `Regierungsvorlage, GZ ${gz}, eingebracht`, url: vorlage ? docUrl(vorlage) : recordUrl, station: 'rv' })
+  // No document listed (573 on 23.10.2026), no link: the step's address is
+  // the Vorlage's text (`texts/stations.ts`), and the record page read as its
+  // PDF could only fail. The draft's own link opens the record.
+  if (isVorlage) procedure.push({ date: filedAt, label: `Regierungsvorlage, GZ ${gz}, eingebracht`, url: vorlage ? docUrl(vorlage) : null, station: 'rv' })
   const erledigungen = (t.get('Erledigungen') ?? []).map(([date, art, sitting]) => ({ date: dottedDate(date), art: art ?? '', sitting: sitting ?? '' }))
   const plenary = erledigungen.findLast((e) => /^Annahme Landtag$/.test(e.art))
   for (const [date, sitting, decision] of t.get('Behandlungen') ?? []) {

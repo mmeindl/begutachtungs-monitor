@@ -116,6 +116,10 @@ const reportName = computed(() => {
           </ExternalLink>
         </template>
       </FactList>
+      <!-- A step without its text (Tirol lists the Vorlage's document only
+           some days after it): no comparison, and the page says why. A
+           record that lists no document proves no absence. -->
+      <GapNote v-if="!rvStep.url" kind="unreadable" text="Den Text der Regierungsvorlage fand der Monitor nicht; mit dem Entwurf vergleicht er sie deshalb nicht." class="mt-4 text-sm text-ink-secondary" />
     </div>
     <!-- What changed after the Begutachtung: the draft against the
          Vorlage, the comparison the Bund's drafts lead with. -->
