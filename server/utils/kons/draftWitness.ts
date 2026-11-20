@@ -224,6 +224,27 @@ function newTexts(ins: WitnessInstruction): string[] {
   return []
 }
 
+/**
+ * How many times the instructions wrote `tokens` into the § at most: a
+ * replacement as often as its old wording went, an insertion once per
+ * anchor that stands, a unit's new text once for each payload that carries
+ * it. Read off the standing text and the result, so a count that does not
+ * hold is a result the instruction does not explain.
+ */
+function written(ins: WitnessInstruction, tokens: readonly string[], all: readonly { tokens: string[] }[], before: readonly string[], got: readonly string[]): number {
+  const { op } = ins
+  if (op.kind === 'replacePhrase') {
+    const from = tokensOf(op.from)
+    return from.length === 0 ? 0 : runsOf(before, from).length - runsOf(got, from).length
+  }
+  if (op.kind === 'insertPhrase') {
+    const anchor = tokensOf(op.anchor)
+    return anchor.length === 0 ? 0 : runsOf(before, anchor).length
+  }
+  const same = all.filter((p) => p.tokens.length === tokens.length && p.tokens.every((t, i) => t === tokens[i])).length
+  return same
+}
+
 /** The texts an instruction names that are not new: the wording it replaces or anchors on. */
 function namedTexts(ins: WitnessInstruction): string[] {
   const { op } = ins
@@ -298,8 +319,16 @@ export function witnessVerdict(
 ): WitnessOutcome {
   if (!rendition) return { released: false, reason: 'keine-fassung' }
   const gotTokens = tokensOf(got)
-  const payloads: PayloadRun[] = touching.flatMap((ins, instruction) =>
-    newTexts(ins).map((t) => tokensOf(t)).filter((t) => t.length > 0).map((tokens) => ({ instruction, tokens, at: runsOf(gotTokens, tokens) })))
+  const beforeTokens = before === null ? [] : tokensOf(before)
+  const all = touching.flatMap((ins, instruction) => newTexts(ins).map((t) => tokensOf(t)).filter((t) => t.length > 0).map((tokens) => ({ instruction, tokens })))
+  // A payload stands in the result only as often as the instructions wrote
+  // it (`written`): a figure or a word that also stands where nothing put it
+  // is no payload there. Measured: five word faults of the fault injection
+  // („zuständige Behörde" turned into „zuständige Lufttüchtigkeit", the word
+  // another line of the § writes) were shown on the witness until then.
+  const payloads: PayloadRun[] = all
+    .filter((p) => runsOf(gotTokens, p.tokens).length - runsOf(beforeTokens, p.tokens).length <= written(touching[p.instruction]!, p.tokens, all, beforeTokens, gotTokens))
+    .map((p) => ({ ...p, at: runsOf(gotTokens, p.tokens) }))
   const sources = touching.map((ins) => tokensOf(`${ins.line} ${ins.payload.join(' ')}`))
   const regions = touching.map((ins, i) => regionsOf(rendition, ins, keyOfTokens(sources[i]!).length))
   const named = touching.map((ins) => namedTexts(ins).map((t) => tokensOf(t)).filter((t) => t.length > 0))
