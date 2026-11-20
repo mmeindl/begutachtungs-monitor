@@ -87,6 +87,10 @@ const GLD_PARAGRAPH_RE = new RegExp(String.raw`^§+\.?\s*(${PARAGRAPH_NUMBER})`)
  * label: a row opening with anything but a § must not answer here.
  */
 export function paraIdOfGld(gld: string | null): string | null {
+  return paraIdOf(gld)
+}
+
+function paraIdOf(gld: string | null): string | null {
   const t = normalizeText(gld ?? '')
   // „§ 2.01." whole: a Verordnung that numbers its §§ by Kapitel (the
   // Wasserstraßen-Verkehrsordnung's „§ 8.03") is keyed so on the address
@@ -124,6 +128,14 @@ export function paraIdOfGld(gld: string | null): string | null {
  */
 export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, ComparisonRow[]> {
   const out = new Map<string, ComparisonRow[]>()
+  // A law whose units are Artikel — the B-VG — keys „Artikel 52." as the
+  // engine names it, „52" (`articleLaws`).
+  const byArticle = articleLaws(rows)
+  const paraIdOfGld = (gld: string | null, law: string | null = null): string | null => {
+    const id = paraIdOf(gld)
+    if (id !== null || !byArticle.has(law ?? '')) return id
+    return ARTICLE_GLD_RE.exec(normalizeText(gld ?? ''))?.[1] ?? null
+  }
   const struck = new Set<ComparisonRow>()
   const position = new Map<ComparisonRow, number>()
   const standing = new Map<ComparisonRow, string>()
@@ -139,7 +151,7 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     }
     /** The row whose designation opened the § — this one, or for a heading the one below. */
     let opener = row
-    let id = paraIdOfGld(row.gld)
+    let id = paraIdOfGld(row.gld, row.law)
     // A schedule the annex opens with a line printed once per column carries
     // its name in `para`, not in `gld` (`comparisonRows`, `opensAnlage`), and
     // followed only by `gld` its rows stayed under the § before it: „Armenien,
@@ -155,8 +167,8 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     // without a closing full stop, right before a row that opens a §, is
     // that §'s heading.
     const next = rows[i + 1]
-    if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld) && isHeadingRow(row, next)) {
-      id = paraIdOfGld(next.gld)
+    if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld, next.law) && isHeadingRow(row, next)) {
+      id = paraIdOfGld(next.gld, next.law)
       opener = next
     }
     // A § the annex opened without a row that carries its symbol. Where the
@@ -178,12 +190,12 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     // over the 400 drafts of the ME-Prüfstand. Where the § opens with its own
     // symbol below, those rows stay where they were (`opensBelow`).
     if (!id && row.para) {
-      const opened = paraIdOfGld(row.para)
-      if (opened && paragraphKey(opened, row.law) !== current && !opensBelow(rows, i, opened)) id = opened
+      const opened = paraIdOfGld(row.para, row.law)
+      if (opened && paragraphKey(opened, row.law) !== current && !opensBelow(rows, i, opened, (g) => paraIdOfGld(g, row.law))) id = opened
     }
     if (id) {
       current = paragraphKey(id, row.law)
-      drawer = { ...drawerOf(id, opener, row.law), standing: id }
+      drawer = { ...drawerOf(id, opener, row.law, (g) => paraIdOfGld(g, row.law)), standing: id }
     }
     if (!current || !drawer) continue
     const list = out.get(drawer.key) ?? []
@@ -204,10 +216,36 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
  * the draft, or — where nothing of it stands afterwards (`paraAfter` null) —
  * under its own number, set aside for the § the engine made of it.
  */
-function drawerOf(id: string, opener: ComparisonRow, law: string | null): { key: string; struck: boolean } {
+function drawerOf(id: string, opener: ComparisonRow, law: string | null, idOf: (gld: string | null) => string | null = paraIdOf): { key: string; struck: boolean } {
   if (opener.paraAfter === opener.para) return { key: paragraphKey(id, law), struck: false }
   if (opener.paraAfter === null) return { key: paragraphKey(id, law), struck: true }
-  return { key: paragraphKey(paraIdOfGld(opener.paraAfter) ?? id, law), struck: false }
+  return { key: paragraphKey(idOf(opener.paraAfter) ?? id, law), struck: false }
+}
+
+/** „Artikel 52.", „Art. 52a" — an Artikel as the unit itself, with its number. */
+const ARTICLE_GLD_RE = /^Art(?:ikel|\.)\s*(\d+[a-z]*)\.?$/i
+
+/**
+ * The laws of an annex whose units are Artikel (20.11.2026): rows designated
+ * „Artikel 52." and not one row of that law designated as a §. The B-VG is
+ * divided so; its rows opened nothing, and 127/ME XXVIII's Art. 53, 92, 134,
+ * 138b and 147 went out as `anhang-schweigt` beside the annex that prints
+ * them. A law that carries §§ inside its Artikel („Art. 1 § 3") keeps them
+ * apart: there „Artikel 1." is no unit the engine addresses.
+ */
+function articleLaws(rows: readonly ComparisonRow[]): Set<string> {
+  const articles = new Set<string>()
+  const paragraphs = new Set<string>()
+  for (const row of rows) {
+    if (row.kind !== 'pair') continue
+    const law = row.law ?? ''
+    for (const gld of [row.gld, row.para]) {
+      if (!gld) continue
+      if (paraIdOf(gld) !== null && !isSchedule(normalizeText(gld))) paragraphs.add(law)
+      else if (ARTICLE_GLD_RE.test(normalizeText(gld))) articles.add(law)
+    }
+  }
+  return new Set([...articles].filter((law) => !paragraphs.has(law)))
 }
 
 /**
@@ -226,12 +264,12 @@ const POSITION = new WeakMap<ReadonlyMap<string, ComparisonRow[]>, ReadonlyMap<C
  * opens `id` with its own symbol — the § then has a row of its own, and a
  * row above it that merely inherits it is not where it opens.
  */
-function opensBelow(rows: readonly ComparisonRow[], at: number, id: string): boolean {
+function opensBelow(rows: readonly ComparisonRow[], at: number, id: string, idOf: (gld: string | null) => string | null = paraIdOf): boolean {
   const { para, law } = rows[at]!
   for (let j = at + 1; j < rows.length; j++) {
     const r = rows[j]!
     if (r.kind !== 'pair' || r.para !== para || r.law !== law) return false
-    if (r.gld) return paraIdOfGld(r.gld) === id
+    if (r.gld) return idOf(r.gld) === id
   }
   return false
 }

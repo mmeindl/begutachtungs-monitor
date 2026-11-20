@@ -83,3 +83,20 @@ describe('the foot of a row', () => {
     expect(oracleVerdict('3', got, got, rows).verdict).not.toBe('bestätigt')
   })
 })
+
+describe('a law whose units are Artikel (127/ME XXVIII, B-VG)', () => {
+  const row = (gld: string | null, current: string, law: string, para: string | null = gld): ComparisonRow => ({ ...pair(current, current.replace('alt', 'neu'), gld), law, para })
+
+  it('keys „Artikel 53." as the engine names the unit, „53"', () => {
+    const law = 'Änderung des Bundes-Verfassungsgesetzes'
+    const grouped = rowsByParagraph([row('Artikel 52.', '(1) bis (3) …', law), row(null, '(3a) alt', law, 'Artikel 52.'), row('Artikel 53.', '(3) alt', law)])
+    expect(paragraphRows(grouped, '52', law)).toHaveLength(2)
+    expect(paragraphRows(grouped, '53', law)).toHaveLength(1)
+  })
+
+  it('keeps „Artikel 1." out of a law that carries §§ inside its Artikel', () => {
+    const law = 'Änderung des Begleitgesetzes'
+    const grouped = rowsByParagraph([row('Artikel 1.', 'Dieses Gesetz gilt für alle alt.', law), row('§ 1.', '(1) alt', law)])
+    expect(paragraphRows(grouped, '1', law).map((r) => r.current)).toEqual(['(1) alt'])
+  })
+})
