@@ -2359,6 +2359,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         const added = payload.map((p) => plainText(p)).join(' ').trim()
         if (!added) return 'Einfügung ohne Text'
+        if (op.oneSentence && (splitSentences(added)?.length ?? 0) !== 1) return 'Angekündigt ist ein Satz an dieser Stelle, der neue Text ist keiner oder mehrere'
         const slot = sentenceSlot(host, op.anchor.satz, op.anchor.satzCount)
         if (!slot) return `Satz ${op.anchor.satz} nicht auffindbar`
         const text = slot.read().trim()

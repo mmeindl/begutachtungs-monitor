@@ -1164,6 +1164,8 @@ export type NovaoOp =
     child: ChildLevel
     childIds: string[]
     where: 'after' | 'before' | 'number'
+    /** „folgender zweiter Satz eingefügt": the new text has to be one sentence, or the ordinal is not its place. */
+    oneSentence?: true
   }
   /** "§ 5 Abs. 3 entfällt." */
   | { kind: 'delete'; target: NovaoAddress; withHeading: boolean }
@@ -2811,6 +2813,19 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // the standing text can say (`placeByNumber`). A sentence, a unit
       // without its number, several hosts or a place word of another kind
       // („anstelle des dritten Satzes") stay refused.
+      // „§ 77b wird folgender zweiter Satz eingefügt", „In § 29 Abs. 2 wird
+      // folgender erster Satz eingefügt", „In § 21 Abs. 1 wird zu Beginn
+      // folgender Satz eingefügt" (20.11.2026): the ordinal is the new
+      // sentence's place — behind the sentence before it, the first in front
+      // of the first. One unit, no sentence in the address, one sentence of
+      // new text (`oneSentence`).
+      const nth = new RegExp(`^folgender\\s+(${RUN_ORDINAL})r\\s+Satz\\b`, 'i').exec(payload)
+      const atStart = /\bzu\s+Beginn\b/i.test(maskQuotes(head)) && /^folgender\s+Satz\b/i.test(payload)
+      if ((nth || atStart) && targets.length === 1 && target.siblings.length === 0 && !target.satz && !target.halbsatz && !target.heading && target.level !== 'document') {
+        const n = nth ? ORDINAL_INDEX[nth[1]!.toLowerCase()]! : 0
+        const anchor = { ...target, satz: n === 0 ? 'erster' : ORDINAL_BY_INDEX[n - 1]!, satzCount: 1 }
+        return ok({ kind: 'insertAfter', anchor, child: 'satz', childIds: [], where: n === 0 ? 'before' : 'after', oneSentence: true })
+      }
       const child = childLevel(payload || whole)
       const ids = childIds(payload, child)
       if ((child === 'abs' || child === 'z' || child === 'lit') && ids.length > 0 && targets.length === 1 && target.siblings.length === 0 && !target.satz && !target.halbsatz && !target.heading && /^folgende[rn]?\s/i.test(payload) && !/\ban\s*(?:die\s+)?stelle\b|\banstelle\b|\bzu\s+Beginn\b|\bam\s+Ende\b/i.test(maskQuotes(head))) {

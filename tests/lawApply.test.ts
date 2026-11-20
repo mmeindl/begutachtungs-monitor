@@ -1695,6 +1695,24 @@ describe('Einfügung ohne Anker, nach der eigenen Nummer (20.11.2026)', () => {
     expect(r2[0]!.reason).toMatch(/nicht aufsteigend/)
   })
 
+  it.each([
+    ['In § 4 Abs. 1 wird folgender zweiter Satz eingefügt:', 'Eins ist hier. Neu. Zwei ist hier. Drei ist hier.'],
+    ['In § 4 Abs. 1 wird folgender erster Satz eingefügt:', 'Neu. Eins ist hier. Zwei ist hier. Drei ist hier.'],
+    ['In § 4 Abs. 1 wird zu Beginn folgender Satz eingefügt:', 'Neu. Eins ist hier. Zwei ist hier. Drei ist hier.'],
+    ['In § 4 Abs. 1 wird folgender vierter Satz eingefügt:', 'Eins ist hier. Zwei ist hier. Drei ist hier. Neu.'],
+  ])('inserts a sentence at its ordinal: „%s"', (line, expected) => {
+    const l: StandingLaw = { paragraphs: [para('4', 'S', ['Eins ist hier. Zwei ist hier. Drei ist hier.'])] }
+    const { law: out, results } = run(l, instr(line, ['Neu.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe(expected)
+  })
+
+  it('refuses an ordinal sentence beyond the end, or a text of two sentences', () => {
+    const l: StandingLaw = { paragraphs: [para('4', 'S', ['Eins ist hier. Zwei ist hier.'])] }
+    expect(run(l, instr('In § 4 Abs. 1 wird folgender vierter Satz eingefügt:', ['Neu.'])).results[0]!.reason).toMatch(/nicht auffindbar/)
+    expect(run(l, instr('In § 4 Abs. 1 wird folgender zweiter Satz eingefügt:', ['Neu eins. Neu zwei.'])).results[0]!.reason).toMatch(/ein Satz/)
+  })
+
   it('keeps refusing an insertion with another place word', () => {
     expect(parseInstruction('In § 31 Abs. 6 werden anstelle des dritten Satzes folgende Sätze eingefügt:').reason).toMatch(/ohne Anker/)
     expect(parseInstruction('In § 55 Abs. 1 Z 2 lit. a werden folgende Sätze eingefügt:').reason).toMatch(/ohne Anker/)
