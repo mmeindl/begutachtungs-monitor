@@ -165,8 +165,22 @@ export function compareKey(t: string): string {
  *
  *  - **between two digits** a run stays a separator: one that holds a hyphen
  *    is a range and reads „-" („3-5", „3 - 5", „3 -5" alike), one of spaces
- *    alone reads „ " („1 3"). Neither is the number „35" or „13";
+ *    alone reads „ " („1 3"). Neither is the number „35" or „13" — save
+ *    between an amount and its footnote mark (below);
  *  - **a minus sign** before a number stays „-" (`isSign`, 19.11.2026).
+ *
+ * **An amount and its footnote mark, since 20.11.2026.** A run of spaces
+ * alone after a two-digit fraction and before a mark of one or two digits
+ * closed by „)" goes: „10.121,40 1)2)" reads as „10.121,401)2)". The
+ * Salzburg draft's PDF reading glues the mark to the amount where the
+ * Landesgesetzblatt sets it apart, and keeping the separator made two salary
+ * tables „geändert" (sbg-31419 § 1, sbg-33547 Z 1) for the source format
+ * alone — the trade the hyphen fold above refuses. Measured over the cached
+ * corpus: 15 distinct sites of that shape, all in Salzburg amount tables and
+ * every one a footnote mark (or the mark opening the footnote below the
+ * table); none in the 48,791 Bund unit texts of GP XXVIII. A fraction of
+ * one or three digits, an integer („+ 4 1)") or a mark of three digits
+ * („123)") keeps its separator.
  *
  * **One function for the unit key and the badge, since 20.11.2026.**
  * `compareKey` folded every run but a sign, so „Z 1 3" equalled „Z 13",
@@ -181,9 +195,21 @@ export function compareKey(t: string): string {
  */
 export function foldSpacing(s: string): string {
   return s.replace(/[\s-]+/g, (run, at: number) => {
-    if (DIGIT_RE.test(s[at - 1] ?? '') && DIGIT_RE.test(s[at + run.length] ?? '')) return run.includes('-') ? '-' : ' '
+    if (DIGIT_RE.test(s[at - 1] ?? '') && DIGIT_RE.test(s[at + run.length] ?? '')) {
+      if (run.includes('-')) return '-'
+      return isFootnoteGap(s, run, at) ? '' : ' '
+    }
     return isSign(s, run, at) ? '-' : ''
   })
+}
+
+/** A two-digit fraction ends before the run („35,82"), a footnote mark opens after it („1)", „12)", „1)2)"). */
+const AMOUNT_END_RE = /\d,\d\d$/
+const FOOTNOTE_MARK_RE = /^\d{1,2}\)/
+
+/** Is this run of spaces the layout gap between an amount and its footnote mark („35,82 1)")? */
+function isFootnoteGap(s: string, run: string, at: number): boolean {
+  return AMOUNT_END_RE.test(s.slice(Math.max(0, at - 4), at)) && FOOTNOTE_MARK_RE.test(s.slice(at + run.length, at + run.length + 3))
 }
 
 /**

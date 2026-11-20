@@ -127,6 +127,29 @@ describe('compareKey', () => {
     expect(compareKey('Z 1 3')).toBe(compareKey('Z 1  3'))
   })
 
+  it('folds the spaces between an amount and its footnote mark (20.11.2026)', () => {
+    // The Salzburg draft's PDF reading glues the mark to the amount, the
+    // Landesgesetzblatt sets it apart: the same table, not a changed one.
+    expect(compareKey('10.121,401)2) 13.094,50')).toBe(compareKey('10.121,40 1)2) 13.094,50'))
+    expect(compareKey('11.114,701) -')).toBe(compareKey('11.114,70 1) -'))
+    expect(compareKey('€ 35,821) € 88,05')).toBe(compareKey('€ 35,82 1) € 88,05'))
+    expect(compareKey('€ 35,82  1)')).toBe(compareKey('€ 35,821)'))
+    // Only there: a mark of three digits is no footnote mark, a fraction of
+    // one or three digits no amount, and every other pair stays as it was.
+    expect(compareKey('€ 35,82 123)')).not.toBe(compareKey('€ 35,82123)'))
+    expect(compareKey('€ 35,8 1)')).not.toBe(compareKey('€ 35,81)'))
+    expect(compareKey('€ 35,825 1)')).not.toBe(compareKey('€ 35,8251)'))
+    expect(compareKey('+ 4 1)')).not.toBe(compareKey('+ 41)'))
+    expect(compareKey('€ 35,82 1')).not.toBe(compareKey('€ 35,821'))
+    expect(compareKey('€ 35,82 - 1)')).not.toBe(compareKey('€ 35,821)'))
+    expect(compareKey('Z 1 3')).not.toBe(compareKey('Z 13'))
+    expect(compareKey('(Z 1 3)')).not.toBe(compareKey('(Z 13)'))
+    expect(compareKey('45 86 61')).not.toBe(compareKey('458661'))
+    expect(compareKey('3 000')).not.toBe(compareKey('30 00'))
+    expect(compareKey('§§ 3-5')).toBe(compareKey('§§ 3 - 5'))
+    expect(compareKey('§§ 3-5')).not.toBe(compareKey('§§ 35'))
+  })
+
   it('folds the separator between a digit and a letter as before', () => {
     expect(compareKey('Covid-19')).toBe(compareKey('Covid 19'))
     expect(compareKey('Covid-19')).toBe(compareKey('Covid19'))

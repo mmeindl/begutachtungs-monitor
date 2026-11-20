@@ -40,6 +40,11 @@ describe('mutate — one fault per class, at the first place it applies', () => 
     expect(text('gemäß Z 1 3 gilt', 'zahlen-verbunden')).toBe('gemäß Z 13 gilt')
     expect(text('mindestens 100 000 Euro.', 'zahlen-verbunden')).toBe('mindestens 100000 Euro.')
     expect(text('Abs. 3 und 4', 'zahlen-verbunden')).toBeNull()
+    // An amount and its footnote mark: joined they are the same text (`foldSpacing`), no fault.
+    expect(text('€ 35,82 1) € 88,05', 'zahlen-verbunden')).toBeNull()
+    expect(text('10.121,40 1)2) 13.094,50 und Z 1 3', 'zahlen-verbunden')).toBe('10.121,40 1)2) 13.094,50 und Z 13')
+    // An integer before the mark is no amount: still two numbers.
+    expect(text('+ 4 1)', 'zahlen-verbunden')).toBe('+ 41)')
     expect(text('die §§ 3-5 gelten', 'bereich-verbunden')).toBe('die §§ 35 gelten')
     expect(text('die §§ 3 - 5 gelten', 'bereich-verbunden')).toBe('die §§ 35 gelten')
     expect(text('Budgetbegleitgesetz 2027-2028,', 'bereich-verbunden')).toBe('Budgetbegleitgesetz 20272028,')

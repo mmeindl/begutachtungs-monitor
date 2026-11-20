@@ -106,7 +106,11 @@ export function mutate(text: string, kind: MutationKind): Mutation | null {
       // („Eiweißausscheidung > 1g/l", 60/ME).
       return first(kind, text, /[<>]/, (m) => (m[0] === '<' ? '>' : '<'))
     case 'zahlen-verbunden':
-      // Two tokens of digits with one space between them, joined.
+      // Two tokens of digits with one space between them, joined. Never an
+      // amount and its footnote mark („35,82 1)"): the unit key reads that
+      // join as the same text (`foldSpacing`), so it is no fault — the first
+      // token has to open after a space or a bracket, and a fraction opens
+      // after its comma.
       return first(kind, text, /(?<=^|[\s(])\d+ \d+(?=$|[\s.,;:)])/, (m) => m[0].replace(' ', ''))
     case 'bereich-verbunden':
       // A range between two digits, its hyphen and spaces taken out.

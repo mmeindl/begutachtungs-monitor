@@ -277,6 +277,9 @@ describe('editorial vs substantive', () => {
       ['§§ 3 -5', '§§ 3- 5'],
       ['Covid-19', 'Covid 19'],
       ['die E-Mail', 'die EMail'],
+      ['€ 35,82 1) € 88,05', '€ 35,821) € 88,05'],
+      ['10.121,40 1)2) 13.094,50', '10.121,401)2) 13.094,50'],
+      ['+ 4 1)', '+ 41)'],
     ]
     for (const [a, b] of pairs) {
       const forgiven = isEditorialChange(seg(`BGBl. I Nr. xxx/2026 gilt ${a} weiter`, `BGBl. I Nr. 31/2026 gilt ${b} weiter`))
