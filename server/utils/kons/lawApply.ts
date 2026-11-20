@@ -997,6 +997,16 @@ function likeStanding(text: string, needle: string, found: string, standing: str
   return text.replace(new RegExp(`\\s*(${DASH})\\s*`, 'g'), '$1')
 }
 
+/**
+ * How often a phrase operation finds its operand in a text, as the engine
+ * counts it (word bounds, numbers): what the guard charges a „jeweils" line
+ * with per unit (`kons/applyGuard.ts`), since a unit may carry it more than
+ * once (`everyInUnit`).
+ */
+export function phraseOccurrences(haystack: string, needle: string, wordBound: boolean): number {
+  return needle ? exactSpans(haystack, needle, wordBound).length : 0
+}
+
 /** Every place the text stands, spelled exactly — the offsets and their length. */
 function exactSpans(haystack: string, needle: string, wordBound: boolean): Span[] {
   const out: Span[] = []
@@ -1570,14 +1580,126 @@ function phraseUnits(law: StandingLaw, a: NovaoAddress, eachUnit: boolean): Slot
  * The units cannot overlap, so the offsets stay valid until the writes:
  * `scopeOf` reads one level, and its nodes are siblings.
  */
-function locateInUnits(units: readonly (readonly Slot[])[], needle: string, wordBound: boolean): { hits: (Span & { slot: Slot })[] } | { error: string } {
+function locateInUnits(units: readonly (readonly Slot[])[], needle: string, wordBound: boolean, every?: EveryOccurrence): { hits: (Span & { slot: Slot })[] } | { error: string } {
   const hits: (Span & { slot: Slot })[] = []
   for (const slots of units) {
     const found = uniqueSlot(slots, needle, wordBound)
-    if ('error' in found) return { error: found.error }
+    if ('error' in found) {
+      const all = every && /nicht eindeutig/.test(found.error) ? everyInUnit(slots, needle, wordBound, every) : null
+      if (!all) return { error: found.error }
+      if ('error' in all) return all
+      hits.push(...all.hits)
+      continue
+    }
     hits.push(found.hit)
   }
   return { hits }
+}
+
+/**
+ * Writes every hit, each slot once: its text read once, the hits applied to
+ * that string last first, so no edit moves the offset of one still to come,
+ * and the result written back once (20.11.2026). A slot need not read back
+ * what was written to it — a run of sentences (`partsSlot`) reads the
+ * sentences it was cut from — so two writes to one slot lost the first:
+ * „§ 182 erster und zweiter Satz entfällt jeweils … ‚Verfassung, Reformen,
+ * Deregulierung und'" (121/ME XXVIII) came out changed in one sentence and
+ * reported as carried out. `finish` runs once per slot after its edits.
+ */
+function writeHits(hits: readonly (Span & { slot: Slot })[], edit: (text: string, at: number, len: number) => string, finish: (text: string) => string = (t) => t): void {
+  const bySlot = new Map<Slot, Span[]>()
+  for (const { slot, at, len } of hits) {
+    const spans = bySlot.get(slot) ?? []
+    spans.push({ at, len })
+    bySlot.set(slot, spans)
+  }
+  for (const [slot, spans] of bySlot) {
+    let text = slot.read()
+    for (const { at, len } of [...spans].sort((x, y) => y.at - x.at)) text = edit(text, at, len)
+    slot.write(finish(text))
+  }
+}
+
+/**
+ * **„jeweils" over a list: every occurrence in each unit** (20.11.2026). „In
+ * § 8 Abs. 13 und 14 wird jeweils das Wort ‚Versorgung' durch das Wort
+ * ‚Grundversorgung' ersetzt" over an Abs. 13 that carries the word twice was
+ * refused as „2× gefunden". „jeweils" with ONE place has meant every
+ * occurrence there all along (`everywhere`, `everyOccurrence` in
+ * `kons/novao.ts`); over a list it hands the change to each place, and a
+ * place that carries the phrase twice is read the same way as the one place:
+ * every occurrence in it. 40 §§ of the 164 drafts of period XXVIII were
+ * refused for exactly this.
+ *
+ * Three readings stay refused, each with its own reason:
+ *
+ * - **A list word or a mark** („sowie", „und", „oder", „,"). „In § 27a Abs. 2
+ *   und § 27b Abs. 2 wird in Z 16 jeweils das Wort ‚sowie' durch einen
+ *   Beistrich ersetzt" means the „sowie" that closes Z 16 (Ärztegesetz 1998,
+ *   95/ME XXVIII): the Ziffer carries one more inside its own text, and the
+ *   word that joins two Ziffern is a place, not a word to be changed
+ *   wherever it stands.
+ * - **A hit glued into another word** where the operand was not announced
+ *   as a „Wort": „Wortfolge ‚Bundesminister für Finanzen'" inside a longer
+ *   word is not an occurrence of the Wortfolge.
+ * - **A hit the change already stands at**: „vor dem Wort ‚Arbeitnehmer' die
+ *   Worte ‚Arbeitnehmerinnen und' eingefügt" over a text that already reads
+ *   „Arbeitnehmerinnen und Arbeitnehmer" once would write the pair twice;
+ *   „‚Versorgung' durch ‚Grundversorgung'" where a hit already sits inside
+ *   „Grundversorgung" likewise.
+ */
+export interface EveryOccurrence {
+  /** True where the text around a hit already reads what the change writes there. */
+  alreadyThere: (text: string, at: number, len: number) => boolean
+}
+
+const LIST_WORD_RE = /^[\s.,;:]*(?:und|oder|sowie|bzw\.?|beziehungsweise|als\s+auch|weiters)?[\s.,;:]*$/i
+
+function everyInUnit(slots: readonly Slot[], needle: string, wordBound: boolean, every: EveryOccurrence): { hits: (Span & { slot: Slot })[] } | { error: string } {
+  if (LIST_WORD_RE.test(needle)) return { error: `„${needle.trim()}" mehrfach in der Einheit — „jeweils" sagt bei einem Bindewort oder Zeichen nicht, welches gemeint ist` }
+  const hits = slots.flatMap((slot) => exactSpans(slot.read(), needle, wordBound).map((s) => ({ ...s, slot })))
+  for (const h of hits) {
+    const text = h.slot.read()
+    if (!atWordBoundary(text, needle, h.at)) return { error: `„${needle.slice(0, 40)}" steht in der Einheit auch als Teil eines Wortes — jede Fundstelle nicht eindeutig` }
+    if (every.alreadyThere(text, h.at, h.len)) return { error: `„${needle.slice(0, 40)}" mehrfach in der Einheit, an einer Fundstelle steht die Änderung schon` }
+  }
+  return { hits }
+}
+
+/**
+ * **„am Ende der Z 3 das Wort ‚und'"** (20.11.2026, `endWord` in
+ * `kons/novao.ts`): in each unit, the operand that ends its text — standing
+ * as a word, with nothing behind it but a closing mark. A Ziffer that joins
+ * the next with „und" often carries another „und" inside, and asked for a
+ * unique occurrence the line was refused (BilDokG 2020 § 4, 14/ME XXVIII,
+ * and seven more). A unit whose text does not end on the operand disagrees
+ * with the draft and refuses the line.
+ */
+function endWordHits(units: readonly (readonly Slot[])[], needle: string): { hits: (Span & { slot: Slot })[] } | { error: string } {
+  const hits: (Span & { slot: Slot })[] = []
+  const word = needle.trim()
+  for (const slots of units) {
+    const last = [...slots].reverse().find((sl) => sl.read().trim() !== '')
+    const text = last?.read() ?? ''
+    const at = text.trimEnd().lastIndexOf(word)
+    if (!last || !word || at < 0 || !atWordBoundary(text, word, at) || !/^\s*[.,;:]?\s*$/.test(text.slice(at + word.length))) return { error: `„${word.slice(0, 40)}" steht nicht am Ende der Einheit` }
+    hits.push({ slot: last, at, len: word.length })
+  }
+  return { hits }
+}
+
+/** A replacement already stands where `to` is written around the hit. */
+function replacedAlready(from: string, to: string): EveryOccurrence {
+  const k = to.indexOf(from)
+  return { alreadyThere: (text, at) => k >= 0 && text.slice(at - k, at - k + to.length) === to }
+}
+
+/** An insertion already stands where its text is written beside the hit. */
+function insertedAlready(text: string, where: 'before' | 'after'): EveryOccurrence {
+  const t = text.trim()
+  return {
+    alreadyThere: (hay, at, len) => (t === '' ? false : where === 'before' ? hay.slice(0, at).trimEnd().endsWith(t) : hay.slice(at + len).trimStart().startsWith(t)),
+  }
 }
 
 /**
@@ -1591,8 +1713,8 @@ function locateInUnits(units: readonly (readonly Slot[])[], needle: string, word
  * phrase stands in one of them — found once, applied once, as before. A unit
  * without the phrase, or with it twice, still refuses the whole instruction.
  */
-function locatePhrase(law: StandingLaw, a: NovaoAddress, units: readonly (readonly Slot[])[], eachUnit: boolean, needle: string, wordBound: boolean): ReturnType<typeof locateInUnits> {
-  const located = locateInUnits(units, needle, wordBound)
+function locatePhrase(law: StandingLaw, a: NovaoAddress, units: readonly (readonly Slot[])[], eachUnit: boolean, needle: string, wordBound: boolean, every?: EveryOccurrence): ReturnType<typeof locateInUnits> {
+  const located = locateInUnits(units, needle, wordBound, eachUnit ? every : undefined)
   if (!('error' in located) || eachUnit || !/nicht eindeutig/.test(located.error)) return located
   const groups = phraseSlotGroups(law, a)
   if ('error' in groups || groups.length < 2) return located
@@ -1678,6 +1800,37 @@ function spliceChildren(host: LawNode, anchor: LawNode, level: NodeLevel, nodes:
   if (at < 0) return false
   host.children.splice(where === 'after' ? at + 1 : at, 0, ...nodes)
   return true
+}
+
+/**
+ * **A new unit placed by its own number** (20.11.2026, `where: 'number'` in
+ * `kons/novao.ts`): „In § 49c wird folgender Abs. 6 eingefügt" names the
+ * host and no place. Refused until then, for the reason recorded at the
+ * whole-§ anchor below: a § need not list its units in order (KommAustria-G
+ * § 35 reads (1h) before (1g)). So the number decides only where that
+ * reason does not hold: every unit of the level in the host carries a
+ * number and they run strictly upwards, the new numbers run upwards too,
+ * none is taken, and all of them fall into one gap — behind the last unit
+ * below them, in front of the first above. Anything else is refused with
+ * what was missing. Returns null on success.
+ */
+function placeByNumber(host: LawNode, level: NodeLevel, nodes: readonly LawNode[]): string | null {
+  const units = host.children.filter((c) => c.level === level)
+  if (units.length === 0) return 'Keine Einheit dieser Ebene — Stelle aus der Nummer nicht bestimmbar'
+  const order = units.map((u) => designationOrder(u.id))
+  if (order.some((o) => o === null)) return 'Bezeichnungen nicht aufzählbar — Stelle aus der Nummer nicht bestimmbar'
+  for (let i = 1; i < order.length; i++) if (compareOrder(order[i - 1]!, order[i]!) >= 0) return 'Bezeichnungen nicht aufsteigend — Stelle aus der Nummer nicht bestimmbar'
+  const fresh = nodes.map((n) => designationOrder(n.id))
+  if (fresh.some((o) => o === null)) return 'Neue Bezeichnung nicht aufzählbar — Stelle aus der Nummer nicht bestimmbar'
+  for (let i = 1; i < fresh.length; i++) if (compareOrder(fresh[i - 1]!, fresh[i]!) >= 0) return 'Neue Bezeichnungen nicht aufsteigend'
+  for (const [i, o] of fresh.entries()) if (order.some((x) => compareOrder(x!, o!) === 0)) return `${nodes[i]!.marker} existiert bereits`
+  const first = fresh[0]!
+  const last = fresh[fresh.length - 1]!
+  if (order.some((o) => compareOrder(o!, first) > 0 && compareOrder(o!, last) < 0)) return 'Neue Einheiten nicht in einer Lücke'
+  const below = units.filter((_, i) => compareOrder(order[i]!, first) < 0).at(-1)
+  const above = units.find((_, i) => compareOrder(order[i]!, last) > 0)
+  host.children.splice(below ? host.children.indexOf(below) + 1 : host.children.indexOf(above!), 0, ...nodes)
+  return null
 }
 
 /**
@@ -2228,6 +2381,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         const added = payload.map((p) => plainText(p)).join(' ').trim()
         if (!added) return 'Einfügung ohne Text'
+        if (op.oneSentence && (splitSentences(added)?.length ?? 0) !== 1) return 'Angekündigt ist ein Satz an dieser Stelle, der neue Text ist keiner oder mehrere'
         const slot = sentenceSlot(host, op.anchor.satz, op.anchor.satzCount)
         if (!slot) return `Satz ${op.anchor.satz} nicht auffindbar`
         const text = slot.read().trim()
@@ -2242,7 +2396,14 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         // 148b eingefügt": the stock holds no Abschnitt to stand behind, but a
         // new § is wholly its payload, so it goes where its number puts it
         // (`numberedSlot`) — only where the payload is exactly the announced §§.
-        const byNumber = isDivision(op.anchor.para)
+        const byNumber = isDivision(op.anchor.para) || op.where === 'number'
+        // With no anchor at all („Es werden folgende §§ 56a … eingefügt"),
+        // only where the §§ of the stock run upwards: a slot by number among
+        // §§ out of order is a guess (20.11.2026, as `placeByNumber`).
+        if (op.where === 'number') {
+          const paras = law.paragraphs.filter((p) => !isSchedule(p.marker))
+          for (let i = 1; i < paras.length; i++) if (byParagraphOrder(paras[i - 1]!.id, paras[i]!.id) >= 0) return 'Paragraphen nicht aufsteigend — Stelle aus der Nummer nicht bestimmbar'
+        }
         const anchor = byNumber ? null : findParagraph(law, op.anchor)
         if (!anchor && !byNumber) return `Anker nicht im geltenden Text: ${op.anchor.para}`
         // A payload without a § line of its own is the body of one new §:
@@ -2307,6 +2468,18 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       if (op.anchor.siblings.length > 0) return ONE_PLACE_SIBLINGS
       const para = findParagraph(law, op.anchor)
       if (!para) return `§ nicht im geltenden Text: ${op.anchor.para}`
+      if (op.where === 'number') {
+        const host = op.anchor.level === 'para' ? para : resolveTarget(law, op.anchor)
+        if (!host) return `${repeatedOnTheWay(para, op.anchor) ? 'Einheit nicht eindeutig' : 'Nicht im geltenden Text'}: ${op.anchor.raw.slice(0, 60)}`
+        if (payload.some((p) => !p.id || p.level !== level)) return 'Eingefügte Einheit ohne eigene Bezeichnung'
+        const notAnnounced = missingAnnounced(op.childIds, payload)
+        if (notAnnounced) return notAnnounced
+        const nodes = payload.map((p) => ({ ...p, level }))
+        const placed = placeByNumber(host, level, nodes)
+        if (placed) return placed
+        for (const n of nodes) arriveUnit(law, n)
+        return null
+      }
       // „Nach § 18c wird folgender Abs. 1a eingefügt" names no unit inside
       // the § to stand behind, and pushed onto the § the new Absatz read
       // (1)(2)(3)(1a) where RIS has (1)(1a)(2)(3) (AVRAG, BGBl. I Nr.
@@ -2411,8 +2584,9 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // „jeweils" is the ressort saying every one of them carries it, so a
       // unit that does not is a disagreement about the standing text and not
       // a place to skip quietly.
-      const located = locatePhrase(law, op.target, units, op.eachUnit, op.from, op.wordBound)
+      const located = op.endWord ? endWordHits(units, op.from) : locatePhrase(law, op.target, units, op.eachUnit, op.from, op.wordBound, op.beside ? undefined : replacedAlready(op.from, op.to))
       if ('error' in located) {
+        if (op.endWord) return located.error
         // „vor der Wortfolge ‚des Sachverständigen' das Wort ‚oder'": where
         // the operand recurs, the anchor says which one — the operand and
         // the anchor side by side, and that pair must be unique in turn.
@@ -2428,10 +2602,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         return null
       }
-      for (const { slot, at, len } of located.hits) {
-        const current = slot.read()
-        slot.write(joinPhrase(current.slice(0, at), likeStanding(op.to, op.from, current.slice(at, at + len), current), current.slice(at + len)))
-      }
+      writeHits(located.hits, (current, at, len) => joinPhrase(current.slice(0, at), likeStanding(op.to, op.from, current.slice(at, at + len), current), current.slice(at + len)))
       return null
     }
 
@@ -2457,35 +2628,35 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         return null
       }
-      const located = locatePhrase(law, op.target, units, op.eachUnit, op.anchor, op.wordBound)
+      const located = locatePhrase(law, op.target, units, op.eachUnit, op.anchor, op.wordBound, insertedAlready(op.text, op.where))
       if ('error' in located) return located.error
-      for (const { slot, at, len } of located.hits) {
-        const current = slot.read()
+      writeHits(located.hits, (current, at, len) => {
         const text = likeStanding(op.text, op.anchor, current.slice(at, at + len), current)
-        slot.write(
-          op.where === 'after'
-            ? joinPhrase(current.slice(0, at + len), text, current.slice(at + len))
-            : joinPhrase(current.slice(0, at), text, current.slice(at)),
-        )
-      }
+        return op.where === 'after'
+          ? joinPhrase(current.slice(0, at + len), text, current.slice(at + len))
+          : joinPhrase(current.slice(0, at), text, current.slice(at))
+      })
       return null
     }
 
     case 'deletePhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
       if ('error' in units) return units.error
-      const located = locatePhrase(law, op.target, units, op.eachUnit, op.text, op.wordBound)
+      const located = op.endWord ? endWordHits(units, op.text) : locatePhrase(law, op.target, units, op.eachUnit, op.text, op.wordBound, { alreadyThere: () => false })
       if ('error' in located) return located.error
-      for (const { slot, at, len } of located.hits) {
-        const current = slot.read()
-        // „(§ 43 BFA-VG)" without „ BFA-VG" is „(§ 43)", not „(§ 43 )" — the
-        // space goes where the cut meets a parenthesis (BFA-VG § 10, 28.09.2026).
-        let left = current.slice(0, at)
-        let right = current.slice(at + len)
-        if (right.startsWith(')')) left = left.trimEnd()
-        if (left.endsWith('(')) right = right.trimStart()
-        slot.write(`${left}${right}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
-      }
+      writeHits(
+        located.hits,
+        (current, at, len) => {
+          // „(§ 43 BFA-VG)" without „ BFA-VG" is „(§ 43)", not „(§ 43 )" — the
+          // space goes where the cut meets a parenthesis (BFA-VG § 10, 28.09.2026).
+          let left = current.slice(0, at)
+          let right = current.slice(at + len)
+          if (right.startsWith(')')) left = left.trimEnd()
+          if (left.endsWith('(')) right = right.trimStart()
+          return `${left}${right}`
+        },
+        (text) => text.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim(),
+      )
       return null
     }
   }
@@ -2594,6 +2765,8 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     return reason
   }
   if (new Set(moves.map((m) => `${m.level}|${m.schedule ? 'Anl.' : ''}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
+  const placing = placeBehind(law, batch, moves, moving)
+  if (typeof placing === 'string') return placing
   const run = RUNS.get(law)
   for (const m of moves) {
     const unit = run && m.level === 'para' ? unitOf(run, m.node) : null
@@ -2609,7 +2782,39 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     if (m.level === 'para' && !m.schedule) arrive(law, m.node)
     else if (m.level !== 'para') arriveUnit(law, m.node)
   }
+  placing?.()
   return null
+}
+
+/**
+ * **„… erhält die Paragraphenbezeichnung ‚§ 18.' und wird nach § 17
+ * eingereiht"** (20.11.2026, `after` in `kons/novao.ts`): the § takes its
+ * new number and moves behind § 17. Checked before anything is written, and
+ * only where the place is plain: § 17 stands in the text and is not moving
+ * itself, and the new number sorts behind it and in front of the § that
+ * follows it. Anything else is refused — a § filed at a place its number
+ * contradicts is a reading of ours, not the draft's. Returns the move to
+ * carry out once the numbers are written, null where the batch names no
+ * place.
+ */
+function placeBehind(law: StandingLaw, batch: readonly Pick<Instruction, 'op'>[], moves: readonly { node: LawNode; id: string; level: NodeLevel; schedule: boolean }[], moving: ReadonlySet<LawNode>): (() => void) | string | null {
+  const placed = batch.filter(({ op }) => op.kind === 'renumber' && op.after)
+  if (placed.length === 0) return null
+  if (batch.length !== 1 || moves.length !== 1 || moves[0]!.level !== 'para' || moves[0]!.schedule) return '„eingereiht" — nur für einen Paragraphen'
+  const op = placed[0]!.op as Extract<NovaoOp, { kind: 'renumber' }>
+  const m = moves[0]!
+  const paras = law.paragraphs.filter((p) => p.level === 'para' && !isSchedule(p.marker))
+  const anchor = paras.find((p) => p.id === op.after && !moving.has(p))
+  if (!anchor) return `„eingereiht nach § ${op.after}" — § ${op.after} nicht im geltenden Text`
+  const next = paras.slice(paras.indexOf(anchor) + 1).find((p) => p !== m.node) ?? null
+  const own = designationOrder(m.id)
+  const behind = designationOrder(anchor.id)
+  const ahead = next ? designationOrder(next.id) : null
+  if (!own || !behind || (next && !ahead) || compareOrder(own, behind) <= 0 || (ahead && compareOrder(ahead, own) <= 0)) return `„eingereiht nach § ${op.after}" — § ${m.id} gehört nicht an diese Stelle`
+  return () => {
+    law.paragraphs.splice(law.paragraphs.indexOf(m.node), 1)
+    law.paragraphs.splice(law.paragraphs.indexOf(anchor) + 1, 0, m.node)
+  }
 }
 
 /**

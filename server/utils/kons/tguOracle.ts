@@ -69,8 +69,15 @@ export interface OracleReport {
   note: string | null
 }
 
-/** „§ 6.01a.", „§ 365m1." at the start of a Gliederungssymbol, read whole as every reader reads a § number (`PARAGRAPH_NUMBER`). */
-const GLD_PARAGRAPH_RE = new RegExp(String.raw`^§+\s*(${PARAGRAPH_NUMBER})`)
+/**
+ * „§ 6.01a.", „§ 365m1." at the start of a Gliederungssymbol, read whole as
+ * every reader reads a § number (`PARAGRAPH_NUMBER`) — and „§. 517.", the
+ * full stop after the sign with which RIS prints the §§ of the ZPO and the
+ * Jurisdiktionsnorm (20.11.2026). The PDF reader has opened such a § since
+ * 19.11.2026 (`UNIT_RE` in `annex/annexPdf.ts`); unread here, its rows stayed
+ * in the § above: ZPO §§ 517 and 518 were held against § 501 (116/ME XXVIII).
+ */
+const GLD_PARAGRAPH_RE = new RegExp(String.raw`^§+\.?\s*(${PARAGRAPH_NUMBER})`)
 
 /**
  * "§ 5." → "5", "§ 12a." → "12a"; null for anything else.
@@ -80,6 +87,10 @@ const GLD_PARAGRAPH_RE = new RegExp(String.raw`^§+\s*(${PARAGRAPH_NUMBER})`)
  * label: a row opening with anything but a § must not answer here.
  */
 export function paraIdOfGld(gld: string | null): string | null {
+  return paraIdOf(gld)
+}
+
+function paraIdOf(gld: string | null): string | null {
   const t = normalizeText(gld ?? '')
   // „§ 2.01." whole: a Verordnung that numbers its §§ by Kapitel (the
   // Wasserstraßen-Verkehrsordnung's „§ 8.03") is keyed so on the address
@@ -117,6 +128,14 @@ export function paraIdOfGld(gld: string | null): string | null {
  */
 export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, ComparisonRow[]> {
   const out = new Map<string, ComparisonRow[]>()
+  // A law whose units are Artikel — the B-VG — keys „Artikel 52." as the
+  // engine names it, „52" (`articleLaws`).
+  const byArticle = articleLaws(rows)
+  const paraIdOfGld = (gld: string | null, law: string | null = null): string | null => {
+    const id = paraIdOf(gld)
+    if (id !== null || !byArticle.has(law ?? '')) return id
+    return ARTICLE_GLD_RE.exec(normalizeText(gld ?? ''))?.[1] ?? null
+  }
   const struck = new Set<ComparisonRow>()
   const position = new Map<ComparisonRow, number>()
   const standing = new Map<ComparisonRow, string>()
@@ -132,7 +151,7 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     }
     /** The row whose designation opened the § — this one, or for a heading the one below. */
     let opener = row
-    let id = paraIdOfGld(row.gld)
+    let id = paraIdOfGld(row.gld, row.law)
     // A schedule the annex opens with a line printed once per column carries
     // its name in `para`, not in `gld` (`comparisonRows`, `opensAnlage`), and
     // followed only by `gld` its rows stayed under the § before it: „Armenien,
@@ -148,8 +167,8 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     // without a closing full stop, right before a row that opens a §, is
     // that §'s heading.
     const next = rows[i + 1]
-    if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld) && isHeadingRow(row)) {
-      id = paraIdOfGld(next.gld)
+    if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld, next.law) && isHeadingRow(row, next)) {
+      id = paraIdOfGld(next.gld, next.law)
       opener = next
     }
     // A § the annex opened without a row that carries its symbol. Where the
@@ -171,12 +190,12 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     // over the 400 drafts of the ME-Prüfstand. Where the § opens with its own
     // symbol below, those rows stay where they were (`opensBelow`).
     if (!id && row.para) {
-      const opened = paraIdOfGld(row.para)
-      if (opened && paragraphKey(opened, row.law) !== current && !opensBelow(rows, i, opened)) id = opened
+      const opened = paraIdOfGld(row.para, row.law)
+      if (opened && paragraphKey(opened, row.law) !== current && !opensBelow(rows, i, opened, (g) => paraIdOfGld(g, row.law))) id = opened
     }
     if (id) {
       current = paragraphKey(id, row.law)
-      drawer = { ...drawerOf(id, opener, row.law), standing: id }
+      drawer = { ...drawerOf(id, opener, row.law, (g) => paraIdOfGld(g, row.law)), standing: id }
     }
     if (!current || !drawer) continue
     const list = out.get(drawer.key) ?? []
@@ -197,10 +216,36 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
  * the draft, or — where nothing of it stands afterwards (`paraAfter` null) —
  * under its own number, set aside for the § the engine made of it.
  */
-function drawerOf(id: string, opener: ComparisonRow, law: string | null): { key: string; struck: boolean } {
+function drawerOf(id: string, opener: ComparisonRow, law: string | null, idOf: (gld: string | null) => string | null = paraIdOf): { key: string; struck: boolean } {
   if (opener.paraAfter === opener.para) return { key: paragraphKey(id, law), struck: false }
   if (opener.paraAfter === null) return { key: paragraphKey(id, law), struck: true }
-  return { key: paragraphKey(paraIdOfGld(opener.paraAfter) ?? id, law), struck: false }
+  return { key: paragraphKey(idOf(opener.paraAfter) ?? id, law), struck: false }
+}
+
+/** „Artikel 52.", „Art. 52a" — an Artikel as the unit itself, with its number. */
+const ARTICLE_GLD_RE = /^Art(?:ikel|\.)\s*(\d+[a-z]*)\.?$/i
+
+/**
+ * The laws of an annex whose units are Artikel (20.11.2026): rows designated
+ * „Artikel 52." and not one row of that law designated as a §. The B-VG is
+ * divided so; its rows opened nothing, and 127/ME XXVIII's Art. 53, 92, 134,
+ * 138b and 147 went out as `anhang-schweigt` beside the annex that prints
+ * them. A law that carries §§ inside its Artikel („Art. 1 § 3") keeps them
+ * apart: there „Artikel 1." is no unit the engine addresses.
+ */
+function articleLaws(rows: readonly ComparisonRow[]): Set<string> {
+  const articles = new Set<string>()
+  const paragraphs = new Set<string>()
+  for (const row of rows) {
+    if (row.kind !== 'pair') continue
+    const law = row.law ?? ''
+    for (const gld of [row.gld, row.para]) {
+      if (!gld) continue
+      if (paraIdOf(gld) !== null && !isSchedule(normalizeText(gld))) paragraphs.add(law)
+      else if (ARTICLE_GLD_RE.test(normalizeText(gld))) articles.add(law)
+    }
+  }
+  return new Set([...articles].filter((law) => !paragraphs.has(law)))
 }
 
 /**
@@ -219,12 +264,12 @@ const POSITION = new WeakMap<ReadonlyMap<string, ComparisonRow[]>, ReadonlyMap<C
  * opens `id` with its own symbol — the § then has a row of its own, and a
  * row above it that merely inherits it is not where it opens.
  */
-function opensBelow(rows: readonly ComparisonRow[], at: number, id: string): boolean {
+function opensBelow(rows: readonly ComparisonRow[], at: number, id: string, idOf: (gld: string | null) => string | null = paraIdOf): boolean {
   const { para, law } = rows[at]!
   for (let j = at + 1; j < rows.length; j++) {
     const r = rows[j]!
     if (r.kind !== 'pair' || r.para !== para || r.law !== law) return false
-    if (r.gld) return paraIdOfGld(r.gld) === id
+    if (r.gld) return idOf(r.gld) === id
   }
   return false
 }
@@ -281,9 +326,39 @@ export function paragraphRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>,
   // A struck § is filed under its own number, so another number's struck rows
   // stand in that number's drawer only.
   const inherited = originId === null || origin === id ? [] : drawerRows(byParagraph, originId, law).filter((r) => struck.has(r) && standing.get(r) === originId)
-  if (inherited.length === 0) return kept
+  if (inherited.length === 0) return movedLeftColumn(byParagraph, kept, own, originId, id, origin, law, struck, standing)
   const position = POSITION.get(byParagraph)!
   return [...kept, ...inherited].sort((a, b) => position.get(a)! - position.get(b)!)
+}
+
+/**
+ * A renumbered § whose old text the PDF path paired with another § by number
+ * (20.11.2026): where 35/ME XXVIII moves the old § 44f to § 44g, the row
+ * „§ 44g." carries the old § 44g on the left and the new one on the right,
+ * and the row „§ 44f." the old § 44f on the left. The new § 44g kept only its
+ * right column, every word the draft struck from the old § 44f stood in no
+ * cell, and check 3 reported „daß" → „dass" as a removal the annex does not
+ * show. Its left column is the origin's row's: one row of each, the origin's
+ * standing for the origin and struck nowhere. Anything else stays as it was.
+ */
+function movedLeftColumn(
+  byParagraph: ReadonlyMap<string, ComparisonRow[]>,
+  kept: ComparisonRow[],
+  own: readonly ComparisonRow[],
+  originId: string | null,
+  id: string,
+  origin: string | null,
+  law: string | null | undefined,
+  struck: ReadonlySet<ComparisonRow>,
+  standing: ReadonlyMap<ComparisonRow, string>,
+): ComparisonRow[] {
+  if (originId === null || origin === id) return kept
+  const pairs = kept.filter((r) => r.kind === 'pair')
+  if (pairs.length !== 1 || pairs[0]!.current || pairs[0]!.elided || own.filter((r) => r.kind === 'pair').length !== 1) return kept
+  const left = drawerRows(byParagraph, originId, law).filter((r) => r.kind === 'pair' && !struck.has(r) && standing.get(r) === originId && r.current)
+  if (left.length !== 1 || left[0]!.elided) return kept
+  const moved: ComparisonRow = { ...pairs[0]!, current: left[0]!.current, change: 'changed', segments: null, editorial: false, elisionRange: false }
+  return kept.map((r) => (r === pairs[0] ? moved : r))
 }
 
 /** A row as the § its right column belongs to sees it: text the draft brings in. */
@@ -395,7 +470,17 @@ function rowsById(byParagraph: ReadonlyMap<string, ComparisonRow[]>): Map<string
   return index
 }
 
-function isHeadingRow(row: ComparisonRow): boolean {
+/**
+ * `next`, where given, is the row below. A row the parser already filed
+ * under the § that row opens (`para` = its `gld`) is that §'s heading at any
+ * length (20.11.2026): capped at 120 characters, „Einholung einer
+ * Strafregisterauskunft aus einem anderen Mitgliedstaat der Europäischen
+ * Union oder aus dem Vereinigten Königreich" stayed with § 9b, and § 9c of
+ * the Strafregistergesetz (2/ME XXVIII) met the words of its heading as
+ * inventions; § 10b and ARHG § 17a the same. Never a group heading: the
+ * parser hands the § below the group headings it held back too.
+ */
+function isHeadingRow(row: ComparisonRow, next?: ComparisonRow): boolean {
   // An elided row is the annex's notation for text it leaves out — „(3) …"
   // at the foot of the § before — and never a heading, however short it is
   // and whatever it does not end with. Read as one, the previous §'s tail
@@ -407,8 +492,19 @@ function isHeadingRow(row: ComparisonRow): boolean {
   // without its „…", is the same tail of the § before (Schulunterrichtsgesetz
   // § 19/§ 20, ASVG § 31c/§ 31d). A § heading never opens with one.
   if (cells.some((c) => /^\s*\(\d/.test(c))) return false
-  return cells.length > 0 && cells.every((c) => c.length <= 120 && !/[.;:]$/.test(c))
+  const typed = next !== undefined && next.kind === 'pair' && !row.gld && row.para !== null && next.gld === row.para
+  // The laws that print „§. 39." close their § headings with a full stop
+  // too: „Rechtshilfe auf Ersuchen ausländischer Gerichte." over JN § 39,
+  // „Unzulässigkeit und Verweigerung des Zeugnisses." over ZPO § 320
+  // (20.11.2026). Over such a designation only, and one stop at the end of a
+  // short line: a sentence of the § above has its own form and its own row.
+  const oldStyle = next !== undefined && next.kind === 'pair' && OLD_STYLE_GLD_RE.test(normalizeText(next.gld ?? ''))
+  const ends = (c: string) => !/[.;:]$/.test(c) || (oldStyle && c.length <= 120 && /\p{L}\.$/u.test(c) && !/[.;:!?]\s/.test(c))
+  return cells.length > 0 && cells.every((c) => (c.length <= 120 || (typed && !isGroupHeadingOnly(c))) && ends(c))
 }
+
+/** „§. 39." — the sign with its own full stop, the form of the oldest laws RIS prints (`GLD_PARAGRAPH_RE`). */
+const OLD_STYLE_GLD_RE = /^§+\.\s*\d/
 
 /**
  * A Paragraphenkennung with its full stop, the number whole (`PARAGRAPH_NUMBER`,
@@ -416,7 +512,7 @@ function isHeadingRow(row: ComparisonRow): boolean {
  * Kapitel's number, without one: „§ 8.03 Sicherheit an Bord …". Cut as „§ 8."
  * the rest „03" stayed in the comparison form.
  */
-const PARAGRAPH_MARKER_RE = new RegExp(String.raw`§+\s*(?=(${PARAGRAPH_NUMBER}))\1(?:\.|(?<=\.\d[\da-z]*)(?=\s|$))\s*`, 'g')
+const PARAGRAPH_MARKER_RE = new RegExp(String.raw`§+\.?\s*(?=(${PARAGRAPH_NUMBER}))\1(?:\.|(?<=\.\d[\da-z]*)(?=\s|$))\s*`, 'g')
 
 /**
  * Comparison form of annex text: markers the tree does not carry are
@@ -529,29 +625,104 @@ function occurrences(hay: string, needle: string): number {
 
 /** What the comparison form and the word list both drop: the copy's spellings of the same text. */
 function sameText(t: string): string {
-  return t.replace(RIS_NOTE_RE, ' ').replace(PLACEHOLDER_RE, 'XXX').replace(REPEALED_RE, ' ')
+  return sameLayout(t)
+    .replace(RIS_NOTE_RE, ' ')
+    .replace(NOTE_REFERENCE_RE, ' ')
+    .replace(WEB_VIEW_RE, ' ')
+    .replace(VERSION_LABEL_RE, ' ')
+    .replace(PLACEHOLDER_RE, 'XXX')
+    .replace(REPEALED_RE, ' ')
 }
 
-/** „(Anm.: Abs. 2 aufgehoben durch Art. 4 Z 54, BGBl. I Nr. 118/2016)" */
-const RIS_NOTE_RE = /\(Anm\.?:[^()]*\)/g
+/**
+ * The same words in another setting (20.11.2026), read alike on both sides —
+ * RIS's own text carries some of them too — since no draft orders and no
+ * engine makes any of it:
+ *
+ *  - „lit. b)": the Litera named with its bracket, which the marker rule
+ *    below would take off with the letter (106/ME XXVIII, BUAG § 31);
+ *  - „Z." before a number, the abbreviation's other spelling (49/ME, MedienG
+ *    § 26);
+ *  - „a." where RIS prints „a)": a list marker in another spelling, at the
+ *    head of the text, behind a colon, a semicolon or an omission mark, or
+ *    behind another marker (4/ME, UGB § 189; 74/ME, BFA-VG § 43) — never
+ *    behind a comma or a word, where „d. h." and „u. a." stand;
+ *  - „|", a table's column rule (104/ME, FAG 2024 § 11).
+ *
+ * Commas, full stops inside a sentence, quotation marks and spellings stay
+ * as they are: no fault class injects punctuation, so a wrong comma of the
+ * engine would pass unseen (`docs/decisions.md`, „More tolerance when matching
+ * against the annex").
+ */
+function sameLayout(t: string): string {
+  return t
+    .replace(/\|/g, ' ')
+    .replace(/(?<![\p{L}])(lit\.)(?=[a-z]{1,2}\b)/gu, '$1 ')
+    .replace(/(?<![\p{L}])(lit\.\s*[a-z]{1,2})\)/gu, '$1')
+    .replace(/(?<![\p{L}])Z\.(?=\s*\d)/gu, 'Z')
+    .replace(/(^\s*|(?:[:;…]|\.\.\.)\s*|(?:^|\s)(?:\(\d+[a-z]*\)|\d+[a-z]*\.)\s+)([a-z])\.(?=\s)/g, '$1$2)')
+}
+
+/**
+ * A marker glued to its word, „3.eine", „, 5.das", „.2.sonstigen" — the PDF
+ * text layer of the ressort's annex (21/ME, 19/ME, 113/ME XXVIII,
+ * 20.11.2026). In the annex's cells only (`oracleVerdict`): where the
+ * engine's result carries „2.vom", inherited from a draft that glues its
+ * markers, check 2 has to see it.
+ */
+function unglued(t: string): string {
+  return t.replace(/(?<![\p{L}\d])(\d+[a-z]?\.)(?=\p{Ll}{2})/gu, '$1 ')
+}
+
+/**
+ * „(Anm.: Abs. 2 aufgehoben durch Art. 4 Z 54, BGBl. I Nr. 118/2016)" — and
+ * one bracket inside it (20.11.2026), the shape `lawtext/konsTree.ts` and
+ * `annex/annexText.ts` strip: the ressort's own „(Anm.: § 85 (2) bleibt
+ * inhaltlich unverändert …)" in 61/ME XXVIII's BAO annex stood as text of
+ * the left column.
+ */
+const RIS_NOTE_RE = /\(Anm\.?\s*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+/**
+ * RIS's web view, copied into the left column with the law (20.11.2026): the
+ * footnote reference „75 000 Euro (Anm. 1)" — the number's valorisation note,
+ * which `lawtext/konsTree.ts` drops from the standing text — the line
+ * „Beachte für folgende Bestimmung", and the label over a version, „Ab
+ * 1.9.2025:", „Ab 1.9.2025 bzw. mit dem der Kundmachung folgenden Tag:". In
+ * no § document's text, and on either side no word of the law: 21 §§ of
+ * period XXVIII were withheld as `anhang-fremd` for nothing else (58/ME
+ * BVergG 2018 § 213, 24/ME BSFG 2017 §§ 27, 28). The label only with a date
+ * in figures and its colon, as RIS prints it; the law writes its dates out.
+ */
+const NOTE_REFERENCE_RE = /\(\s*Anm\.?\s*\d+[a-z]?\s*\)/g
+const WEB_VIEW_RE = /Beachte für folgende Bestimmung(?:en)?/g
+const VERSION_LABEL_RE = /(?<![\p{L}\d])Ab \d{1,2}\.\s?\d{1,2}\.\s?\d{4}(?:\s+bzw\.\s[^:.;]{0,80})?:/gu
 /**
  * The citation of a Bundesgesetzblatt not yet issued: the draft writes „BGBl.
  * I Nr. xxx/xxxx", its own annex „xxx/yyyy" or „XX/2025" — one placeholder,
  * spelt three ways (06.10.2026). Only where an x or y stands in it, and as a
  * token of its own: the word diff hands check 3 „xxx/2026" without its „Nr.",
  * and a placeholder normalised on one side only contradicted four §§ the
- * first version had confirmed.
+ * first version had confirmed. A „#" is the same placeholder digit
+ * (20.11.2026): 4/ME XXVIII prints „xxx/202#" in its annex where the draft
+ * writes „xxx/2025", and the § stood contradicted for it.
  */
-const PLACEHOLDER_RE = /(?<![\p{L}\d])(?=[\dxXyY]*\/?[\dxXyY]*[xXyY])[\dxXyY]+\s*\/\s*[\dxXyY]+(?![\p{L}\d])/gu
-/** „Aufgehoben" where a repealed Absatz stood — the annex prints it, RIS's text does not. */
-const REPEALED_RE = /(?<!\p{L})(?:Aufgehoben|\(aufgehoben\))(?!\p{L})/gu
+const PLACEHOLDER_RE = /(?<![\p{L}\d#])(?=[\dxXyY#]*\/?[\dxXyY#]*[xXyY#])[\dxXyY#]+\s*\/\s*[\dxXyY#]+(?![\p{L}\d#])/gu
+/**
+ * „Aufgehoben" where a repealed Absatz stood — the annex prints it, RIS's
+ * text does not. „(entfällt)" in brackets is the same placeholder
+ * (20.11.2026): 141/ME XXVIII prints „3. (entfällt)" and „(1) (entfällt)"
+ * for the units it strikes, and two §§ of the Zivildienstgesetz stood
+ * contradicted by their own placeholder. Only in brackets: a bare
+ * „entfällt" is a word of the law („die Pflicht entfällt").
+ */
+const REPEALED_RE = /(?<!\p{L})(?:Aufgehoben|\((?:aufgehoben|entfällt)\))(?!\p{L})/gu
 
 // --- Measured surface: the harness asks `unaccountedStretch` in this form. ---
 export const containmentKey = key
 
 /** Words without punctuation — "36," and "36" are the same word. */
-function words(t: string): string[] {
-  return punctuationTokens(stripMarkers(sameText(t)))
+function words(t: string, reading: (t: string) => string = (t) => t): string[] {
+  return punctuationTokens(reading(stripMarkers(sameText(t))))
 }
 
 /**
@@ -568,7 +739,22 @@ function words(t: string): string[] {
 function cellWords(t: string): string[] {
   // And the syllable break, where the hyphen belongs to the line and not to
   // the word: „Konzentrations- schwellen" is „Konzentrationsschwellen".
-  return [...words(t), ...words(t.replace(/(\p{L})- (?=\p{L})/gu, '$1-')), ...words(t.replace(/(\p{Ll})- (?=\p{Ll})/gu, '$1'))]
+  return [...words(t), ...words(t.replace(/(\p{L})- (?=\p{L})/gu, '$1-')), ...words(t.replace(/(\p{Ll})- (?=\p{Ll})/gu, '$1')), ...words(t, splitHyphens)]
+}
+
+/**
+ * A hyphen between two letters, split into a word of its own (20.11.2026).
+ * RIS sets „ARF - Mittel" where the annex prints „ARF-Mittel" (TDBG § 40d,
+ * 116/ME XXVIII, a § the bench finds identical to the enacted law), and
+ * check 3 asked the annex for the three words „ARF", „-", „Mittel" the engine
+ * removed. The annex is read this way as well, on the comparison form where
+ * every dash is „-" (`normalizeText`); the engine's words stay as the diff
+ * cut them. Closing RIS's spaced hyphen instead failed on a chain the diff
+ * cuts in the middle („wird - GVG-B -" against „wird – GVG-B – geregelt",
+ * AsylG § 50, 74/ME). Nothing gets in that the annex does not print.
+ */
+function splitHyphens(t: string): string {
+  return t.replace(/(\p{L})-(?=\p{L})/gu, '$1 - ')
 }
 
 /**
@@ -596,8 +782,13 @@ function bagMinus(a: readonly string[], b: readonly string[]): string[] {
  * ressort's hyphen or footnote mark inside the heading does not defeat it.
  */
 const HEAD_PROBE = 24
-/** The dots that belong to a designation rather than to a sentence. */
-const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+|(?<!\p{L})\p{Lu})\./gu
+/**
+ * The dots that belong to a designation rather than to a sentence — a Roman
+ * one with a letter too (20.11.2026): „IIIa. Abschnitt" (BWG, 108/ME XXVIII)
+ * and „IIa. Hauptstück" (EU-JZG, 161/ME) read as a sentence's full stop, and
+ * a new group's heading over a § was neither a stack nor a heading alone.
+ */
+const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+|(?<!\p{L})[IVXLCDM]+[a-z]|(?<!\p{L})\p{Lu})\./gu
 
 /**
  * The cell without the stack of group headings the PDF path prints above a §
@@ -687,7 +878,7 @@ function stackOkFor(current: string): StackOk {
   const cell = normalizeText(current)
   const symbol = cell ? PARAGRAPH_SYMBOL_RE.exec(cell) : null
   if (symbol !== null && /\p{L}/u.test(cell.slice(0, symbol.index))) return () => true
-  return (dropped, raw) => GROUP_UNIT_RE.test(dropped) || /\)$/.test(dropped) || /^\s*(?:\d+[a-z]*|[IVXLCDM]+|\p{Lu})\.(?:\s|$)/u.test(raw) || /^\s*\p{Lu}{2,}\s+\p{Lu}{2,}/u.test(raw)
+  return (dropped, raw) => GROUP_UNIT_RE.test(dropped) || /\)$/.test(dropped) || /^\s*(?:\d+[a-z]*|[IVXLCDM]+[a-z]?|\p{Lu})\.(?:\s|$)/u.test(raw) || /^\s*\p{Lu}{2,}\s+\p{Lu}{2,}/u.test(raw)
 }
 
 /**
@@ -738,7 +929,7 @@ function isStack(dropped: string): boolean {
  * without its number „Teile der Förderung" would open like a heading. The
  * unit has to end where the word ends, or „1. Teilnehmer" opens like „1. Teil".
  */
-const NUMBERED_UNIT_RE = /^\s*(?:(?:(?:\d+[a-z]*|[IVXLCDM]+)\.|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?)\s*(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})|(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)\s+(?:\d+[a-z]*|[IVXLCDM]+[A-Z]?)(?![\p{L}\d]))/iu
+const NUMBERED_UNIT_RE = /^\s*(?:(?:(?:\d+[a-z]*|[IVXLCDM]+[a-z]?)\.|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?)\s*(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})|(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)\s+(?:\d+[a-z]*|[IVXLCDM]+[A-Z]?)(?![\p{L}\d]))/iu
 
 /**
  * Whether a stretch is nothing but a group heading. The ressort prints the
@@ -760,6 +951,63 @@ function isGroupHeadingOnly(stretch: string): boolean {
   const symbol = PARAGRAPH_SYMBOL_RE.exec(stretch)
   if (symbol && /\p{L}/u.test(stretch.slice(symbol.index + symbol[0].length))) return false
   return !/[.;:!?]/.test(oldStyleDotsOff(stretch).replace(DESIGNATION_DOT_RE, '').replace(UNIT_COLON_RE, '$1'))
+}
+
+/**
+ * The rows of a § without the next group's heading at their foot
+ * (20.11.2026). The table path files the heading of the group that follows
+ * a § — „3a. Abschnitt", then its title „Organhandel und verwandte strafbare
+ * Handlungen" on a row of its own — under the § above it (StGB § 104b,
+ * 122/ME XXVIII; EU-JZG § 23, 161/ME: „IIa. Hauptstück", „Durchführung der
+ * Verordnung (EU) 2024/3011"). The result carries no group headings by
+ * design, so check 2 looked for them in vain. A stretch that is nothing but a
+ * group heading was passed over already (`isGroupHeadingOnly`); its title on
+ * the next row was not.
+ *
+ * Only at the foot: from a row that is a group heading alone to the last
+ * row, every row after it a title — short, no full stop, colon or semicolon
+ * at its end, no § symbol, no Absatz marker — and at least one row of the §
+ * itself above. A § heading stands above the § body, never below it, so the
+ * rule cannot take one.
+ */
+function withoutNextGroup(rows: readonly ComparisonRow[]): readonly ComparisonRow[] {
+  let cut = rows.length
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i]!
+    if (row.kind !== 'pair' || row.elided) break
+    const cells = [row.current, row.proposed].filter(Boolean)
+    if (cells.length === 0) break
+    if (cells.every(isGroupHeadingOnly)) {
+      cut = i
+      continue
+    }
+    if (cells.every((c) => c.length <= 120 && /^[\p{Lu}\d]/u.test(c) && !/[.;:]$/.test(c) && !/§|^\s*\(\d/.test(c))) continue
+    break
+  }
+  if (cut === rows.length || !rows.slice(0, cut).some((r) => r.kind === 'pair' && !r.elided && (r.current || r.proposed))) return rows
+  return rows.slice(0, cut)
+}
+
+/**
+ * The rows of a § without a group's title the parser held back for it and
+ * `isHeadingRow` read as the §'s heading (20.11.2026). Past 120 characters a
+ * row the parser files under the § below is that §'s heading
+ * (`isHeadingRow`, `next`) — and so is the title of the group above it,
+ * which the parser hands on the same way: „Europäische Ermittlungsanordnung,
+ * Europäische Herausgabe- und Sicherungsanordnung, …" over EU-JZG § 55a
+ * (161/ME XXVIII), whose left column stands nowhere in the standing §. It
+ * goes from the comparison, as it went from this § before; it no longer
+ * lands in the § above either, where it made § 47 `fremd`. A heading the
+ * standing § does carry stays, and so does one with no left column: a new
+ * §'s heading is held against the result.
+ */
+function withoutHeldGroupTitle(rows: readonly ComparisonRow[], before: string | null): readonly ComparisonRow[] {
+  const pairs = rows.filter((r) => r.kind === 'pair')
+  const head = pairs[0]
+  if (!head || head.gld || !head.current || (head.current.length <= 120 && head.proposed.length <= 120)) return rows
+  if (!isHeadingRow(head, pairs[1])) return rows
+  if (unaccountedStretch(key(before ?? ''), head.current) === null) return rows
+  return rows.filter((r) => r !== head)
 }
 
 /**
@@ -795,12 +1043,54 @@ function isNextHeading(stretch: string): boolean {
 }
 
 /**
+ * The same with the letter of the group it opens and the old full stops,
+ * „… zu erlassen. E. Beistandspflicht." (BAO § 153g, 148/ME XXVIII,
+ * 20.11.2026): one capital and its stop, then a title of at most six words,
+ * every one capitalised but the words that join a title („und", „der",
+ * „für" …) — „E. Beistandspflicht gilt immer." is a sentence.
+ */
+const LETTERED_NEXT_HEADING_RE = /(?<=[.;!?])\s+\p{Lu}\.\s+\p{Lu}[^.;:!?§\d]*\.?$/u
+const TITLE_JOINER_RE = /^(?:und|oder|sowie|der|die|das|des|dem|den|von|vom|für|zur|zum|im|in|bei|mit|aus|über|nach|gegen|auf|an)$/
+
+function isLetteredNextHeading(stretch: string): boolean {
+  const trailer = LETTERED_NEXT_HEADING_RE.exec(stretch)?.[0]
+  if (trailer === undefined) return false
+  const words = trailer.trim().replace(/\.$/, '').split(/\s+/).slice(1)
+  return words.length <= 6 && words.every((w) => /^[\p{Lu}(]/u.test(w) || TITLE_JOINER_RE.test(w.replace(/,$/, '')))
+}
+
+/**
+ * A stretch of its own behind an omission mark, last in the cell, that can
+ * only head what follows (20.11.2026): „(4) bis (6) … Eintragung und
+ * Weiterleitung von Daten in Register und Verzeichnis" — the next §'s heading
+ * at the foot of SchFG § 112 (21/ME XXVIII) — and the bare number of the next
+ * group, „(1) bis (8) ... IV." (BWG § 9, 108/ME). Law text behind a mark ends
+ * in a sign: a sentence, a list item's comma or semicolon. This ends in
+ * none, opens with a capital and carries no digit or § — or is a Roman
+ * numeral and its stop alone.
+ */
+function isHeadingAfterMark(stretch: string): boolean {
+  const t = stretch.trim()
+  if (/^[IVXLC]+\.$/.test(t)) return true
+  return /^\p{Lu}[^.;:!?§\d]*$/u.test(t) && t.split(/\s+/).length <= 14
+}
+
+/**
  * „… wenn das Zertifikat wieder auflebt. 2. Hauptstück" — the next group's
  * heading in the same stretch as the last sentence of this §, with no mark
  * between them. Only after a sentence's end, only numbered or counted in
  * words, and with no sentence punctuation of its own.
  */
-const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+)\.\s*|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?\s+)(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})[^.;:!?]*$/iu
+const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+[a-z]?)\.\s*|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?\s+)(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})[^.;:!?]*$/iu
+
+/**
+ * The same with the unit first, „… festlegen. ABSCHNITT 3" (FKG § 11, 30/ME
+ * XXVIII, 20.11.2026): alone or with a capitalised title behind it, so that
+ * law text opening with a unit („… gilt. Abschnitt 3 gilt sinngemäß") is
+ * never taken. Case-sensitive, since under the `i` flag `\p{Lu}` matches a
+ * lower-case letter too: the unit capitalised or in capitals.
+ */
+const TRAILING_UNIT_FIRST_RE = /(?<=[.;!?])\s*(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel|TEIL|HAUPTST(?:Ü|UE)CK|ABSCHNITT|UNTERABSCHNITT|KAPITEL|TITEL)\s+(?:\d+[a-z]*|[IVXLCDM]+[A-Z]?)(?![\p{L}\d])(?:\s+[\p{Lu}\d][^.;:!?]*)?$/u
 
 /**
  * An Absatz chain the annex prints without its „…" — „(2) bis (3)", „(1)
@@ -818,8 +1108,18 @@ const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+)\.\s*|(?:Ers
  */
 const DOTLESS_OMISSION_RE = /(?:^|(?<=[.:;…]\s*))\(\d{1,3}[a-z]?\)(?:\s+(?:bis|und)\s+\(\d{1,3}[a-z]?\))+(?=\s*(?:$|\(\d{1,3}[a-z]?\)\s|\.\.\.|…))/g
 
+/**
+ * The same for Ziffern (20.11.2026): „: 1. bis 4 5. zwei Vertreter/innen …"
+ * (UVP-G 2000 § 26, 138/ME XXVIII), „1. bis 2. 3." (AIFMG § 5, 76/ME) — a
+ * chain at the start of the cell or behind a sign, followed straight by the
+ * next Ziffer's marker. Behind a word it is a date or a citation („vom 1.
+ * bis 4. Juli"), and stays text.
+ */
+const DOTLESS_ZIFFER_OMISSION_RE = /(?:^|(?<=[.:;…]\s*))\d{1,3}[a-z]?\.\s+bis\s+\d{1,3}[a-z]?\.?(?=\s+\d{1,3}[a-z]?\.\s)/g
+
 function markedOmissions(cell: string): string {
-  return normalizeText(cell).replace(DOTLESS_OMISSION_RE, (chain: string, offset: number, all: string) => (/^\s*(?:\.\.\.|…)/.test(all.slice(offset + chain.length)) ? chain : `${chain} …`))
+  const mark = (chain: string, offset: number, all: string) => (/^\s*(?:\.\.\.|…)/.test(all.slice(offset + chain.length)) ? chain : `${chain} …`)
+  return normalizeText(cell).replace(DOTLESS_OMISSION_RE, mark).replace(DOTLESS_ZIFFER_OMISSION_RE, mark)
 }
 
 /**
@@ -895,18 +1195,24 @@ function placedStretches(text: string, cell: string, from: number, anchor: ((at:
     // Nor does a stretch that is nothing but a group heading — wherever it
     // stands, since the next group's heading comes at the foot of a §.
     if (found < 0 && isGroupHeadingOnly(stretch)) continue
+    // The next §'s heading or group number as the last stretch, behind a
+    // mark (`isHeadingAfterMark`).
+    if (found < 0 && index > 0 && index === stretches.length - 1 && isHeadingAfterMark(stretch)) continue
     // The next §'s heading, wrapped at the foot of the cell: only the last
-    // stretch, only after a finished sentence (`NEXT_HEADING_RE`).
-    if (found < 0 && index === stretches.length - 1 && isNextHeading(stretch)) {
-      const trimmed = key(stretch.replace(NEXT_HEADING_RE, ''))
+    // stretch, only after a finished sentence (`NEXT_HEADING_RE`), or with
+    // its group's letter (`LETTERED_NEXT_HEADING_RE`).
+    const nextHeading = index === stretches.length - 1 ? (isNextHeading(stretch) ? NEXT_HEADING_RE : isLetteredNextHeading(stretch) ? LETTERED_NEXT_HEADING_RE : null) : null
+    if (found < 0 && nextHeading) {
+      const trimmed = key(stretch.replace(nextHeading, ''))
       const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)
       if (retry >= 0) {
         piece = trimmed
         found = retry
       }
     }
-    if (found < 0 && TRAILING_GROUP_RE.test(stretch)) {
-      const trimmed = key(stretch.replace(TRAILING_GROUP_RE, ''))
+    const trailing = [TRAILING_GROUP_RE, TRAILING_UNIT_FIRST_RE].find((re) => re.test(stretch))
+    if (found < 0 && trailing) {
+      const trimmed = key(stretch.replace(trailing, ''))
       const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)
       if (retry >= 0) {
         piece = trimmed
@@ -1099,7 +1405,7 @@ function runAt(hay: readonly string[], needle: readonly string[], from = 0): num
   return -1
 }
 
-const PARAGRAPH_SYMBOL_RE = new RegExp(String.raw`§+\s*${PARAGRAPH_NUMBER}\.`)
+const PARAGRAPH_SYMBOL_RE = new RegExp(String.raw`§+\.?\s*${PARAGRAPH_NUMBER}\.`)
 
 /** The words a cell prints ahead of its § symbol — the §'s heading on the PDF path, nothing on the table path. */
 function headingOf(cell: string): string[] {
@@ -1516,7 +1822,7 @@ function unplacedEitherWay(before: string, got: string, forward: readonly { type
   const unplaced = unplacedChange(forward, rows)
   if (unplaced === null) return null
   const reversed = (t: string): string => t.split(/\s+/).filter(Boolean).reverse().join(' ')
-  const backward = diffTokens(reversed(before), reversed(got)).segments
+  const backward = diffTokens(reversed(before), reversed(got), { beyondCeiling: true }).segments
   if (backward === null) return unplaced
   return unplacedChange(backward.reverse().map((g) => ({ type: g.type, text: g.text.split(' ').reverse().join(' ') })), rows) === null ? null : unplaced
 }
@@ -1573,8 +1879,8 @@ function absatzMarkers(cell: string, own: string | null = null): string[] {
   const text = ownPart(markedOmissions(cell), own)
   for (const m of text.matchAll(ABSATZ_RUN_RE)) {
     // „(2) Aufgehoben." is the annex's way of saying the Absatz is gone, and
-    // RIS prints nothing in its place (`REPEALED_RE`).
-    if (/^\s*(?:Aufgehoben|\(aufgehoben\)|entfällt)/i.test(text.slice(m.index! + m[0].length))) continue
+    // RIS prints nothing in its place (`REPEALED_RE`), „(2) (entfällt)" too.
+    if (/^\s*(?:Aufgehoben|\((?:aufgehoben|entfällt)\)|entfällt)/i.test(text.slice(m.index! + m[0].length))) continue
     for (const n of m[0].matchAll(/\((\d{1,3}[a-z]?)\)/g)) out.push(n[1]!)
   }
   return out
@@ -1885,7 +2191,9 @@ function opensWith(cell: string, marker: { end: number }, opening: string): bool
 export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null, standingUnits: StandingUnits | null = null): OracleReport {
   // An omission without its „…", written out where the standing § proves it
   // (`silentOmissions`) — every check below then reads it as an omission.
-  rows = silentOmissions(rows, standingUnits).rows
+  rows = withoutHeldGroupTitle(withoutNextGroup(silentOmissions(rows, standingUnits).rows), before)
+  // The transcript's glued markers, in the cells only (`unglued`).
+  rows = rows.map((r) => (r.kind === 'pair' ? { ...r, current: unglued(r.current), proposed: unglued(r.proposed) } : r))
   const substantive = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')
   if (substantive.length === 0) return { para: id, verdict: 'stumm', rows: rows.length, note: null }
 
@@ -1896,9 +2204,14 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   // Its first stretch is where the result begins (`unaccountedStretch`).
   const opener = rows.find((r) => r.kind === 'pair')
   const opensWithHeading = (row: ComparisonRow): boolean =>
-    row === opener && (headingOf(row.proposed).some((w) => /\p{L}/u.test(w)) || (!row.gld && isHeadingRow(row)))
+    row === opener && (headingOf(row.proposed).some((w) => /\p{L}/u.test(w)) || (!row.gld && isHeadingRow(row, rows.slice(rows.indexOf(row) + 1).find((r) => r.kind === 'pair'))))
+  // ß and ss alike in the left column only (20.11.2026): the ressort copies
+  // the standing text in today's spelling, „Kostenzuschuss" for RIS's
+  // „Kostenzuschuß". Held against the result, a „daß" the draft turns into
+  // „dass" still has to be there.
+  const sharpS = (t: string) => t.replace(/ß/g, 'ss')
   for (const row of substantive) {
-    const missing = row.current ? unaccountedStretch(beforeKey, row.current) : null
+    const missing = row.current ? unaccountedStretch(sharpS(beforeKey), sharpS(row.current)) : null
     if (missing !== null) {
       return { para: id, verdict: 'fremd', rows: rows.length, note: `Geltende Fassung der Gegenüberstellung nicht im Ausgangstext: "${missing.slice(0, 60)}"` }
     }
@@ -1966,7 +2279,11 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   // word at all, so it passed every check here and `gateParagraph` published
   // it. The standing text the engine dropped beyond what the annex shows as
   // dropped is the signal, and it needs no diff of the annex either.
-  const { segments } = diffTokens(stripMarkers(before ?? ''), stripMarkers(got))
+  //
+  // Past the matrix's ceiling too (`beyondCeiling`, 20.11.2026): the bags
+  // read the same words whichever path aligned them, and above the ceiling a
+  // long § with a small change was „widersprochen" for its length alone.
+  const { segments } = diffTokens(stripMarkers(before ?? ''), stripMarkers(got), { beyondCeiling: true })
   if (segments === null) return { para: id, verdict: 'widersprochen', rows: rows.length, note: 'Wortdiff zu groß für den Abgleich' }
   const pairs = rows.filter((r) => r.kind === 'pair')
   const insertedRaw = segments.filter((s) => s.type === 'inserted').flatMap((s) => words(s.text))

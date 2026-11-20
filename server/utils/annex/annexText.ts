@@ -30,8 +30,8 @@ import { compareKey } from '../lawtext/normalize'
  */
 /** A chain of designations joined by "bis"/"und", closed by three dots. */
 const ELISION_RE = /(?:§+\s*)?\(?\d+[a-z]*\)?\.?(?:\s*(?:bis|und|,)\s*(?:§+\s*)?\(?\d+[a-z]*\)?\.?)*\s*(?:\.\.\.|…)/g
-/** "§ 217." — the designation form, which ends in a period; a citation does not. */
-const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
+/** "§ 217." — the designation form, which ends in a period; a citation does not. „§. 517." too, the ZPO's and the JN's (20.11.2026). */
+const DESIGNATION_RE = /(?:^|\s)§+\.?\s*\d+[a-z]*\.(?=\s|$)/g
 /**
  * "(Anm.: Abs. 2 aufgehoben durch …)" — and the spellings the PDF text layer
  * makes of it.
@@ -46,12 +46,14 @@ const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
  * §§ 7, 22, 35, 44, 63, 64, 70a, 77a, 79 and 99c. The period is optional for
  * the same reason.
  *
- * Deliberately *not* widened to two neighbouring forms. "(Anm. 1)" is a
- * footnote marker RIS keeps on both sides, so dropping it here would create
- * the reverse asymmetry; and "Anmerkung 4: …" in the Bäderhygieneverordnung's
- * Anlage 1 is the schedule's **own** footnote text, which is law.
+ * Deliberately *not* widened to „Anmerkung 4: …" in the
+ * Bäderhygieneverordnung's Anlage 1, the schedule's **own** footnote text,
+ * which is law. „(Anm. 1)", RIS's footnote reference, goes since 20.11.2026
+ * (`NOTE_REFERENCE_RE`): `lawtext/konsTree.ts` drops it from the standing
+ * text now, so a copy of it here would be the asymmetry.
  */
 const ANNOTATION_RE = /\(Anm\.?\s*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+const NOTE_REFERENCE_RE = /\(\s*Anm\.?\s*\d+[a-z]?\s*\)/g
 const BOILERPLATE_RE = /Beachte für folgende Bestimmung/gi
 /**
  * „[Kommentar: …]": the ressort's note to the reader inside its own annex —
@@ -71,6 +73,7 @@ const IMAGE_MARK_RE = /\[Abbildung(?::[^\]]*)?\]/g
 export function comparableTokens(text: string): string[] {
   return text
     .replace(ANNOTATION_RE, ' ')
+    .replace(NOTE_REFERENCE_RE, ' ')
     .replace(COMMENT_RE, ' ')
     .replace(BOILERPLATE_RE, ' ')
     .replace(IMAGE_MARK_RE, ' ')

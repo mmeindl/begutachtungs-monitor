@@ -230,6 +230,21 @@ describe('draftBags and draftReference', () => {
     expect(rightColumnCheck(asNumberedToday, standing, reference('§ 1.')).notInDraft).toBe(false)
   })
 
+  // A renumbering's new number is the provision the annex shows under its
+  // old one (20.11.2026). Read as a § without a block, its words — the old
+  // number's, through the alias — went to every § of the law, and a foreign
+  // sentence in § 4 passed (Medizinproduktebetreiberverordnung, three
+  // planted R-alt faults on the table path).
+  it('does not hand a renumbered §s words to the whole law', () => {
+    const renumbered = [
+      instruction('1. Die bisherigen §§ 11 und 12 erhalten die Paragraphenbezeichnungen "§ 12." und "§ 13." .'),
+      instruction(`2. § 12 lautet: "${NEIGHBOUR}"`),
+      instruction(`3. § 1 lautet: "${PROSE}"`),
+    ]
+    const reference = draftReference(draftBags(renumbered), null, shown('§ 1', '§ 11', '§ 12'))
+    expect(rightColumnCheck(draggedIn(), standing, reference('§ 1.')).notInDraft).toBe(true)
+  })
+
   it('keeps the § 5 of two laws of one package apart', () => {
     const bags = draftBags([
       { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 1', gld: null },

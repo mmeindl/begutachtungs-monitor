@@ -104,13 +104,18 @@ export interface NovaoAddress {
  */
 const ORDINAL_WORD = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte|letzte|vorletzte)'
 const ORDINAL_SATZ = new RegExp(`\\b(${ORDINAL_WORD})[rnsm]?(?:\\s+und\\s+(${ORDINAL_WORD})[rnsm]?)?\\s+Satz(?:es)?\\b`, 'i')
-const NUMERIC_SATZ = /\b(\d{1,2})\.\s*Satz(?:es)?\b/i
+// „7. Satz", and „Satz 7" (4/ME XXVIII, UGB § 270: „In § 270 Abs. 3 lautet
+// Satz 7:"; 20.11.2026). Group 1 or 2 is the number.
+const NUMERIC_SATZ = /\b(\d{1,2})\.\s*Satz(?:es)?\b|\bSatz(?:es)?\s+(\d{1,2})(?![\d.]|\s*(?:Abs|Z|lit)\b)/i
 const GROUP_SATZ = /\b(ersten|letzten)\s+(beiden|zwei|drei|vier|fünf)\s+Sätze\b/i
 // „Die Einleitung des § 3c Abs. 1 lautet:" is the Einleitungsteil too. Read
 // without it, the address was the whole Absatz, and its new opening replaced
 // the Ziffern below with it (AC8FD757, 26.10.2026). „Allgemeine Einleitung"
 // is not: that is the name of a section in an Anlage.
-const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|(?<!Allgemeine[nr]?\s)Einleitung|Schlusssatz|Schlussteil)\b/i
+// „einleitender Satz", „im einleitenden Satz" (15/ME XXVIII, APG § 4; 66/ME,
+// SchOG § 128e; 20.11.2026): the Einleitungsteil by another name. Read only
+// where the unit carries a list, as „Einleitungssatz" is (`sentenceSlots`).
+const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|(?<!Allgemeine[nr]?\s)Einleitung|einleitende[nr]?\s+Satz(?:es)?|Schlusssatz|Schlussteil)\b/i
 /** „der Halbsatz", „der Satz" in front of a (masked) quotation: the noun of the quoted text, not a sentence word. */
 const HALBSATZ_NOUN_RE = /\b(?:der|den|dem|die|einen?|ein)\s+(?:Halbsatz(?:es)?|Satz(?:es)?|Sätze)\s*(?="")/gi
 /** „erster Halbsatz", „im letzten Halbsatz", „der zweite Halbsatz". */
@@ -224,7 +229,7 @@ const SENTENCE_PAIR_RE = new RegExp(`\\b(${ORDINAL_WORD}[rnsm]?)\\s+und\\s+((?:i
 
 function parseSentence(tail: string): { satz: string | null; satzCount: number } | null {
   const part = PART_SATZ.exec(tail)
-  if (part) return { satz: /^Einleitung/i.test(part[1]!) ? 'einleitung' : 'schluss', satzCount: 1 }
+  if (part) return { satz: /^Einleitung|^einleitend/i.test(part[1]!) ? 'einleitung' : 'schluss', satzCount: 1 }
   const group = GROUP_SATZ.exec(tail)
   if (group) return { satz: /^ersten$/i.test(group[1]!) ? 'erster' : 'letzter', satzCount: COUNT_WORD[group[2]!.toLowerCase()]! }
   // A pair with the article repeated is two places, never the second alone.
@@ -241,7 +246,7 @@ function parseSentence(tail: string): { satz: string | null; satzCount: number }
   }
   const numeric = NUMERIC_SATZ.exec(tail)
   if (numeric) {
-    const word = ORDINAL_BY_INDEX[Number(numeric[1]) - 1]
+    const word = ORDINAL_BY_INDEX[Number(numeric[1] ?? numeric[2]) - 1]
     return word ? { satz: word, satzCount: 1 } : { satz: null, satzCount: 0 }
   }
   if (SATZ_WORD.test(tail)) return { satz: null, satzCount: 0 }
@@ -403,7 +408,9 @@ function unitsBehindTheParagraph(t: string): string | null {
  * payload, not address — reading it as the target made "§ 5" become
  * "§ 5 Abs. 4", which would have appended into the wrong place.
  */
-const PAYLOAD_MARKER = /\bfolgende[rnms]?\b|\bnachstehende[rnms]?\b|\bals\s+neue[rnms]?\b/i
+// „In § 5 wird nach Abs. 3 ein neuer Abs. 3a eingefügt" (64/ME XXVIII,
+// 20.11.2026): „ein neuer" announces the new unit as „folgender" does.
+const PAYLOAD_MARKER = /\bfolgende[rnms]?\b|\bnachstehende[rnms]?\b|\bals\s+neue[rnms]?\b|\beine?\s+neue[rnms]?\s+(?=Abs|Z\b|Ziffer|lit|§|Satz|Sätze)/i
 
 export function splitPayloadScope(head: string): { scope: string; payload: string } {
   const m = PAYLOAD_MARKER.exec(head)
@@ -984,6 +991,68 @@ export function parseAddressList(text: string, inherited?: NovaoAddress | null):
  * „vorletzter" first. „zweiter und vorletzter" counts from both ends — one
  * sentence or either order — and is refused.
  */
+/**
+ * **A run of sentences named one by one or by count** (20.11.2026): „der
+ * zweite und der dritte Satz", „der zweite, der dritte und der vierte
+ * Satz", „die Sätze vier bis sechs", „die Sätze sechs und sieben", „die
+ * beiden letzten Sätze", „der vorletzte und der letzte Satz". Read as ONE
+ * place, a run (`satzCount`), exactly as „erster und zweiter Satz" has been —
+ * and only where the sentences follow one another without a gap. Eleven
+ * §§ of period XXVIII were refused over these.
+ *
+ * **Unit operations only** — the caller decides. A phrase operation over
+ * „der zweite und der dritte Satz" is two places, each of which has to
+ * carry the phrase (`sentencePairPlaces`); read as a run, the phrase would
+ * have to be unique across both. A gap („der zweite und der vierte Satz")
+ * stays refused: run one after the other, the second deletion counts a
+ * sentence the first has moved.
+ */
+const CARDINAL_INDEX: Record<string, number> = { eins: 0, zwei: 1, drei: 2, vier: 3, fünf: 4, sechs: 5, sieben: 6, acht: 7, neun: 8, zehn: 9 }
+const RUN_ORDINAL = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte)'
+const ORDINAL_RUN_RE = new RegExp(`\\b(?:(?:der|die|den)\\s+)?(${RUN_ORDINAL})[rnsm]?((?:\\s*,\\s*(?:(?:der|die|den)\\s+)?${RUN_ORDINAL}[rnsm]?)*)\\s+und\\s+(?:(?:der|die|den)\\s+)?(${RUN_ORDINAL})[rnsm]?\\s+Satz(?:es)?\\b`, 'i')
+const CARDINAL_RUN_RE = /\b(?:die\s+)?Sätze\s+(eins|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn)\s+(bis|und)\s+(eins|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn)\b/i
+const LAST_RUN_RE = /\b(?:die\s+)?beiden\s+letzten\s+Sätze\b|\b(?:der\s+)?vorletzte[rn]?\s+und\s+(?:der\s+)?letzte[rn]?\s+Satz(?:es)?\b/i
+
+/**
+ * The run is the object of the clause's own verb, and that verb deletes or
+ * restates sentences. „In § 350 Abs. 5 entfallen die Wortfolge ‚…' im ersten
+ * Satz sowie die beiden letzten Sätze; nach Abs. 5 werden folgende Abs. 6
+ * und 7 eingefügt" reaches the reader cut after „sowie" and not at the
+ * semicolon (BVergG 2018, BGBl. I Nr. 8/2026): read there, the run became the
+ * anchor of the insertion and the deletion it belongs to vanished without a
+ * refusal.
+ */
+const SENTENCE_RUN_VERB_RE = /\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|\bgestrichen\b|\blaute[nt]\b|\bersetzt\b/i
+const SENTENCE_RUN_OTHER_VERB_RE = /\beingefügt\b|\bangefügt\b|\beingereiht\b|\bvorangestellt\b|\bhinzugefügt\b|\berh(?:äl|al)t(?:en)?\b/i
+
+function sentenceRun(text: string): { at: number; len: number; satz: string; count: number } | null {
+  const last = LAST_RUN_RE.exec(text)
+  if (last) return { at: last.index, len: last[0].length, satz: 'letzter', count: 2 }
+  const cardinal = CARDINAL_RUN_RE.exec(text)
+  if (cardinal) {
+    const a = CARDINAL_INDEX[cardinal[1]!.toLowerCase()]!
+    const b = CARDINAL_INDEX[cardinal[3]!.toLowerCase()]!
+    const count = cardinal[2]!.toLowerCase() === 'bis' ? b - a + 1 : b === a + 1 ? 2 : 0
+    return count >= 2 ? { at: cardinal.index, len: cardinal[0].length, satz: ORDINAL_BY_INDEX[a]!, count } : null
+  }
+  const ordinal = ORDINAL_RUN_RE.exec(text)
+  if (!ordinal) return null
+  const middle = [...(ordinal[2] ?? '').matchAll(new RegExp(RUN_ORDINAL, 'gi'))].map((m) => m[0])
+  const idx = [ordinal[1]!, ...middle, ordinal[3]!].map((w) => ORDINAL_INDEX[w.toLowerCase()])
+  if (idx.some((i, k) => i === undefined || (k > 0 && i !== idx[k - 1]! + 1))) return null
+  return { at: ordinal.index, len: ordinal[0].length, satz: ORDINAL_BY_INDEX[idx[0]!]!, count: idx.length }
+}
+
+function sentenceRunPlaces(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
+  const norm = normalizeText(text)
+  const masked = norm.replace(/"[^"]*"/g, (m) => '\u0000'.repeat(m.length))
+  const run = sentenceRun(masked)
+  if (!run) return null
+  const places = parseAddressList(`${norm.slice(0, run.at)} ${run.satz} Satz ${norm.slice(run.at + run.len)}`, inherited)
+  if (!places || places.length !== 1 || places[0]!.satz !== run.satz || places[0]!.satzCount !== 1 || places[0]!.siblings.length > 0) return null
+  return [{ ...places[0]!, satzCount: run.count }]
+}
+
 function sentencePairPlaces(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
   const norm = normalizeText(text)
   // Masked to the same length, so the match indexes the unmasked text.
@@ -1090,8 +1159,21 @@ export type NovaoOp =
      */
     behind?: { level: 'z' | 'lit'; id: string }
   }
-  /** "Nach § 5 wird folgender § 5a eingefügt:" — inserted behind the anchor */
-  | { kind: 'insertAfter'; anchor: NovaoAddress; child: ChildLevel; childIds: string[]; where: 'after' | 'before' }
+  /**
+   * "Nach § 5 wird folgender § 5a eingefügt:" — inserted behind the anchor.
+   * `number`: „In § 49c wird folgender Abs. 6 eingefügt" names the host and
+   * no place; the new unit goes where its number puts it among the host's
+   * units (`placeByNumber` in `kons/lawApply.ts`).
+   */
+  | {
+    kind: 'insertAfter'
+    anchor: NovaoAddress
+    child: ChildLevel
+    childIds: string[]
+    where: 'after' | 'before' | 'number'
+    /** „folgender zweiter Satz eingefügt": the new text has to be one sentence, or the ordinal is not its place. */
+    oneSentence?: true
+  }
   /** "§ 5 Abs. 3 entfällt." */
   | { kind: 'delete'; target: NovaoAddress; withHeading: boolean }
   /**
@@ -1113,6 +1195,8 @@ export type NovaoOp =
     wordBound: boolean
     /** „der Punkt am Ende … durch einen Beistrich": the mark that ends the unit's text, not any occurrence of it. */
     atEnd?: boolean
+    /** „am Ende der Z 3 das Wort ‚und'": the occurrence that ends the unit's text, and only where one does (`END_WORD_RE`). */
+    endWord?: true
     /**
      * „… wird der Strichpunkt durch einen Punkt ersetzt; der nachfolgende
      * Halbsatz entfällt": the new mark ends the sentence, and what followed
@@ -1141,7 +1225,7 @@ export type NovaoOp =
     bareEnd?: boolean
   }
   /** "In § 5 Abs. 1 entfällt die Wortfolge X." */
-  | { kind: 'deletePhrase'; target: NovaoAddress; text: string; eachUnit: boolean; wordBound: boolean }
+  | { kind: 'deletePhrase'; target: NovaoAddress; text: string; eachUnit: boolean; wordBound: boolean; endWord?: true }
   /**
    * "Der bisherige § 10 erhält die Paragrafenbezeichnung „§ 11.“"; with
    * `toLast`, a run: "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“"
@@ -1160,6 +1244,12 @@ export type NovaoOp =
      * `kons/lawApply.ts`).
      */
     following?: true
+    /**
+     * „§ 15 erhält die Paragraphenbezeichnung ‚§ 18.' und wird nach § 17
+     * eingereiht": the bare id of the § the renumbered one now stands
+     * behind (`EINGEREIHT_RE`, `placeBehind` in `kons/lawApply.ts`).
+     */
+    after?: string
   }
   /** "§ 5 wird wie folgt geändert:" — a heading over sub-instructions */
   | { kind: 'container'; target: NovaoAddress }
@@ -1411,6 +1501,24 @@ function operandQuotes(line: string): QuoteMark[] {
   })
   return out
 }
+
+/**
+ * „und wird nach § 17 eingereiht", „, wird nach § 323 eingereiht": the place
+ * a renumbered § goes to (20.11.2026). Group 1 is the bare id.
+ */
+const EINGEREIHT_RE = /\s*,?\s*(?:und\s+)?wird\s+nach\s+§\s*(\d+[a-z]*)\s+eingereiht\b/i
+
+/**
+ * „am Ende der Z 3 das Wort ‚und'", „das Wort ‚oder' am Ende der Z 8", „am
+ * Ende das Wort ‚oder'" (20.11.2026): the position word bound to the one
+ * quoted operand, the unit (if any) between them. Only „am Ende" right
+ * beside the operand counts — „der Punkt am Ende der Z 5" further on in the
+ * line belongs to another clause.
+ */
+const END_WORD_RE = /\bam\s+Ende(?:\s+(?:der|des)\s+(?:Z|Ziffer|lit\.?|Abs\.?)\s*\d+[a-z]*)?\s+(?:das|die|der)\s+(?:Wort|Wortfolge|Ausdruck)\s*""|\b(?:das|die|der)\s+(?:Wort|Wortfolge|Ausdruck)\s*""\s*am\s+Ende\b/i
+
+/** „die Klammern um das Wort", directly in front of the quotation it names. */
+const BRACKETS_AROUND_RE = /\b(?:die\s+)?Klammern?\s+um\s+(?:das|den|die)\s+(?:Wort|Ausdruck|Wortfolge|Zitat|Wendung)\s*$/i
 
 const CHILD_BY_WORD: readonly (readonly [RegExp, ChildLevel])[] = [
   [/\bAbs(atz|ätze)?\.?\s*\d|\bAbsätze\b|\bAbsatz\b/i, 'abs'],
@@ -1835,8 +1943,14 @@ const JEWEILS_RE = /\bjeweils\b|\bjedes Mal\b/i
  * §§ and means one of them must not write into both.
  */
 function eachUnitOccurrence(head: string): boolean {
-  return JEWEILS_RE.test(head)
+  // Read outside the quotations only (20.11.2026): since „jeweils" over a
+  // list also takes every occurrence inside each unit (`everyInUnit` in
+  // `kons/lawApply.ts`), a „jeweils in der Fassung" inside the quoted old
+  // text (148/ME XXVIII, VersStG § 12) must not make one replacement many.
+  return JEWEILS_OUTSIDE_RE.test(maskQuotes(head))
 }
+
+const JEWEILS_OUTSIDE_RE = /\bjeweils\b(?!\s+(?:geltend|gültig|in\s+der\s+Fassung|grammatikalisch))|\bjedes Mal\b/i
 
 /**
  * The places of an operation the engine carries out at ONE place — a
@@ -2216,6 +2330,8 @@ const NAMED_AS_RE = /\bals\s+(Abs\.|Z|lit\.)\s*(\d+[a-z]*|[a-z])\s+bezeichnet\b/
  * Bezeichnungen §§ 5 und 6".
  */
 const PARA_LIST = String.raw`§§?\s*${PARAGRAPH_NUMBER}(?:\s*(?:,|und|bis)\s*(?:§\s*)?${PARAGRAPH_NUMBER})*`
+/** „Es werden folgende §§ 56a, 56b …", „Es wird folgender § 51a": the head of an unanchored § insertion, group 1 the list. */
+const NEW_PARAS_RE = new RegExp(String.raw`^\s*(?:Es\s+)?(?:wird|werden)\s+(?:die\s+)?folgende[rn]?\s+(${PARA_LIST})(?:\s*,?\s*(?:jeweils\s+)?samt\s+Überschrift(?:en)?)?\s+eingefügt\b`, 'i')
 /**
  * And with the text drawn into Abs. 1 on the way: „Der bisherige § 15 wird zu
  * § 23 Abs. 1", „§ 19 erhält die Bezeichnung § 19. (1)" — the renumbering, and
@@ -2284,8 +2400,23 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   const namedAs = namedMatch && /^[\s.;]*$/.test(maskQuotes(head).slice(namedMatch.index + namedMatch[0].length)) ? namedMatch : null
   // Nor is the new § of „Der bisherige § 14 wird zu § 22." (`PARA_RENAMED_RE`).
   const paraRenamed = namedAs || quotes.length > 0 ? null : PARA_RENAMED_RE.exec(head)
-  const addressText = redundantLocator ? (scope || head).replace(locator[0], `${locator[1]} `) : namedAs ? (scope || head).replace(namedAs[0], 'bezeichnet') : paraRenamed ? (scope || head).replace(paraRenamed[0], '') : scope || head
-  const targets = spreadSentence(head, payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : null)))
+  // „… und wird nach § 17 eingereiht" names where the renumbered § goes,
+  // not a second § the line acts on (`EINGEREIHT_RE`); read into the
+  // address it made every such line „2 Ziele für eine Umbenennung".
+  const filed = EINGEREIHT_RE.exec(maskQuotes(scope || head))
+  const addressBase = filed ? (scope || head).slice(0, filed.index) + (scope || head).slice(filed.index + filed[0].length) : scope || head
+  const addressText = redundantLocator ? addressBase.replace(locator[0], `${locator[1]} `) : namedAs ? addressBase.replace(namedAs[0], 'bezeichnet') : paraRenamed ? addressBase.replace(paraRenamed[0], '') : addressBase
+  const targets = spreadSentence(head, payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : SENTENCE_RUN_VERB_RE.test(maskQuotes(head)) && !SENTENCE_RUN_OTHER_VERB_RE.test(maskQuotes(head)) ? sentenceRunPlaces(addressText, inherited) : null)))
+  // „Es werden folgende §§ 56a, 56b, 56c, 56d, 56e samt Überschrift
+  // eingefügt", „Es wird folgender § 51a samt Überschrift eingefügt"
+  // (125/ME XXVIII, GSpG; 20.11.2026): new §§ and no place at all. Each one
+  // is wholly its payload, so its number places it among the law's §§, as
+  // behind a division heading (`numberedSlot`) — the first new § is the
+  // address, so a standing one of that number is loaded and collides.
+  const unanchored = (!targets || targets.length === 0) && /\beingefügt\b/i.test(head) && !/\b(?:nach|vor)\b/i.test(maskQuotes(scope || head)) ? NEW_PARAS_RE.exec(maskQuotes(head)) : null
+  const newIds = unanchored ? paragraphNumbers(unanchored[1]!) : null
+  const newAnchor = newIds?.length ? parseAddress(`§ ${newIds[0]}`, inherited) : null
+  if (newIds?.length && newAnchor && newAnchor.level === 'para') return ok({ kind: 'insertAfter', anchor: newAnchor, child: 'para', childIds: newIds, where: 'number' })
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
     // two Strich forms are perfectly readable addresses that this model has no
@@ -2352,6 +2483,26 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     const to = quotes[0]
     if (!to) return fail('Umbenennung ohne neue Bezeichnung')
     if (targets.length > 1) return fail(`${targets.length} Ziele für eine Umbenennung`)
+    // „… und wird nach § 17 eingereiht": one § to one new number, and the
+    // clause the whole rest of the line. „…, wird nach § 323 eingereiht und
+    // erhält folgende Überschrift" goes on, and stays refused.
+    if (filed) {
+      const rest = maskQuotes(scope || head).slice(filed.index + filed[0].length)
+      if (!/^[\s.]*$/.test(rest) || target.level !== 'para' || target.siblings.length > 0 || quotes.length !== 1 || !/^§\s*\d+[a-z]*\.?$/.test(to.trim())) return fail('„eingereiht" — nur für einen Paragraphen mit einer neuen Bezeichnung')
+      return ok({ kind: 'renumber', target, to, toLast: null, after: filed[1]! })
+    }
+    // „Die §§ 92b und 92c erhalten die Paragraphenbezeichnungen ‚§ 92c.' und
+    // ‚§ 92d.'" (147/ME XXVIII): as many §§ as designations, each written
+    // out with its § sign, paired in order and moved at once
+    // (`renumberBatch`). A designation without its sign („‚§ 7.', ‚8.'",
+    // 116/ME) keeps the line refused: which kind it names is a guess.
+    if (target.level === 'para' && target.para?.startsWith('§') && quotes.length > 1 && !/"\s*bis\s*"/.test(line)) {
+      const ids = [bareParaId(target.para), ...target.siblings]
+      const nums = quotes.map((q) => /^§\s*(\d+[a-z]*)\.?$/.exec(q.trim())?.[1] ?? null)
+      if (ids.length === quotes.length && ids.every(Boolean) && nums.every(Boolean) && /^(?:\s*"[^"]*"\s*(?:,|und)?)+$/.test(line.slice(line.indexOf('"'), line.lastIndexOf('"') + 1))) {
+        return { ops: ids.map((id, i) => ({ kind: 'renumber' as const, target: { ...target, para: `§ ${id}`, siblings: [] }, to: `§ ${nums[i]}`, toLast: null })), reason: null, line }
+      }
+    }
     // "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“" — a run,
     // which the applier expands and checks against the number of targets.
     const range = quotes.length === 2 && /"\s*bis\s*"/.test(line)
@@ -2425,7 +2576,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
           // „der Punkt am Ende der Z 4 durch das Wort ‚oder'": the mark named
           // in words is the one the unit ends on, as in the form with both
           // marks named (`atEnd` above).
-          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, ...(/^[.;,:]$/.test(mixed.from) && /\bam\s+Ende\b/i.test(maskQuotes(head)) ? { atEnd: true } : {}), ...(beside ? { beside } : {}), everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
+          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, ...(/^[.;,:]$/.test(mixed.from) && /\bam\s+Ende\b/i.test(maskQuotes(head)) ? { atEnd: true } : !/^[.;,:]$/.test(mixed.from) && END_WORD_RE.test(maskQuotes(head)) ? { endWord: true as const } : {}), ...(beside ? { beside } : {}), everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
           reason: null,
           line,
         }
@@ -2459,7 +2610,8 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       const from = reversed ? operands[1]! : operands[0]!
       const to = reversed ? operands[0]! : operands[1]!
       const everywhere = everyOccurrence(head, targets)
-      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: from.text, to: to.text, everywhere, eachUnit, wordBound: wordOperand(line, from.ord), ...(beside && !everywhere ? { beside } : {}) })), reason: null, line }
+      const endWord = !reversed && END_WORD_RE.test(maskQuotes(head)) && (head.match(/"/g)?.length ?? 0) === 4 ? { endWord: true as const } : {}
+      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: from.text, to: to.text, everywhere, eachUnit, wordBound: wordOperand(line, from.ord), ...(beside && !everywhere ? { beside } : {}), ...endWord })), reason: null, line }
     }
     if (/\beingefügt\b|\bergänzt\b|\bangefügt\b|\bvorangestellt\b|\beinzufügen\b|\bgesetzt\b/i.test(head)) {
       const before = BEFORE_ANCHOR_RE.test(head) || /vorangestellt/i.test(head)
@@ -2556,7 +2708,20 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // one was a silently half-carried instruction.
       const objects = operandQuotes(line)
       if (objects.length === 0) return fail('Streichung ohne Text')
-      return { ops: places.flatMap((t) => objects.map((q) => ({ kind: 'deletePhrase' as const, target: t, text: q.text, eachUnit, wordBound: wordOperand(line, q.ord) }))), reason: null, line }
+      // „entfallen … die Klammern um das Wort ‚Angestelltengesetz'": what goes
+      // is the pair of brackets, and the word stays (20.11.2026). Read as an
+      // operand, the word itself was deleted and „das (), BGBl. Nr. 292/1921"
+      // reported as carried out (Energie-Control-Gesetz § 29, 32/ME XXVIII).
+      // Brackets named any other way are refused, not guessed.
+      const bracketsAround = (q: QuoteMark): boolean => BRACKETS_AROUND_RE.test(line.slice(0, q.at))
+      if (/\bKlammern?\b/i.test(maskQuotes(head)) && !objects.some(bracketsAround)) return fail('Klammern genannt, aber nicht „um das Wort …" — Stelle nicht abgebildet')
+      return {
+        ops: places.flatMap((t) => objects.map((q) => (bracketsAround(q)
+          ? { kind: 'replacePhrase' as const, target: t, from: `(${q.text.trim()})`, to: q.text.trim(), everywhere: false, eachUnit, wordBound: false }
+          : { kind: 'deletePhrase' as const, target: t, text: q.text, eachUnit, wordBound: wordOperand(line, q.ord), ...(objects.length === 1 && END_WORD_RE.test(maskQuotes(head)) ? { endWord: true as const } : {}) }))),
+        reason: null,
+        line,
+      }
     }
     if (/\blaute[nt]\b/i.test(head)) return fail('Wortfolge lautet — Teiltext-Ersetzung, nicht abgesichert')
     return fail('Wortfolge genannt, aber kein bekanntes Verb')
@@ -2659,7 +2824,34 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
 
   if (/\beingefügt\b|\beingereiht\b/i.test(head)) {
     const before = /\bvor\b/i.test(scope) && !/\bnach\b/i.test(scope)
-    if (!/\bnach\b|\bvor\b/i.test(scope)) return fail('Einfügung ohne Anker')
+    if (!/\bnach\b|\bvor\b/i.test(scope)) {
+      // „In § 49c wird folgender Abs. 6 eingefügt", „Dem § 21g wird folgender
+      // Abs. 3a eingefügt", „In § 13 Abs. 2 wird folgende Z 2a eingefügt"
+      // (20.11.2026): the host and the new unit's number, no place word. The
+      // number places it — where the host's units run in order, which only
+      // the standing text can say (`placeByNumber`). A sentence, a unit
+      // without its number, several hosts or a place word of another kind
+      // („anstelle des dritten Satzes") stay refused.
+      // „§ 77b wird folgender zweiter Satz eingefügt", „In § 29 Abs. 2 wird
+      // folgender erster Satz eingefügt", „In § 21 Abs. 1 wird zu Beginn
+      // folgender Satz eingefügt" (20.11.2026): the ordinal is the new
+      // sentence's place — behind the sentence before it, the first in front
+      // of the first. One unit, no sentence in the address, one sentence of
+      // new text (`oneSentence`).
+      const nth = new RegExp(`^folgender\\s+(${RUN_ORDINAL})r\\s+Satz\\b`, 'i').exec(payload)
+      const atStart = /\bzu\s+Beginn\b/i.test(maskQuotes(head)) && /^folgender\s+Satz\b/i.test(payload)
+      if ((nth || atStart) && targets.length === 1 && target.siblings.length === 0 && !target.satz && !target.halbsatz && !target.heading && target.level !== 'document') {
+        const n = nth ? ORDINAL_INDEX[nth[1]!.toLowerCase()]! : 0
+        const anchor = { ...target, satz: n === 0 ? 'erster' : ORDINAL_BY_INDEX[n - 1]!, satzCount: 1 }
+        return ok({ kind: 'insertAfter', anchor, child: 'satz', childIds: [], where: n === 0 ? 'before' : 'after', oneSentence: true })
+      }
+      const child = childLevel(payload || whole)
+      const ids = childIds(payload, child)
+      if ((child === 'abs' || child === 'z' || child === 'lit') && ids.length > 0 && targets.length === 1 && target.siblings.length === 0 && !target.satz && !target.halbsatz && !target.heading && /^folgende[rn]?\s/i.test(payload) && !/\ban\s*(?:die\s+)?stelle\b|\banstelle\b|\bzu\s+Beginn\b|\bam\s+Ende\b/i.test(maskQuotes(head))) {
+        return ok({ kind: 'insertAfter', anchor: target, child, childIds: ids, where: 'number' })
+      }
+      return fail('Einfügung ohne Anker')
+    }
     const child = childLevel(payload || whole)
     return ok({ kind: 'insertAfter', anchor: target, child, childIds: childIds(payload, child), where: before ? 'before' : 'after' })
   }

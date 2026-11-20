@@ -138,6 +138,89 @@ describe('oracleVerdict', () => {
     expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
   })
 
+  it('judges a long § past the matrix ceiling (20.11.2026)', () => {
+    // 1,700 words behind the changed sentence: past the 2.5 million token
+    // pairs of the matrix, where the oracle answered „Wortdiff zu groß".
+    const tail = Array.from({ length: 1700 }, (_, i) => `w${i}`).join(' ')
+    const got = `Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. ${tail}`
+    const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.'), pair(tail, tail)]
+    expect(oracleVerdict('6', `${before.split('.')[0]}. ${tail}`, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    const wrong = got.replace('w900', 'erfunden')
+    const r = oracleVerdict('6', `${before.split('.')[0]}. ${tail}`, wrong, rows)
+    expect(r.verdict).toBe('widersprochen')
+    expect(r.note).toMatch(/erfunden/)
+  })
+
+  it('reads „xxx/202#" as the placeholder „xxx/2025" (20.11.2026)', () => {
+    const before = 'Dieses Bundesgesetz tritt mit 1. Jänner 2025 in Kraft.'
+    const got = `${before} § 6 in der Fassung BGBl. I Nr. xxx/2025 tritt mit Ablauf des Tages der Kundmachung in Kraft.`
+    const rows = [pair('§ 18. (1) Dieses Bundesgesetz tritt mit 1. Jänner 2025 in Kraft.', `§ 18. (1) Dieses Bundesgesetz tritt mit 1. Jänner 2025 in Kraft. (2) § 6 in der Fassung BGBl. I Nr. xxx/202# tritt mit Ablauf des Tages der Kundmachung in Kraft.`, '§ 18.')]
+    expect(oracleVerdict('18', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // A real number is not a placeholder.
+    expect(oracleVerdict('18', before, got.replace('xxx/2025', '12/2025'), rows).verdict).toBe('widersprochen')
+  })
+
+  it('reads „(entfällt)" as the placeholder of a struck unit (20.11.2026)', () => {
+    // 141/ME XXVIII, ZDG § 6b: „2. (entfällt)" where the draft strikes Z 2.
+    const before = 'Dienst als Organ des Sicherheitsdienstes oder Bediensteter des Bundesamtes oder Soldat versehen.'
+    const got = 'Dienst als Organ des Sicherheitsdienstes oder Soldat versehen.'
+    const rows = [pair('§ 6b. (1) Dienst als 1. Organ des Sicherheitsdienstes oder 2. Bediensteter des Bundesamtes oder 3. Soldat versehen.', '§ 6b. (1) Dienst als 1. Organ des Sicherheitsdienstes oder 2. (entfällt) 3. Soldat versehen.', '§ 6b.')]
+    expect(oracleVerdict('6b', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // The struck Ziffer still has to be gone.
+    expect(oracleVerdict('6b', before, before, rows).verdict).toBe('widersprochen')
+    // And a struck Absatz is no Absatz check 5 looks for (§ 12a).
+    const abs = [pair('§ 12a. (1) Erster Satz. (2) …', '§ 12a. (1) (entfällt) (2) …', '§ 12a.')]
+    expect(oracleVerdict('12a', 'Erster Satz. Zweiter Satz.', 'Zweiter Satz.', abs, ['2'], ['1', '2'])).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('reads a hyphen RIS sets with spaces as the annex\'s closed one (20.11.2026)', () => {
+    // 116/ME XXVIII, TDBG § 40d: RIS „ARF - Mittel", the annex „ARF-Mittel".
+    const before = 'Werden ARF - Mittel nachträglich zweckgewidmet, so sind sie zu kennzeichnen.'
+    const got = 'Werden ARF- oder KSF-Mittel nachträglich zweckgewidmet, so sind sie zu kennzeichnen.'
+    const rows = [pair('§ 40d. Werden ARF-Mittel nachträglich zweckgewidmet, so sind sie zu kennzeichnen.', '§ 40d. Werden ARF- oder KSF-Mittel nachträglich zweckgewidmet, so sind sie zu kennzeichnen.', '§ 40d.')]
+    expect(oracleVerdict('40d', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // A dash between two words the engine removes is still read on both readings.
+    const dash = [pair('§ 5. Wer zahlt - sofern nichts anderes gilt - die Gebühr, begeht eine Übertretung.', '§ 5. Wer zahlt, begeht eine Übertretung.', '§ 5.')]
+    expect(oracleVerdict('5', 'Wer zahlt - sofern nichts anderes gilt - die Gebühr, begeht eine Übertretung.', 'Wer zahlt, begeht eine Übertretung.', dash)).toMatchObject({ verdict: 'bestätigt' })
+    // A cell's en dash closes like the diff's hyphen (74/ME XXVIII, AsylG § 50).
+    const en = [pair('§ 50. Dies wird – GVG-B – geregelt.', '§ 50. Dies geregelt.', '§ 50.')]
+    expect(oracleVerdict('50', 'Dies wird - GVG-B - geregelt.', 'Dies geregelt.', en)).toMatchObject({ verdict: 'bestätigt' })
+    // A word removed that the annex keeps is still caught.
+    expect(oracleVerdict('40d', before, got.replace('nachträglich ', ''), rows).verdict).toBe('widersprochen')
+  })
+
+  it('drops a group heading numbered „IIIa." above a new § (20.11.2026)', () => {
+    // 108/ME XXVIII, BWG § 19a: the new § under a new group.
+    const got = 'Einstufung inländischer Zweigstellen Inländische Zweigstellen sind als Zweigstelle der Klasse 1 einzustufen.'
+    const rows = [pair('', 'IIIa. Abschnitt: Ergänzende Bestimmungen betreffend Zweigstellen Einstufung inländischer Zweigstellen § 19a. (1) Inländische Zweigstellen sind als Zweigstelle der Klasse 1 einzustufen.', '§ 19a.')]
+    expect(oracleVerdict('19a', null, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // The § heading under the group is still held.
+    expect(oracleVerdict('19a', null, got.replace('Einstufung', 'Eintragung'), rows).verdict).toBe('widersprochen')
+  })
+
+  it('drops the next group\'s heading and title rows at the foot of a § (20.11.2026)', () => {
+    // 122/ME XXVIII, StGB § 104b on the table path.
+    const head = 'Inanspruchnahme von Dienstleistungen eines Opfers von Menschenhandel'
+    const body = 'Wer eine Dienstleistung eines Opfers in Anspruch nimmt, ist mit Freiheitsstrafe bis zu zwei Jahren zu bestrafen.'
+    const rows = [pair('', head), pair('', body), pair('', '3a. Abschnitt'), pair('', 'Organhandel und verwandte strafbare Handlungen')]
+    expect(oracleVerdict('104b', null, `${head} ${body}`, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // A title row above the body is the § heading and is still held.
+    expect(oracleVerdict('104b', null, `Inanspruchnahme von Leistungen ${body}`, rows).verdict).toBe('widersprochen')
+    // Nor is a § that is nothing but such rows emptied.
+    expect(oracleVerdict('104c', null, 'Etwas anderes.', [pair('', '3a. Abschnitt'), pair('', 'Organhandel')]).verdict).not.toBe('bestätigt')
+  })
+
+  it('drops „ABSCHNITT 3" glued to the last sentence of a § (20.11.2026)', () => {
+    // 30/ME XXVIII, FKG § 11.
+    const before = 'Die Unternehmen haben ein Risikomanagement.'
+    const got = `${before} Die FMA kann durch Verordnung ein Format festlegen.`
+    const rows = [pair('§ 11. (1) Die Unternehmen haben ein Risikomanagement. ABSCHNITT 3 MASSNAHMEN', '§ 11. (1) Die Unternehmen haben ein Risikomanagement. (2) Die FMA kann durch Verordnung ein Format festlegen. ABSCHNITT 3', '§ 11.')]
+    expect(oracleVerdict('11', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // Law text that opens with a unit is no heading.
+    const text = [pair('§ 11. (1) Die Unternehmen haben ein Risikomanagement.', '§ 11. (1) Die Unternehmen haben ein Risikomanagement. Abschnitt 3 gilt sinngemäß', '§ 11.')]
+    expect(oracleVerdict('11', before, before, text).verdict).toBe('widersprochen')
+  })
+
   it('contradicts a result that lacks the change the annex shows', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })
@@ -771,6 +854,42 @@ it('files the previous §\'s elided tail under that §, not as the next one\'s h
   expect(grouped.get('#116')).toHaveLength(1)
 })
 
+describe('rowsByParagraph — a heading row the parser filed under its § (20.11.2026)', () => {
+  // 2/ME XXVIII, StRegG § 9c on the table path: the heading row carries
+  // `para` „§ 9c." and no `gld`, and is longer than 120 characters.
+  const typed = (current: string, proposed: string, para: string): ComparisonRow => ({ ...pair(current, proposed), para, paraAfter: para })
+  const oldHead = 'Einholung von Strafregisterauskünften aus den anderen Mitgliedstaaten der Europäischen Union'
+  const newHead = 'Einholung einer Strafregisterauskunft aus einem anderen Mitgliedstaat der Europäischen Union oder aus dem Vereinigten Königreich'
+  const rows = [
+    pair('§ 9b. (1) Die Auskunft wird erteilt.', '§ 9b. (1) Die Auskunft wird erteilt.', '§ 9b.'),
+    typed(oldHead, newHead, '§ 9c.'),
+    pair('Die Landespolizeidirektion hat Ersuchen zu übermitteln.', 'Die Landespolizeidirektion hat Ersuchen zu übermitteln.', '§ 9c.'),
+  ]
+
+  it('files a long heading row with the § it names, not the § above', () => {
+    const grouped = rowsByParagraph(rows)
+    expect(paragraphRows(grouped, '9b')).toHaveLength(1)
+    expect(paragraphRows(grouped, '9c').map((r) => r.proposed)).toEqual([newHead, 'Die Landespolizeidirektion hat Ersuchen zu übermitteln.'])
+    const body = 'Die Landespolizeidirektion hat Ersuchen zu übermitteln.'
+    expect(oracleVerdict('9c', `${oldHead} ${body}`, `${newHead} ${body}`, paragraphRows(grouped, '9c'))).toMatchObject({ verdict: 'bestätigt' })
+    // The heading is held: a result that keeps the old one is contradicted.
+    expect(oracleVerdict('9c', `${oldHead} ${body}`, `${oldHead} ${body}`, paragraphRows(grouped, '9c')).verdict).toBe('widersprochen')
+  })
+
+  it('drops a long group title the parser held back for the § below, where the standing § has none of it', () => {
+    // 161/ME XXVIII, EU-JZG § 55a: the title of the group above, typed like a heading.
+    const title = 'Europäische Ermittlungsanordnung, Europäische Herausgabe- und Sicherungsanordnung, Benennung eines Adressaten für die Erhebung elektronischer Beweismittel'
+    const grouped = rowsByParagraph([
+      pair('§ 47. (1) Eine Vollstreckung ist unzulässig.', '§ 47. (1) Eine Vollstreckung ist unzulässig.', '§ 47.'),
+      typed('Europäische Ermittlungsanordnung, Rechtshilfe und sonstige Zusammenarbeit in Strafsachen', title, '§ 55a.'),
+      pair('§ 55a. (1) Die Vollstreckung ist zulässig.', '§ 55a. (1) Die Vollstreckung ist zulässig. (3) Auch sonst.', '§ 55a.'),
+    ])
+    expect(paragraphRows(grouped, '47')).toHaveLength(1)
+    const before = 'Die Vollstreckung ist zulässig.'
+    expect(oracleVerdict('55a', before, `${before} Auch sonst.`, paragraphRows(grouped, '55a'))).toMatchObject({ verdict: 'bestätigt' })
+  })
+})
+
 describe('rowsByParagraph — a § filed under the designation it carries after the draft (26.10.2026)', () => {
   // `pair` gives every row its own number as `paraAfter`; a renumbering or a repeal says otherwise.
   const moved = (current: string, proposed: string, gld: string | null, after: string | null): ComparisonRow => ({ ...pair(current, proposed, gld), paraAfter: after })
@@ -820,6 +939,21 @@ describe('rowsByParagraph — a § filed under the designation it carries after 
     expect(oracleVerdict('44g', moved, moved, paragraphRows(grouped, '44g', undefined, '44f')).verdict).toBe('bestätigt')
     // Held against its own number, as before, the old § 44g's text is still the standing text it is.
     expect(paragraphRows(grouped, '44g').map((r) => r.current)).toEqual(['§ 44g. Die Kosten der Verlautbarung sind von Amts wegen zu tragen.'])
+  })
+
+  it('gives a moved § the left column its origin\'s row prints, where the move changes words (20.11.2026)', () => {
+    // 35/ME XXVIII: the old § 44f moves to § 44g with „daß" → „dass"; the
+    // words the move strikes stand only in the row „§ 44f.".
+    const grouped = rowsByParagraph([
+      pair('§ 44f. Ist der Antrag kundgemacht worden, so gilt, daß die Behörde durch Edikt zustellt.', '§ 44f. Die Behörde kann Zahlungen anweisen.', '§ 44f.'),
+      pair('§ 44g. Die Kosten sind von Amts wegen zu tragen.', '§ 44g. Ist der Antrag kundgemacht worden, so gilt, dass die Behörde durch Edikt zustellt.', '§ 44g.'),
+    ])
+    const rows = paragraphRows(grouped, '44g', undefined, '44f')
+    expect(rows.map((r) => r.change)).toEqual(['changed'])
+    const before = 'Ist der Antrag kundgemacht worden, so gilt, daß die Behörde durch Edikt zustellt.'
+    expect(oracleVerdict('44g', before, before.replace('daß', 'dass'), rows).verdict).toBe('bestätigt')
+    // The move's change still has to be carried out.
+    expect(oracleVerdict('44g', before, before, rows).verdict).toBe('widersprochen')
   })
 
   it('reads a struck § and the new one it becomes, both under one heading, as the § renamed (51/ME XXVIII: § 10 → § 17)', () => {

@@ -937,6 +937,60 @@ gets an entry of its own only where it carries a reason the rule does not.
   so it may stand only where the draft's §§ exceed the budget; a ceiling of
   40 laws withheld 139 §§ of 116/ME XXVIII under that sentence while 289
   §§ fit. Prüfstand check `obergrenze`.
+- **The night of 19./20.11.2026: 377 more §§ shown, none lost** (2,396 →
+  2,773 of the 4,798 the 164 Ministerialentwürfe of the XXVIII. GP change;
+  bench 459 of 460 shown identical to the enacted law, no fault class
+  caught less often beyond one try). Two censuses came first, of every §
+  withheld for a failed check and of every refused instruction, each
+  through the production modules; they found that most withheld §§ were
+  not engine errors. The rules that came of it:
+  - **Guard, oracle and the Lesefassung's display go past the matrix
+    ceiling** (`beyondCeiling`). 166 §§ were „unprüfbar" or „zu-lang" for
+    their length alone. Cost on the request path, measured: 464 diffs,
+    984 ms together, 67 ms and 1.8 MB at most. The annex rows and the
+    Länder's comparison keep the ceiling until measured.
+  - **The oracle reads the annex's spellings of nothing:** „#" in a BGBl
+    placeholder, „(entfällt)" in brackets like „(aufgehoben)", a hyphen
+    between two letters also split. Rejected: splitting a dot leader from
+    a glued figure — it confirms §§ that then show the draft's leader
+    residue („.. 105 Euro") like an omission mark.
+  - **A group heading is no § text wherever the annex files it,** and a
+    heading row the parser filed under its § opens that § at any length.
+  - **An Artikel addressed as the unit itself is looked up as „Art. N";**
+    a bare „§ X" in a law RIS files by Artikel is „Art. N § X" only where
+    exactly one Artikel holds X; a number named under two labels is
+    withheld alone, not with its whole Artikel. Read as „§ N", „Art. 25a"
+    of the UStG's Binnenmarkt-Anhang had edited UStG § 25a.
+  - **A clause that names its law without a readable Stammnorm resolves
+    by name,** only where exactly one law in force carries it as its exact
+    Kurztitel or Abkürzung. A score is no proof.
+  - **„N. x)" in one symbol opens Ziffer N with Litera x;** an Absatz's
+    own heading inside a § is law text; a closing part followed by dashes
+    leads into them.
+  - **„jeweils" over a list takes every occurrence in each unit,** and a
+    slot is written once: two writes to one sentence run had silently
+    lost the first (121/ME StVG § 182). „die Klammern um das Wort ‚X'"
+    deletes the brackets, not the word. „am Ende … das Wort" is the
+    occurrence that ends the unit, otherwise refused.
+  - **A § list with as many designations as §§ is paired in order;** a
+    run of sentences without a gap is one place for a deletion or a
+    restatement; a new unit with no place word goes where its number puts
+    it only where the host's units run strictly upwards.
+  - **A § version whose BGBl was issued after the reference date is not
+    the standing text of that day** (`standingOnDay`): the annex was
+    written against what stood then. The Lesefassung therefore shows the
+    reference-date text even where a later law changed it retroactively.
+  - **„(Anm. N)", „Beachte für folgende Bestimmung" and a dated version
+    label are no text on either side;** reader and annex gate move
+    together, or the annex check loses §§. „§. N." is a designation
+    everywhere one is read. ß equals ss in the left-column check only.
+    Commas, full stops inside sentences and quotation marks stay strict:
+    no fault class injects punctuation.
+  - **„anhang-fremd" is mostly ours, not the ministries'** (census of all
+    232 against every RIS Fassung): 152 our reader, check or lookup, 32
+    another Fassung, 32 differing from every Fassung and half of those
+    typos. The site says nothing about a ministry's text that this does
+    not prove per case.
 - **A schedule is keyed by its own number, a Roman one in Arabic**
   (19.11.2026): „Anhang XIV" is „Anl. 14" on the engine's side and the
   page's, because RIS files every schedule so; a letter or an unreadable

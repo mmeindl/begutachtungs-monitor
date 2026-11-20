@@ -36,7 +36,8 @@
  * limits do not add up (`cache/stale.ts`).
  */
 import type { ClauseName } from '../lawtext/draftArticles'
-import { getText, konsRecordsOfNummer, paragraphHistory, resolveLawByBgbl, type KonsRecord } from '../ris/konsLaw'
+import { getText, konsRecordsOfNummer, paragraphHistory, resolveLawByBgbl, resolveLawByName, standingOnDay, type KonsRecord } from '../ris/konsLaw'
+import { getBgblIssueDate } from '../ris/bgblService'
 import { lawsOfBgbl } from '../ris/bgblLaws'
 import { DERIVED_ANALYSIS_TTL_S, KONS_HISTORY_STALE_S, KONS_RECENT_DAYS, KONS_RECORDS_STALE_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { storageKeyOf } from '../cache/key'
@@ -105,7 +106,10 @@ export const readKonsRecords = defineCachedFunction(
  *
  * Over `readKonsRecords`, so it costs no request of its own — except where
  * the cited Stammnorm finds no law and the clause's name is searched
- * (`misquotedStammnorm`, one query, rare). `swr: false`: it recomputes in
+ * (`misquotedStammnorm`, one query, rare), and where a § version names a
+ * BGBl of the reference year: its issue date (`getBgblIssueDate`, cached),
+ * and for a version issued after the day the law's history
+ * (`standingOnDay`, rare). `swr: false`: it recomputes in
  * milliseconds over a leaf that is already served stale.
  *
  * **Null is an answer; a failure is not.** `resolveLawByBgbl` returns null
@@ -117,8 +121,19 @@ export const readKonsRecords = defineCachedFunction(
  * nothing to check against.
  */
 export const resolveKonsLaw = defineCachedFunction(
-  async (organ: string, nummer: string, date: string, title: string, clause: ClauseName | null = null) =>
-    resolveLawByBgbl({ organ, nummer }, date, title || undefined, clause, async (n, d) => (await readKonsRecords(n, d)).records),
+  async (organ: string, nummer: string, date: string, title: string, clause: ClauseName | null = null) => {
+    // No number: the clause cites no Stammnorm we can read, and the law is
+    // looked up by the name it gives (`resolveLawByName`, 20.11.2026).
+    const on = (day: string) =>
+      !nummer
+        ? (clause ? resolveLawByName(clause, day) : Promise.resolve(null))
+        : resolveLawByBgbl({ organ, nummer }, day, title || undefined, clause, async (n, d) => (await readKonsRecords(n, d)).records)
+    const law = await on(date)
+    // As it stood on the day, without versions promulgated after it
+    // (`standingOnDay`, 20.11.2026) — for every caller alike, so the annex
+    // check, the Lesefassung and the § names read one text.
+    return law && standingOnDay(law, date, { issued: getBgblIssueDate, history: readParagraphHistory, lawOn: on })
+  },
   {
     name: 'kons-law-by-bgbl',
     base: DERIVED_CACHE,

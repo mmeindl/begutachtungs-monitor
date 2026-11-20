@@ -205,6 +205,8 @@ export interface DraftBags {
   reasons: Map<string, number>
   /** Law key → § key → the comparable words of each unit that only adds text there (`DraftUnit.adds`). */
   added: Map<string | null, Map<string, string[][]>>
+  /** Law key → § key → the keys a renumbering declares the same provision (one hop, as the bags merge). */
+  aliases?: Map<string | null, Map<string, Set<string>>>
 }
 
 /** An address `designationKey` reads as no § at all: "Abschnitt 9b", the title. */
@@ -280,7 +282,14 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
   // because a chain of renumberings ("§ 2 wird § 3, § 3 wird § 4, …") would
   // otherwise merge a whole Verordnung into one bag and the reference would
   // be back to where it started.
+  const aliasOf = new Map<string | null, Map<string, Set<string>>>()
   for (const [law, pairs] of aliases) {
+    const keys = aliasOf.get(law) ?? new Map<string, Set<string>>()
+    for (const [a, b] of pairs) {
+      keys.set(a, (keys.get(a) ?? new Set<string>()).add(b))
+      keys.set(b, (keys.get(b) ?? new Set<string>()).add(a))
+    }
+    aliasOf.set(law, keys)
     const map = byLaw.get(law)
     if (!map) continue
     const before = new Map([...map].map(([k, v]) => [k, new Set(v)]))
@@ -294,7 +303,7 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
       }
     }
   }
-  return { byLaw, general, whole: draftWordBag(draftTextOf(blocks)), units: units.length, addressed, rightlyWithoutParagraph, reasons, added }
+  return { byLaw, general, whole: draftWordBag(draftTextOf(blocks)), units: units.length, addressed, rightlyWithoutParagraph, reasons, added, aliases: aliasOf }
 }
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
@@ -344,9 +353,18 @@ export function draftReference(bags: DraftBags, law: string | null, shown: Reado
   // Everything every § of this law may draw on, built once: the unreadable
   // instructions, and the ones addressed to §§ the annex does not show.
   const inherited = new Set<string>(general ?? [])
+  // A number a renumbering declares the same provision as a shown one is
+  // shown (20.11.2026): „Die bisherigen §§ 11 und 12 erhalten die
+  // Paragraphenbezeichnungen ‚§ 12.' und ‚§ 13.'" names a § 13 the annex
+  // prints as § 12. Counted as a § without a block, its words — § 12's,
+  // through the alias — went to every § of the Verordnung, and three foreign
+  // sentences the fault injection plants passed (Medizinprodukte-
+  // betreiberverordnung, table path).
+  const aliasOf = bags.aliases?.get(law)
+  const isShown = (key: string): boolean => shown.has(key) || [...(aliasOf?.get(key) ?? [])].some((k) => shown.has(k))
   if (own !== undefined) {
     for (const [key, words] of own) {
-      if (shown.has(key)) continue
+      if (isShown(key)) continue
       for (const w of words) inherited.add(w)
     }
   }

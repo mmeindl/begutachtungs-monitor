@@ -76,8 +76,8 @@ const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/
  */
 const BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|table)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
-/** „§ 30.", „§ 27a", „Art. 5.", „Artikel 12": a designation with no name after it. */
-const DESIGNATION_ONLY_RE = /^(?:§|Art\.|Artikel)\s*\d+[a-z]*\.?$/i
+/** „§ 30.", „§ 27a", „Art. 5.", „Artikel 12", „§. 121." (the JN's own form, 20.11.2026): a designation with no name after it. */
+const DESIGNATION_ONLY_RE = /^(?:§\.?|Art\.|Artikel)\s*\d+[a-z]*\.?$/i
 const SYMBOL_RE = /<symbol\b[^>]*>([\s\S]*?)<\/symbol>/
 /** "(2) " opens an Absatz; "(2a)" and "(2b)" are legal too. */
 const ABS_MARKER_RE = /^\((\d+[a-z]*)\)\s*/
@@ -96,6 +96,24 @@ const LIT_DOT_MARKER_RE = /^([a-z])\.$/
  * 1" of Abs. 2, Abs. 3 did not exist.
  */
 const ABS_Z_MARKER_RE = /^\((\d+[a-z]*)\)\s*(\d+[a-z]*)\.$/
+/**
+ * „3. a)" — a Ziffer and its first Litera in one symbol, where the Ziffer
+ * opens straight into its list (GrEStG 1987 § 9, § 7 Abs. 1; UStG 1994 § 6
+ * Abs. 1, § 10 Abs. 3; EStG 1988 § 3 Abs. 1; 1.192 symbols in 350 of 26.443
+ * cached § documents, 20.11.2026). Read as one Litera „3. a" of the Ziffer
+ * above, Z 3 did not exist, and „§ 9 Z 3 lautet" was refused (16/ME XXVIII).
+ */
+const Z_LIT_MARKER_RE = /^(\d+[a-z]*)\.\s*([a-z]{1,2})\)$/
+/**
+ * „(1) 1. a) Ein Erwerb gilt als" / „(3) 1. Für …" — an Absatz that opens
+ * straight into its first Ziffer, or its first Ziffer's first Litera, in its
+ * own line, the list going on below (GrEStG 1987 § 7 Abs. 1; BewG 1955 § 30,
+ * KStG 1988 § 24a, BAO § 323: 49 of 26.443 cached § documents, 20.11.2026).
+ * Read as the Absatz's text, „§ 7 Abs. 1 Z 1 lit. a" found nothing
+ * (16/ME XXVIII). Taken only where the list goes on with the next
+ * designation (`followedBy`): „(2) 1. Jänner …" is a date.
+ */
+const INLINE_Z_RE = /^(\d+)\.\s+(?:([a-z])\)\s+)?(\S[\s\S]*)$/
 /** A list opening and its depth: `<aufzaehlung ebene="3">`, `<ziffernliste ebene="1">`. */
 const LIST_OPEN_RE = /<(?:aufzaehlung|[a-z]*liste)\b[^>]*\bebene="(\d+)"/g
 
@@ -113,6 +131,14 @@ const LIST_OPEN_RE = /<(?:aufzaehlung|[a-z]*liste)\b[^>]*\bebene="(\d+)"/g
  * 10.09.2026, so the two sides read a note alike again (28.09.2026).
  */
 const ANNOTATION_RE = /\(Anm\.?(?:\s|<[^>]+>)*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+/**
+ * „75 000 Euro (Anm. 1)": RIS's reference to its numbered footnote, the
+ * valorisation note behind the § that the footnote rule already drops
+ * (`NUMBERED_NOTE_RE`, 20.11.2026). Left standing, it pointed at nothing on
+ * the page, stood between the words a phrase instruction looks for, and was
+ * held against annexes that leave it out (58/ME XXVIII, BVergG 2018 § 213).
+ */
+const NOTE_REFERENCE_RE = /\(\s*Anm\.?\s*\d+[a-z]?\s*\)/g
 
 /**
  * **A note RIS splits over two blocks** (19.11.2026). Tabakmonopolgesetz § 1
@@ -226,6 +252,7 @@ function text(inner: string): string {
         inner
           .replace(BINARY_RE, ` ${FIGURE_MARK} `)
           .replace(ANNOTATION_RE, ' ')
+          .replace(NOTE_REFERENCE_RE, ' ')
           .replace(/<gdash\s*\/>/g, '-')
           .replace(/<nbsp\s*\/>/g, ' ')
           .replace(/<amp\s*\/>/g, '&amp;'),
@@ -402,8 +429,22 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   let footnotes = false
   /** Closing parts read out of `erltext` (below), to be told from text between list items afterwards. */
   const fromErltext = new Set<LawNode>()
+  /** Closing parts that lead into a dash list below them (`leadsIntoDashes`), the same way afterwards. */
+  const leadIns = new Set<LawNode>()
+  /** The list depth each Ziffer and Litera was read at, for a lead-in to hand on to the dashes behind it. */
+  const itemEbene = new Map<LawNode, number | null>()
 
   const blocks = [...body.matchAll(BLOCK_RE)].filter((b) => b[1] === 'table' || /ct="text"/.test(b[2]!))
+  /** Whether a list item with this symbol follows block `from` before the next numbered Absatz (`INLINE_Z_RE`). */
+  const followedBy = (from: number, symbol: string): boolean => {
+    for (const b of blocks.slice(from + 1)) {
+      if (b[1] === 'absatz' && ABS_MARKER_RE.test(text(b[3]!.replace(GLD_RE, ' ')))) return false
+      if (b[1] !== 'listelem') continue
+      const sym = SYMBOL_RE.exec(b[3]!)
+      if (sym && text(sym[1]!) === symbol) return true
+    }
+    return false
+  }
   for (const [at, m] of blocks.entries()) {
     const tag = m[1]!
     const attrs = m[2]!
@@ -438,10 +479,32 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       // Privatschulgesetz § 30 this way, the next the other. Taken for the
       // §'s name it stood in the comparison text of one version only, and a
       // § replaced word for word read as „halb angewendet".
-      if (typ === 'para') heading = DESIGNATION_ONLY_RE.test(text(inner)) ? null : text(inner)
-      else if (root === null) {
+      //
+      // **Nor does a designation replace the heading read above it**
+      // (20.11.2026). The Jurisdiktionsnorm and the ZPO print both as
+      // `typ="para"`, the name first and „§. 121." below it; the last one
+      // read won, and JN § 121 lost its heading on both sides of the bench —
+      // while the draft's „Die Überschrift zu § 121 lautet" was right
+      // (116/ME XXVIII, BGBl. I Nr. 62/2026).
+      if (typ === 'para') {
+        const t = text(inner)
+        if (!DESIGNATION_ONLY_RE.test(t)) heading = t
+      } else if (root === null) {
         const t = text(inner)
         if (t) context.push(t)
+      } else if (typ === 'erll' && opensNumberedAbsatz(blocks[at + 1])) {
+        // **An Absatz's own heading inside the §** (20.11.2026): „Antrag
+        // auf Erstattung von Vorsteuerbeträgen in einem anderen
+        // Mitgliedstaat" over UStG 1994 § 21 Abs. 11, „5 Beilagen" over a
+        // Tarifpost of GebG § 14 — law text, printed by the ressort in both
+        // columns of its annex. Dropped, the oracle found the left column
+        // nowhere and 61/ME XXVIII's § 21 was withheld as `anhang-fremd`.
+        // Read where it stands, between the Absätze, as a node of the § that
+        // no Absatz address takes along. Only right above a numbered Absatz
+        // (30 of 32.890 cached § documents): a heading inside a schedule's
+        // list would land behind the list it heads, and stays out.
+        const t = text(inner)
+        if (t) para().children.push(makeNode('schluss', 'ueberschrift', '', t))
       }
       continue
     }
@@ -449,7 +512,28 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     if (tag === 'schlussteil' || tag === 'schluss') {
       const t = text(inner)
       const ebene = tag === 'schlussteil' ? (/ebene="([^"]+)"/.exec(attrs)?.[1] ?? null) : null
-      if (currentAbs && t) closingHost(currentAbs, typ, ebene).children.push(makeNode('schluss', 'schluss', '', t))
+      if (currentAbs && t) {
+        const host = closingHost(currentAbs, typ, ebene)
+        const node = makeNode('schluss', 'schluss', '', t)
+        host.children.push(node)
+        // **A lead-in, not a closing part, where dashes follow it**
+        // (20.11.2026): „Als inländische Dienstleister kommen in Betracht:"
+        // closes nothing in EStG 1988 § 95 Abs. 2 Z 3 — the dashes below it
+        // are its list. They hung off lit. b, the last item read, and so
+        // stood in front of the sentence that introduces them: the order
+        // the annex's left column was looked for in (61/ME XXVIII, withheld
+        // as `anhang-fremd`). They go behind it, under the unit it belongs
+        // to; behind an Absatz's closing part they are that Absatz's.
+        if (leadsIntoDashes(blocks[at + 1])) {
+          if (host.level === 'abs') {
+            leadIns.add(node)
+            lastItem = null
+          } else if (itemEbene.get(host) !== undefined && itemEbene.get(host) !== null) {
+            leadIns.add(node)
+            lastItem = { node: host, abs: currentAbs, ebene: itemEbene.get(host)! }
+          }
+        }
+      }
       continue
     }
 
@@ -457,6 +541,18 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       const sym = SYMBOL_RE.exec(inner)
       const marker = sym ? text(sym[1]!) : ''
       const t = text(sym ? inner.replace(sym[0], ' ') : inner)
+      const zLit = Z_LIT_MARKER_RE.exec(marker)
+      if (zLit) {
+        // The Ziffer carries no text of its own; its first Litera does, and
+        // the Literae below hang off it as off any Ziffer (`lastChild`).
+        const zNode = makeNode('z', zLit[1]!, `${zLit[1]}.`, '')
+        const litNode = makeNode('lit', zLit[2]!, `${zLit[2]})`, t)
+        zNode.children.push(litNode)
+        absatz().children.push(zNode)
+        lastItem = { node: litNode, abs: absatz(), ebene: ebeneAt(m.index) }
+        itemEbene.set(litNode, lastItem.ebene)
+        continue
+      }
       const opens = ABS_Z_MARKER_RE.exec(marker)
       if (opens) {
         para()
@@ -474,7 +570,10 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       // Litera hang off the Ziffer above them, Ziffern off the Absatz.
       const host = sub ? lastItem!.node : node.level === 'lit' ? (lastChild(absatz(), 'z') ?? absatz()) : absatz()
       host.children.push(node)
-      if (!sub) lastItem = { node, abs: absatz(), ebene }
+      if (!sub) {
+        lastItem = { node, abs: absatz(), ebene }
+        itemEbene.set(node, ebene)
+      }
       continue
     }
 
@@ -563,6 +662,18 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     if (am) {
       currentAbs = makeNode('abs', am[1]!, `(${am[1]})`, rest.slice(am[0].length))
       root!.children.push(currentAbs)
+      const inline = INLINE_Z_RE.exec(currentAbs.text)
+      const next = inline ? (inline[2] ? `${String.fromCharCode(inline[2].charCodeAt(0) + 1)})` : `${Number(inline[1]) + 1}.`) : null
+      if (inline && next && followedBy(at, next)) {
+        currentAbs.text = ''
+        const zNode = makeNode('z', inline[1]!, `${inline[1]}.`, inline[2] ? '' : inline[3]!)
+        currentAbs.children.push(zNode)
+        if (inline[2]) {
+          const litNode = makeNode('lit', inline[2], `${inline[2]})`, inline[3]!)
+          zNode.children.push(litNode)
+          lastItem = { node: litNode, abs: currentAbs, ebene: 2 }
+        } else lastItem = { node: zNode, abs: currentAbs, ebene: 1 }
+      }
     } else if (currentAbs) {
       // A continuation paragraph of the same Absatz (Satz block) — and behind
       // a list its closing part. RIS writes the text that follows the
@@ -596,11 +707,23 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // the slot „Im Schlussteil" finds (`kons/lawApply.ts`, `sentenceSlots`);
   // under its own id it is text in its place, and no sentence of that
   // Absatz is counted across it.
-  for (const node of fromErltext) {
+  for (const node of [...fromErltext, ...leadIns]) {
     const host = root ? lawTextNodes(root).find((n) => n.children.includes(node)) : undefined
     if (host && host.children.slice(host.children.indexOf(node) + 1).some((c) => c.level !== 'schluss')) node.id = 'zwischentext'
   }
   return root
+}
+
+/** The block a heading stands over opens a numbered Absatz: „(11) Ein im Inland …". */
+function opensNumberedAbsatz(next: RegExpMatchArray | undefined): boolean {
+  return next !== undefined && next[1] === 'absatz' && ABS_MARKER_RE.test(text(next[3]!.replace(GLD_RE, ' ')))
+}
+
+/** The block behind a closing part is an unnumbered list item: a dash, a bullet. */
+function leadsIntoDashes(next: RegExpMatchArray | undefined): boolean {
+  if (next === undefined || next[1] !== 'listelem') return false
+  const sym = SYMBOL_RE.exec(next[3]!)
+  return /^[–—\-•·]$/.test(sym ? text(sym[1]!) : '')
 }
 
 /**
@@ -640,6 +763,12 @@ export function renderNode(node: LawNode): string {
     for (const c of rest) parts.push(renderNode(c))
     return parts.join('\n')
   }
+  // A Ziffer with no text of its own opens straight into its first Litera,
+  // an Absatz into its first Ziffer, and RIS prints them on one line („3. a)
+  // …", „(1) 1. a) …"; `Z_LIT_MARKER_RE`, `INLINE_Z_RE`, `ABS_Z_MARKER_RE`).
+  const [first, ...rest] = node.children
+  const opensInto = node.level === 'z' ? 'lit' : node.level === 'abs' ? 'z' : null
+  if (opensInto && node.marker && node.text === '' && first?.level === opensInto) return [`${node.marker} ${renderNode(first)}`.trim(), ...rest.map(renderNode)].join('\n')
   const own = `${node.marker} ${node.text}`.trim()
   return [own, ...node.children.map(renderNode)].join('\n')
 }

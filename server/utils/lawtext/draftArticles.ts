@@ -160,7 +160,14 @@ export interface ClauseName {
  * the abbreviation kept instead of dropped.
  */
 export function clauseNameOf(text: string): ClauseName | null {
-  const m = /^(?:Das|Die|Der)\s+(.+?)(?:,\s*|\s+(?=in der Fassung\b))(?:in der Fassung\b[^,]*?)?(?:d?RGBl|BGBl|StGBl|JGS)\b/i.exec(text.replace(/\s+/g, ' ').trim())
+  const flat = text.replace(/\s+/g, ' ').trim()
+  // And a clause whose name runs straight into the amendment history, with no
+  // Gesetzblatt in between: „Das Bundesgesetz über die Revision von Erwerbs-
+  // und Wirtschaftsgenossenschaften (GenRevG 1997), zuletzt geändert durch
+  // das Bundesgesetz BGBl. I Nr. 133/2024, wird …" (4/ME XXVIII, 20.11.2026).
+  // Unread, the Artikel had neither Stammnorm nor name, and its §§ no law.
+  const m = /^(?:Das|Die|Der)\s+(.+?)(?:,\s*|\s+(?=in der Fassung\b))(?:in der Fassung\b[^,]*?)?(?:d?RGBl|BGBl|StGBl|JGS)\b/i.exec(flat) ??
+    /^(?:Das|Die|Der)\s+(.+?),?\s+(?:zuletzt\s+)?geändert durch\b.*?\b(?:d?RGBl|BGBl|StGBl)\b/i.exec(flat)
   if (!m) return null
   // The name ends where the amendment history begins: „Das Bundesgesetz vom
   // 12. Juni 1981 über die Presse … (Mediengesetz - MedienG), zuletzt geändert
