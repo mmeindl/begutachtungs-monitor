@@ -96,6 +96,14 @@ const LIT_DOT_MARKER_RE = /^([a-z])\.$/
  * 1" of Abs. 2, Abs. 3 did not exist.
  */
 const ABS_Z_MARKER_RE = /^\((\d+[a-z]*)\)\s*(\d+[a-z]*)\.$/
+/**
+ * „3. a)" — a Ziffer and its first Litera in one symbol, where the Ziffer
+ * opens straight into its list (GrEStG 1987 § 9, § 7 Abs. 1; UStG 1994 § 6
+ * Abs. 1, § 10 Abs. 3; EStG 1988 § 3 Abs. 1; 1.192 symbols in 350 of 26.443
+ * cached § documents, 20.11.2026). Read as one Litera „3. a" of the Ziffer
+ * above, Z 3 did not exist, and „§ 9 Z 3 lautet" was refused (16/ME XXVIII).
+ */
+const Z_LIT_MARKER_RE = /^(\d+[a-z]*)\.\s*([a-z]{1,2})\)$/
 /** A list opening and its depth: `<aufzaehlung ebene="3">`, `<ziffernliste ebene="1">`. */
 const LIST_OPEN_RE = /<(?:aufzaehlung|[a-z]*liste)\b[^>]*\bebene="(\d+)"/g
 
@@ -457,6 +465,17 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       const sym = SYMBOL_RE.exec(inner)
       const marker = sym ? text(sym[1]!) : ''
       const t = text(sym ? inner.replace(sym[0], ' ') : inner)
+      const zLit = Z_LIT_MARKER_RE.exec(marker)
+      if (zLit) {
+        // The Ziffer carries no text of its own; its first Litera does, and
+        // the Literae below hang off it as off any Ziffer (`lastChild`).
+        const zNode = makeNode('z', zLit[1]!, `${zLit[1]}.`, '')
+        const litNode = makeNode('lit', zLit[2]!, `${zLit[2]})`, t)
+        zNode.children.push(litNode)
+        absatz().children.push(zNode)
+        lastItem = { node: litNode, abs: absatz(), ebene: ebeneAt(m.index) }
+        continue
+      }
       const opens = ABS_Z_MARKER_RE.exec(marker)
       if (opens) {
         para()
@@ -640,6 +659,10 @@ export function renderNode(node: LawNode): string {
     for (const c of rest) parts.push(renderNode(c))
     return parts.join('\n')
   }
+  // A Ziffer with no text of its own opens straight into its first Litera,
+  // and RIS prints the two on one line („3. a) …", `Z_LIT_MARKER_RE`).
+  const [first, ...rest] = node.children
+  if (node.level === 'z' && node.marker && node.text === '' && first?.level === 'lit') return [`${node.marker} ${renderNode(first)}`.trim(), ...rest.map(renderNode)].join('\n')
   const own = `${node.marker} ${node.text}`.trim()
   return [own, ...node.children.map(renderNode)].join('\n')
 }
