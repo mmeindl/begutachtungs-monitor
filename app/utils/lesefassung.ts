@@ -148,8 +148,13 @@ const CAUSE_TEXT: Record<LesefassungCause, string> = {
   'nicht-geladen': 'Der Entwurf ändert mehr Paragraphen, als wir für eine Seite laden.',
   'kein-anhang': 'Ohne lesbare Gegenüberstellung bestätigt niemand unser Ergebnis.',
   'anhang-schweigt': 'Zu diesem Paragraphen fanden wir in der Beilage keine Änderung, an der sich unser Ergebnis prüfen ließe.',
-  'anhang-fremd': 'Den geltenden Text, von dem die Beilage hier ausgeht, fanden wir so nicht im RIS.',
-  'anhang-widerspricht': 'Unser Ergebnis weicht von der Beilage ab.',
+  // 20.11.2026: „fanden wir so nicht im RIS" read as the ministry's fault. All 232 such §§ were held
+  // against every RIS Fassung: in 152 the monitor misread the annex or the RIS text, or looked up a
+  // Fassung promulgated later. The sentence says what is known — the two could not be matched.
+  'anhang-fremd': 'Den geltenden Text, von dem die Beilage hier ausgeht, konnten wir nicht mit dem RIS abgleichen.',
+  // 20.11.2026: „weicht von der Beilage ab" put the deviation on our result. In a sample of 64, the
+  // annex differed from the draft's own wording in 40. Who deviates, the comparison alone does not say.
+  'anhang-widerspricht': 'Unser Ergebnis und die Beilage stimmen hier nicht überein.',
   'gesetz-unbekannt': 'Das geänderte Gesetz fanden wir im RIS nicht eindeutig.',
   'nummer-doppelt': 'Die Nummer steht im geänderten Gesetz mehrmals, in verschiedenen Artikeln.',
   'nicht-im-ris': 'Diesen Paragraphen fanden wir im geltenden Text im RIS nicht.',

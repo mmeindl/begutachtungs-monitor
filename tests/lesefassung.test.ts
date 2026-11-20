@@ -179,7 +179,7 @@ describe('placeAtParagraphs — the Lesefassung', () => {
 
 describe('the sentences', () => {
   it('names what we could not do, at the § and once for the section', () => {
-    expect(lesefassungLine({ kind: 'withheld', cause: 'anhang-widerspricht' })).toBe('Ganzer Paragraph in der vorgeschlagenen Fassung nicht gezeigt: Unser Ergebnis weicht von der Beilage ab.')
+    expect(lesefassungLine({ kind: 'withheld', cause: 'anhang-widerspricht' })).toBe('Ganzer Paragraph in der vorgeschlagenen Fassung nicht gezeigt: Unser Ergebnis und die Beilage stimmen hier nicht überein.')
     expect(lesefassungLine({ kind: 'withheld', cause: 'verweigert' }, '§ 1a.')).toMatch(/^Ganzer § 1a in der vorgeschlagenen Fassung nicht gezeigt: /)
     // A § the draft repeals or moves stands in the annex as struck rows already.
     expect(lesefassungLine({ kind: 'withheld', cause: 'entfaellt' })).toBeNull()
