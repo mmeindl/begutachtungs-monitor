@@ -341,6 +341,7 @@ import { windowLine, windowOf } from '../lib/annexReport'
 import { renditionOfPages, witnessVerdict, type DraftRendition, type WitnessInstruction, type WitnessPlace } from '../../server/utils/kons/draftWitness'
 import { writeFileSync } from 'node:fs'
 import { argAssigned, argFlag } from '../lib/args'
+import { corpusReach, harnessStamp } from '../lib/harnessRecord'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
 
@@ -1801,9 +1802,13 @@ const listWindow = windowOf(docs.slice(0, limit), cache.served)
 console.log(`GP ${gp}: ${docs.length} Entwürfe aus dem RIS — ${windowLine(listWindow)}\n`)
 
 let drafts = 0
+/** The drafts of the list the run looked at, and those it could not read, with why — the record's reach. */
+let requested = 0
+const unreached: { id: string; cause: string }[] = []
 for (const doc of docs.slice(0, limit)) {
   const label = `${doc?.Data?.Metadaten?.Bundesrecht?.Begut?.Begutachtungsverfahrennummer ?? ''} ${doc?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? ''} ${doc?.Data?.Metadaten?.Bundesrecht?.Titel ?? ''}`
   if (only && !label.toLowerCase().includes(only.toLowerCase())) continue
+  requested++
   try {
     const result = await inject(doc)
     if (!result) continue
@@ -1811,6 +1816,7 @@ for (const doc of docs.slice(0, limit)) {
     console.log(`  ·  ${result.cite.padEnd(9)} ${String(result.judged).padStart(3)} bestätigte Paragraphen, ${String(result.injected).padStart(3)} davon mit Injektionsstelle`)
   } catch (err) {
     console.log(`  ?  ${String(doc?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '?').slice(0, 9).padEnd(9)} ${String(err).slice(0, 90)}`)
+    unreached.push({ id: String(doc?.Data?.Metadaten?.Technisch?.ID ?? label.trim()), cause: String(err).slice(0, 200) })
   }
 }
 
@@ -1927,7 +1933,10 @@ if (jsonPath) {
   const keyOf = (label: string): string => label.trim().split(/\s+/)[0]!
   const floored = new Set<object>([oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, ...flooredWordClasses])
   const out = {
-    at: new Date().toISOString(),
+    ...harnessStamp(),
+    // Of the drafts of the list, every one whose reading threw; a draft
+    // without an annex on this path is read and not counted in `drafts`.
+    ...corpusReach(requested, unreached),
     gp,
     path: xmlMode ? 'table' : 'pdf',
     window: listWindow,

@@ -61,6 +61,7 @@ import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { flattenRisRecord } from '../../server/utils/ris/risRecord'
 import { absatzSequence, standingUnitsOf, oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { installFetchCache } from '../lib/harnessCache'
+import { harnessStamp } from '../lib/harnessRecord'
 import { renditionOfPages, witnessVerdict, type DraftRendition } from '../../server/utils/kons/draftWitness'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
@@ -1132,11 +1133,14 @@ if (cases.length === 0) {
 }
 
 const verdicts: Verdict[] = []
+/** The Bundesgesetzblätter the run could not read at all, with why — the record's `unreached`. */
+const unreached: { id: string; cause: string }[] = []
 for (const c of cases) {
   try {
     verdicts.push(...(await verify(c.id, c.law)))
   } catch (err) {
     console.log(`\n${c.id}: ${String(err)}`)
+    unreached.push({ id: c.id, cause: String(err).slice(0, 200) })
   }
 }
 
@@ -1268,8 +1272,16 @@ for (const v of verdicts.filter((x) => x.note)) console.log(`  ? ${v.bgbl}${v.ar
  */
 const jsonFile = argAssigned('json')
 if (jsonFile) {
+  const missed = new Set(unreached.map((u) => u.id))
   const record = {
-    at: new Date().toISOString(),
+    ...harnessStamp(),
+    // The corpus asked for (`--discover=N` asks for N, however many the
+    // discovery found) and the Bundesgesetzblätter read, by id.
+    requested: wanted ?? cases.length,
+    reached: cases.length - unreached.length,
+    unreached,
+    requestedIds: cases.map((c) => c.id),
+    reachedIds: cases.map((c) => c.id).filter((id) => !missed.has(id)),
     corpus: { bgbl: bgblCount, laws: scored.length, packages },
     checked: sum((v) => v.checked),
     identical: sum((v) => v.identical),

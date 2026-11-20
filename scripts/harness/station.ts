@@ -64,6 +64,7 @@ import { completeness, headingBreaches, reconstructionBreaches, residuesOf, symm
 import { fetchRisBegutCorpus } from '../lib/corpus'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
+import { corpusReach, harnessStamp, type CorpusReach, type HarnessStamp } from '../lib/harnessRecord'
 import { PARLIAMENT, RIS_API, getJson as fetchJson, getText as fetchText, type HttpOptions } from '../lib/http'
 
 if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
@@ -172,7 +173,7 @@ function pairInput(d: Draft, from: LawStationId, to: LawStationId) {
   return { f, t, options: { keepAddedLaws, keepDroppedLaws: keepAddedLaws && d.rvCount === 1, beyondCeiling: true } }
 }
 
-interface Record_ {
+interface Record_ extends Partial<HarnessStamp>, Partial<CorpusReach> {
   gp: string
   drafts: number
   pairs: number
@@ -214,14 +215,17 @@ const risXmlOf = async (inr: number): Promise<string | null> => {
 const slow: { pair: string; ms: number }[] = []
 /** The pieces of every changed unit, kept in memory for the lines that moved against a baseline. */
 const piecesOf = new Map<string, string[]>()
+/** The drafts of list 81 that could not be loaded, with why. */
+const unreached: { id: string; cause: string }[] = []
 const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
-for (const inr of numbers) {
-  if (only && inr !== only) continue
+const requested = numbers.filter((inr) => !only || inr === only)
+for (const inr of requested) {
   let d: Draft | null
   try {
     d = await loadDraft(inr, risXmlOf)
   } catch (err) {
     console.log(`  ${inr}/ME: nicht geladen — ${String(err).slice(0, 160)}`)
+    unreached.push({ id: `${inr}/ME`, cause: String(err).slice(0, 200) })
     continue
   }
   if (!d) continue
@@ -304,7 +308,9 @@ const slowest = slow.sort((x, y) => y.ms - x.ms).slice(0, 5)
 console.log(`\n── Dauer: die langsamsten Paare (diffLawPackage) — ${slowest.map((x) => `${x.pair} ${Math.round(x.ms)} ms`).join(' · ')}`)
 
 if (jsonPath) {
-  writeFileSync(jsonPath, `${JSON.stringify(record, null, 1)}\n`)
+  // The drafts of the list asked for and loaded: a draft that reached no
+  // Regierungsvorlage is loaded and not compared, one that threw is not loaded.
+  writeFileSync(jsonPath, `${JSON.stringify({ ...harnessStamp(), ...corpusReach(requested.length, unreached), ...record }, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonPath}`)
 }
 

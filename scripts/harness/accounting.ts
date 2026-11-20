@@ -69,6 +69,7 @@ import { KONS_MAX_PARAGRAPHS, annexKeepsUnit, consolidationBalance } from '../..
 import { showsInstructedChange, type Lesefassung } from '../../app/utils/lesefassung'
 import { annexParas, groupAnnexRows, placeAtParagraphs, type ParaPlacement } from '../../app/utils/annexGroups'
 import { argAssigned } from '../lib/args'
+import { corpusReach, harnessStamp } from '../lib/harnessRecord'
 
 const BASE = argAssigned('base') ?? process.env.BASE ?? 'http://localhost:3000'
 const GP = argAssigned('gp') ?? 'XXVIII'
@@ -107,6 +108,8 @@ interface DraftReport {
   /** Of `shown`, those shown on the draft's own text where the annex did not confirm them (`draftWitness`). */
   witnessed: number
   notRun: string | null
+  /** Whether `/konsolidiert` answered at all; a draft it did not answer counts 0 of 0 and is no measurement. */
+  answered: boolean
   causes: Record<string, number>
   /** Hard failures, as sentences. */
   failures: string[]
@@ -129,6 +132,7 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
     citation,
     annex: !annex?.available ? 'keine' : annex.readFrom === 'pdf' ? 'pdf' : 'tabelle',
     touched: kons?.touched ?? 0, shown: kons?.paragraphs.length ?? 0, witnessed: kons?.paragraphs.filter((p) => p.draftWitness).length ?? 0, notRun: kons?.notRun ?? null,
+    answered: kons !== null,
     causes: {}, failures: [], notFound: [], unplaced: [], twoVerdicts: [],
     explanationsUnplaced: 0, explanationsTotal: 0,
   }
@@ -260,5 +264,8 @@ console.log(`zwei Urteile (Beilage zurückgehalten, Lesefassung bestätigt): ${s
 console.log(`Begründungen ohne §-Block: ${sum((r) => r.explanationsUnplaced)} von ${sum((r) => r.explanationsTotal)}`)
 console.log(failures.length ? `\n✗ ${failures.length} Verletzungen:\n${failures.map((f) => `  ${f}`).join('\n')}` : '\n✓ keine Verletzung')
 
-if (JSON_OUT) writeFileSync(JSON_OUT, `${JSON.stringify({ gp: GP, base: BASE, at: new Date().toISOString(), reports }, null, 1)}\n`)
+// The stamp names the checkout this script runs in. The server it asks is
+// measured as it runs: the same code only when it runs from this checkout.
+const unreached = reports.filter((r) => !r.answered).map((r) => ({ id: r.citation, cause: 'keine Antwort von /konsolidiert' }))
+if (JSON_OUT) writeFileSync(JSON_OUT, `${JSON.stringify({ gp: GP, base: BASE, ...harnessStamp(), ...corpusReach(drafts.length, unreached), reports }, null, 1)}\n`)
 process.exit(failures.length ? 1 : 0)
