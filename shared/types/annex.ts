@@ -91,6 +91,14 @@ export interface ConsolidatedParagraph {
    * comes from.
    */
   annexLaw: string | null
+  /**
+   * Set where the annex did not confirm this § and the draft's own
+   * Gesetzestext settled it instead (`server/utils/kons/draftWitness.ts`,
+   * 20.11.2026): each place where the annex reads otherwise, both wordings
+   * with a few words around them. Absent on a § the annex confirms — and a
+   * § carrying it is never counted as confirmed by the annex.
+   */
+  draftWitness?: { annex: string; draft: string }[]
 }
 
 /**

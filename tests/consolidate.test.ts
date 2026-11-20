@@ -3,6 +3,7 @@ import { annexKeepsUnit, consolidate, consolidationBalance, type KonsSources } f
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 import type { KonsLawAtDate } from '../server/utils/ris/konsLaw'
+import { renditionOfPages } from '../server/utils/kons/draftWitness'
 
 /**
  * The engine run behind the page's Lesefassung, end to end, on a draft small
@@ -317,5 +318,52 @@ describe('consolidate — no ceiling on laws (19.11.2026)', () => {
     expect(r.touched).toBe(41)
     expect(r.withheld).toEqual([])
     expect(r.paragraphs).toHaveLength(41)
+  })
+})
+
+describe('consolidate — the draft\'s own Gesetzestext as a second witness (20.11.2026)', () => {
+  const T = 'Änderung des Testgesetzes'
+  const blocks = draft(artikel('1', T, '<absatz typ="novao1">1. Dem &sect; 5 wird folgender Abs. 3 angef&uuml;gt:</absatz><absatz typ="abs">&bdquo;(3) Drei gilt ab dem Jahr 2024 f&uuml;r alle.&ldquo;</absatz>'))
+  // The annex prints another year than the draft: 4/ME XXVIII, GenG § 94m („30. Juni 2024" against „2025").
+  const rows = [pair(T, '§ 5. (1) bis (2) …', '§ 5. (1) bis (2) …', '§ 5.', true), pair(T, '', '(3) Drei gilt ab dem Jahr 2025 für alle.', null)]
+  const pdf = (year: string) => async () => renditionOfPages([`1 von 1\nArtikel 1\n1. Dem § 5 wird folgender Abs. 3 angefügt:\n„(3) Drei gilt ab dem Jahr ${year} für alle.“`])
+
+  it('shows the § where the draft\'s PDF carries our wording and not the annex\'s, with both at the place', async () => {
+    const r = await consolidate(who, blocks, '2026-01-01', { ...sources(rows), draftRendition: pdf('2024') })
+    expect(r.paragraphs.map((p) => p.id)).toEqual(['5'])
+    expect(r.paragraphs[0]!.draftWitness).toEqual([{ annex: 'ab dem Jahr 2025 für alle.', draft: 'ab dem Jahr 2024 für alle.' }])
+    expect(consolidationBalance(r).balanced).toBe(true)
+  })
+
+  it('withholds it where the PDF carries the annex\'s wording — then our reading is the one in doubt', async () => {
+    const r = await consolidate(who, blocks, '2026-01-01', { ...sources(rows), draftRendition: pdf('2025') })
+    expect(r.paragraphs).toEqual([])
+    expect(r.withheld).toEqual([{ id: '5', annexLaw: T, cause: 'anhang-widerspricht' }])
+  })
+
+  it('withholds it without a second rendition, and never marks a confirmed § as witnessed', async () => {
+    const without = await consolidate(who, blocks, '2026-01-01', sources(rows))
+    expect(without.withheld.map((w) => w.cause)).toEqual(['anhang-widerspricht'])
+    const confirming = [rows[0]!, pair(T, '', '(3) Drei gilt ab dem Jahr 2024 für alle.', null)]
+    const confirmed = await consolidate(who, blocks, '2026-01-01', { ...sources(confirming), draftRendition: pdf('2024') })
+    expect(confirmed.paragraphs.map((p) => [p.id, p.draftWitness])).toEqual([['5', undefined]])
+  })
+
+  /** § 5 with an Absatz long enough to tie a place on both sides. */
+  const PARA_LONG = PARA_5.replace('(1) Eins gilt.', '(1) Im ganzen Land gilt Eins für alle Zeit.').replace('(2) Zwei gilt.', '(2) Nach dem Gesetz gilt Zwei für alle Fälle.')
+  const replacing = draft(artikel('1', T, '<absatz typ="novao1">1. In &sect; 5 Abs. 2 wird das Wort &bdquo;Zwei&ldquo; durch das Wort &bdquo;Vier&ldquo; ersetzt.</absatz>'))
+  const line = async () => renditionOfPages(['1. In § 5 Abs. 2 wird das Wort „Zwei“ durch das Wort „Vier“ ersetzt.'])
+
+  it('withholds a place where the annex keeps the very words the instruction replaces: where the draft\'s text goes is the annex\'s to judge', async () => {
+    const keeps = [pair(T, '§ 5. (1) Im ganzen Land gilt Eins für alle Zeit.', '§ 5. (1) Im ganzen Land gilt Eins für alle Zeit.', '§ 5.', true), pair(T, '(2) Nach dem Gesetz gilt Zwei für alle Fälle.', '(2) Nach dem Gesetz gilt Zwei für alle Fälle.', null)]
+    const r = await consolidate(who, replacing, '2026-01-01', { ...sources(keeps), paragraphXml: async () => PARA_LONG, draftRendition: line })
+    expect(r.withheld.map((w) => w.cause)).toEqual(['anhang-widerspricht'])
+  })
+
+  it('withholds a place in text the draft does not supply', async () => {
+    // The annex changes words of Abs. 1 the draft leaves standing.
+    const other = [pair(T, '§ 5. (1) Im ganzen Land gilt Eins für alle Zeit.', '§ 5. (1) Im ganzen Land gilt Eins nicht für alle Zeit.', '§ 5.'), pair(T, '(2) Nach dem Gesetz gilt Zwei für alle Fälle.', '(2) Nach dem Gesetz gilt Vier für alle Fälle.', null)]
+    const r = await consolidate(who, replacing, '2026-01-01', { ...sources(other), paragraphXml: async () => PARA_LONG, draftRendition: line })
+    expect(r.withheld.map((w) => w.cause)).toEqual(['anhang-widerspricht'])
   })
 })

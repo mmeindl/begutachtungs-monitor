@@ -41,6 +41,7 @@ import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, type AnnexSource
 import { getRisConsultation } from '../ris/risOnly'
 import type { DraftIdentity } from '../ris/draftIdentity'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
+import { draftRenditionOf } from './draftRendition'
 
 /**
  * The page's sources for `consolidate`: the two cached RIS lookups
@@ -48,8 +49,11 @@ import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
  * choice. Nothing is caught here — a failure throws through and is not
  * cached (`KonsSources`).
  */
-function konsSources(annex: (articles: readonly DraftArticle[]) => Promise<AnnexSource | string>): KonsSources {
+function konsSources(annex: (articles: readonly DraftArticle[]) => Promise<AnnexSource | string>, draftPdf: string | null): KonsSources {
   return {
+    // The second witness's reading of the draft: its PDF in the same RIS
+    // record (`kons/draftRendition.ts`).
+    draftRendition: () => draftRenditionOf(draftPdf),
     resolveLaw: (organ, nummer, date, title, clause) => resolveKonsLaw(organ, nummer, date, title, clause),
     paragraphXml: (ref) => fetchParagraphXml(ref.nor, ref.xmlUrl!),
     annexRows: async (articles) => {
@@ -78,7 +82,7 @@ export const getConsolidatedText = defineCachedFunction(
     const { blocks } = await getDraftArticles(gp, inr, 'ris-xml')
     // The same source as the section above, out of the same function: RIS
     // first, Parliament as the fallback (`annex/textComparisonService.ts`).
-    return consolidate(who, blocks, asOf, konsSources((articles) => annexSourceForDraft(gp, inr, annexDocumentsOf(row), articles)))
+    return consolidate(who, blocks, asOf, konsSources((articles) => annexSourceForDraft(gp, inr, annexDocumentsOf(row), articles), row.risDocument?.pdf ?? null))
   },
   { name: 'kons-text', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
@@ -102,7 +106,7 @@ export const getRisConsolidatedText = defineCachedFunction(
     if (!xmlUrl) return emptyConsolidated(who, 'kein-xml')
     const documents = annexDocumentsOf(detail)
     const { blocks } = await draftArticlesOfXml(xmlUrl)
-    return consolidate(who, blocks, asOf, konsSources((articles) => annexSourceFor(documents, articles)))
+    return consolidate(who, blocks, asOf, konsSources((articles) => annexSourceFor(documents, articles), detail.mainDocument.pdf))
   },
   { name: 'kons-text-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
