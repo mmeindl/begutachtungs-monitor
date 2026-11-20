@@ -447,6 +447,24 @@ const FUNCTION_WORDS = new Set('der die das dem den des in im'.split(' '))
  */
 const NUMBER_RE = /^\(?\d+[a-z]?\.?\)?$|^\d{1,2}\.\d{1,2}\.\d{4}\.?$|^\d+\/\d+\.?$|^[ivxlc]+\.?$|^[a-z]\)?\.?$/i
 const PUNCT_RE = /^[\p{P}\p{S}]+$/u
+/**
+ * The signs that stand for a word although Unicode files them as punctuation
+ * or symbol: every mathematical sign (`\p{Sm}`: „<", „>", „=", „+", „±",
+ * „−"), every currency sign (`\p{Sc}`: „€", „$"), and „%", „‰" and „°".
+ *
+ * **A changed sign is a changed word, since 20.11.2026.** Inside `PUNCT_RE`
+ * they were `punct`, and a run of punctuation never ends the editorial
+ * verdict: „5 %" → „5 ‰", „> 50 mg" → „< 50 mg", „+ 2 mm" → „− 2 mm" and
+ * „500 €" → „500 %" were all badged „redaktionell" and left out of the
+ * change share. Measured over every unit text of the station pairs of
+ * GP XXVIII and the RIS reading of the drafts: these signs stand alone as a
+ * token 843 times — „€" (with its trailing marks) 642, „%" 170, „=" 12,
+ * „±" 10, „>" 6, „+" 3 — and every one is the substance of its sentence
+ * („138,4 €", „bis zu 5 %", „90 ± 30 Impulsen", „Eiweißausscheidung > 1g/l",
+ * „ERef = 5 kV/m"). None of them is layout in these sources, so none is left
+ * out; the list bullet „•" is layout and is `\p{Po}`, which stays `punct`.
+ */
+const WORD_SIGN_RE = /[\p{Sm}\p{Sc}%‰°]/u
 /** A German numeric date, "1.1.2027" or "26.06.2024" — day, month, year. */
 const DATE_RE = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/
 /** The sentence's closing punctuation, which belongs to the sentence and not to the number. */
@@ -503,7 +521,7 @@ function classifyToken(raw: string): TokenClass {
   const t = bare(raw)
   if (!t) return 'punct'
   if (CITATION_WORDS.has(t)) return 'citation' // before punct: "§" is a punctuation character
-  if (PUNCT_RE.test(t)) return 'punct'
+  if (PUNCT_RE.test(t)) return WORD_SIGN_RE.test(t) ? 'word' : 'punct'
   if (isPlaceholder(t)) return 'placeholder' // before NUMBER_RE: "xx" also reads as a roman numeral
   if (NUMBER_RE.test(t)) return 'number'
   if (CONNECTIVES.has(t)) return 'connective'

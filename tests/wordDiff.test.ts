@@ -247,6 +247,34 @@ describe('editorial vs substantive', () => {
     // A glued REAL number replaced by another is still a different Fundstelle.
     expect(isEditorialChange(seg('BGBl. I Nr.12/2024 gilt', 'BGBl. I Nr. 50/2025 gilt'))).toBe(false)
   })
+  it('a changed sign is a changed word: mathematical and currency signs, %, ‰ and ° (20.11.2026)', () => {
+    // Filed as punctuation by their Unicode class, each of these read
+    // „redaktionell" alone. Over the station pairs of GP XXVIII every such
+    // sign standing as a token is the substance of its sentence („138,4 €",
+    // „5 %", „90 ± 30", „Eiweißausscheidung > 1g/l", „ERef = 5 kV/m").
+    expect(isEditorialChange(seg('beträgt höchstens 5 % jährlich', 'beträgt höchstens 5 ‰ jährlich'))).toBe(false)
+    expect(isEditorialChange(seg('Eiweißausscheidung > 50 mg', 'Eiweißausscheidung < 50 mg'))).toBe(false)
+    expect(isEditorialChange(seg('eine Toleranz von + 2 mm', 'eine Toleranz von − 2 mm'))).toBe(false)
+    expect(isEditorialChange(seg('ERef = 5 kV/m', 'ERef ≠ 5 kV/m'))).toBe(false)
+    expect(isEditorialChange(seg('mit 90 ± 30 Impulsen', 'mit 90 + 30 Impulsen'))).toBe(false)
+    expect(isEditorialChange(seg('Gebühr von 500 € zu zahlen', 'Gebühr von 500 % zu zahlen'))).toBe(false)
+    expect(isEditorialChange(seg('Gebühr von 500 €. Sie', 'Gebühr von 500 $. Sie'))).toBe(false)
+    expect(isEditorialChange(seg('geneigt um 5 ° nach', 'geneigt um 5 nach'))).toBe(false)
+    // A sign inside quotation marks or brackets is the same sign.
+    expect(isEditorialChange(seg('Hypertonie (> 140/90mmHg)', 'Hypertonie (< 140/90mmHg)'))).toBe(false)
+    expect(isEditorialChange(seg('der Betrag "100 €" durch', 'der Betrag "100 %" durch'))).toBe(false)
+  })
+  it('punctuation, quotation marks, a bullet and a filled placeholder stay editorial beside the signs (20.11.2026)', () => {
+    // A comma for a semicolon behind a designation: the number stays the number.
+    expect(isEditorialChange(seg('nach Abs. 1 Z 2; und', 'nach Abs. 1 Z 2, und'))).toBe(true)
+    // A quotation mark or a full stop one side sets alone.
+    expect(isEditorialChange(seg('tritt mit 1. Juli 2026 in Kraft. "', 'tritt mit 1. Juli 2026 in Kraft.'))).toBe(true)
+    expect(isEditorialChange(seg('Abs. 2 lautet: » § 5 gilt', 'Abs. 2 lautet: § 5 gilt'))).toBe(true)
+    // A list bullet is layout (43/ME § 61, „anhand folgender Formel: •").
+    expect(isEditorialChange(seg('folgender Formel: • B', 'folgender Formel: B'))).toBe(true)
+    // The Fundstelle filled at promulgation.
+    expect(isEditorialChange(seg('BGBl. I Nr. xxx/2026 tritt', 'BGBl. I Nr. 31/2026 tritt'))).toBe(true)
+  })
 })
 
 describe('isAddressOnlyDifference', () => {
