@@ -19,6 +19,18 @@ describe('explanationParaId', () => {
   })
 })
 
+// 18/ME and 116/ME XXVIII: the ZPO's and the JN's designation. The oracle
+// reads it through this function since 20.11.2026, so the page does too.
+describe('„§. 39." — the full stop after the sign', () => {
+  it('is a § designation, on both sides of the annex', () => {
+    expect(explanationParaId('§. 39.')).toBe('39')
+    expect(explanationParaId('§. 517.')).toBe('517')
+    expect(annexUnitId('§. 320.')).toBe('320')
+    // A soft hyphen the text layer left between sign and number is no character a reader sees.
+    expect(explanationParaId('§\u00ad 5.')).toBe('5')
+  })
+})
+
 describe('explanationKey', () => {
   it('trägt das leere Gesetz als echten Wert', () => {
     expect(explanationKey(null, '5')).toBe('#5')

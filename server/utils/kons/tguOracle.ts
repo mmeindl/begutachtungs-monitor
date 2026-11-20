@@ -48,6 +48,7 @@ import { punctuationTokens } from '../text/punctuationTokens'
 import { isSchedule, unitKey } from '../text/designation'
 import { bodyText, type LawNode } from '../lawtext/konsTree'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+import { explanationParaId } from '../../../shared/utils/explanationKey'
 import { expandRange } from './novao'
 
 export type OracleVerdict =
@@ -70,16 +71,6 @@ export interface OracleReport {
 }
 
 /**
- * „§ 6.01a.", „§ 365m1." at the start of a Gliederungssymbol, read whole as
- * every reader reads a § number (`PARAGRAPH_NUMBER`) — and „§. 517.", the
- * full stop after the sign with which RIS prints the §§ of the ZPO and the
- * Jurisdiktionsnorm (20.11.2026). The PDF reader has opened such a § since
- * 19.11.2026 (`UNIT_RE` in `annex/annexPdf.ts`); unread here, its rows stayed
- * in the § above: ZPO §§ 517 and 518 were held against § 501 (116/ME XXVIII).
- */
-const GLD_PARAGRAPH_RE = new RegExp(String.raw`^§+\.?\s*(${PARAGRAPH_NUMBER})`)
-
-/**
  * "§ 5." → "5", "§ 12a." → "12a"; null for anything else.
  *
  * The annex's own Gliederungssymbol, anchored at the start of it — not
@@ -96,8 +87,14 @@ function paraIdOf(gld: string | null): string | null {
   // Wasserstraßen-Verkehrsordnung's „§ 8.03") is keyed so on the address
   // side (`unitKey`), and read as „2" here every § of a Kapitel fell into
   // one (26.10.2026).
-  const m = GLD_PARAGRAPH_RE.exec(t)
-  if (m) return m[1]!
+  //
+  // Read by the reader the page reads a § block with (`explanationParaId`):
+  // „§. 517.", the full stop after the sign with which RIS prints the §§ of
+  // the ZPO and the Jurisdiktionsnorm, among it. A pattern of its own here
+  // learnt that form alone, and the page could not find the confirmed §§'
+  // rows (20.11.2026).
+  const id = explanationParaId(t)
+  if (id) return id
   // A schedule names itself, and it is a unit of the law like any other:
   // „Anlage 1", „Anhang". Keyed under `unitKey` so it meets the address side
   // under the same name — 11 rows in 2 of the 10 Entwürfe whose instructions
@@ -503,7 +500,7 @@ function isHeadingRow(row: ComparisonRow, next?: ComparisonRow): boolean {
   return cells.length > 0 && cells.every((c) => (c.length <= 120 || (typed && !isGroupHeadingOnly(c))) && ends(c))
 }
 
-/** „§. 39." — the sign with its own full stop, the form of the oldest laws RIS prints (`GLD_PARAGRAPH_RE`). */
+/** „§. 39." — the sign with its own full stop, the form of the oldest laws RIS prints (`explanationParaId`). */
 const OLD_STYLE_GLD_RE = /^§+\.\s*\d/
 
 /**

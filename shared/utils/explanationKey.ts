@@ -18,16 +18,30 @@
 import { PARAGRAPH_NUMBER } from './paragraphNumber'
 import { scheduleNumber } from './scheduleNumber'
 
-/** „§ 6.01a" at the start of a designation, its number read as every reader reads it (`PARAGRAPH_NUMBER`). */
-const DESIGNATION_RE = new RegExp(String.raw`^\s*§+\s*(${PARAGRAPH_NUMBER})`, 'i')
+/**
+ * „§ 6.01a" at the start of a designation, its number read as every reader
+ * reads it (`PARAGRAPH_NUMBER`) — and „§. 39.", the full stop after the sign
+ * with which RIS prints the §§ of the ZPO and the Jurisdiktionsnorm.
+ *
+ * ONE READER FOR BOTH SIDES OF THE ANNEX (20.11.2026). The oracle files an
+ * annex row under its § through this function (`paraIdOf` in
+ * `server/utils/kons/tguOracle.ts`), and the page finds the outcome for a §
+ * block through it (`annexUnitId`). Until then each had its own pattern, and
+ * the oracle learnt „§. 39." alone: JN § 39, Notariatsordnung § 154 and ZPO
+ * §§ 320, 517, 518 (18/ME and 116/ME XXVIII) were confirmed and stood at the
+ * end of their law, away from the rows that confirmed them.
+ */
+const DESIGNATION_RE = new RegExp(String.raw`^\s*§+\.?\s*(${PARAGRAPH_NUMBER})`, 'i')
+/** Characters no reader sees (the soft hyphen, bidi controls) — `normalizeText` drops them on the server's side. */
+const FORMAT_CHARS_RE = /\p{Cf}/gu
 
 /**
  * Designation → number: „§ 54c." from the annex's Gliederungssymbol and
  * „§ 54c" from a passage heading both give „54c".
  *
- * The same shape as `paraIdOfGld` in `server/utils/kons/tguOracle.ts`, which
- * does the same on the annex's other side; that one lives under
- * `server/utils` and the page cannot reach it. Null where no Paragraph
+ * The oracle's `paraIdOfGld` (`server/utils/kons/tguOracle.ts`) reads a §
+ * through this very function, so the annex's two sides cannot read a
+ * designation two ways (20.11.2026). Null where no Paragraph
  * stands — an Anlage heading („Anlage 1 zu § 6 …") is not a Paragraph
  * designation and carries a „§" of all things, which is why the anchor at the
  * start is the whole rule.
@@ -43,7 +57,7 @@ export function explanationParaId(designation: string | null): string | null {
   // full stop of a plain „§ 5." is no part of it: only a digit behind the
   // point continues the number. „§ 6.01a" and „§ 365m1" whole, as every
   // reader reads it (`PARAGRAPH_NUMBER`).
-  const m = DESIGNATION_RE.exec(designation ?? '')
+  const m = DESIGNATION_RE.exec((designation ?? '').replace(FORMAT_CHARS_RE, ''))
   return m ? m[1]!.toLowerCase() : null
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheld, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
 import { annexUnitId } from '#shared/utils/explanationKey'
+import { paraIdOfGld } from '../server/utils/kons/tguOracle'
 import { annexParas, groupAnnexRows, placeAtParagraphs } from '../app/utils/annexGroups'
 import {
   lesefassungLine,
@@ -200,5 +201,34 @@ describe('the sentences', () => {
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-fremd' }, 'standing')).toBe(true)
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-fremd' }, 'alreadyStanding')).toBe(false)
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-widerspricht' }, 'standing')).toBe(false)
+  })
+})
+
+/*
+ * ONE READER FOR THE ORACLE AND THE PAGE (20.11.2026). The oracle confirms a
+ * § against the annex rows it files under that §; the page has to find the
+ * same rows for it, or the confirmed § stands at the end of its law, away
+ * from them (`scripts/harness/accounting.ts`, `ortlos`). Fixtures cut from
+ * the rows the server sent for 18/ME and 127/ME XXVIII.
+ */
+describe('placeAtParagraphs — the block the oracle confirmed a § against', () => {
+  // 18/ME XXVIII: RIS prints the §§ of the Jurisdiktionsnorm with a full stop
+  // after the sign. The oracle read „§. 39." since 20.11.2026, the page did not.
+  it('finds „§. 39." as the oracle files it, with its Begründung (18/ME XXVIII, JN § 39)', () => {
+    const law = 'Änderung der Jurisdiktionsnorm'
+    const rows = [
+      row('§ 15.', { law, gld: null, current: '(5) ...', proposed: '(5) ...', change: 'unchanged', elided: true }),
+      row('§. 39.', { law, heading: 'Rechtshilfe auf Ersuchen ausländischer Gerichte.', current: '(1) und (2) ...', proposed: '(1) und (2) ...', change: 'unchanged', elided: true }),
+      row('§. 39.', { law, gld: null, current: '(3) Auf die Teilnahme des ersuchenden Gerichtes an der Beweisaufnahme ist Art. 12 der Verordnung (EG) Nr. 1206/2001 …', proposed: '(3) Auf die Teilnahme des ersuchenden Gerichtes an der Beweisaufnahme ist Art. 14 der Verordnung (EU) 1783/2020 …' }),
+    ]
+    // The two sides read the designation through one function.
+    expect(paraIdOfGld('§. 39.')).toBe('39')
+    expect(annexUnitId('§. 39.')).toBe('39')
+    const begruendung: ParagraphExplanationView = { law, para: '39', heading: 'Zu Z 2 bis 5 (§§ 39 und 39a):', text: ['Die vorgeschlagenen Änderungen sind lediglich redaktioneller Natur.'] }
+    const { placement, at } = carried(rows, response([shown('39', law)], []), [begruendung])
+    // The elided § 15 above folds into no block of its own.
+    expect(at).toEqual([['39']])
+    expect(placement.byRow.get(rows[2]!)!.explanations).toEqual([begruendung])
+    expect(placement.ends.byGroup.get(law)?.outcomes ?? []).toEqual([])
   })
 })
