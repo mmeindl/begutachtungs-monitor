@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, reportHeading, summarize, toBaseline, windowLine, windowOf, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
+import { MAX_BASELINE_AGE_DAYS, MAX_WINDOW_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, reportHeading, summarize, toBaseline, windowLine, windowOf, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
 
 /**
  * The alarm itself, against invented reports.
@@ -48,6 +48,7 @@ const report = (drafts: AnnexDraftReport[], over: Partial<AnnexReport> = {}): An
   path: 'xml',
   limit: 400,
   records: 400,
+  window: { newest: '2026-09-15', oldest: '2024-04-29', listFetchedAt: '2026-09-16T08:55:00.000Z', fromCache: false },
   drafts: [...drafts, ...Array.from({ length: MIN_DRAFTS_WITH_ANNEX }, (_, i) => sound({ id: `BEGUT_F${i}`, cite: `${i}/ME` }))],
   ...over,
 })
@@ -283,5 +284,45 @@ describe('der Kopf eines Berichts', () => {
     const { window: _, ...older } = report([], { path: 'pdf' })
     expect(reportHeading(older)).toContain('PDF-Pfad')
     expect(reportHeading(older)).toContain('Fenster nicht im Bericht')
+  })
+})
+
+describe('ein Fenster, das stehen geblieben ist', () => {
+  // The list of 09.09.2026, replayed from the cache on 20.11.2026: every
+  // round in between measured it, and the alarm could not see a new draft.
+  const at = '2026-11-20T05:23:00.000Z'
+  const stale = { newest: '2026-09-08', oldest: '2024-04-29', listFetchedAt: '2026-09-09T14:49:43.948Z', fromCache: true }
+
+  it('meldet ein Fenster, dessen jüngster Beginn mehr als 35 Tage vor dem Lauf liegt', () => {
+    const found = classAFindings(report([], { at, window: stale }))
+    expect(found).toHaveLength(1)
+    expect(found[0]).toMatchObject({ kind: 'messung', draft: null })
+    expect(found[0]!.text).toMatch(/^Fenster veraltet/)
+    expect(found[0]!.text).toContain('08.09.2026, 73 Tage vor diesem Lauf')
+    expect(found[0]!.text).toContain('aus dem Cache')
+    // The reason, not only the fact: only a new draft can show a new layout.
+    expect(found[0]!.text).toContain('neue Gestalt')
+  })
+
+  it('zählt die Schwelle mit: 35 Tage sind noch kein Befund, 36 sind einer', () => {
+    expect(MAX_WINDOW_AGE_DAYS).toBe(35)
+    const window = (newest: string) => ({ ...stale, newest, fromCache: false })
+    expect(classAFindings(report([], { at, window: window('2026-10-16') }))).toEqual([])
+    expect(classAFindings(report([], { at, window: window('2026-10-15') }))[0]!.text).toMatch(/^Fenster veraltet/)
+  })
+
+  it('sagt es, wenn ein Bericht sein Fenster nicht kennt, statt es für frisch zu halten', () => {
+    const { window: _, ...older } = report([])
+    const found = classAFindings(older)
+    expect(found).toHaveLength(1)
+    expect(found[0]).toMatchObject({ kind: 'messung', draft: null })
+    expect(found[0]!.text).toMatch(/^Fenster unbekannt/)
+    const undated = classAFindings(report([], { window: { ...stale, newest: null, oldest: null } }))
+    expect(undated[0]!.text).toMatch(/^Fenster unbekannt/)
+  })
+
+  it('prüft die Entwürfe trotzdem', () => {
+    const found = classAFindings(report([sound({ cite: 'A/ME', verdictless: 1 })], { at, window: stale }))
+    expect(found.map((f) => f.kind)).toEqual(['messung', 'zusicherung'])
   })
 })

@@ -83,16 +83,16 @@ const germanDay = (iso: string): string => iso.slice(0, 10).split('-').reverse()
 const viennaDay = (instant: string): string =>
   new Intl.DateTimeFormat('de-AT', { timeZone: 'Europe/Vienna', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(instant))
 
+/** Where the list of a window came from, and when. */
+function listOrigin(window: AnnexWindow): string {
+  if (window.listFetchedAt === null) return 'Abruf der Liste unbekannt'
+  return window.fromCache ? `Liste aus dem Cache, abgerufen am ${viennaDay(window.listFetchedAt)}` : `Liste frisch abgerufen am ${viennaDay(window.listFetchedAt)}`
+}
+
 /** The window in one line, for the head of a run and of the drift report. */
 export function windowLine(window: AnnexWindow): string {
   const span = window.newest && window.oldest ? `Beginn ${germanDay(window.oldest)} bis ${germanDay(window.newest)}` : 'Beginn unbekannt'
-  const origin =
-    window.listFetchedAt === null
-      ? 'Abruf der Liste unbekannt'
-      : window.fromCache
-        ? `Liste aus dem Cache, abgerufen am ${viennaDay(window.listFetchedAt)}`
-        : `Liste frisch abgerufen am ${viennaDay(window.listFetchedAt)}`
-  return `${span}, ${origin}`
+  return `${span}, ${listOrigin(window)}`
 }
 
 /** What a draft came to in the harness, without the calibration data. */
@@ -202,6 +202,24 @@ export interface Finding {
 export const MIN_DRAFTS_WITH_ANNEX = 60
 
 /**
+ * How far the newest Beginn of a window may lie before the run.
+ *
+ * The alarm is built to notice a ressort setting its annex differently, and
+ * only a new draft can show that. A window that does not move measures the
+ * same drafts every week and stays green whatever the ressorts do — which is
+ * what it did from 09.09.2026 on, when the harness cache froze the list
+ * (newest Beginn 08.09.2026, 73 days before 20.11.2026).
+ *
+ * 35 days, measured: over the 2.630 distinct Beginn dates of the cached Begut
+ * corpus (17.12.2003 to 17.09.2026) the longest stretch without a new one is
+ * 26 days, 28.02. to 26.03.2025, the government formation; the next ones are
+ * 21 days around New Year. A weekly run therefore sees a Beginn under 27
+ * days old even in the quietest stretch on record, and 35 leaves a week
+ * over that before the alarm calls a quiet month a stale window.
+ */
+export const MAX_WINDOW_AGE_DAYS = 35
+
+/**
  * Class A: every finding that stands without a baseline.
  *
  * The order is deliberate — first whether anything was measured at all, then
@@ -224,6 +242,23 @@ export function classAFindings(report: AnnexReport, baseline: AnnexBaseline | nu
     )
     // Carry on, do not return: the drafts that are there get checked all the
     // same — half a corpus can very well show a real break.
+  }
+
+  // Whether the run could have seen a new draft at all. Measured against the
+  // run (`at`), not the clock, so a report reads the same when re-read later.
+  // A report that does not say its window is not taken for a fresh one.
+  const window = report.window
+  if (!window?.newest) {
+    run('messung', 'Fenster unbekannt: der Bericht nennt den Beginn seiner Entwürfe nicht. Ob der Lauf einen neuen Entwurf sehen konnte — und mit ihm eine neue Gestalt der Beilage —, ist nicht zu beurteilen.')
+  } else {
+    const days = Math.floor((Date.parse(report.at) - Date.parse(`${window.newest}T00:00:00Z`)) / 86_400_000)
+    if (days > MAX_WINDOW_AGE_DAYS) {
+      run(
+        'messung',
+        `Fenster veraltet: der jüngste Entwurf des Laufs beginnt am ${germanDay(window.newest)}, ${days} Tage vor diesem Lauf (Schwelle ${MAX_WINDOW_AGE_DAYS} Tage; ${listOrigin(window)}). ` +
+        'Eine neue Gestalt der Beilage kann nur ein neuer Entwurf zeigen — über diesem Fenster sieht der Alarm sie nicht, und „ohne Befund" hieße nur: dieselben Entwürfe wie zuletzt.',
+      )
+    }
   }
 
   for (const d of report.drafts) {
