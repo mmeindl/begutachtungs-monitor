@@ -28,6 +28,9 @@
  * PURE: RIS records, § XML and the Landesgesetzblatt's units come in.
  */
 import type { LawUnit, TextBlock } from '../lawtext/lawUnits'
+import { normalizeText, stripMarkup } from '../lawtext/normalize'
+import { decodeEntities } from '../parliament/htmlText'
+import { FIGURE_MARK } from '../../../shared/utils/figureMark'
 import { lgblWords } from './lgblSearch'
 
 /** One version of a § in RIS's consolidated Landesrecht. */
@@ -133,12 +136,22 @@ export function pairOf(neu: LandKonsVersion, history: readonly LandKonsVersion[]
   return same.some((v) => v.from !== null && v.from < neu.from!) ? { kind: 'unpaired', why: 'gap' } : { kind: 'new' }
 }
 
-const decode = (s: string) => s
-  .replace(/<[^>]+>/g, ' ')
-  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
-  .replace(/&nbsp;|&#160;/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim()
+/** RIS's image element; its `<src>` path is no text (`konsTree.ts`, `risXml.ts`). */
+const BINARY_RE = /<binary\b[^>]*?(?:\/>|>[\s\S]*?<\/binary\s*>)/g
+
+/**
+ * An element's text, read as the Bund's reader of the same consolidated XML
+ * reads it (`text` in `konsTree.ts`, 20.11.2026): through the shared
+ * `stripMarkup`, so „<gt />" and „<lt />" stay signs, inline markup joins
+ * its word, and an image is named (`FIGURE_MARK`). Until then this reader
+ * stripped every tag itself: a change made only in „>" or „<" read
+ * „unverändert", and an image's file path stood as words, which the
+ * comparison's cleaning then dropped (`comparedText`) — the image gone with
+ * no „[Abbildung]" and no sentence that images are not compared.
+ */
+const decode = (s: string) => normalizeText(decodeEntities(stripMarkup(
+  s.replace(BINARY_RE, ` ${FIGURE_MARK} `).replace(/<gdash\s*\/>/g, '-').replace(/<nbsp\s*\/>/g, ' ').replace(/<amp\s*\/>/g, '&amp;'),
+)))
 
 /**
  * RIS's own notes on which Landesgesetzblätter shaped a passage — „(Anm:

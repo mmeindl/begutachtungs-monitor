@@ -82,7 +82,8 @@ describe('konsUnit', () => {
       '<absatz typ="abs" ct="text">(3) entfallen <i>(Anm: entfallen auf Grund LGBl Nr 103/2022)</i></absatz>' +
       '<absatz typ="abs" ct="text">(16) In der Fassung der 16. Novelle, LGBl. Nr. 103/2018, treten § 26 und § 29 in Kraft.</absatz></nutzdaten>'
     expect(konsUnit(xml, { key: '§5', law: 'X' }, 'X')!.blocks.map((b) => b.text)).toEqual([
-      '(1) Der Fonds trägt die Bezeichnung „Fonds“.',
+      // The shared reader folds the quotation marks, as the Bund's does (`normalizeText`); the comparison drops them (`comparedText`).
+      '(1) Der Fonds trägt die Bezeichnung "Fonds".',
       '(3) entfallen (Anm: entfallen auf Grund LGBl Nr 103/2022)',
       '(16) In der Fassung der 16. Novelle, LGBl. Nr. 103/2018, treten § 26 und § 29 in Kraft.',
     ])
@@ -95,5 +96,16 @@ describe('konsUnit', () => {
     expect(old.text).toBe('(9) Ansprüche sind a) gegenüber dem Land binnen sechs Monaten, b) gegenüber dem Belästiger binnen drei Jahren gerichtlich geltend zu machen. Die Frist beginnt mit der Beendigung. Die Frist ist gewahrt.')
     const neu = konsUnit(xml('Die Frist beginnt mit der Kenntnis.'), { key: '§23', law: 'X' }, 'X')!
     expect(diffLandDraft([old], [neu]).map((u) => u.change)).toEqual(['changed'])
+  })
+  it('reads the text through the shared RIS reader: signs, images and inline markup as the Bund’s readers do (20.11.2026)', () => {
+    const xml = (sign: string) => `<nutzdaten><absatz typ="abs" ct="text">(1) Die Abgabe beträgt bei Flächen <${sign} /> 500 m<super>2</super> ein Prozent; CO<sub>2</sub>-Ausstoß, Bau<gdash />Ordnung &amp; Recht.</absatz>` +
+      '<absatz typ="abs" ct="text">(2) Das Muster: <binary nr="1" shapetype="is" datatype="png"><src>/Dokumente/Landesnormen/LST40032790/hauptdokument.img1is.png</src></binary> gilt.</absatz></nutzdaten>'
+    const gt = konsUnit(xml('gt'), { key: '§5', law: 'X' }, 'X')!
+    expect(gt.blocks.map((b) => b.text)).toEqual([
+      '(1) Die Abgabe beträgt bei Flächen > 500 m 2 ein Prozent; CO2-Ausstoß, Bau-Ordnung & Recht.',
+      '(2) Das Muster: [Abbildung] gilt.',
+    ])
+    // A change made only in the sign is a change.
+    expect(diffLandDraft([gt], [konsUnit(xml('lt'), { key: '§5', law: 'X' }, 'X')!]).map((u) => u.change)).toEqual(['changed'])
   })
 })
