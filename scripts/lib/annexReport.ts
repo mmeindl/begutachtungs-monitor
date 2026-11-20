@@ -39,6 +39,62 @@
  * today.
  */
 
+/**
+ * Which drafts a run measured: the span of their `BeginnBegutachtungsfrist`
+ * and where the list came from.
+ *
+ * Until 20.11.2026 no run said it, and every annex and fault-injection round
+ * from 09.09.2026 on measured the list of that day — the harness cache
+ * served the constant list URL for ever, newest Beginn 08.09.2026. A window
+ * nobody prints is a window nobody notices standing still.
+ */
+export interface AnnexWindow {
+  /** Newest and oldest Beginn among the records read (YYYY-MM-DD); null where none carries one */
+  newest: string | null
+  oldest: string | null
+  /** When the list was fetched (ISO): its oldest page decides; null when the run recorded no list request */
+  listFetchedAt: string | null
+  /** Whether a page of the list was replayed from the cache (`--liste-aus-cache`) */
+  fromCache: boolean
+}
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * The window of `records` (RIS Begut references, as read), fetched as
+ * `served` says (`installFetchCache`'s record of the list requests).
+ */
+export function windowOf(records: readonly unknown[], served: readonly { fromCache: boolean; fetchedAt: Date }[]): AnnexWindow {
+  const days = records
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((r) => (r as any)?.Data?.Metadaten?.Bundesrecht?.Begut?.BeginnBegutachtungsfrist)
+    .filter((d): d is string => typeof d === 'string' && ISO_DAY.test(d))
+    .sort()
+  const fetched = served.map((s) => s.fetchedAt.getTime()).sort((a, b) => a - b)
+  return {
+    newest: days.at(-1) ?? null,
+    oldest: days[0] ?? null,
+    listFetchedAt: fetched.length > 0 ? new Date(fetched[0]!).toISOString() : null,
+    fromCache: served.some((s) => s.fromCache),
+  }
+}
+
+const germanDay = (iso: string): string => iso.slice(0, 10).split('-').reverse().join('.')
+const viennaDay = (instant: string): string =>
+  new Intl.DateTimeFormat('de-AT', { timeZone: 'Europe/Vienna', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(instant))
+
+/** The window in one line, for the head of a run and of the drift report. */
+export function windowLine(window: AnnexWindow): string {
+  const span = window.newest && window.oldest ? `Beginn ${germanDay(window.oldest)} bis ${germanDay(window.newest)}` : 'Beginn unbekannt'
+  const origin =
+    window.listFetchedAt === null
+      ? 'Abruf der Liste unbekannt'
+      : window.fromCache
+        ? `Liste aus dem Cache, abgerufen am ${viennaDay(window.listFetchedAt)}`
+        : `Liste frisch abgerufen am ${viennaDay(window.listFetchedAt)}`
+  return `${span}, ${origin}`
+}
+
 /** What a draft came to in the harness, without the calibration data. */
 export interface AnnexDraftReport {
   /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
+import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, windowLine, windowOf, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
 
 /**
  * The alarm itself, against invented reports.
@@ -242,5 +242,33 @@ describe('Wartung: die Grundlinie mahnt sich selbst an', () => {
 
   it('zählt in der Zusammenfassung als eigene Klasse', () => {
     expect(summarize(on(90))).toBe('1× Wartung')
+  })
+})
+
+describe('das Fenster eines Laufs', () => {
+  const record = (beginn: string | undefined) => ({ Data: { Metadaten: { Bundesrecht: { Begut: beginn === undefined ? {} : { BeginnBegutachtungsfrist: beginn } } } } })
+  const sept = new Date('2026-09-09T14:49:43.948Z')
+  const later = new Date('2026-09-09T22:09:20.410Z')
+
+  it('nimmt den jüngsten und den ältesten Beginn der gelesenen Datensätze', () => {
+    const w = windowOf([record('2026-03-05'), record('2026-09-08'), record(undefined), record('2024-04-29')], [{ fromCache: false, fetchedAt: sept }])
+    expect(w).toEqual({ newest: '2026-09-08', oldest: '2024-04-29', listFetchedAt: sept.toISOString(), fromCache: false })
+  })
+
+  it('ist so alt wie seine älteste Seite, und aus dem Cache, sobald eine Seite es ist', () => {
+    const w = windowOf([record('2026-09-08')], [{ fromCache: false, fetchedAt: later }, { fromCache: true, fetchedAt: sept }])
+    expect(w.listFetchedAt).toBe(sept.toISOString())
+    expect(w.fromCache).toBe(true)
+  })
+
+  it('sagt, was es nicht weiß, statt zu raten', () => {
+    // A Beginn RIS writes in another shape is not read as a date.
+    expect(windowOf([record('08.09.2026'), record(undefined)], [])).toEqual({ newest: null, oldest: null, listFetchedAt: null, fromCache: false })
+  })
+
+  it('steht in einer Zeile: Beginn von–bis und woher die Liste kam', () => {
+    expect(windowLine({ newest: '2026-09-08', oldest: '2024-04-29', listFetchedAt: sept.toISOString(), fromCache: true })).toBe('Beginn 29.04.2024 bis 08.09.2026, Liste aus dem Cache, abgerufen am 09.09.2026')
+    expect(windowLine({ newest: '2026-11-19', oldest: '2025-01-02', listFetchedAt: '2026-11-20T08:00:00.000Z', fromCache: false })).toBe('Beginn 02.01.2025 bis 19.11.2026, Liste frisch abgerufen am 20.11.2026')
+    expect(windowLine({ newest: null, oldest: null, listFetchedAt: null, fromCache: false })).toBe('Beginn unbekannt, Abruf der Liste unbekannt')
   })
 })

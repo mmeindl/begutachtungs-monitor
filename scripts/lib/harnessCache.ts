@@ -9,7 +9,7 @@
  * Nitro cache.
  */
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { Buffer } from 'node:buffer'
 import { join } from 'node:path'
 
@@ -48,11 +48,72 @@ function pdfIsIntact(body: Buffer): boolean {
   return true
 }
 
-export function installFetchCache(dir: string): void {
+/**
+ * A RIS search: a query on a RIS host that pages (`Seitennummer`) and names
+ * no single document (`Dokumentnummer`). Its answer is whatever RIS holds on
+ * the day of asking — unlike a document, which a NOR keeps fixed.
+ */
+export function isRisSearch(url: string): boolean {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return false
+  }
+  if (parsed.hostname !== 'data.bka.gv.at' && !parsed.hostname.endsWith('ris.bka.gv.at')) return false
+  return parsed.searchParams.has('Seitennummer') && !parsed.searchParams.has('Dokumentnummer')
+}
+
+/**
+ * The Begut list: the RIS search whose answer is the harness's window.
+ *
+ * Narrower than `isRisSearch` on purpose. The other RIS searches of an annex
+ * run are the standing-law lookups (`Applikation=BrKons`), some 3.300 per
+ * run, pinned to the draft's Beginn by `Fassung.FassungVom`: fetched afresh
+ * they would put every run online and move nothing about which drafts are
+ * measured. Whether RIS corrected one of them after the fact is the other
+ * question `annex-drift.yml` names, and it stays handwork.
+ */
+export function isBegutSearch(url: string): boolean {
+  return isRisSearch(url) && new URL(url).searchParams.get('Applikation') === 'Begut'
+}
+
+export interface FetchCacheOptions {
+  /**
+   * Requests the disk never answers: they are fetched every time, and the
+   * answer is still written, so a later run can replay it on purpose.
+   *
+   * The Begut list is one constant URL per page. Served from disk for ever,
+   * it froze every annex and fault-injection round from 09.09.2026 on at
+   * that day's list, and the weekly drift alarm — whose CI cache is carried
+   * from week to week — could not see a new draft, which is the only thing
+   * that can show a ressort's new layout (20.11.2026).
+   */
+  fresh?: (url: string) => boolean
+  /** Answer the `fresh` requests from disk after all, where it holds them: an offline replay, chosen and said. */
+  replay?: boolean
+}
+
+/** Where the answer to a `fresh` request came from in this run. */
+export interface ServedRequest {
+  url: string
+  fromCache: boolean
+  /** When the answer was fetched: now, or the cache file's mtime for a replayed one */
+  fetchedAt: Date
+}
+
+export interface FetchCache {
+  /** Every request the `fresh` predicate named, in order — the list, not the documents. */
+  served: ServedRequest[]
+}
+
+export function installFetchCache(dir: string, options: FetchCacheOptions = {}): FetchCache {
   mkdirSync(dir, { recursive: true })
   const real = globalThis.fetch
+  const served: ServedRequest[] = []
   globalThis.fetch = (async (input: any, init?: any) => {
     const url = typeof input === 'string' ? input : String(input?.url ?? input)
+    const tracked = options.fresh?.(url) ?? false
     // THE BODY IS PART OF THE KEY, since the SSR smoke test
     // (`scripts/ci/ssrSmoke.ts`) records Parliament traffic too: its Filter
     // API is one POST URL per list, and which rows come back is decided
@@ -76,20 +137,29 @@ export function installFetchCache(dir: string): void {
     // stream in it — pdf.js then reports "Bad FCHECK in flate stream" and
     // the document parses as empty (2026-09-09).
     const file = join(dir, `${hash}.bin`)
-    if (existsSync(file)) {
+    // A fresh request goes upstream even when the disk holds it, and a failure
+    // there fails the run: an old list served in place of a failed one would
+    // be the stale window again, unsaid.
+    if ((!tracked || options.replay) && existsSync(file)) {
       const cached = readFileSync(file)
-      if (pdfIsIntact(cached)) return new Response(cached, { status: 200 })
+      if (pdfIsIntact(cached)) {
+        if (tracked) served.push({ url, fromCache: true, fetchedAt: statSync(file).mtime })
+        return new Response(cached, { status: 200 })
+      }
       // Damaged on disk from an earlier run: drop it and fetch again rather
       // than measure against an empty document.
       console.warn(`harness-cache: verworfen, beschädigtes PDF im Cache — ${url}`)
       rmSync(file, { force: true })
     }
+    const fetchedAt = new Date()
     const res = await real(input, init)
     if (res.ok) {
       const body = Buffer.from(await res.arrayBuffer())
       if (pdfIsIntact(body)) writeFileSync(file, body)
+      if (tracked) served.push({ url, fromCache: false, fetchedAt })
       return new Response(body, { status: 200, headers: res.headers })
     }
     return res
   }) as typeof fetch
+  return { served }
 }

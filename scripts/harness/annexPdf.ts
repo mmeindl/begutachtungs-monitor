@@ -21,7 +21,12 @@
  * same package, so a misplaced boundary scores the parser against unrelated
  * text and would flatter or damn it at random.
  *
- * Usage:  npx vite-node scripts/harness/annexPdf.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
+ * The Begut list is fetched afresh on every run, the rest comes from the
+ * harness cache. `--liste-aus-cache` replays the cached list on purpose — an
+ * offline run, or two worktrees over the same drafts — and the first line of
+ * the run says when that list was fetched and how far it reaches.
+ *
+ * Usage:  npx vite-node scripts/harness/annexPdf.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--liste-aus-cache]
  */
 import { annexParagraphKey, designationKey } from '../../server/utils/annex/annexText'
 import { MIN_PROSE_TOKENS, coverageOf, displayedChangeRows, isDisplayedChange } from '../../server/utils/annex/coverage'
@@ -43,15 +48,15 @@ import { getText, resolveLawByBgbl, type KonsLawAtDate } from '../../server/util
 import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { annexSection, parseTextComparison, type ComparisonParse, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
-import { installFetchCache } from '../lib/harnessCache'
-import type { AnnexReport } from '../lib/annexReport'
+import { installFetchCache, isBegutSearch } from '../lib/harnessCache'
+import { windowLine, windowOf, type AnnexReport } from '../lib/annexReport'
 import type { TextComparisonRow } from '../../shared/types'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickBundledTextComparisons, pickOlderTextComparisons, pickTextComparisons } from '../lib/ris'
 import { holdsAsAnnex } from '../../server/utils/annex/olderAnnex'
 
-installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
+const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
 
 const SCRIPT = 'harness/annexPdf'
 
@@ -628,7 +633,9 @@ for (let page = 1; page <= Math.ceil(limit / 100) && docs.length < limit; page++
   if (refs.length === 0) break
   docs.push(...refs)
 }
-console.log(`GP ${gp}: ${docs.length} Entwürfe aus dem RIS\n`)
+// The first line of the run: which drafts it measures, and from which list.
+const listWindow = windowOf(docs.slice(0, limit), cache.served)
+console.log(`GP ${gp}: ${docs.length} Entwürfe aus dem RIS — ${windowLine(listWindow)}\n`)
 
 const results: DraftResult[] = []
 for (const doc of docs.slice(0, limit)) {

@@ -305,7 +305,7 @@
  * `--urteile` prints every verdict on a line of its own, so two runs of an
  * oracle change can be compared § by § with `diff` rather than by totals.
  *
- * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme] [--urteile] [--zeige=<§> [--voll]]
+ * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme] [--urteile] [--zeige=<§> [--voll]] [--liste-aus-cache]
  */
 import { annexParagraphKey, comparableTokens, designationKey } from '../../server/utils/annex/annexText'
 import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../../server/utils/annex/coverage'
@@ -336,14 +336,16 @@ import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
 import { isDivision, isSchedule, unitKey } from '../../server/utils/text/designation'
 import { unitsByKey } from '../../server/utils/kons/konsGate'
 import { loadKey } from './konsJudge'
-import { installFetchCache } from '../lib/harnessCache'
+import { installFetchCache, isBegutSearch } from '../lib/harnessCache'
+import { windowLine, windowOf } from '../lib/annexReport'
 import { renditionOfPages, witnessVerdict, type DraftRendition, type WitnessInstruction, type WitnessPlace } from '../../server/utils/kons/draftWitness'
 import { writeFileSync } from 'node:fs'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
 
-installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
+// The Begut list is fetched afresh; `--liste-aus-cache` replays the cached one on purpose (`lib/harnessCache.ts`).
+const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
 
 const SCRIPT = 'harness/faultInjection'
 
@@ -1793,7 +1795,8 @@ for (let page = 1; page <= 4 && docs.length < limit; page++) {
   if (refs.length === 0) break
   docs.push(...refs)
 }
-console.log(`GP ${gp}: ${docs.length} Entwürfe aus dem RIS\n`)
+const listWindow = windowOf(docs.slice(0, limit), cache.served)
+console.log(`GP ${gp}: ${docs.length} Entwürfe aus dem RIS — ${windowLine(listWindow)}\n`)
 
 let drafts = 0
 for (const doc of docs.slice(0, limit)) {
