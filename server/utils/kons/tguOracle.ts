@@ -650,8 +650,13 @@ function bagMinus(a: readonly string[], b: readonly string[]): string[] {
  * ressort's hyphen or footnote mark inside the heading does not defeat it.
  */
 const HEAD_PROBE = 24
-/** The dots that belong to a designation rather than to a sentence. */
-const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+|(?<!\p{L})\p{Lu})\./gu
+/**
+ * The dots that belong to a designation rather than to a sentence — a Roman
+ * one with a letter too (20.11.2026): „IIIa. Abschnitt" (BWG, 108/ME XXVIII)
+ * and „IIa. Hauptstück" (EU-JZG, 161/ME) read as a sentence's full stop, and
+ * a new group's heading over a § was neither a stack nor a heading alone.
+ */
+const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+|(?<!\p{L})[IVXLCDM]+[a-z]|(?<!\p{L})\p{Lu})\./gu
 
 /**
  * The cell without the stack of group headings the PDF path prints above a §
@@ -741,7 +746,7 @@ function stackOkFor(current: string): StackOk {
   const cell = normalizeText(current)
   const symbol = cell ? PARAGRAPH_SYMBOL_RE.exec(cell) : null
   if (symbol !== null && /\p{L}/u.test(cell.slice(0, symbol.index))) return () => true
-  return (dropped, raw) => GROUP_UNIT_RE.test(dropped) || /\)$/.test(dropped) || /^\s*(?:\d+[a-z]*|[IVXLCDM]+|\p{Lu})\.(?:\s|$)/u.test(raw) || /^\s*\p{Lu}{2,}\s+\p{Lu}{2,}/u.test(raw)
+  return (dropped, raw) => GROUP_UNIT_RE.test(dropped) || /\)$/.test(dropped) || /^\s*(?:\d+[a-z]*|[IVXLCDM]+[a-z]?|\p{Lu})\.(?:\s|$)/u.test(raw) || /^\s*\p{Lu}{2,}\s+\p{Lu}{2,}/u.test(raw)
 }
 
 /**
@@ -792,7 +797,7 @@ function isStack(dropped: string): boolean {
  * without its number „Teile der Förderung" would open like a heading. The
  * unit has to end where the word ends, or „1. Teilnehmer" opens like „1. Teil".
  */
-const NUMBERED_UNIT_RE = /^\s*(?:(?:(?:\d+[a-z]*|[IVXLCDM]+)\.|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?)\s*(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})|(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)\s+(?:\d+[a-z]*|[IVXLCDM]+[A-Z]?)(?![\p{L}\d]))/iu
+const NUMBERED_UNIT_RE = /^\s*(?:(?:(?:\d+[a-z]*|[IVXLCDM]+[a-z]?)\.|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?)\s*(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})|(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)\s+(?:\d+[a-z]*|[IVXLCDM]+[A-Z]?)(?![\p{L}\d]))/iu
 
 /**
  * Whether a stretch is nothing but a group heading. The ressort prints the
@@ -854,7 +859,7 @@ function isNextHeading(stretch: string): boolean {
  * between them. Only after a sentence's end, only numbered or counted in
  * words, and with no sentence punctuation of its own.
  */
-const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+)\.\s*|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?\s+)(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})[^.;:!?]*$/iu
+const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+[a-z]?)\.\s*|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?\s+)(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})[^.;:!?]*$/iu
 
 /**
  * An Absatz chain the annex prints without its „…" — „(2) bis (3)", „(1)

@@ -189,6 +189,15 @@ describe('oracleVerdict', () => {
     expect(oracleVerdict('40d', before, got.replace('nachträglich ', ''), rows).verdict).toBe('widersprochen')
   })
 
+  it('drops a group heading numbered „IIIa." above a new § (20.11.2026)', () => {
+    // 108/ME XXVIII, BWG § 19a: the new § under a new group.
+    const got = 'Einstufung inländischer Zweigstellen Inländische Zweigstellen sind als Zweigstelle der Klasse 1 einzustufen.'
+    const rows = [pair('', 'IIIa. Abschnitt: Ergänzende Bestimmungen betreffend Zweigstellen Einstufung inländischer Zweigstellen § 19a. (1) Inländische Zweigstellen sind als Zweigstelle der Klasse 1 einzustufen.', '§ 19a.')]
+    expect(oracleVerdict('19a', null, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // The § heading under the group is still held.
+    expect(oracleVerdict('19a', null, got.replace('Einstufung', 'Eintragung'), rows).verdict).toBe('widersprochen')
+  })
+
   it('contradicts a result that lacks the change the annex shows', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })
