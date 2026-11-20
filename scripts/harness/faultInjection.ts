@@ -1784,7 +1784,9 @@ const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFault
 const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck]
 
 const docs: any[] = []
-for (let page = 1; page <= 4 && docs.length < limit; page++) {
+// As many pages as `--limit` asks for; the loop stopped at page 4 whatever the
+// limit said, as `harness/annexPdf.ts` did until 30.09.2026.
+for (let page = 1; page <= Math.ceil(limit / 100) && docs.length < limit; page++) {
   const body = await risJson({
     Applikation: 'Begut',
     'Begut.Gesetzgebungsperiode': gp,
