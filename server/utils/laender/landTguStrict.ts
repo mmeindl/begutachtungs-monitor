@@ -45,18 +45,23 @@
  * threshold and no share: a single word is a finding.
  *
  * MEASURED ON GP XXVIII (20.11.2026, `pnpm harness:land-guard`, 63
- * documents of Oberösterreich, Salzburg, Tirol and Wien, 1,160 §§ changed
- * or new): 996 held word for word, 71 not held this way, 93 differing and
- * withheld. Of injected faults in the §§ shown the product now sees 588 of
- * 627 changed numbers, 837 of 894 swapped words and 307 of 341 dropped
- * sentences (the bag rule: none), and 1,013 of 1,057 sentences of another §
- * of the same draft (the bag rule, where it could judge: 295 of 505). The
- * 93 were read: about half are our reader of Oberösterreich's marks cutting
- * a word at a mark's edge („einzuhaltend", „Z 3, 4 und 4" for „und 5"),
- * some are the Land's two documents differing (Wien 2026009: the draft
- * raises a fine to „3 000", its Textgegenüberstellung prints „2 500"), and
- * about a third are sound §§ lost to this module's limits — a table read in
- * another order, a payload our draft reader lost or left a footer in.
+ * documents of Oberösterreich, Salzburg, Tirol and Wien, 1,162 §§ changed
+ * or new): 1,044 held word for word, 72 not held this way, 46 differing and
+ * withheld. Of injected faults in the §§ shown the product sees 611 of 652
+ * changed numbers, 876 of 934 swapped words and 315 of 348 dropped
+ * sentences (the bag rule: none), and 1,061 of 1,106 sentences of another §
+ * of the same draft (the bag rule, where it could judge: 303 of 520).
+ *
+ * The first run withheld 93, and reading them found our own reader: most
+ * of the 47 that are held since were Oberösterreich's marks read one
+ * letter off, where an underlined stretch runs into a struck one
+ * („einzuhaltend", „Z 3, 4 und 4" for „und 5") — fixed where the letters
+ * are placed (`landTgu.ts`, `placedCentres`). Of the 46 left, some are the Land's two
+ * documents differing (Wien 2026009: the draft raises a fine to „3 000",
+ * its Textgegenüberstellung prints „2 500"; Oö. 2025-16094 strikes
+ * „Amtsverschwiegenheit" one letter short), the others sound §§ lost to
+ * this module's limits — a table read in another order, a payload our
+ * draft reader lost or left a footer in.
  */
 import type { LawDiffUnit } from '../../../shared/types'
 import { segmentUnits, type LawUnit, type TextBlock } from '../lawtext/lawUnits'
@@ -204,7 +209,9 @@ export function quoteRoles(raw: string): { text: string; role: Role }[] {
     const clauseEnd = bounds.find((b) => b >= q.end) ?? line.length
     const head = line.slice(clauseStart, q.start).replace(QUOTE_RE, ' ')
     const tail = line.slice(q.end, clauseEnd).replace(QUOTE_RE, ' ')
-    const verb = /(?<![\p{L}])(?:entfällt|entfallen)(?![\p{L}])/u.test(head) ? 'entfällt' : VERB_RE.exec(tail)?.[1]
+    // „entfällt das Wort „X" und nach dem Wort „Y" wird die Wortfolge „Z" eingefügt": an auxiliary since the last quotation opens a clause whose verb comes after.
+    const verbLast = /(?<![\p{L}])(?:wird|werden|hat|haben)(?![\p{L}])/u.test(q.before)
+    const verb = !verbLast && /(?<![\p{L}])(?:entfällt|entfallen)(?![\p{L}])/u.test(head) ? 'entfällt' : VERB_RE.exec(tail)?.[1]
     if (verb && new RegExp(`^(?:${REMOVING})$`).test(verb)) q.role = 'old'
     else if (verb && new RegExp(`^(?:${ADDING})$`).test(verb)) q.role = 'new'
   }
@@ -521,8 +528,7 @@ const unchecked = (reason: string): StrictCheck => ({ state: 'unchecked', reason
  * A word the diff marks only for its punctuation is not new: „Einzelfall;"
  * against „Einzelfall." is the instruction „der Strichpunkt wird durch einen
  * Punkt ersetzt", and no word of the draft. So the words a new stretch
- * shares with the removed one beside it, at its start and at its end, lose
- * the mark.
+ * shares, in order, with the removed one beside it lose the mark.
  */
 export function shownTokens(unit: LawDiffUnit): Marked[] | null {
   const heading = markedTokens(unit.heading ?? '')
@@ -538,11 +544,10 @@ export function shownTokens(unit: LawDiffUnit): Marked[] | null {
     }
     const tokens = markedTokens(`\uE000${s.text}\uE001`)
     const beside = [segments[i - 1], segments[i + 1]].find((x) => x?.type === 'removed')
-    const removed = beside ? strictTokens(beside.text) : []
-    let head = 0
-    while (head < tokens.length && head < removed.length && tokens[head]!.word === removed[head]) tokens[head++]!.marked = false
-    let tail = 0
-    while (tail < tokens.length - head && tail < removed.length - head && tokens[tokens.length - 1 - tail]!.word === removed[removed.length - 1 - tail]) tokens[tokens.length - 1 - tail++]!.marked = false
+    // The words the new stretch keeps of the removed one, in order: „geschlechtsbezogene Verhaltensweisen," against „Verhaltensweisen in Bezug auf …,".
+    if (beside) align(tokens.map((t) => ({ word: t.word, marked: false })), strictTokens(beside.text)).shown.forEach((kept, k) => {
+      if (kept) tokens[k]!.marked = false
+    })
     out.push(...tokens)
   })
   return out
@@ -643,6 +648,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   // …and the payloads are aligned with what is left: a new word accounted for must not pull a payload's word out of its place.
   const aligned = align(shown.map((t, i) => ({ word: t.word, marked: t.marked && !placed[i] })), draft)
   const accounted = shown.map((_, i) => placed[i]! || aligned.shown[i]!)
+  const quoted = [...all.filter((x) => x.repeats), ...general].map((w) => w.tokens)
   // A new stretch between two equal words can be cut one word earlier or
   // later („zu [tätigen; 3. … zu] tätigen."): where it is the draft's as one
   // stretch at either cut, it is the draft's.
@@ -658,7 +664,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
         if (shift === 0 || i + shift < 0 || j + shift > shown.length) continue
         // The same text at the other cut: what leaves at one end enters at the other.
         const same = shift > 0 ? words.slice(i, i + shift).every((w, k) => w === words[j + k]) : words.slice(j + shift, j).every((w, k) => w === words[i + shift + k])
-        if (same && contains(draft, words.slice(i + shift, j + shift))) {
+        if (same && [draft, ...quoted].some((t) => contains(t, words.slice(i + shift, j + shift)))) {
           for (let k = i; k < j; k++) accounted[k] = true
           break
         }

@@ -163,6 +163,8 @@ interface UnitRecord {
   toText: string
   fromText: string
   draftFor: string
+  /** The draft's law key the rules read the § under; null where the draft has no Artikel or the law could not be named (`wholeDraft`). */
+  draftLaw: string | null
 }
 interface DraftRecord {
   land: LandCode
@@ -212,12 +214,19 @@ const corpus: { land: LandCode; draft: string; layout: Layout; blocks: TextBlock
 const insertedOf = (u: LawDiffUnit): string =>
   u.change === 'inserted' ? (u.toText ?? '') : (u.segments ?? []).filter((s) => s.type === 'inserted').map((s) => s.text).join(' … ')
 
-/** The draft's instructions that name this § (`draftUnits`), for reading by eye. */
-function draftTextFor(blocks: readonly TextBlock[] | null, id: string, fromId: string | null): string {
+/**
+ * The draft's instructions that name this § (`draftUnits`), for reading by
+ * eye — of the law the rules read the § under (`TguGuard.lawKeys`), and of
+ * every law only where that could not be named. Until 20.11.2026 this
+ * listed every law's: under „Oö. Gleichbehandlungsgesetz 2021 § 7" stood
+ * the Agrarrecht-Organisationsgesetz's instructions for its own § 7, which
+ * the rules never read.
+ */
+function draftTextFor(blocks: readonly TextBlock[] | null, id: string, fromId: string | null, lawKey: string | null | undefined): string {
   if (!blocks) return ''
   const keys = new Set([id, fromId].filter((x): x is string => !!x).map((x) => designationKey(x.replace(/^§\s*/, '§ '))))
   return draftUnits(blocks)
-    .filter((u) => u.paras.some((p) => keys.has(designationKey(p))))
+    .filter((u) => (lawKey === undefined || u.law === lawKey) && u.paras.some((p) => keys.has(designationKey(p))))
     .map((u) => `[${u.law ?? '-'} ${u.id}] ${u.text}`)
     .join('\n')
     .slice(0, 3000)
@@ -329,7 +338,8 @@ for (const item of items) {
         inserted: insertedOf(u).slice(0, 2500),
         toText: (u.toText ?? '').slice(0, 2500),
         fromText: (u.fromText ?? '').slice(0, 1500),
-        draftFor: draftTextFor(blocks, u.id, u.fromId),
+        draftFor: draftTextFor(blocks, u.id, u.fromId, guard.lawKeys.get(u.article)),
+        draftLaw: guard.lawKeys.has(u.article) ? (guard.lawKeys.get(u.article) ?? null) : null,
       }
       units.push(record)
       // Every § the product shows, with a draft read: the bag rule's faults are counted over those it can judge (`judged`), the strict rule's over all.

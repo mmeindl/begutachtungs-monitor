@@ -262,6 +262,13 @@ export interface TguGuard {
   addressed: number
   /** Index into the units → the same § held word for word against the draft's wording for it (`landTguStrict.ts`). */
   strict: Map<number, StrictCheck>
+  /**
+   * The law of the document's → the draft's law key both rules read its §§
+   * under (`draftLawKey`); undefined where it could not be named, and then
+   * the strict check is not run. Instructions of one law of a
+   * Sammelnovelle are never held against a § of another.
+   */
+  lawKeys: Map<string | null, string | null | undefined>
 }
 
 /**
@@ -280,7 +287,7 @@ export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly Te
       const row = guardRow(u)
       if (row) checks.set(i, rightColumnCheck([row], { text: '', heading: '' }, unread))
     })
-    return { checks, read: false, wholeDraft: new Set(), units: 0, addressed: 0, strict: new Map() }
+    return { checks, read: false, wholeDraft: new Set(), units: 0, addressed: 0, strict: new Map(), lawKeys: new Map() }
   }
   const keys = [...new Set([...bags.byLaw.keys(), ...bags.general.keys()])]
   const clauses = articleClauses(blocks!)
@@ -336,5 +343,5 @@ export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly Te
     checks.set(i, rightColumnCheck([row], { text: '', heading: u.heading ?? '' }, bag))
     strict.set(i, strictOf(u, row.para!, lawKeys.get(u.article), wording, mixed, shown.get(u.article) ?? new Set()))
   })
-  return { checks, read: true, wholeDraft, units: bags.units, addressed: bags.addressed, strict }
+  return { checks, read: true, wholeDraft, units: bags.units, addressed: bags.addressed, strict, lawKeys }
 }

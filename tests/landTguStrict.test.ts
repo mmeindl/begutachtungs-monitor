@@ -40,6 +40,8 @@ const DRAFT = [
   '6. Im § 40 Z 2 wird am Ende der Punkt durch einen Strichpunkt ersetzt und folgende Z 3 angefügt:',
   '„3. die Mittelverwendungen im Ausmaß eines Zwölftels des Vorjahres zu tätigen.“',
   '7. § 41 Abs 2 entfällt.',
+  '8. Im § 42 entfällt das Wort „eigene“ und nach dem Wort „Fischer“ wird die Wortfolge „von Bächen und Seen“ eingefügt.',
+  '9. Im § 43 wird nach dem Wort „unterrepräsentiert“ die Wortfolge „ist oder es nach § 3 geboten“ eingefügt.',
 ].join('\n')
 const blocks = lawBlocksFromPdfPages([DRAFT])!
 const SHOWN_5 = '(1) Die Schonzeiten bestimmt die Landesregierung. (2) Die Landesregierung hat die Fischereiberechtigten {zu hören.} [binnen 14 Tagen über jede Änderung der Schonzeiten schriftlich zu informieren. Sie hat ihnen Gelegenheit zur Stellungnahme zu geben.]'
@@ -76,6 +78,8 @@ describe('quoteRoles', () => {
     expect(roles('§ 25 Abs. 1 entfällt und die bisherigen Abs. 2, 3 und 3a erhalten die Bezeichnung „(1)“, „(2)“ und „(3)“.')).toEqual(['new', 'new', 'new'])
     expect(roles('Im § 19 Abs. 5 werden die Wörter „Vorlage“ und „Beibringung“ jeweils durch das Wort „Übermittlung“ ersetzt.')).toEqual(['old', 'old', 'new'])
     expect(roles('Im Abs 1 lautet der erste Satz: „Zur Mitfinanzierung leistet das Land Beiträge.“')).toEqual(['new'])
+    // The verb before the first quotation is not the third one's: an auxiliary opens its clause (Oö. 2026-16120).
+    expect(roles('Im § 7 Abs. 3 entfällt das Wort „geschlechtsbezogene“ und nach dem Wort „Verhaltensweisen“ wird die Wortfolge „in Bezug auf einen im § 3 Abs. 1 genannten Grund“ eingefügt.')).toEqual(['old', 'anchor', 'new'])
   })
 
   it('does not guess: a range of designations, a replacement left to the reader\'s grammar', () => {
@@ -142,6 +146,15 @@ describe('the strict check (20.11.2026)', () => {
   it('does not take punctuation for a word, nor the cut of a diff for a difference', () => {
     // „am Ende der Punkt durch einen Strichpunkt ersetzt", and the new Ziffer cut one word early.
     expect(ask(changed('§40', '2. die Abgaben einzuheben und die Mittelaufbringungen zu {tätigen.} [tätigen; 3. die Mittelverwendungen im Ausmaß eines Zwölftels des Vorjahres zu] tätigen.')).strict.state).toBe('holds')
+  })
+
+  it('does not take for new a word the new stretch keeps of the removed one, wherever in it', () => {
+    // The diff pairs „Fischer," with „Fischer" inside a longer stretch; the instruction inserts after it.
+    expect(ask(changed('§42', 'wenn unerwünschte {eigene Fischer,} [Fischer von Bächen und Seen,] die Behörde stören.')).strict.state).toBe('holds')
+  })
+
+  it('finds a stretch quoted in an instruction\'s line at the other cut of the diff too (Oö. 2026-16120, § 9)', () => {
+    expect(ask(changed('§43', 'wenn eine Gruppe unterrepräsentiert [ist oder es nach § 3 geboten] ist, kann die Behörde handeln.')).strict.state).toBe('holds')
   })
 
   it('reads „entfallen" at a repealed Absatz as the instruction, not as text', () => {
