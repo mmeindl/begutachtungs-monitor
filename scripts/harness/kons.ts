@@ -803,7 +803,10 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // a schedule apart from the § of its number, a Roman one by its Arabic
   // number. Keyed by the bare number until 19.11.2026, a refused § 8 locked
   // BVergG Anl. 8 here, and a refused „Anhang VIII" line locked nothing.
-  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), unitKey)
+  // The refused instructions whole, as the page passes them
+  // (`kons/consolidate.ts`): their bare lines lost the address a
+  // sub-instruction inherits and the §§ a refused payload spells out.
+  const refusedIds = refusedUnits(unresolved, refused, unitKey)
   const applied = results.filter((r) => r.applied).length
 
   if (verbose) {
