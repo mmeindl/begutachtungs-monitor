@@ -32,6 +32,19 @@ export interface GenauigkeitRecord {
   commit: string
   /** The Gesetzgebungsperiode the drafts are from. */
   gp: string
+  /**
+   * Floored fault classes tried fewer than 20 times, so the floor did not
+   * hold them, written only where the builder was told to let them stand
+   * (`--erlaube-ungehalten`, 20.11.2026). No sentence reads it yet.
+   */
+  unheld?: { path: keyof GenauigkeitPaths<unknown>; key: string; tried: number }[]
+  /**
+   * The commit each record of the round names, written only where they are
+   * not one clean commit and the builder was told to go on
+   * (`--erlaube-gemischt`, 20.11.2026); `commit` is then the one named on
+   * the command line, or the one checked out. No sentence reads it yet.
+   */
+  mixed?: Record<string, string>
 
   /** „Ganzer Paragraph in der vorgeschlagenen Fassung": our own consolidated text, gated by the ministry's annex. */
   lesefassung: {
