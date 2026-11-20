@@ -463,6 +463,41 @@ describe('a result that holds more than the annex proposes (01.10.2026)', () => 
     ]
     expect(oracleVerdict('6', standing, 'Das Amt entscheidet über den Antrag. Sie hat dabei die Fristen des Abs. 2 zu wahren.', rows)).toMatchObject({ verdict: 'bestätigt' })
   })
+
+  // On the PDF path a cell holds a whole §, and a long § on both sides
+  // crossed the row diff's matrix ceiling: the row was skipped and the §
+  // confirmed without this check (audit of 20.11.2026). A change at both ends
+  // leaves no common start or end to take off, as in the Außenwirtschafts-
+  // gesetz's § 1 of the corpus.
+  describe('past the matrix ceiling', () => {
+    const vocab = ['Behörde', 'Antrag', 'Frist', 'Bescheid', 'Gemeinde', 'Verordnung', 'Bundesminister', 'Auskunft', 'Gebühr', 'Verfahren', 'Partei', 'Landeshauptmann', 'Unterlagen', 'Meldung', 'Behandlung', 'Zustellung']
+    const words = (n: number): string => Array.from({ length: n }, (_, i) => `${vocab[i % vocab.length]}${Math.floor(i / vocab.length)}`).join(' ')
+    const struck = 'Die Auskunftspflicht der Sachverständigen erlischt mit Ablauf des Kalenderjahres endgültig.'
+    const shaped = (n: number) => {
+      const keep = words(n)
+      return {
+        before: `Erstens ${keep}. ${struck} Der Rest bleibt.`,
+        right: `Zweitens ${keep}. Der Rest bleibt.`,
+        kept: `Zweitens ${keep}. ${struck} Der Rest bleibt.`,
+        rows: [pair(`§ 5. (1) Erstens ${keep}. ${struck} (2) …`, `§ 5. (1) Zweitens ${keep}. (2) …`, '§ 5.')],
+      }
+    }
+
+    it('still finds a struck sentence the result kept, and confirms the right result', () => {
+      const { before, right, kept, rows } = shaped(1700)
+      expect(oracleVerdict('5', before, right, rows)).toMatchObject({ verdict: 'bestätigt' })
+      expect(oracleVerdict('5', before, kept, rows)).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining(KEPT_DELETION_NOTE) })
+    })
+
+    // Past the linear bound too, where the row's own diff is larger than the
+    // text's: the left column starts a word later than the right one, so the
+    // row has no common start while the result and the standing text do.
+    it('confirms nothing it cannot read', () => {
+      const keep = words(5600)
+      const rows = [pair(`§ 5. (1) ${keep}. ${struck} (2) …`, `§ 5. (1) Erstens ${keep}. (2) …`, '§ 5.')]
+      expect(oracleVerdict('5', `Erstens ${keep}. ${struck} Der Rest bleibt.`, `Erstens ${keep}. Der Rest bleibt.`, rows)).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining('Wortdiff zu groß') })
+    })
+  })
 })
 
 // The group headings the PDF path prints into a row, in the shapes the corpus

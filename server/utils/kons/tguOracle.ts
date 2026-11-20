@@ -1263,6 +1263,8 @@ function headingAnchor(current: string, beforeKey: string, gotKey: string): (at:
 
 /** How check 4's report opens — the harness counts its alarms by it. */
 export const KEPT_DELETION_NOTE = 'Gestrichener Text steht noch im Ergebnis'
+/** What check 4 answers for a row too long to read (`tokenRuns`): nothing it could confirm. */
+export const ROW_TOO_LONG: unique symbol = Symbol('Zeile zu lang für Prüfung 4')
 
 /**
  * Check 4's numbers, measured by `harness/faultInjection.ts` (class E,
@@ -1292,8 +1294,10 @@ const MIN_KEPT = 3
 const PROBE = 8
 const MIN_LOOSE = 6
 const EDGE_PROBE = 12
-/** Above this many token pairs the row diff is skipped — `MAX_DP_CELLS` of `diff/wordDiff.ts`. */
+/** Above this many token pairs the row diff leaves the matrix for linear memory — `MAX_DP_CELLS` of `diff/wordDiff.ts`. */
 const MAX_ROW_CELLS = 2_500_000
+/** Above this many the row cannot be read, and check 4 confirms nothing — `MAX_LINEAR_CELLS` of `diff/wordDiff.ts`. */
+const MAX_LINEAR_ROW_CELLS = 30_000_000
 
 /** The token that stands for an elision mark in `cellTokens`. */
 const ELISION = '…'
@@ -1343,11 +1347,36 @@ interface TokenRun {
 /**
  * LCS over two token arrays, as runs — the recurrence of `diffTokens` on
  * words already compared, with paired marks weighted by `MARK_WEIGHT`.
+ *
+ * **Past the matrix's ceiling in linear memory** (20.11.2026), as
+ * `beyondCeiling` takes the guard and checks 1 to 3 there: Hirschberg's split
+ * halves the earlier text, finds where the later one splits so the two
+ * halves' scores add up to the whole, and hands each half to the matrix once
+ * it fits. Skipped there, a row too long for the matrix was no row to check
+ * 4, and the § was confirmed without it: on the PDF path a cell holds a whole
+ * §, and the Außenwirtschaftsgesetz's § 1 (1,924 against 2,099 words) was
+ * confirmed so (audit of 20.11.2026). Measured with the whole matrix, check 4
+ * finds nothing kept there; the linear path finds the same. Null only past
+ * `MAX_LINEAR_ROW_CELLS`, and the caller then confirms nothing.
  */
 function tokenRuns(a: readonly string[], b: readonly string[]): TokenRun[] | null {
   const n = a.length
   const m = b.length
-  if (n * m > MAX_ROW_CELLS) return null
+  if (n * m > MAX_LINEAR_ROW_CELLS) return null
+  if (n * m > MAX_ROW_CELLS && n > 1) {
+    const mid = n >> 1
+    const forward = scoreRow(a.slice(0, mid), b)
+    const backward = scoreRow(a.slice(mid).reverse(), [...b].reverse())
+    let split = 0
+    for (let t = 1; t <= m; t++) if (forward[t]! + backward[m - t]! > forward[split]! + backward[m - split]!) split = t
+    const runs = tokenRuns(a.slice(0, mid), b.slice(0, split))!
+    for (const run of tokenRuns(a.slice(mid), b.slice(split))!) {
+      const last = runs[runs.length - 1]
+      if (last && last.type === run.type) last.tokens.push(...run.tokens)
+      else runs.push(run)
+    }
+    return runs
+  }
   const width = m + 1
   const dp = new Uint32Array((n + 1) * width)
   for (let i = n - 1; i >= 0; i--) {
@@ -1374,6 +1403,17 @@ function tokenRuns(a: readonly string[], b: readonly string[]): TokenRun[] | nul
   while (i < n) emit('removed', a[i++]!)
   while (j < m) emit('inserted', b[j++]!)
   return runs
+}
+
+/** The score of `a` against every prefix of `b`, in one row — `tokenRuns`'s recurrence in linear memory. */
+function scoreRow(a: readonly string[], b: readonly string[]): Float64Array {
+  let prev = new Float64Array(b.length + 1)
+  let row = new Float64Array(b.length + 1)
+  for (const x of a) {
+    for (let t = 1; t <= b.length; t++) row[t] = x === b[t - 1] ? prev[t - 1]! + (x === ELISION ? MARK_WEIGHT : 1) : Math.max(prev[t]!, row[t - 1]!)
+    ;[prev, row] = [row, prev]
+  }
+  return prev
 }
 
 /** Where `needle` stands in `hay` as one unbroken run of words, from `from` on — -1 if nowhere. */
@@ -1523,7 +1563,7 @@ function regionsOf(runs: readonly TokenRun[]): Region[] {
  * being printed shorter.
  */
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
-export function keptDeletion(got: string, rows: readonly ComparisonRow[]): string | null {
+export function keptDeletion(got: string, rows: readonly ComparisonRow[]): string | typeof ROW_TOO_LONG | null {
   const pairs = rows.filter((r) => r.kind === 'pair')
   const gotTokens = words4(sameText(got))
   const shownRight = cellTokens(pairs.map((r) => r.proposed).join(' '))
@@ -1531,7 +1571,7 @@ export function keptDeletion(got: string, rows: readonly ComparisonRow[]): strin
     if (row.elided || row.change === 'unchanged' || !row.current || !row.proposed) continue
     const proposed = cellTokens(row.proposed)
     const runs = tokenRuns(cellTokens(row.current), proposed)
-    if (!runs) continue
+    if (!runs) return ROW_TOO_LONG
 
     // The row's printed stretches: which one every proposed word belongs to,
     // and where each starts and ends in the result — in order.
@@ -2299,6 +2339,7 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   // Check 4, last on purpose: every § it speaks on passed the other three,
   // so its alarms are exactly the confirmations it withdraws (`keptDeletion`).
   const kept = keptDeletion(got, rows)
+  if (kept === ROW_TOO_LONG) return { para: id, verdict: 'widersprochen', rows: rows.length, note: 'Wortdiff zu groß für den Abgleich' }
   if (kept !== null) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `${KEPT_DELETION_NOTE}: "${kept.slice(0, 60)}"` }
   }
