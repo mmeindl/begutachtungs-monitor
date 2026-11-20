@@ -1160,6 +1160,12 @@ export type NovaoOp =
      * `kons/lawApply.ts`).
      */
     following?: true
+    /**
+     * „§ 15 erhält die Paragraphenbezeichnung ‚§ 18.' und wird nach § 17
+     * eingereiht": the bare id of the § the renumbered one now stands
+     * behind (`EINGEREIHT_RE`, `placeBehind` in `kons/lawApply.ts`).
+     */
+    after?: string
   }
   /** "§ 5 wird wie folgt geändert:" — a heading over sub-instructions */
   | { kind: 'container'; target: NovaoAddress }
@@ -1411,6 +1417,12 @@ function operandQuotes(line: string): QuoteMark[] {
   })
   return out
 }
+
+/**
+ * „und wird nach § 17 eingereiht", „, wird nach § 323 eingereiht": the place
+ * a renumbered § goes to (20.11.2026). Group 1 is the bare id.
+ */
+const EINGEREIHT_RE = /\s*,?\s*(?:und\s+)?wird\s+nach\s+§\s*(\d+[a-z]*)\s+eingereiht\b/i
 
 /** „die Klammern um das Wort", directly in front of the quotation it names. */
 const BRACKETS_AROUND_RE = /\b(?:die\s+)?Klammern?\s+um\s+(?:das|den|die)\s+(?:Wort|Ausdruck|Wortfolge|Zitat|Wendung)\s*$/i
@@ -2293,7 +2305,12 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   const namedAs = namedMatch && /^[\s.;]*$/.test(maskQuotes(head).slice(namedMatch.index + namedMatch[0].length)) ? namedMatch : null
   // Nor is the new § of „Der bisherige § 14 wird zu § 22." (`PARA_RENAMED_RE`).
   const paraRenamed = namedAs || quotes.length > 0 ? null : PARA_RENAMED_RE.exec(head)
-  const addressText = redundantLocator ? (scope || head).replace(locator[0], `${locator[1]} `) : namedAs ? (scope || head).replace(namedAs[0], 'bezeichnet') : paraRenamed ? (scope || head).replace(paraRenamed[0], '') : scope || head
+  // „… und wird nach § 17 eingereiht" names where the renumbered § goes,
+  // not a second § the line acts on (`EINGEREIHT_RE`); read into the
+  // address it made every such line „2 Ziele für eine Umbenennung".
+  const filed = EINGEREIHT_RE.exec(maskQuotes(scope || head))
+  const addressBase = filed ? (scope || head).slice(0, filed.index) + (scope || head).slice(filed.index + filed[0].length) : scope || head
+  const addressText = redundantLocator ? addressBase.replace(locator[0], `${locator[1]} `) : namedAs ? addressBase.replace(namedAs[0], 'bezeichnet') : paraRenamed ? addressBase.replace(paraRenamed[0], '') : addressBase
   const targets = spreadSentence(head, payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : null)))
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
@@ -2361,6 +2378,26 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     const to = quotes[0]
     if (!to) return fail('Umbenennung ohne neue Bezeichnung')
     if (targets.length > 1) return fail(`${targets.length} Ziele für eine Umbenennung`)
+    // „… und wird nach § 17 eingereiht": one § to one new number, and the
+    // clause the whole rest of the line. „…, wird nach § 323 eingereiht und
+    // erhält folgende Überschrift" goes on, and stays refused.
+    if (filed) {
+      const rest = maskQuotes(scope || head).slice(filed.index + filed[0].length)
+      if (!/^[\s.]*$/.test(rest) || target.level !== 'para' || target.siblings.length > 0 || quotes.length !== 1 || !/^§\s*\d+[a-z]*\.?$/.test(to.trim())) return fail('„eingereiht" — nur für einen Paragraphen mit einer neuen Bezeichnung')
+      return ok({ kind: 'renumber', target, to, toLast: null, after: filed[1]! })
+    }
+    // „Die §§ 92b und 92c erhalten die Paragraphenbezeichnungen ‚§ 92c.' und
+    // ‚§ 92d.'" (147/ME XXVIII): as many §§ as designations, each written
+    // out with its § sign, paired in order and moved at once
+    // (`renumberBatch`). A designation without its sign („‚§ 7.', ‚8.'",
+    // 116/ME) keeps the line refused: which kind it names is a guess.
+    if (target.level === 'para' && target.para?.startsWith('§') && quotes.length > 1 && !/"\s*bis\s*"/.test(line)) {
+      const ids = [bareParaId(target.para), ...target.siblings]
+      const nums = quotes.map((q) => /^§\s*(\d+[a-z]*)\.?$/.exec(q.trim())?.[1] ?? null)
+      if (ids.length === quotes.length && ids.every(Boolean) && nums.every(Boolean) && /^(?:\s*"[^"]*"\s*(?:,|und)?)+$/.test(line.slice(line.indexOf('"'), line.lastIndexOf('"') + 1))) {
+        return { ops: ids.map((id, i) => ({ kind: 'renumber' as const, target: { ...target, para: `§ ${id}`, siblings: [] }, to: `§ ${nums[i]}`, toLast: null })), reason: null, line }
+      }
+    }
     // "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“" — a run,
     // which the applier expands and checks against the number of targets.
     const range = quotes.length === 2 && /"\s*bis\s*"/.test(line)

@@ -1653,6 +1653,32 @@ describe('„jeweils" über eine Liste: jede Fundstelle in jeder Einheit (20.11.
   })
 })
 
+describe('Umbenennungslisten und „eingereiht" (20.11.2026)', () => {
+  const chain = (): StandingLaw => ({ paragraphs: [para('92a', 'A', ['a.']), para('92b', 'B', ['b.']), para('92c', 'C', ['c.']), para('93', 'D', ['d.'])] })
+
+  it('moves a § list up by one, at once', () => {
+    const { law: out, results } = run(chain(), instr('Die §§ 92b und 92c erhalten die Paragraphenbezeichnungen "§ 92c." und "§ 92d.".'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs.map((p) => `${p.id}:${p.heading}`)).toEqual(['92a:A', '92c:B', '92d:C', '93:D'])
+  })
+
+  it('files a renumbered § behind the § the line names', () => {
+    const l: StandingLaw = { paragraphs: [para('15', 'Alt', ['x.']), para('16', 'S', ['s.']), para('17', 'T', ['t.'])] }
+    const { law: out, results } = run(l, instr('§ 15 erhält die Paragraphenbezeichnung "§ 18." und wird nach § 17 eingereiht.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['16', '17', '18'])
+  })
+
+  it('refuses a place the new number contradicts', () => {
+    const l: StandingLaw = { paragraphs: [para('15', 'Alt', ['x.']), para('16', 'S', ['s.']), para('17', 'T', ['t.'])] }
+    const { law: out, results } = run(l, instr('§ 15 erhält die Paragraphenbezeichnung "§ 18." und wird nach § 16 eingereiht.'))
+    expect(results[0]!.reason).toMatch(/gehört nicht an diese Stelle/)
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['15', '16', '17'])
+    const { results: r2 } = run(l, instr('§ 15 erhält die Paragraphenbezeichnung "§ 18." und wird nach § 20 eingereiht.'))
+    expect(r2[0]!.reason).toMatch(/nicht im geltenden Text/)
+  })
+})
+
 describe('„die Klammern um das Wort" (20.11.2026)', () => {
   // Energie-Control-Gesetz § 29 (32/ME XXVIII): the word was read as the
   // operand and deleted, „das (), BGBl. Nr. 292/1921" counted as applied.

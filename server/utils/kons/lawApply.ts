@@ -2691,6 +2691,8 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     return reason
   }
   if (new Set(moves.map((m) => `${m.level}|${m.schedule ? 'Anl.' : ''}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
+  const placing = placeBehind(law, batch, moves, moving)
+  if (typeof placing === 'string') return placing
   const run = RUNS.get(law)
   for (const m of moves) {
     const unit = run && m.level === 'para' ? unitOf(run, m.node) : null
@@ -2706,7 +2708,39 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     if (m.level === 'para' && !m.schedule) arrive(law, m.node)
     else if (m.level !== 'para') arriveUnit(law, m.node)
   }
+  placing?.()
   return null
+}
+
+/**
+ * **„… erhält die Paragraphenbezeichnung ‚§ 18.' und wird nach § 17
+ * eingereiht"** (20.11.2026, `after` in `kons/novao.ts`): the § takes its
+ * new number and moves behind § 17. Checked before anything is written, and
+ * only where the place is plain: § 17 stands in the text and is not moving
+ * itself, and the new number sorts behind it and in front of the § that
+ * follows it. Anything else is refused — a § filed at a place its number
+ * contradicts is a reading of ours, not the draft's. Returns the move to
+ * carry out once the numbers are written, null where the batch names no
+ * place.
+ */
+function placeBehind(law: StandingLaw, batch: readonly Pick<Instruction, 'op'>[], moves: readonly { node: LawNode; id: string; level: NodeLevel; schedule: boolean }[], moving: ReadonlySet<LawNode>): (() => void) | string | null {
+  const placed = batch.filter(({ op }) => op.kind === 'renumber' && op.after)
+  if (placed.length === 0) return null
+  if (batch.length !== 1 || moves.length !== 1 || moves[0]!.level !== 'para' || moves[0]!.schedule) return '„eingereiht" — nur für einen Paragraphen'
+  const op = placed[0]!.op as Extract<NovaoOp, { kind: 'renumber' }>
+  const m = moves[0]!
+  const paras = law.paragraphs.filter((p) => p.level === 'para' && !isSchedule(p.marker))
+  const anchor = paras.find((p) => p.id === op.after && !moving.has(p))
+  if (!anchor) return `„eingereiht nach § ${op.after}" — § ${op.after} nicht im geltenden Text`
+  const next = paras.slice(paras.indexOf(anchor) + 1).find((p) => p !== m.node) ?? null
+  const own = designationOrder(m.id)
+  const behind = designationOrder(anchor.id)
+  const ahead = next ? designationOrder(next.id) : null
+  if (!own || !behind || (next && !ahead) || compareOrder(own, behind) <= 0 || (ahead && compareOrder(ahead, own) <= 0)) return `„eingereiht nach § ${op.after}" — § ${m.id} gehört nicht an diese Stelle`
+  return () => {
+    law.paragraphs.splice(law.paragraphs.indexOf(m.node), 1)
+    law.paragraphs.splice(law.paragraphs.indexOf(anchor) + 1, 0, m.node)
+  }
 }
 
 /**

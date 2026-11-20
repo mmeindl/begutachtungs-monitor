@@ -378,8 +378,31 @@ describe('renumbering (2026-09-09)', () => {
     expect(parsed.ops[1]).toMatchObject({ target: { para: '§ 107', z: '5', siblings: ['6', '7', '8', '9'] }, to: '4.', toLast: '8' })
   })
 
+  // Refused since 09.09.2026 because nothing paired a list yet; Absatz and
+  // Ziffer lists of the same shape are paired since. A § list now is too,
+  // where every designation carries its sign and the counts match
+  // (20.11.2026, 147/ME XXVIII: JN §§ 92b, 92c; ZPO §§ 423, 424).
+  it('pairs a list of §§ with as many § designations, in order', () => {
+    const parsed = parseInstruction('Die §§ 92b und 92c erhalten die Paragraphenbezeichnungen "§ 92c." und "§ 92d.".')
+    expect(parsed.ops).toMatchObject([
+      { kind: 'renumber', target: { para: '§ 92b', siblings: [] }, to: '§ 92c' },
+      { kind: 'renumber', target: { para: '§ 92c', siblings: [] }, to: '§ 92d' },
+    ])
+  })
+
   it('refuses several new designations it cannot pair', () => {
-    expect(parseInstruction('Die §§ 5 und 9 erhalten die Bezeichnungen "§ 6." und "§ 10."').ops).toHaveLength(0)
+    expect(parseInstruction('Die §§ 5 und 9 erhalten die Bezeichnungen "§ 6." , "§ 7." und "§ 10."').ops).toHaveLength(0)
+    // „8." without its sign (116/ME XXVIII): which kind it names is a guess.
+    expect(parseInstruction('Die §§ 10 und 11 erhalten die Paragraphenbezeichnungen "§ 7." und "8.".').ops).toHaveLength(0)
+  })
+
+  // „§ 15 erhält die Paragraphenbezeichnung ‚§ 18.' und wird nach § 17
+  // eingereiht" (2/ME XXVIII, StRegG): the place is not a second target.
+  it('reads „und wird nach § X eingereiht" as the place of one renumbered §', () => {
+    const parsed = parseInstruction('§ 15 erhält die Paragraphenbezeichnung "§ 18." und wird nach § 17 eingereiht.')
+    expect(parsed.ops).toMatchObject([{ kind: 'renumber', target: { para: '§ 15', siblings: [] }, to: '§ 18.', after: '17' }])
+    // A clause behind it (122/ME XXVIII, StGB § 322) keeps the line refused.
+    expect(parseInstruction('Der bisherige § 322 erhält die Paragrafenbezeichnung "§ 324" , wird nach § 323 eingereiht und erhält folgende Überschrift:').reason).toMatch(/eingereiht/)
   })
 
   it('reads „die nachfolgenden Absätze" as the units behind the one just deleted (58/ME XXVIII)', () => {
