@@ -36,6 +36,7 @@ const FETCHED: Record<string, string> = {
   gegenstand: 'the upstream detail JSON, passed through unmapped',
   'kons-para-xml': 'a RIS paragraph document; its heading is parsed fresh on every call',
   'erlaeuterungen-xml': "the ressort's Erläuterungen as RIS sent them; the parse above is derived",
+  'entwurf-pdf': "a draft's PDF in RIS, as RIS sent it — a Begut file is written once; read only by the second witness (kons/draftRendition.ts)",
   'begut-dokument-xml':
     'any document of a Begut record as RIS sent it — the full-text search reads whichever one holds the ' +
     'word. Deliberately its own entry and not the two above: those belong to the Erläuterungen ' +
@@ -106,6 +107,7 @@ const DOCUMENTS = [
   'erlaeuterungen-xml',
   'begut-dokument-xml',
   'bgbl-jahrgang-seite',
+  'entwurf-pdf',
 ]
 
 /** What a Stellungnahme cache is called, or what one would be — none of it may reach the disk. */
