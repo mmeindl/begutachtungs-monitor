@@ -980,6 +980,18 @@ it('reads „der vorletzte und der letzte Satz" of a deletion as the last two', 
   expect(parseInstruction('In § 23 Abs. 3 entfallen der vorletzte und der letzte Satz.').ops).toMatchObject([{ kind: 'delete', target: { abs: '3', satz: 'letzter', satzCount: 2 } }])
 })
 
+// Three address forms of the corpus that named a place and were refused as
+// „keine auflösbare Adresse" (20.11.2026).
+it.each([
+  ['In § 270 Abs. 3 lautet Satz 7:', { kind: 'replace', target: { para: '§ 270', abs: '3', satz: 'siebenter' } }],
+  ['Im § 4 Abs. 2 einleitender Satz wird der Ausdruck "62. Lebensjahres" durch den Ausdruck "63. Lebensjahres" ersetzt.', { kind: 'replacePhrase', target: { para: '§ 4', abs: '2', satz: 'einleitung' } }],
+  ['In § 5 wird nach Abs. 3 ein neuer Abs. 3a eingefügt:', { kind: 'insertAfter', anchor: { para: '§ 5', abs: '3' }, childIds: ['3a'] }],
+])('reads „%s"', (line, op) => {
+  const parsed = parseInstruction(line)
+  expect(parsed.reason).toBeNull()
+  expect(parsed.ops[0]).toMatchObject(op)
+})
+
 describe('two clauses under one participle (30.09.2026)', () => {
   // AsylG 2005 § 22: the second pair was looked for in both sentences of the first.
   const line = 'In § 22 erhält Abs. 10 die Absatzbezeichnung "(6)" ; das Wort "A" im ersten und letzten Satz wird jeweils durch die Wortfolge "B" und der Ausdruck "C" wird durch den Ausdruck "D" ersetzt.'

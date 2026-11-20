@@ -104,13 +104,18 @@ export interface NovaoAddress {
  */
 const ORDINAL_WORD = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte|letzte|vorletzte)'
 const ORDINAL_SATZ = new RegExp(`\\b(${ORDINAL_WORD})[rnsm]?(?:\\s+und\\s+(${ORDINAL_WORD})[rnsm]?)?\\s+Satz(?:es)?\\b`, 'i')
-const NUMERIC_SATZ = /\b(\d{1,2})\.\s*Satz(?:es)?\b/i
+// „7. Satz", and „Satz 7" (4/ME XXVIII, UGB § 270: „In § 270 Abs. 3 lautet
+// Satz 7:"; 20.11.2026). Group 1 or 2 is the number.
+const NUMERIC_SATZ = /\b(\d{1,2})\.\s*Satz(?:es)?\b|\bSatz(?:es)?\s+(\d{1,2})(?![\d.]|\s*(?:Abs|Z|lit)\b)/i
 const GROUP_SATZ = /\b(ersten|letzten)\s+(beiden|zwei|drei|vier|fünf)\s+Sätze\b/i
 // „Die Einleitung des § 3c Abs. 1 lautet:" is the Einleitungsteil too. Read
 // without it, the address was the whole Absatz, and its new opening replaced
 // the Ziffern below with it (AC8FD757, 26.10.2026). „Allgemeine Einleitung"
 // is not: that is the name of a section in an Anlage.
-const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|(?<!Allgemeine[nr]?\s)Einleitung|Schlusssatz|Schlussteil)\b/i
+// „einleitender Satz", „im einleitenden Satz" (15/ME XXVIII, APG § 4; 66/ME,
+// SchOG § 128e; 20.11.2026): the Einleitungsteil by another name. Read only
+// where the unit carries a list, as „Einleitungssatz" is (`sentenceSlots`).
+const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|(?<!Allgemeine[nr]?\s)Einleitung|einleitende[nr]?\s+Satz(?:es)?|Schlusssatz|Schlussteil)\b/i
 /** „der Halbsatz", „der Satz" in front of a (masked) quotation: the noun of the quoted text, not a sentence word. */
 const HALBSATZ_NOUN_RE = /\b(?:der|den|dem|die|einen?|ein)\s+(?:Halbsatz(?:es)?|Satz(?:es)?|Sätze)\s*(?="")/gi
 /** „erster Halbsatz", „im letzten Halbsatz", „der zweite Halbsatz". */
@@ -224,7 +229,7 @@ const SENTENCE_PAIR_RE = new RegExp(`\\b(${ORDINAL_WORD}[rnsm]?)\\s+und\\s+((?:i
 
 function parseSentence(tail: string): { satz: string | null; satzCount: number } | null {
   const part = PART_SATZ.exec(tail)
-  if (part) return { satz: /^Einleitung/i.test(part[1]!) ? 'einleitung' : 'schluss', satzCount: 1 }
+  if (part) return { satz: /^Einleitung|^einleitend/i.test(part[1]!) ? 'einleitung' : 'schluss', satzCount: 1 }
   const group = GROUP_SATZ.exec(tail)
   if (group) return { satz: /^ersten$/i.test(group[1]!) ? 'erster' : 'letzter', satzCount: COUNT_WORD[group[2]!.toLowerCase()]! }
   // A pair with the article repeated is two places, never the second alone.
@@ -241,7 +246,7 @@ function parseSentence(tail: string): { satz: string | null; satzCount: number }
   }
   const numeric = NUMERIC_SATZ.exec(tail)
   if (numeric) {
-    const word = ORDINAL_BY_INDEX[Number(numeric[1]) - 1]
+    const word = ORDINAL_BY_INDEX[Number(numeric[1] ?? numeric[2]) - 1]
     return word ? { satz: word, satzCount: 1 } : { satz: null, satzCount: 0 }
   }
   if (SATZ_WORD.test(tail)) return { satz: null, satzCount: 0 }
@@ -403,7 +408,9 @@ function unitsBehindTheParagraph(t: string): string | null {
  * payload, not address — reading it as the target made "§ 5" become
  * "§ 5 Abs. 4", which would have appended into the wrong place.
  */
-const PAYLOAD_MARKER = /\bfolgende[rnms]?\b|\bnachstehende[rnms]?\b|\bals\s+neue[rnms]?\b/i
+// „In § 5 wird nach Abs. 3 ein neuer Abs. 3a eingefügt" (64/ME XXVIII,
+// 20.11.2026): „ein neuer" announces the new unit as „folgender" does.
+const PAYLOAD_MARKER = /\bfolgende[rnms]?\b|\bnachstehende[rnms]?\b|\bals\s+neue[rnms]?\b|\beine?\s+neue[rnms]?\s+(?=Abs|Z\b|Ziffer|lit|§|Satz|Sätze)/i
 
 export function splitPayloadScope(head: string): { scope: string; payload: string } {
   const m = PAYLOAD_MARKER.exec(head)
