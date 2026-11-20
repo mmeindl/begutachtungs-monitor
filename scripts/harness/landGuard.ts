@@ -4,7 +4,7 @@
  * draft — what the Bund's rule „nicht im Entwurf" (`annex/rightColumn.ts`)
  * would say of every § a Land's comparison shows (12.11.2026).
  *
- *   pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show ooe-2025-16106] [--cached-only]
+ *   pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show ooe-2025-16106] [--cached-only] [--mindestens=<pct>]
  *
  * THE PIPELINE IS THE PRODUCT'S: `compareTgu` reads the document and holds
  * its left column against RIS as the page does; `tguDraftBlocks` reads the
@@ -57,6 +57,12 @@
  * `cutShort`. The control asks `cutShort` of the uncut texts, as if each
  * were printed unchanged: what the rule costs on sound §§.
  *
+ * `--mindestens=<pct>` (20.11.2026): exit 1 when a fault class — the five
+ * of the right column and the cuts of the left — tried at least
+ * `MIN_TRIES` times is caught below `pct`; a class tried fewer times is
+ * printed and recorded as „nicht gehalten", never passed in silence
+ * (`lib/landGuardReport.ts`).
+ *
  * Runs with `-c vitest.config.ts`: `texts/read.ts` imports `#shared`.
  */
 import { createHash } from 'node:crypto'
@@ -64,7 +70,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
-import { argFlag, argPair } from '../lib/args'
+import { argAssigned, argFlag, argPair } from '../lib/args'
+import { MIN_TRIES, floorFailed, floorRows, type FaultTally } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
@@ -85,8 +92,10 @@ const outDir = argPair('out')
 const onlyLand = argPair('land') as LandCode | undefined
 const show = argPair('show')
 const cachedOnly = argFlag('cached-only')
-if (!outDir) {
-  console.error('Usage: pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show <id>] [--cached-only]')
+const floorArg = argAssigned('mindestens')
+const floor = floorArg === null ? null : Number(floorArg)
+if (!outDir || (floor !== null && !(floor >= 0 && floor <= 100))) {
+  console.error('Usage: pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show <id>] [--cached-only] [--mindestens=<pct>]')
   process.exit(1)
 }
 mkdirSync(outDir, { recursive: true })
@@ -636,6 +645,29 @@ for (const u of units.filter((x) => x.notInDraft)) {
   lines.push(`Entwurf zu diesem §: ${u.draftFor ? u.draftFor.slice(0, 900) : '(keine Anordnung nennt ihn)'}`)
   lines.push('')
 }
+/* The floor (`--mindestens`): every class the run injects — the right
+   column's faults, the left column's cuts — against it. */
+const tallies: FaultTally[] = [
+  ...FAULTS.map((fault) => {
+    const f = faults.filter((x) => x.fault === fault && x.applied)
+    return { key: fault, tried: f.length, caught: f.filter((x) => x.caught).length }
+  }),
+  ...CUTS.map((kind) => {
+    const c = cuts.filter((x) => x.cut === kind)
+    return { key: `Beide gekürzt: ${kind}`, tried: c.length, caught: c.filter((x) => x.refused).length }
+  }),
+]
+const floorTable = floor === null ? null : floorRows(tallies, floor)
+if (floorTable) {
+  lines.push('')
+  lines.push(`## Boden (--mindestens=${floor})`)
+  lines.push('')
+  lines.push(`Eine Klasse mit weniger als ${MIN_TRIES} Versuchen hält der Boden nicht: sie steht als „nicht gehalten" da, nicht als bestanden.`)
+  lines.push('')
+  lines.push('| Fehlerklasse | angewandt | gefangen | Anteil | Urteil |')
+  lines.push('|---|---|---|---|---|')
+  for (const r of floorTable) lines.push(`| ${r.key} | ${r.tried} | ${r.caught} | ${pct(r.caught, r.tried)} | ${r.verdict} |`)
+}
 writeFileSync(join(outDir, 'summary.md'), lines.join('\n'))
 /* The figures of the tables above as a record (19.11.2026), for
    `scripts/harness/genauigkeit.ts`, which writes what `/genauigkeit` shows. */
@@ -666,6 +698,21 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
       return { key: fault, tried: f.length, bag: f.filter((x) => x.bag).length, caught: f.filter((x) => x.caught).length }
     }),
   },
+  // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten".
+  floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },
 }, null, 1)}\n`)
 console.log(lines.slice(0, lines.indexOf('## Abweichende §§ (die das Produkt zurückhalten würde)')).join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)
+if (floorTable) {
+  console.log(`\n## Boden (--mindestens=${floor})`)
+  for (const r of floorTable) {
+    if (r.verdict === 'unter dem Boden') console.log(`  ✗ unter ${floor} %: ${r.key} — ${r.caught}/${r.tried}`)
+    else if (r.verdict === 'nicht gehalten') console.log(`  ? nicht gehalten (weniger als ${MIN_TRIES} Versuche): ${r.key} — ${r.caught}/${r.tried}`)
+  }
+  if (floorFailed(floorTable)) process.exit(1)
+  const held = floorTable.filter((r) => r.verdict === 'gehalten').length
+  // Zero of zero is no all-clear: a run too small for the floor says that it held nothing.
+  console.log(held
+    ? `  ✓ ${held} von ${floorTable.length} Fehlerklassen mit mindestens ${MIN_TRIES} Versuchen zu mindestens ${floor} % gefangen${held < floorTable.length ? `; ${floorTable.length - held} nicht gehalten` : ''}`
+    : `  ? keine Fehlerklasse mit mindestens ${MIN_TRIES} Versuchen — der Boden hat nichts gehalten`)
+}
