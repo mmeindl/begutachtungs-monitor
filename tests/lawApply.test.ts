@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyNovelle, instructionsFromUnits, parsePayload, renamedOrigins, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
+import { ARTICLE_IN_PAYLOAD, applyNovelle, instructionsFromUnits, parsePayload, renamedOrigins, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
 import { bodyText, makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawtext/konsTree'
 import { paraNode as para } from './helpers/builders'
 import { opAddress, parseAddress, parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
@@ -3101,5 +3101,47 @@ describe('new §§ announced „samt Überschrift" carry it (19.11.2026)', () =>
     expect(run(standing(), instr('Nach § 70 werden folgende §§ 70a und 70b samt Überschrift eingefügt:', run2)).results[0]!.applied).toBe(true)
     expect(run(standing(), instr('Nach § 70 wird folgender § 70a samt Überschrift eingefügt:', ['§ 70a. (1) Eins.'])).results[0]!.reason).toBe('samt Überschrift, aber keine Überschrift im neuen Text')
     expect(run(standing(), instr('Nach § 70 wird folgender 2a. Abschnitt samt Überschrift eingefügt:', ['§ 70a. (1) Eins.'])).results[0]!.reason).not.toBe('samt Überschrift, aber keine Überschrift im neuen Text')
+  })
+})
+
+describe('new text that opens an Artikel as a unit is refused, with the Artikel it would create (20.11.2026)', () => {
+  // 127/ME XXVIII, B-VG: the draft's own blocks. The § is the only unit the
+  // payload reader knows, so „Artikel 52a." went in as words.
+  const insertion = unitOf([
+    { kind: 'novao', text: '3. Nach Art. 52 wird folgender Art. 52a eingefügt:' },
+    { kind: 'abs', gld: 'Artikel 52a.', text: '" (1) Der Nationalrat und der Bundesrat sind befugt, die Geschäftsführung der Bundesstaatsanwaltschaft zu überprüfen.' },
+    { kind: 'abs', text: '(2) Auf die Auskünfte gemäß Abs. 1 und gemäß Art. 94c Abs. 6 ist Art. 52 Abs. 3a und 4 sinngemäß anzuwenden."' },
+  ])
+  const division = unitOf([
+    { kind: 'novao', text: '8. Nach Art. 94 wird folgender zweiter Unterabschnitt eingefügt:' },
+    { kind: 'abs', gld: 'Artikel 94a.', text: 'Die Staatsanwälte sind Organe der ordentlichen Gerichtsbarkeit.' },
+    { kind: 'abs', gld: 'Artikel 94b.', text: 'Die Bundesstaatsanwaltschaft übt die Fachaufsicht über die Staatsanwaltschaften aus und ist in deren Ausübung unabhängig.' },
+    { kind: 'abs', gld: 'Artikel 94c.', text: '(1) Die Bundesstaatsanwaltschaft besteht aus drei Mitgliedern.' },
+    { kind: 'abs', text: '(2) Die Mitglieder müssen zum Nationalrat wählbar sein.' },
+    { kind: 'abs', gld: 'Artikel 94d.', text: '(1) Soweit für einzelne Angelegenheiten gesetzlich nicht anderes bestimmt ist, übt die Bundesstaatsanwaltschaft ihre Zuständigkeit als Kollegium aus.' },
+    { kind: 'abs', text: '(2) Die kollegialen Beschlüsse der Bundesstaatsanwaltschaft werden mit einfacher Mehrheit gefasst."' },
+  ])
+
+  it('what the payload reader made of „Artikel 52a.": the unit\'s heading, with the first Absatz', () => {
+    const [node] = parsePayload(stripPayloadQuotes(['Artikel 52a. " (1) Der Nationalrat und der Bundesrat sind befugt.', '(2) Zweiter Absatz."']))
+    expect(node!.id).toBe('')
+    expect(node!.heading).toBe('Artikel 52a. " (1) Der Nationalrat und der Bundesrat sind befugt.')
+  })
+
+  it('refuses the inserted Artikel and names it', () => {
+    const { instructions, refused } = instructionsFromUnits([insertion])
+    expect(instructions).toEqual([])
+    expect(refused.map((r) => [r.reason, r.created])).toEqual([[ARTICLE_IN_PAYLOAD, ['Art. 52a']]])
+  })
+
+  it('names every Artikel of an inserted Unterabschnitt, which its line does not', () => {
+    const { instructions, refused } = instructionsFromUnits([division])
+    expect(instructions).toEqual([])
+    expect(refused.map((r) => r.created)).toEqual([['Art. 94a', 'Art. 94b', 'Art. 94c', 'Art. 94d']])
+  })
+
+  it('leaves new text alone that only cites an Artikel, or sets a § in one', () => {
+    const cites = unitOf([{ kind: 'novao', text: '1. Nach § 5 wird folgender § 5a eingefügt:' }, { kind: 'abs', gld: '§ 5a.', text: '"Art. 94c Abs. 1 B-VG gilt sinngemäß."' }])
+    expect(instructionsFromUnits([cites]).refused).toEqual([])
   })
 })

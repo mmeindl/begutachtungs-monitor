@@ -22,6 +22,7 @@
 import { normalizeText, stripQuotes } from '../lawtext/normalize'
 import { articleNumberKey, bareParaId, romanOf } from '../text/designation'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+import { articleUnitId } from '../../../shared/utils/explanationKey'
 
 // ---------------------------------------------------------------------------
 // Addresses
@@ -3566,8 +3567,11 @@ function signedParagraphs(masked: string, once = false): string[] {
 /** A quoted new designation of a §: „§ 15.", „16", „§ 6.01a." */
 const QUOTED_PARAGRAPH_RE = new RegExp(String.raw`^\s*(?:§+\s*)?(${PARAGRAPH_NUMBER})\.?\s*$`)
 
+/** „Die Art. 52a und 52b": an Artikel named as the unit itself, where a renumbering's subject opens. */
+const ARTICLE_SUBJECT_RE = /(?<![\p{L}])Art(?:ikel|\.)\s*\d/u
+
 /**
- * The new §§ of a renumbering clause — „Der bisherige § 7 erhält die
+ * The new units of a renumbering clause — „Der bisherige § 7 erhält die
  * Bezeichnung § 9", „die §§ 264a und 264b erhalten die Bezeichnungen ‚§ 264'
  * und ‚§ 264a'", „die §§ 5 bis 9 erhalten die Paragrafenbezeichnungen ‚6.'
  * bis ‚10.'", „Der bisherige § 9 wird zu § 16". Read inside the quotations
@@ -3576,6 +3580,15 @@ const QUOTED_PARAGRAPH_RE = new RegExp(String.raw`^\s*(?:§+\s*)?(${PARAGRAPH_NU
  * Only where a § itself is renamed: between the § and the noun no unit below
  * it may stand. „In § 107 erhalten die Z 5 bis 9 die Ziffernbezeichnungen ‚4.'
  * bis ‚8.'" renames Ziffern, and its „4." to „8." are no §§.
+ *
+ * **And where an Artikel is the unit renamed** (20.11.2026): „Die Art. 52a
+ * und 52b erhalten die Bezeichnungen ‚Artikel 52b.' und ‚Artikel 52c.'"
+ * (127/ME XXVIII, the B-VG). With no § sign in it the line named no new
+ * unit, so the refused renumbering left Art. 52c uncounted, and the page
+ * said of its annex block that no instruction on it was found. Only the
+ * quoted designation that names itself an Artikel, read as every side reads
+ * one (`articleUnitId`): a bare quoted number under an Artikel has not been
+ * seen in the corpus.
  */
 function renumberedParagraphs(head: string): string[] {
   const masked = blankQuotes(head)
@@ -3584,12 +3597,19 @@ function renumberedParagraphs(head: string): string[] {
   // The subject's § may be quoted — „Der bisherige ‚§ 7' erhält die
   // Bezeichnung ‚§ 8'" (a Verordnung of 2026) — so the sign is looked for in
   // the line as written.
-  const sign = head.indexOf('§')
+  const paragraph = head.indexOf('§')
+  const article = paragraph < 0 || paragraph > noun.index ? (ARTICLE_SUBJECT_RE.exec(masked.slice(0, noun.index))?.index ?? -1) : -1
+  const sign = article >= 0 ? article : paragraph
   if (sign < 0 || sign > noun.index || DESIGNATOR_TOKEN_RE.test(masked.slice(sign, noun.index))) return []
   if (!/^(?:wird|werden)/i.test(noun[0]) && !RENUMBER_VERB_RE.test(masked.slice(sign, noun.index))) return []
   const behind = head.slice(noun.index + noun[0].length)
   // Unquoted („die Bezeichnungen §§ 433 und 434") as every other list, …
-  const out = signedParagraphs(maskQuotes(behind))
+  const out = article >= 0 ? [] : signedParagraphs(maskQuotes(behind))
+  const quoted = (text: string): string | null => {
+    if (article < 0) return QUOTED_PARAGRAPH_RE.exec(text)?.[1] ?? null
+    return articleUnitId(text)
+  }
+  const kind = article >= 0 ? 'Art.' : '§'
   // … quoted one designation per quotation, and a range between two of them.
   let previous: string | null = null
   let ranged = false
@@ -3598,9 +3618,9 @@ function renumberedParagraphs(head: string): string[] {
       ranged = previous !== null
       continue
     }
-    const id = QUOTED_PARAGRAPH_RE.exec(m[1]!)?.[1] ?? null
+    const id = quoted(m[1]!)
     const run = id && ranged && previous !== null ? expandRange(previous, id) : null
-    if (id) for (const between of run ?? [id]) out.push(`§ ${between}`)
+    if (id) for (const between of run ?? [id]) out.push(`${kind} ${between}`)
     previous = id
     ranged = false
   }

@@ -11,7 +11,7 @@
  * rule; they share one pass now.
  */
 import type { AnnexWithheldCause, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
-import { annexUnitId, articleUnitLaws, explanationKey, explanationParaId } from '#shared/utils/explanationKey'
+import { annexUnitId, articleUnitLaws, explanationKey, explanationParaId, numberedUnitId } from '#shared/utils/explanationKey'
 import { type DiffBadge, paragraphBadge } from './diffBadges'
 import { readsSideBySide, splitSegments } from './diffSides'
 import { outcomeIndex, showsInstructedChange, type LawEnd, type Lesefassung, type Outcome } from './lesefassung'
@@ -364,6 +364,17 @@ function openedParagraphs(rows: readonly TextComparisonRow[]): TextComparisonRow
   return out
 }
 
+/**
+ * The number a designation of one law carries, as the placement compares it
+ * (`numberedUnitId`): a §'s, and an Artikel's in a law whose units are
+ * Artikel. Through `explanationParaId` alone „Artikel 90a." and „Artikel
+ * 94a." were both nothing, so equal, and 127/ME XXVIII's renumbered Artikel
+ * were placed as if they kept their number: the vacated Art. 90a stood at
+ * the law's end as a unit the annex prints no rows for (20.11.2026). Not a
+ * schedule's number: a schedule is not renumbered into a §'s place.
+ */
+type UnitNumber = (designation: string | null) => string | null
+
 /** A § as the Erläuterungen and the Lesefassung may address it. */
 interface Addressed {
   /** The designation after the draft (`TextComparisonRow.paraAfter`); null where it is repealed. */
@@ -386,30 +397,33 @@ interface Addressed {
  * other § of the law carries it after the draft. Where one does (51/ME: the
  * new § 14), „Zu § 14" explains that one, and the renumbered or repealed §
  * gets nothing rather than its successor's Begründung.
+ *
+ * `numberIn` reads a designation's number in the run's law (`UnitNumber`):
+ * in a law whose units are Artikel, the Artikel's.
  */
-function addressedParagraphs(runs: readonly ParagraphRun[]): Addressed[][] {
-  const opened = runs.map((run) => openedParagraphs(run.rows).map((rows) => ({ own: rows[0]!.para, after: rows[0]!.paraAfter })))
+function addressedParagraphs(runs: readonly ParagraphRun[], numberIn: (law: string | null) => UnitNumber): Addressed[][] {
+  const opened = runs.map((run) => openedParagraphs(run.rows).map((rows) => ({ own: rows[0]!.para, after: rows[0]!.paraAfter, numberOf: numberIn(run.rows[0]!.law) })))
   /** How many §§ of the law carry each number after the draft. */
   const carriers = new Map<string, number>()
-  for (const { after } of opened.flat()) {
-    const id = explanationParaId(after)
+  for (const { after, numberOf } of opened.flat()) {
+    const id = numberOf(after)
     if (id !== null) carriers.set(id, (carriers.get(id) ?? 0) + 1)
   }
   return opened.map((paragraphs) =>
-    paragraphs.map(({ own, after }) => {
-      const id = explanationParaId(own)
-      const others = (carriers.get(id ?? '') ?? 0) - (id !== null && explanationParaId(after) === id ? 1 : 0)
+    paragraphs.map(({ own, after, numberOf }) => {
+      const id = numberOf(own)
+      const others = (carriers.get(id ?? '') ?? 0) - (id !== null && numberOf(after) === id ? 1 : 0)
       return { own, after, ownTaken: others > 0 }
     }),
   )
 }
 
 /** What one addressed § finds under `lookup` (see `addressedParagraphs`). */
-function lookUp<T>(law: string | null, p: Addressed, lookup: (law: string | null, para: string | null) => T, found: (t: T) => boolean): T | null {
+function lookUp<T>(law: string | null, p: Addressed, numberOf: UnitNumber, lookup: (law: string | null, para: string | null) => T, found: (t: T) => boolean): T | null {
   if (p.after !== null) {
     const hit = lookup(law, p.after)
     if (found(hit)) return hit
-    if (explanationParaId(p.after) === explanationParaId(p.own)) return null
+    if (numberOf(p.after) === numberOf(p.own)) return null
   }
   return p.ownTaken ? null : lookup(law, p.own)
 }
@@ -601,11 +615,12 @@ export function placeAtParagraphs(
   const blocks: { rows: readonly TextComparisonRow[]; matched: ParagraphExplanationView[]; found: PlacedLesefassung[]; ownNumber: Set<Lesefassung>; standsAfter: string | null }[] = []
   for (const g of groups) {
     const runs = paragraphRuns(g.rows)
-    const addressed = addressedParagraphs(runs)
+    const addressed = addressedParagraphs(runs, (law) => (designation) => numberedUnitId(designation, articleLaws.has(law ?? '')))
     for (const [i, run] of runs.entries()) {
       const first = run.rows[0]!
+      const numberOf: UnitNumber = (designation) => numberedUnitId(designation, articleLaws.has(first.law ?? ''))
       const ps = addressed[i] ?? []
-      const matched = ps.flatMap((p) => lookUp(first.law, p, passagesAt, (xs) => xs.length > 0) ?? [])
+      const matched = ps.flatMap((p) => lookUp(first.law, p, numberOf, passagesAt, (xs) => xs.length > 0) ?? [])
       for (const e of matched) placedPassages.add(e)
 
       const found: PlacedLesefassung[] = []
@@ -614,9 +629,9 @@ export function placeAtParagraphs(
         // The § that keeps the run's number first (2/ME's § 2 also opens the
         // new § 1a, and stays § 2), then the others, each under the number
         // it carries after the draft.
-        const keeps = (p: (typeof ps)[number]): boolean => p.after !== null && explanationParaId(p.after) === explanationParaId(p.own)
+        const keeps = (p: (typeof ps)[number]): boolean => p.after !== null && numberOf(p.after) === numberOf(p.own)
         for (const p of [...ps.filter(keeps), ...ps.filter((p) => !keeps(p))]) {
-          const hit = lookUp(first.law, p, (law, para) => outcomes.at(law, para), (o) => o !== null)
+          const hit = lookUp(first.law, p, numberOf, (law, para) => outcomes.at(law, para), (o) => o !== null)
           if (!hit || hit.outcomes.every((o) => found.some((l) => l.lesefassung === o.lesefassung))) continue
           outcomes.take(hit.outcomes)
           for (const o of hit.outcomes) tookAs.set(o, hit.lesefassung)
@@ -625,7 +640,7 @@ export function placeAtParagraphs(
           // A § this block shows under a new number leaves its old one
           // behind: the number is vacated (`entfaellt`), or another § holds
           // it — and that one is placed at its own block.
-          if (p.after !== null && explanationParaId(p.after) !== explanationParaId(p.own)) {
+          if (p.after !== null && numberOf(p.after) !== numberOf(p.own)) {
             const old = outcomes.at(first.law, p.own)
             if (old && old.lesefassung.kind === 'withheld' && old.lesefassung.cause === 'entfaellt') {
               outcomes.take(old.outcomes)

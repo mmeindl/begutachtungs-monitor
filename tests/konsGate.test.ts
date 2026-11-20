@@ -366,3 +366,28 @@ describe('the denominator counts what the draft brings into being (26.10.2026)',
     expect(addressedParagraphs(instr('Der bisherige § 15 wird zu § 23 Abs. 1; ihm wird folgender Abs. 2 angefügt:', ['(2) Neu.']), [])).toEqual(['15', '23'])
   })
 })
+
+describe('the units a refused line creates in a law whose units are Artikel (127/ME XXVIII, 20.11.2026)', () => {
+  const renumbering = 'Die Art. 52a und 52b erhalten die Bezeichnungen "Artikel 52b." und "Artikel 52c." .'
+  // As `instructionsFromUnits` hands the refused insertion over: the line names Art. 94 alone.
+  const division = { line: 'Nach Art. 94 wird folgender zweiter Unterabschnitt eingefügt:', inherited: null, created: ['Art. 94a', 'Art. 94b', 'Art. 94c', 'Art. 94d'] }
+
+  it('reads the new numbers of a renumbering of Artikel', () => {
+    expect(createdUnits(renumbering)).toEqual(['Art. 52b', 'Art. 52c'])
+    // A renumbering below the unit names no new Artikel, and a § keeps its own reading.
+    expect(createdUnits('In Art. 10 Abs. 1 erhalten die Z 5 bis 9 die Ziffernbezeichnungen "4." bis "8." .')).toEqual([])
+    expect(createdUnits('Die §§ 264a und 264b erhalten die Bezeichnungen "§ 264" und "§ 264a" .')).toEqual(['§ 264', '§ 264a'])
+  })
+
+  it('counts and locks them under the number the annex block prints', () => {
+    expect(addressedParagraphs([], [renumbering, division])).toEqual(['52a', '52b', '52c', '94', '94a', '94b', '94c', '94d'])
+    expect([...refusedUnits([], [renumbering, division], unitKey)].sort(byParagraphOrder)).toEqual(['52a', '52b', '52c', '94', '94a', '94b', '94c', '94d'])
+  })
+
+  it('files them as Artikel, never as a § RIS does not carry in such a law', () => {
+    const { labels, doubled } = addressedLabels([], [renumbering, division])
+    expect(labels.get('52c')).toBe('Art. 52c')
+    expect(labels.get('94a')).toBe('Art. 94a')
+    expect(doubled.size).toBe(0)
+  })
+})

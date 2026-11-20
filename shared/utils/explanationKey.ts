@@ -114,6 +114,20 @@ export function articleUnitLaws(rows: readonly DesignatedRow[]): Set<string> {
 }
 
 /**
+ * Designation → the number a § carries, or an Artikel in a law whose units
+ * are Artikel (`articleUnits`, decided by `articleUnitLaws`): „§ 54c." →
+ * „54c", „Artikel 94a." → „94a". Never a schedule's.
+ *
+ * What the page compares where it asks whether a block's unit changes its
+ * number („Artikel 90a." left, „Artikel 94a." right). Asked through
+ * `explanationParaId` alone, both sides of an Artikel read as nothing and
+ * therefore as equal: no Artikel was ever renumbered (20.11.2026).
+ */
+export function numberedUnitId(designation: string | null, articleUnits = false): string | null {
+  return explanationParaId(designation) ?? (articleUnits ? articleUnitId(designation) : null)
+}
+
+/**
  * Designation → the unit a § block of the annex and an outcome of the
  * Lesefassung both stand for: „§ 54c." → „54c", „Anlage 1 (zu § 6)" →
  * „anl. 1", „Anhang" → „anl.". Lowercased, as `explanationParaId`.
@@ -134,10 +148,8 @@ export function articleUnitLaws(rows: readonly DesignatedRow[]): Set<string> {
  */
 export function annexUnitId(designation: string | null, articleUnits = false): string | null {
   const t = (designation ?? '').trim()
-  const para = explanationParaId(t)
-  if (para) return para
-  const article = articleUnits ? articleUnitId(t) : null
-  if (article) return article
+  const numbered = numberedUnitId(t, articleUnits)
+  if (numbered) return numbered
   if (!/^(?:Anlage|Anhang|Anl\.?)(?!\p{L})/iu.test(t)) return null
   const n = scheduleNumber(t)
   return n ? `anl. ${n.toLowerCase()}` : 'anl.'
