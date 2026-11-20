@@ -70,6 +70,8 @@ import { showsInstructedChange, type Lesefassung } from '../../app/utils/lesefas
 import { annexParas, groupAnnexRows, placeAtParagraphs, type ParaPlacement } from '../../app/utils/annexGroups'
 import { argAssigned } from '../lib/args'
 import { corpusReach, harnessStamp } from '../lib/harnessRecord'
+import { WEG_BEISPIEL } from '../../shared/utils/genauigkeit'
+import { wegBeispielFailures } from '../lib/wegBeispiel'
 
 const BASE = argAssigned('base') ?? process.env.BASE ?? 'http://localhost:3000'
 const GP = argAssigned('gp') ?? 'XXVIII'
@@ -141,6 +143,8 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
     return report
   }
   for (const w of kons.withheld) report.causes[w.cause] = (report.causes[w.cause] ?? 0) + 1
+  // The § /genauigkeit tells in the present tense is held against this answer (`lib/wegBeispiel.ts`).
+  if (citation === WEG_BEISPIEL.draft.citation) report.failures.push(...wegBeispielFailures(kons))
 
   const balance = consolidationBalance(kons)
   if (!balance.balanced) report.failures.push(`balance: ${balance.missing} ohne Ergebnis, doppelt: ${balance.twice.join(' ')}`)
