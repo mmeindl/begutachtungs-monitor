@@ -221,3 +221,36 @@ export function anchorOf(instruction: string): string | null {
   const m = /^\s*Nach\s+(§\s*\d+[a-z]?)\s+(?:wird|werden)\b[^„"“]*?\b(?:eingefügt|angefügt)\b/.exec(instruction)
   return m ? m[1]!.replace(/^§\s*/, '§ ') : null
 }
+
+/** One answer of `compareTgu`, as far as a Land's record reads it. */
+export interface RecordAnswer { available: boolean; units: readonly { change: string }[]; withheld: readonly WithheldItem[] }
+
+/**
+ * What a Land's comparisons came to, measured through `compareTgu` alone —
+ * for a Land the draft rules are not asked of (Kärnten: its right column is
+ * the Novelle's instructions, reprinted; `landTguGuard.ts`). `documents`:
+ * answers that show a comparison; `withheld` by cause, a § RIS refused as
+ * „leftCheck", as in the baseline.
+ */
+export interface LandRecord {
+  answered: number
+  documents: number
+  shownChangedOrNew: number
+  shownUnchanged: number
+  withheld: number
+  withheldBy: Record<string, number>
+}
+
+export function landRecord(answers: readonly RecordAnswer[]): LandRecord {
+  const withheldBy: Record<string, number> = {}
+  for (const a of answers) for (const w of a.withheld) withheldBy[w.reason ?? 'leftCheck'] = (withheldBy[w.reason ?? 'leftCheck'] ?? 0) + 1
+  const units = answers.flatMap((a) => a.units)
+  return {
+    answered: answers.length,
+    documents: answers.filter((a) => a.available).length,
+    shownChangedOrNew: units.filter((u) => u.change !== 'unchanged').length,
+    shownUnchanged: units.filter((u) => u.change === 'unchanged').length,
+    withheld: answers.reduce((n, a) => n + a.withheld.length, 0),
+    withheldBy: Object.fromEntries(Object.entries(withheldBy).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))),
+  }
+}

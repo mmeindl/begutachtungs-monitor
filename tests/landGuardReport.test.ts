@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf } from '../scripts/lib/landGuardReport'
+import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf, landRecord } from '../scripts/lib/landGuardReport'
 
 /**
  * The verdicts of the Land harness (`scripts/harness/landGuard.ts`), against
@@ -155,5 +155,19 @@ describe('anchorOf: the § an instruction inserts after, which it does not chang
     expect(anchorOf('Im § 12 wird angefügt:  „(8) § 8 Abs 1')).toBeNull()
     expect(anchorOf('In § 5 Abs. 2 wird nach dem Wort „Gemeinde“ eingefügt:')).toBeNull()
     expect(anchorOf('Die Anlage 9 wird aufgehoben.')).toBeNull()
+  })
+})
+
+describe('a Land in the record through compareTgu alone (Kärnten)', () => {
+  it('counts the documents with a comparison, the §§ shown, and the withheld ones by cause', () => {
+    const r = landRecord([
+      { available: true, units: [{ change: 'changed' }, { change: 'inserted' }, { change: 'unchanged' }], withheld: [{ law: 'K-X', id: '§ 1', reason: 'wording' }, { law: 'K-X', id: '§ 2' }] },
+      { available: false, units: [], withheld: [{ law: 'K-Y', id: '§ 3', reason: 'wording' }, { law: 'K-Y', id: '§ 4', reason: 'gap' }] },
+    ])
+    expect(r).toEqual({ answered: 2, documents: 1, shownChangedOrNew: 2, shownUnchanged: 1, withheld: 4, withheldBy: { wording: 2, gap: 1, leftCheck: 1 } })
+  })
+
+  it('no answer is a record of zeros, not a missing one', () => {
+    expect(landRecord([])).toEqual({ answered: 0, documents: 0, shownChangedOrNew: 0, shownUnchanged: 0, withheld: 0, withheldBy: {} })
   })
 })

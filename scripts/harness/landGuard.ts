@@ -89,7 +89,7 @@ import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag, argPair } from '../lib/args'
-import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, type Accounting, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
+import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, landRecord, toLandBaseline, unaccountedInstructed, type Accounting, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
@@ -750,6 +750,17 @@ for (const u of units.filter((x) => x.notInDraft)) {
   lines.push(`Entwurf zu diesem §: ${u.draftFor ? u.draftFor.slice(0, 900) : '(keine Anordnung nennt ihn)'}`)
   lines.push('')
 }
+/* Kärnten in the record (20.11.2026): its comparison is on the site
+   (`READ_TGU`), measured here through `compareTgu` alone — the draft rules
+   are not asked of it (`withoutUndrafted`), so it stands apart from the
+   four Länder above and none of their figures includes it. */
+const kaernten = { askedOfDraftRules: false, requested: items.filter((i) => i.land === 'ktn').length, ...landRecord(answers.filter((a) => a.land === 'ktn')) }
+lines.push('')
+lines.push('## Kärnten (nur compareTgu, ohne Entwurfsregeln)')
+lines.push('')
+lines.push(`- ${kaernten.requested} Entwürfe, ${kaernten.answered} beantwortet, ${kaernten.documents} mit Vergleich; gezeigt ${kaernten.shownChangedOrNew} §§ geändert oder neu und ${kaernten.shownUnchanged} unverändert; zurückgehalten ${kaernten.withheld}`)
+lines.push(`- zurückgehalten nach Grund: ${Object.entries(kaernten.withheldBy).map(([k, v]) => `${k} ${v}`).join(', ') || '–'}`)
+
 /* The page accounting: a § in both lists, in neither, or shown uncompared fails the run; the §§ instructed and in neither list are read, not failed. */
 const broken = accountings.filter(accountingFailed)
 const asked = accountings.filter((a) => a.instructed)
@@ -846,6 +857,8 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   },
   // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten".
   floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },
+  // Kärnten, apart: its comparison through `compareTgu` alone, not asked of the draft rules; no field above counts it.
+  kaernten,
   // The page accounting: `both`, `neither` and `unknownShown` must be 0; `instructed` is read, not failed (`accounting.jsonl`).
   accounting: accountingTotals,
   // `--baseline`: null when the run compared none; the findings themselves in `baseline-findings.txt`.
