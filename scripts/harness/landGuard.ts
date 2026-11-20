@@ -71,6 +71,16 @@
  * `--baseline-schreiben=<file>` draws it anew from a whole run; the committed
  * one is `landGuardBaseline.json`, drawn from the cached corpus.
  *
+ * The page accounting (20.11.2026), on every run: per document and law,
+ * every § `compareTgu` compared ends exactly once — shown or withheld — and
+ * nothing is shown that was not compared; a § in both, in neither or shown
+ * uncompared fails the run (`accountFor`). Apart from it, printed and never
+ * failed: the §§ the draft's instructions name for a law the comparison has
+ * that it neither shows nor withholds (`unaccountedInstructed`) — where a
+ * missed § opener leaves a § (`landTgu.ts`, `tguParagraphs`), or the
+ * Land's document does not print it. `accounting.jsonl` holds both per
+ * document.
+ *
  * Runs with `-c vitest.config.ts`: `texts/read.ts` imports `#shared`.
  */
 import { createHash } from 'node:crypto'
@@ -79,11 +89,11 @@ import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag, argPair } from '../lib/args'
-import { MIN_TRIES, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
+import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, type Accounting, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
-import { guardTguUnits, undrafted } from '../../server/utils/laender/landTguGuard'
+import { articleClauses, draftLawKey, guardTguUnits, landDraftBags, undrafted } from '../../server/utils/laender/landTguGuard'
 import { lawInForce, paragraphText } from '../../server/utils/laender/landKons'
 import { comparableWords, cutShort, standsInRis } from '../../server/utils/laender/landTgu'
 import { draftUnits } from '../../server/utils/annex/annexDraft'
@@ -237,6 +247,64 @@ interface TguAnswer {
 const answers: TguAnswer[] = []
 /** Each document of the population as the baseline holds it (`--baseline`). */
 const baselineDocs: Record<string, LandBaselineDocument> = {}
+/**
+ * Where each answered document's §§ ended (`accountFor`), and the §§ its
+ * draft instructs that the comparison neither shows nor withholds
+ * (`instructed`; null where the draft was not read — Kärnten is not asked,
+ * as the guard is not). `unnamedLaws`: laws of the document the draft's
+ * could not be matched to (`draftLawKey`) — their §§ count for every law of
+ * the draft. `lawsWithout`: laws of the draft the comparison has nothing of.
+ */
+interface AccountingRecord extends Accounting {
+  land: LandCode
+  draft: string
+  /** `anchor`: every instruction naming the § only inserts after it (`anchorOf`) — the comparison has no reason to show it. */
+  instructed: { named: number; missing: { law: string | null; para: string; instruction: string; anchor: boolean }[]; unnamedLaws: (string | null)[]; lawsWithout: { law: string | null; paras: number }[] } | null
+}
+const accountings: AccountingRecord[] = []
+
+/** The §§ the draft's instructions name, per law, against those the comparison shows or withholds — both by `designationKey`, the laws matched as the guard matches them (`draftLawKey`). */
+function instructedOf(blocks: readonly TextBlock[], laws: readonly (string | null)[], accounted: readonly { law: string | null; id: string; fromId?: string | null }[]): AccountingRecord['instructed'] {
+  const units = draftUnits(blocks)
+  const bags = landDraftBags(blocks)
+  const keys = [...new Set([...bags.byLaw.keys(), ...bags.general.keys()])]
+  const clauses = articleClauses(blocks)
+  const keyOf = new Map(laws.map((law) => [law, draftLawKey(law, keys, clauses)] as const))
+  const designation = (id: string) => designationKey(id.replace(/^§\s*/, '§ '))
+  const unnamed = new Set<string>()
+  const byLaw = new Map<string | null, Set<string>>()
+  for (const a of accounted) {
+    const ids = [a.id, a.fromId].flatMap((x) => (x ? [designation(x)] : [])).filter((x): x is string => !!x)
+    const key = keyOf.get(a.law)
+    if (key === undefined) ids.forEach((x) => unnamed.add(x))
+    else byLaw.set(key, new Set([...(byLaw.get(key) ?? []), ...ids]))
+  }
+  // A law the draft's could not be matched to: its §§ count for every law (lenient — this list is read, not failed).
+  for (const set of byLaw.values()) unnamed.forEach((x) => set.add(x))
+  const named = new Map<string | null, Set<string>>()
+  const instructions = new Map<string, { id: string; text: string }[]>()
+  for (const u of units) {
+    for (const p of u.paras) {
+      const k = designationKey(p)
+      if (!k) continue
+      named.set(u.law, (named.get(u.law) ?? new Set<string>()).add(k))
+      instructions.set(`${u.law}|${k}`, [...(instructions.get(`${u.law}|${k}`) ?? []), { id: u.id, text: u.text }])
+    }
+  }
+  return {
+    named: [...named.values()].reduce((n, s) => n + s.size, 0),
+    missing: unaccountedInstructed(named, byLaw).map((m) => {
+      const by = instructions.get(`${m.law}|${m.para}`) ?? []
+      const anchor = by.length > 0 && by.every((u) => {
+        const a = anchorOf(u.text)
+        return a !== null && designationKey(a) === m.para
+      })
+      return { ...m, instruction: by.map((u) => `[${u.id}] ${u.text.slice(0, 300)}`).join(' | '), anchor }
+    }),
+    unnamedLaws: laws.filter((l) => keyOf.get(l) === undefined),
+    lawsWithout: [...named].filter(([law]) => !byLaw.has(law)).map(([law, paras]) => ({ law, paras: paras.size })),
+  }
+}
 /** The §§ the rule passes, with what is needed to inject into them. */
 interface Site { record: UnitRecord; unit: LawDiffUnit; blocks: TextBlock[]; all: LawDiffUnit[] }
 const sites: Site[] = []
@@ -313,6 +381,10 @@ for (const item of items) {
       withheld: value.withheld,
     })
     baselineDocs[item.id] = baselineDocument(item.land, 'beantwortet', value)
+    const accounting: AccountingRecord = { land: item.land, draft: item.id, ...accountFor(compared, value.units, value.withheld), instructed: null }
+    accountings.push(accounting)
+    const accounted = [...value.units.map((u) => ({ law: u.article, id: u.id, fromId: u.fromId })), ...value.withheld]
+    const lawsOf = () => [...new Set([...compared.map((u) => u.article), ...accounted.map((a) => a.law)])]
     // Kärnten: the answer only — its right column is the Novelle's instructions, which the guard does not judge.
     if (item.land === 'ktn') {
       rec.state = value.available ? 'nur Antwort (Kärnten)' : `nicht verfügbar: ${value.unavailableReason?.slice(0, 80)}`
@@ -322,6 +394,9 @@ for (const item of items) {
     rec.productDiffers = value.withheld.filter((w) => w.reason === 'draftDiffers').map((w) => `${w.law ?? '-'} ${w.fromId ? `${w.fromId} → ` : ''}${w.id}`)
     if (!value.available && !compared.length) {
       rec.state = `nicht verfügbar: ${value.unavailableReason?.slice(0, 80)}`
+      // Nothing compared, and still §§ withheld: what the draft instructs is asked here too.
+      const read = await tguDraftBlocks(item.land, detail, pagesOf, bytesOf).catch(() => null)
+      if (read?.length) accounting.instructed = instructedOf(read, lawsOf(), accounted)
       continue
     }
     let blocks: TextBlock[] | null = null
@@ -332,6 +407,7 @@ for (const item of items) {
       rec.state = `Entwurf nicht lesbar: ${String(err).slice(0, 80)}`
     }
     rec.blocks = blocks?.length ?? null
+    if (blocks?.length) accounting.instructed = instructedOf(blocks, lawsOf(), accounted)
     // `value.units` no longer holds what the product withheld; the rules are asked of the §§ before that (`compared`), as the product asks them.
     const guard = guardTguUnits(compared, blocks)
     const off = undrafted(guard)
@@ -560,6 +636,7 @@ writeFileSync(join(outDir, 'drafts.jsonl'), drafts.map((d) => JSON.stringify(d))
 writeFileSync(join(outDir, 'tgu.jsonl'), answers.map((a) => JSON.stringify(a)).join('\n') + '\n')
 writeFileSync(join(outDir, 'cuts.jsonl'), cuts.map((c) => JSON.stringify(c)).join('\n') + '\n')
 writeFileSync(join(outDir, 'controls.jsonl'), controls.map((c) => JSON.stringify(c)).join('\n') + '\n')
+writeFileSync(join(outDir, 'accounting.jsonl'), accountings.map((a) => JSON.stringify(a)).join('\n') + '\n')
 
 const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)} %` : '–')
 const lines: string[] = []
@@ -673,6 +750,39 @@ for (const u of units.filter((x) => x.notInDraft)) {
   lines.push(`Entwurf zu diesem §: ${u.draftFor ? u.draftFor.slice(0, 900) : '(keine Anordnung nennt ihn)'}`)
   lines.push('')
 }
+/* The page accounting: a § in both lists, in neither, or shown uncompared fails the run; the §§ instructed and in neither list are read, not failed. */
+const broken = accountings.filter(accountingFailed)
+const asked = accountings.filter((a) => a.instructed)
+const instructedMissing = asked.flatMap((a) => a.instructed!.missing.map((m) => ({ draft: a.draft, ...m })))
+const accountingTotals = {
+  documents: accountings.length,
+  compared: accountings.reduce((n, a) => n + a.compared, 0),
+  shown: accountings.reduce((n, a) => n + a.shown, 0),
+  withheld: accountings.reduce((n, a) => n + a.withheld, 0),
+  both: accountings.reduce((n, a) => n + a.both.length, 0),
+  neither: accountings.reduce((n, a) => n + a.neither.length, 0),
+  unknownShown: accountings.reduce((n, a) => n + a.unknownShown.length, 0),
+  // Printed, never failed (`unaccountedInstructed`).
+  instructed: {
+    documents: asked.length,
+    named: asked.reduce((n, a) => n + a.instructed!.named, 0),
+    neitherShownNorWithheld: instructedMissing.length,
+    // …of those, §§ an instruction only inserts after (`anchorOf`).
+    anchors: instructedMissing.filter((m) => m.anchor).length,
+    documentsWithUnnamedLaws: asked.filter((a) => a.instructed!.unnamedLaws.length).length,
+    lawsWithout: asked.reduce((n, a) => n + a.instructed!.lawsWithout.length, 0),
+  },
+}
+lines.push('')
+lines.push('## Seitenbilanz (jeder verglichene § gezeigt oder zurückgehalten, genau einmal)')
+lines.push('')
+lines.push(`- ${accountingTotals.documents} beantwortete Entwürfe: ${accountingTotals.compared} §§ verglichen, ${accountingTotals.shown} gezeigt, ${accountingTotals.withheld} zurückgehalten`)
+lines.push(`- in beiden Listen: ${accountingTotals.both}; in keiner: ${accountingTotals.neither}; gezeigt, nie verglichen: ${accountingTotals.unknownShown} (alle drei müssen 0 sein)`)
+for (const a of broken) lines.push(`  - ✗ ${a.draft}: beide ${a.both.join('; ') || '–'} | keine ${a.neither.join('; ') || '–'} | nie verglichen ${a.unknownShown.join('; ') || '–'}`)
+lines.push(`- Vom Entwurf angeordnet, im Vergleich weder gezeigt noch zurückgehalten (gelesen, nicht gewertet): ${instructedMissing.length} von ${accountingTotals.instructed.named} §§ über ${asked.length} Entwürfe mit gelesenem Entwurf; Gesetze des Entwurfs ohne Gegenstück im Vergleich: ${accountingTotals.instructed.lawsWithout}; Entwürfe mit einem Gesetz, das sich keinem des Entwurfs zuordnen ließ: ${accountingTotals.instructed.documentsWithUnnamedLaws}`)
+lines.push(`  - davon nur Anker („Nach § X wird … eingefügt"): ${instructedMissing.filter((m) => m.anchor).length}; zu lesen:`)
+for (const m of instructedMissing.filter((x) => !x.anchor)) lines.push(`  - ${m.draft} ${m.law ?? '–'} ${m.para}: ${m.instruction.slice(0, 160)}`)
+
 /* The floor (`--mindestens`): every class the run injects — the right
    column's faults, the left column's cuts — against it. */
 const tallies: FaultTally[] = [
@@ -736,6 +846,8 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   },
   // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten".
   floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },
+  // The page accounting: `both`, `neither` and `unknownShown` must be 0; `instructed` is read, not failed (`accounting.jsonl`).
+  accounting: accountingTotals,
   // `--baseline`: null when the run compared none; the findings themselves in `baseline-findings.txt`.
   baseline: baselineFindings === null ? null : { file: baselinePath, at: baseline!.at, findings: baselineFindings.length },
 }, null, 1)}\n`)
@@ -755,6 +867,11 @@ if (floorTable) {
     ? `  ✓ ${held} von ${floorTable.length} Fehlerklassen mit mindestens ${MIN_TRIES} Versuchen zu mindestens ${floor} % gefangen${held < floorTable.length ? `; ${floorTable.length - held} nicht gehalten` : ''}`
     : `  ? keine Fehlerklasse mit mindestens ${MIN_TRIES} Versuchen — der Boden hat nichts gehalten`)
 }
+console.log(`\n## Seitenbilanz\n  ${accountingTotals.compared} verglichen, ${accountingTotals.shown} gezeigt, ${accountingTotals.withheld} zurückgehalten über ${accountingTotals.documents} Entwürfe`)
+for (const a of broken) console.log(`  ✗ ${a.draft}: beide ${a.both.join('; ') || '–'} | keine ${a.neither.join('; ') || '–'} | nie verglichen ${a.unknownShown.join('; ') || '–'}`)
+if (broken.length) failed = true
+else console.log('  ✓ jeder verglichene § genau einmal gezeigt oder zurückgehalten')
+console.log(`  ? vom Entwurf angeordnet, weder gezeigt noch zurückgehalten: ${instructedMissing.length} von ${accountingTotals.instructed.named}, davon ${accountingTotals.instructed.anchors} nur Anker (gelesen, nicht gewertet; summary.md, accounting.jsonl)`)
 if (baselineWrite) console.log(`\nGrundlinie geschrieben: ${baselineWrite} — ${Object.keys(baselineDocs).length} Entwürfe, ${Object.values(baselineDocs).reduce((n, d) => n + d.withheld.length, 0)} einbehaltene §§.`)
 if (baselineFindings) {
   console.log(`\n## Grundlinie (${baselinePath}, gezogen ${baseline!.at.slice(0, 10)})`)

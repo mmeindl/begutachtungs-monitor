@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_TRIES, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline } from '../scripts/lib/landGuardReport'
+import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf } from '../scripts/lib/landGuardReport'
 
 /**
  * The verdicts of the Land harness (`scripts/harness/landGuard.ts`), against
@@ -88,5 +88,72 @@ describe('the baseline of withheld §§ (--baseline, --baseline-schreiben)', () 
 
   it('a document outside the run (`--land`, `--show`) is not asked of', () => {
     expect(landBaselineFindings(base, {}, (id) => id !== 'ooe-2025-1')).toEqual([])
+  })
+})
+
+describe('the page accounting: every § compared ends once, shown or withheld', () => {
+  const u = (id: string, article: string | null = 'Oö. Testgesetz', fromId: string | null = null) => ({ article, id, fromId })
+
+  it('a comparison whose §§ each end in one list is in balance', () => {
+    const a = accountFor([u('§ 1'), u('§ 2'), u('§ 3', 'Oö. Testgesetz', '§ 2a')], [u('§ 1'), u('§ 3', 'Oö. Testgesetz', '§ 2a')], [
+      { law: 'Oö. Testgesetz', id: '§ 2', reason: 'notInDraft' },
+      { law: 'Oö. Testgesetz', id: '§ 9', reason: 'inserted' },
+    ])
+    expect(a).toMatchObject({ both: [], neither: [], unknownShown: [] })
+    expect(accountingFailed(a)).toBe(false)
+  })
+
+  it('fails on a § shown and withheld at once', () => {
+    const a = accountFor([u('§ 1')], [u('§ 1')], [{ law: 'Oö. Testgesetz', id: '§ 1', reason: 'draftDiffers' }])
+    expect(a.both).toEqual(['Oö. Testgesetz · § 1'])
+    expect(accountingFailed(a)).toBe(true)
+  })
+
+  it('fails on a § compared and then neither shown nor withheld', () => {
+    const a = accountFor([u('§ 1'), u('§ 2')], [u('§ 1')], [])
+    expect(a.neither).toEqual(['Oö. Testgesetz · § 2'])
+    expect(accountingFailed(a)).toBe(true)
+  })
+
+  it('fails on a § shown that was never compared', () => {
+    const a = accountFor([u('§ 1')], [u('§ 1'), u('§ 1', 'Oö. Anderes Gesetz')], [])
+    expect(a.unknownShown).toEqual(['Oö. Anderes Gesetz · § 1'])
+    expect(accountingFailed(a)).toBe(true)
+  })
+
+  it('keeps laws apart: § 1 of one law withheld does not account for § 1 of another', () => {
+    const a = accountFor([u('§ 1'), u('§ 1', 'Oö. Anderes Gesetz')], [u('§ 1')], [{ law: 'Oö. Testgesetz', id: '§ 1', reason: 'notInDraft' }])
+    expect(a.both).toEqual(['Oö. Testgesetz · § 1'])
+    expect(a.neither).toEqual(['Oö. Anderes Gesetz · § 1'])
+  })
+})
+
+describe('the §§ a draft instructs that the comparison neither shows nor withholds', () => {
+  it('lists the designations of each law not accounted for, by either number of a renumbered §', () => {
+    const named = new Map([['Art. 1', new Set(['§ 1', '§ 2', '§ 5', '§ 11a'])], ['Art. 2', new Set(['§ 3'])]])
+    const accounted = new Map([['Art. 1', new Set(['§ 1', '§ 11a', '§ 11d'])], ['Art. 2', new Set(['§ 3'])]])
+    expect(unaccountedInstructed(named, accounted)).toEqual([{ law: 'Art. 1', para: '§ 2' }, { law: 'Art. 1', para: '§ 5' }])
+  })
+
+  it('a law of the draft the comparison has nothing of is not counted § by §', () => {
+    expect(unaccountedInstructed(new Map([['Art. 3', new Set(['§ 1'])]]), new Map())).toEqual([])
+  })
+})
+
+describe('anchorOf: the § an instruction inserts after, which it does not change', () => {
+  it.each([
+    ['Nach § 48 wird eingefügt:  „Besondere Bestimmungen', '§ 48'],
+    ['Nach § 8a werden folgende §§ 8b bis 8e eingefügt:  „§ 8b', '§ 8a'],
+    ['Nach § 139 wird folgende Bestimmung als § 139a eingefügt:', '§ 139'],
+    ['Nach § 15 wird folgender § 16 samt Überschrift angefügt:', '§ 15'],
+    ['Nach § 82 wird folgender § 83 eingefügt und der bisherige § 83 erhält die Bezeichnung „84“:', '§ 82'],
+  ])('%s → %s', (text, anchor) => {
+    expect(anchorOf(text)).toBe(anchor)
+  })
+
+  it('an instruction that changes the § it names has no anchor', () => {
+    expect(anchorOf('Im § 12 wird angefügt:  „(8) § 8 Abs 1')).toBeNull()
+    expect(anchorOf('In § 5 Abs. 2 wird nach dem Wort „Gemeinde“ eingefügt:')).toBeNull()
+    expect(anchorOf('Die Anlage 9 wird aufgehoben.')).toBeNull()
   })
 })

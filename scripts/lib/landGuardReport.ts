@@ -54,7 +54,7 @@ export interface WithheldItem { law: string | null; id: string; fromId?: string;
 
 /** One withheld § as one line: cause, law, § — the identity the baseline compares. */
 export function withheldLine(w: WithheldItem): string {
-  return `${w.reason ?? 'leftCheck'} · ${w.law ?? '–'} · ${w.fromId && w.fromId !== w.id ? `${w.fromId} → ` : ''}${w.id}`
+  return `${w.reason ?? 'leftCheck'} · ${paragraphKey(w.law, w.id, w.fromId)}`
 }
 
 /**
@@ -136,4 +136,88 @@ export function landBaselineFindings(baseline: LandBaseline, current: Record<str
     if (!baseline.documents[id]) out.push(`\`${id}\`: nicht in der Grundlinie (${since}) — ${current[id]!.withheld.length} einbehaltene §§, ${current[id]!.shown} gezeigt; neu ziehen mit --baseline-schreiben.`)
   }
   return out
+}
+
+/** A § of the comparison as the accounting reads it: its law, its number, the number it comes from. */
+export interface AccountUnit { article: string | null; id: string; fromId: string | null }
+
+/** A § by law and number, a renumbered one as „§ 11a → § 11d" — the key it is accounted under. */
+export function paragraphKey(law: string | null, id: string, fromId?: string | null): string {
+  return `${law ?? '–'} · ${fromId && fromId !== id ? `${fromId} → ` : ''}${id}`
+}
+
+export interface Accounting {
+  compared: number
+  shown: number
+  withheld: number
+  /** Shown and withheld at once. */
+  both: string[]
+  /** Compared, and then neither shown nor withheld: gone from the page without a word. */
+  neither: string[]
+  /** Shown, and never among the §§ compared. */
+  unknownShown: string[]
+}
+
+/**
+ * Where each § of one comparison ended (20.11.2026), per law: `compared` are
+ * the §§ `compareTgu` held before its draft check (`beforeDraftCheck`),
+ * `shown` its answer's units, `withheld` its answer's withheld list. The
+ * Bund has its consolidation balance (`harness/accounting.ts`); here the
+ * invariant is that every § compared ends exactly once — shown or withheld —
+ * and nothing is shown that was not compared. A § the reader withheld before
+ * comparing stands in `withheld` alone and is in balance. What the reader
+ * never opened at all cannot be seen here: that is `unaccountedInstructed`.
+ */
+export function accountFor(compared: readonly AccountUnit[], shown: readonly AccountUnit[], withheld: readonly WithheldItem[]): Accounting {
+  const comparedKeys = new Set(compared.map((u) => paragraphKey(u.article, u.id, u.fromId)))
+  const shownKeys = new Set(shown.map((u) => paragraphKey(u.article, u.id, u.fromId)))
+  const withheldKeys = new Set(withheld.map((w) => paragraphKey(w.law, w.id, w.fromId)))
+  return {
+    compared: comparedKeys.size,
+    shown: shownKeys.size,
+    withheld: withheldKeys.size,
+    both: [...shownKeys].filter((k) => withheldKeys.has(k)),
+    neither: [...comparedKeys].filter((k) => !shownKeys.has(k) && !withheldKeys.has(k)),
+    unknownShown: [...shownKeys].filter((k) => !comparedKeys.has(k)),
+  }
+}
+
+/** Whether the accounting breaks: a § in both lists, in neither, or shown uncompared. */
+export function accountingFailed(a: Accounting): boolean {
+  return a.both.length > 0 || a.neither.length > 0 || a.unknownShown.length > 0
+}
+
+/**
+ * The §§ the draft's instructions name for a law that the comparison
+ * neither shows nor withholds — both maps keyed by the draft's law key, with
+ * designation keys (`designationKey`). A § opener the reader missed leaves
+ * its § in neither list (`landTgu.ts`, `tguParagraphs`: its lines join the
+ * § before, or a division heading); so does a § the Land's document does
+ * not print. Printed, never failed: which of the two it is is reading work.
+ * A law of the draft the comparison has nothing of is left to the caller,
+ * which counts it apart: the document may not reach that law at all.
+ */
+export function unaccountedInstructed(named: ReadonlyMap<string | null, ReadonlySet<string>>, accounted: ReadonlyMap<string | null, ReadonlySet<string>>): { law: string | null; para: string }[] {
+  const out: { law: string | null; para: string }[] = []
+  for (const [law, paras] of named) {
+    const has = accounted.get(law)
+    if (!has) continue
+    for (const para of paras) if (!has.has(para)) out.push({ law, para })
+  }
+  return out
+}
+
+/**
+ * The § an instruction inserts after — „Nach § 48 wird eingefügt", „Nach
+ * § 8a werden folgende §§ 8b bis 8e eingefügt", „Nach § 15 wird folgender
+ * § 16 samt Überschrift angefügt" — which it names and does not change; null
+ * for any other instruction. The draft reader lists such an anchor among
+ * the §§ the instruction may print text for (`DraftUnit.paras`), so the
+ * comparison has no reason to show it: of the 20 §§ instructed and
+ * accounted for by neither list on 20.11.2026, ten were such anchors. The
+ * wording is that of those ten lines.
+ */
+export function anchorOf(instruction: string): string | null {
+  const m = /^\s*Nach\s+(§\s*\d+[a-z]?)\s+(?:wird|werden)\b[^„"“]*?\b(?:eingefügt|angefügt)\b/.exec(instruction)
+  return m ? m[1]!.replace(/^§\s*/, '§ ') : null
 }
