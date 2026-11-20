@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bridgeVersionGap, oneCharApart, pickByEqualName, pickByName, promulgatedBeforeInForce, soleUnlessContradicted, type KonsVersion } from '../server/utils/ris/konsLaw'
+import { bridgeVersionGap, oneCharApart, pickByEqualName, pickByName, promulgatedBeforeInForce, soleUnlessContradicted, standingOnDay, type KonsLawAtDate, type KonsParagraphRef, type KonsVersion } from '../server/utils/ris/konsLaw'
 
 /**
  * Which law of a Bundesgesetzblatt a caller meant.
@@ -143,5 +143,81 @@ describe('oneCharApart — the misquote misquotedStammnorm accepts (04.10.2026)'
     expect(oneCharApart('135/2013', '237/2022')).toBe(false)
     expect(oneCharApart('10/2012', '10/2012')).toBe(false)
     expect(oneCharApart('10/2012', '100/2012')).toBe(false)
+  })
+})
+
+describe('standingOnDay — a version promulgated after the reference date did not stand on it (20.11.2026)', () => {
+  const ref = (nor: string, label: string, from: string, to: string | null, by: string | null): KonsParagraphRef => ({
+    nor,
+    label,
+    id: label.replace(/^§\s*/, ''),
+    inkrafttreten: from,
+    ausserkrafttreten: to,
+    kundmachungsorgan: by ? `BGBl. Nr. 376/1967 zuletzt geändert durch ${by}` : 'BGBl. Nr. 376/1967',
+    stammnorm: null,
+    gesetzesnummer: '10008220',
+    xmlUrl: null,
+  })
+  const version = (r: KonsParagraphRef): KonsVersion => ({ ref: r, novelle: null, kundmachung: r.kundmachungsorgan ?? '' })
+  const lawOf = (...refs: KonsParagraphRef[]): KonsLawAtDate => ({ gesetzesnummer: '10008220', kurztitel: 'FLAG', paragraphs: Object.fromEntries(refs.map((r) => [r.label, r])) })
+  const issued: Record<string, string> = {
+    'BGBl. I Nr. 64/2025': '2025-10-31',
+    'BGBl. I Nr. 84/2026': '2026-10-16',
+    'BGBl. I Nr. 98/2024': '2024-07-18',
+    'BGBl. I Nr. 50/2025': '2025-07-24',
+    'BGBl. I Nr. 12/2026': '2026-03-01',
+  }
+  const sources = (history: KonsVersion[] | null) => ({ issued: async (c: string) => issued[c] ?? null, history: async () => history })
+
+  // FLAG § 3 as RIS holds it: BGBl. I Nr. 84/2026, issued 16.10.2026, gives
+  // it a version from 12.06.2026, the first day of 117/ME XXVIII's
+  // Begutachtung; the annex quotes the version of BGBl. I Nr. 64/2025.
+  const prior = ref('PRIOR', '§ 3', '2025-11-01', '2026-06-11', 'BGBl. I Nr. 64/2025')
+  const retro = ref('RETRO', '§ 3', '2026-06-12', '2026-06-29', 'BGBl. I Nr. 84/2026')
+  const flag = [version(ref('OLD', '§ 3', '2022-03-12', '2025-10-31', 'BGBl. I Nr. 135/2022')), version(prior), version(retro), version(ref('LATER', '§ 3', '2026-06-30', '2026-06-11', 'BGBl. I Nr. 64/2025'))]
+
+  it('takes the version that ran up to the day the later-promulgated one begins (117/ME XXVIII, FLAG § 3)', async () => {
+    const out = await standingOnDay(lawOf(retro), '2026-06-12', sources(flag))
+    expect(out.paragraphs['§ 3']?.nor).toBe('PRIOR')
+  })
+
+  it('takes a version RIS closed before it began, where the later one began on its day (20/ME XXVIII, BBG § 10)', async () => {
+    const cancelled = ref('CANCELLED', '§ 10', '2024-07-19', '2024-07-18', 'BGBl. I Nr. 98/2024')
+    const over = ref('OVER', '§ 10', '2024-07-19', null, 'BGBl. I Nr. 50/2025')
+    const before = ref('BEFORE', '§ 10', '2020-01-01', '2024-07-18', 'BGBl. I Nr. 100/2018')
+    const out = await standingOnDay(lawOf(over), '2025-05-07', sources([before, cancelled, over].map(version)))
+    expect(out.paragraphs['§ 10']?.nor).toBe('CANCELLED')
+  })
+
+  it('leaves a version alone whose BGBl was issued by the day, and reads no history then', async () => {
+    const law = lawOf(retro, ref('S4', '§ 4', '2026-03-02', null, 'BGBl. I Nr. 12/2026'))
+    let asked = false
+    const out = await standingOnDay(law, '2026-10-20', { issued: async (c) => issued[c] ?? null, history: async () => ((asked = true), flag) })
+    expect(out).toBe(law)
+    expect(asked).toBe(false)
+  })
+
+  it('keeps RIS\'s answer where it cannot decide: an unknown issue date, no history, no exact predecessor', async () => {
+    const unknown = ref('UNK', '§ 3', '2026-06-12', null, 'BGBl. I Nr. 99/2026')
+    expect((await standingOnDay(lawOf(unknown), '2026-06-12', sources(flag))).paragraphs['§ 3']?.nor).toBe('UNK')
+    expect((await standingOnDay(lawOf(retro), '2026-06-12', sources(null))).paragraphs['§ 3']?.nor).toBe('RETRO')
+    const gap = [version(ref('GAP', '§ 3', '2025-11-01', '2026-05-30', 'BGBl. I Nr. 64/2025')), version(retro)]
+    expect((await standingOnDay(lawOf(retro), '2026-06-12', sources(gap))).paragraphs['§ 3']?.nor).toBe('RETRO')
+  })
+
+  it('without a readable history, takes the law on the day before — only a version that ended on that day (33/ME XXVIII, ABGB § 1159)', async () => {
+    const lawOn = async (day: string) => (day === '2026-06-11' ? lawOf(prior) : null)
+    expect((await standingOnDay(lawOf(retro), '2026-06-12', { ...sources(null), lawOn })).paragraphs['§ 3']?.nor).toBe('PRIOR')
+    const stillRunning = ref('RUNNING', '§ 3', '2025-11-01', null, 'BGBl. I Nr. 64/2025')
+    const other = async () => lawOf(stillRunning)
+    expect((await standingOnDay(lawOf(retro), '2026-06-12', { ...sources(null), lawOn: other })).paragraphs['§ 3']?.nor).toBe('RETRO')
+  })
+
+  it('never takes a repeal, nor a predecessor promulgated after the day itself', async () => {
+    const repealed = ref('REP', '§ 3', '2025-11-01', '2026-06-11', null)
+    repealed.kundmachungsorgan = 'BGBl. Nr. 376/1967 aufgehoben durch BGBl. I Nr. 64/2025'
+    expect((await standingOnDay(lawOf(retro), '2026-06-12', sources([version(repealed), version(retro)]))).paragraphs['§ 3']?.nor).toBe('RETRO')
+    const alsoLate = ref('LATE2', '§ 3', '2025-11-01', '2026-06-11', 'BGBl. I Nr. 84/2026')
+    expect((await standingOnDay(lawOf(retro), '2026-06-12', sources([version(alsoLate), version(retro)]))).paragraphs['§ 3']?.nor).toBe('RETRO')
   })
 })
