@@ -33,7 +33,7 @@ describe('„§. 517.": the designation of the ZPO and the JN', () => {
       ['§. 39. (1) und (2) ...', '§. 39. (1) und (2) ...'],
       ['(3) Art. 12 alt.', '(3) Art. 14 neu.'],
     ].map(([a, b]) => `<tr><td>${cell(a!)}</td><td>${cell(b!)}</td></tr>`).join('')}</table></nutzdaten></risdok>`
-    const rows = parseTextComparison(xml, draftArticles('Jurisdiktionsnorm')).rows
+    const rows = parseTextComparison(xml, draftArticles({ title: 'Änderung der Jurisdiktionsnorm' })).rows
     const grouped = rowsByParagraph(rows)
     expect(paragraphRows(grouped, '15').map((r) => r.current)).not.toContain('(3) Art. 12 alt.')
     expect(paragraphRows(grouped, '39').map((r) => r.current)).toEqual(['Rechtshilfe auf Ersuchen ausländischer Gerichte.', '(1) und (2) ...', '(3) Art. 12 alt.'])
@@ -98,5 +98,18 @@ describe('a law whose units are Artikel (127/ME XXVIII, B-VG)', () => {
     const law = 'Änderung des Begleitgesetzes'
     const grouped = rowsByParagraph([row('Artikel 1.', 'Dieses Gesetz gilt für alle alt.', law), row('§ 1.', '(1) alt', law)])
     expect(paragraphRows(grouped, '1', law).map((r) => r.current)).toEqual(['(1) alt'])
+  })
+})
+
+describe('a Ziffer chain written without its „…" (138/ME XXVIII, UVP-G 2000 § 26)', () => {
+  const standing = containmentKey('Dem Umweltrat gehören an: Vertreter der Länder; Vertreter der Gemeinden; zwei Vertreter/innen des Bundes, nominiert vom Bundeskanzler; je ein Vertreter der Kammern.')
+
+  it('is the omission it marks where the next Ziffer follows straight', () => {
+    expect(unaccountedStretch(standing, 'Dem Umweltrat gehören an: 1. bis 2 3. zwei Vertreter/innen des Bundes, nominiert vom Bundeskanzler;')).toBeNull()
+    expect(unaccountedStretch(standing, 'Dem Umweltrat gehören an: 1. bis 2. 3. zwei Vertreter/innen des Bundes, nominiert vom Bundeskanzler;')).toBeNull()
+  })
+
+  it('stays text behind a word, where it is a date or a citation', () => {
+    expect(unaccountedStretch(standing, 'Dem Umweltrat gehören vom 1. bis 2 3. zwei Vertreter/innen des Bundes an')).not.toBeNull()
   })
 })

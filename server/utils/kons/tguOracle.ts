@@ -1108,8 +1108,18 @@ const TRAILING_UNIT_FIRST_RE = /(?<=[.;!?])\s*(?:Teil|Hauptst(?:ü|ue)ck|Abschni
  */
 const DOTLESS_OMISSION_RE = /(?:^|(?<=[.:;…]\s*))\(\d{1,3}[a-z]?\)(?:\s+(?:bis|und)\s+\(\d{1,3}[a-z]?\))+(?=\s*(?:$|\(\d{1,3}[a-z]?\)\s|\.\.\.|…))/g
 
+/**
+ * The same for Ziffern (20.11.2026): „: 1. bis 4 5. zwei Vertreter/innen …"
+ * (UVP-G 2000 § 26, 138/ME XXVIII), „1. bis 2. 3." (AIFMG § 5, 76/ME) — a
+ * chain at the start of the cell or behind a sign, followed straight by the
+ * next Ziffer's marker. Behind a word it is a date or a citation („vom 1.
+ * bis 4. Juli"), and stays text.
+ */
+const DOTLESS_ZIFFER_OMISSION_RE = /(?:^|(?<=[.:;…]\s*))\d{1,3}[a-z]?\.\s+bis\s+\d{1,3}[a-z]?\.?(?=\s+\d{1,3}[a-z]?\.\s)/g
+
 function markedOmissions(cell: string): string {
-  return normalizeText(cell).replace(DOTLESS_OMISSION_RE, (chain: string, offset: number, all: string) => (/^\s*(?:\.\.\.|…)/.test(all.slice(offset + chain.length)) ? chain : `${chain} …`))
+  const mark = (chain: string, offset: number, all: string) => (/^\s*(?:\.\.\.|…)/.test(all.slice(offset + chain.length)) ? chain : `${chain} …`)
+  return normalizeText(cell).replace(DOTLESS_OMISSION_RE, mark).replace(DOTLESS_ZIFFER_OMISSION_RE, mark)
 }
 
 /**
