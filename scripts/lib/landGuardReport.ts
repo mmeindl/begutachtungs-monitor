@@ -254,3 +254,30 @@ export function landRecord(answers: readonly RecordAnswer[]): LandRecord {
     withheldBy: Object.fromEntries(Object.entries(withheldBy).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))),
   }
 }
+
+/**
+ * How far the harness got with one document of the population: its detail
+ * not in the cache, no Textgegenüberstellung among its documents, a PDF
+ * missing from the caches (`--cached-only`), a read that failed, or an
+ * answer of `compareTgu`.
+ */
+export type Reach = 'kein Detail im Cache' | 'keine Textgegenüberstellung' | 'PDF nicht im Cache' | 'Lesen fehlgeschlagen' | 'beantwortet'
+
+/** Per Land: the documents requested, and where each one ended. `incomplete`: answered, but a read beneath it failed (`Gathered.complete`). */
+export interface LandReach { requested: number; answered: number; incomplete: number; noDetail: number; noTgu: number; pdfMissing: number; failed: number }
+
+export function reachByLand(documents: readonly { land: string; reach: Reach; complete: boolean }[]): Record<string, LandReach> {
+  const out: Record<string, LandReach> = {}
+  for (const d of documents) {
+    const r = (out[d.land] ??= { requested: 0, answered: 0, incomplete: 0, noDetail: 0, noTgu: 0, pdfMissing: 0, failed: 0 })
+    r.requested++
+    if (d.reach === 'beantwortet') {
+      r.answered++
+      if (!d.complete) r.incomplete++
+    } else if (d.reach === 'kein Detail im Cache') r.noDetail++
+    else if (d.reach === 'keine Textgegenüberstellung') r.noTgu++
+    else if (d.reach === 'PDF nicht im Cache') r.pdfMissing++
+    else r.failed++
+  }
+  return out
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf, landRecord } from '../scripts/lib/landGuardReport'
+import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, unaccountedInstructed, anchorOf, landRecord, reachByLand } from '../scripts/lib/landGuardReport'
 
 /**
  * The verdicts of the Land harness (`scripts/harness/landGuard.ts`), against
@@ -169,5 +169,22 @@ describe('a Land in the record through compareTgu alone (Kärnten)', () => {
 
   it('no answer is a record of zeros, not a missing one', () => {
     expect(landRecord([])).toEqual({ answered: 0, documents: 0, shownChangedOrNew: 0, shownUnchanged: 0, withheld: 0, withheldBy: {} })
+  })
+})
+
+describe('documents requested and reached, per Land', () => {
+  it('counts every document once, by where it ended', () => {
+    const r = reachByLand([
+      { land: 'ooe', reach: 'beantwortet', complete: true },
+      { land: 'ooe', reach: 'beantwortet', complete: false },
+      { land: 'ooe', reach: 'PDF nicht im Cache', complete: false },
+      { land: 'sbg', reach: 'keine Textgegenüberstellung', complete: true },
+      { land: 'sbg', reach: 'kein Detail im Cache', complete: true },
+      { land: 'sbg', reach: 'Lesen fehlgeschlagen', complete: false },
+    ])
+    expect(r).toEqual({
+      ooe: { requested: 3, answered: 2, incomplete: 1, noDetail: 0, noTgu: 0, pdfMissing: 1, failed: 0 },
+      sbg: { requested: 3, answered: 0, incomplete: 0, noDetail: 1, noTgu: 1, pdfMissing: 0, failed: 1 },
+    })
   })
 })

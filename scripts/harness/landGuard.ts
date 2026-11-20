@@ -89,7 +89,7 @@ import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag, argPair } from '../lib/args'
-import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, landRecord, toLandBaseline, unaccountedInstructed, type Accounting, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
+import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorRows, landBaselineFindings, landRecord, reachByLand, toLandBaseline, unaccountedInstructed, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
@@ -262,6 +262,8 @@ interface AccountingRecord extends Accounting {
   instructed: { named: number; missing: { law: string | null; para: string; instruction: string; anchor: boolean }[]; unnamedLaws: (string | null)[]; lawsWithout: { law: string | null; paras: number }[] } | null
 }
 const accountings: AccountingRecord[] = []
+/** How far each document of the population got (`Reach`), and whether every read beneath its answer answered (`Gathered.complete`). */
+const reached: { land: LandCode; reach: Reach; complete: boolean }[] = []
 
 /** The §§ the draft's instructions name, per law, against those the comparison shows or withholds — both by `designationKey`, the laws matched as the guard matches them (`draftLawKey`). */
 function instructedOf(blocks: readonly TextBlock[], laws: readonly (string | null)[], accounted: readonly { law: string | null; id: string; fromId?: string | null }[]): AccountingRecord['instructed'] {
@@ -355,6 +357,7 @@ for (const item of items) {
   if (!existsSync(file)) {
     rec.state = 'kein Detail im Cache'
     baselineDocs[item.id] = baselineDocument(item.land, rec.state, null)
+    reached.push({ land: item.land, reach: 'kein Detail im Cache', complete: false })
     continue
   }
   const detail = JSON.parse(readFileSync(file, 'utf8')) as LandDraftDetail
@@ -362,14 +365,19 @@ for (const item of items) {
   if (!doc) {
     rec.state = 'keine Textgegenüberstellung'
     baselineDocs[item.id] = baselineDocument(item.land, rec.state, null)
+    reached.push({ land: item.land, reach: 'keine Textgegenüberstellung', complete: true })
     continue
   }
+  const missingBefore = missing.length
+  let answered = false
   try {
     const layout: Layout = item.land === 'sbg' ? 'zwei Spalten' : item.land === 't' ? 'Tirol' : item.land === 'w' ? 'Wien' : item.land === 'ktn' ? 'Kärnten' : sideBySide(await tguPages((await bytesOf(doc.url)).slice())) ? 'OÖ Spalten' : 'OÖ Striche'
     rec.layout = layout
     // The §§ as the comparison holds them before its draft check: what the two rules are asked of here, as `withoutUndrafted` asks them.
     let compared: LawDiffUnit[] = []
-    const { value } = await compareTgu(item.land, detail, pagesOf, bytesOf, (all) => { compared = [...all] })
+    const { value, complete } = await compareTgu(item.land, detail, pagesOf, bytesOf, (all) => { compared = [...all] })
+    answered = true
+    reached.push({ land: item.land, reach: 'beantwortet', complete })
     const date = /Fassung vom (\d{2})\.(\d{2})\.(\d{4})/.exec(value.toDocument?.label ?? '')
     answers.push({
       land: item.land,
@@ -460,6 +468,8 @@ for (const item of items) {
     rec.state = `Fehler: ${String(err).slice(0, 120)}`
     // Only where `compareTgu` gave no answer: a later step failing does not unmake it.
     baselineDocs[item.id] ??= baselineDocument(item.land, 'Fehler', null)
+    // No answer: a PDF the caches lack (`--cached-only`), or a read that failed.
+    if (!answered) reached.push({ land: item.land, reach: missing.length > missingBefore ? 'PDF nicht im Cache' : 'Lesen fehlgeschlagen', complete: false })
   }
   process.stderr.write(`\r${drafts.length}/${items.length} ${item.id}            `)
 }
@@ -750,6 +760,18 @@ for (const u of units.filter((x) => x.notInDraft)) {
   lines.push(`Entwurf zu diesem §: ${u.draftFor ? u.draftFor.slice(0, 900) : '(keine Anordnung nennt ihn)'}`)
   lines.push('')
 }
+/* Documents requested and reached, per Land (20.11.2026): a PDF the
+   caches lack or a failed read was only a line of `drafts.jsonl` until
+   then, and a run that reached fewer documents measured fewer §§ without
+   saying why. */
+const reach = reachByLand(reached)
+lines.push('')
+lines.push('## Erreicht (je Land)')
+lines.push('')
+lines.push('| Land | angefragt | beantwortet | davon unvollständig | kein Detail im Cache | keine Textgegenüberstellung | PDF nicht im Cache | Lesen fehlgeschlagen |')
+lines.push('|---|---|---|---|---|---|---|---|')
+for (const [land, r] of Object.entries(reach)) lines.push(`| ${land} | ${r.requested} | ${r.answered} | ${r.incomplete} | ${r.noDetail} | ${r.noTgu} | ${r.pdfMissing} | ${r.failed} |`)
+
 /* Kärnten in the record (20.11.2026): its comparison is on the site
    (`READ_TGU`), measured here through `compareTgu` alone — the draft rules
    are not asked of it (`withoutUndrafted`), so it stands apart from the
@@ -857,6 +879,8 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   },
   // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten".
   floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },
+  // Per Land, Kärnten included: documents requested, and where each ended (`Reach`); `incomplete`: answered, a read beneath it failed.
+  reach,
   // Kärnten, apart: its comparison through `compareTgu` alone, not asked of the draft rules; no field above counts it.
   kaernten,
   // The page accounting: `both`, `neither` and `unknownShown` must be 0; `instructed` is read, not failed (`accounting.jsonl`).
