@@ -25,6 +25,15 @@ function guard(l: StandingLaw, instructions: Instruction[], tamper?: (after: Law
 }
 
 describe('guardParagraph', () => {
+  // With „jeweils" the engine writes every occurrence in each unit
+  // (`everyInUnit`); charged once per unit, the second one read as an
+  // unexplained word and the § as implausible (20.11.2026).
+  it('charges every occurrence a „jeweils" line writes in a unit', () => {
+    const l: StandingLaw = { paragraphs: [para('6', 'Zuständigkeit', ['Die Behörde und die Behörde entscheiden.', 'Die Behörde berichtet.'])] }
+    const r = guard(l, instr('In § 6 Abs. 1 und 2 wird jeweils das Wort "Behörde" durch das Wort "Bezirksverwaltungsbehörde" ersetzt.'))
+    expect(r.flags).toEqual([])
+  })
+
   it('passes a clean phrase replacement', () => {
     const r = guard(law(), instr('In § 6 Abs. 1 wird das Wort "Behörde" durch das Wort "Bezirksverwaltungsbehörde" ersetzt.'))
     expect(r.flags).toEqual([])

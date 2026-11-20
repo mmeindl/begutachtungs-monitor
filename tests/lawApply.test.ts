@@ -1594,6 +1594,238 @@ describe('„jeweils" über mehrere Einheiten einer Adresse (26.09.2026)', () =>
   })
 })
 
+describe('„jeweils" über eine Liste: jede Fundstelle in jeder Einheit (20.11.2026)', () => {
+  // „In § 8 Abs. 13 und 14 wird jeweils das Wort ‚Versorgung' durch das Wort
+  // ‚Grundversorgung' ersetzt" over an Abs. 13 that carries the word twice
+  // (74/ME XXVIII) was refused as „2× gefunden". With one place „jeweils"
+  // has meant every occurrence all along; a place of a list reads the same.
+  const gvg = (): StandingLaw => ({
+    paragraphs: [para('8', 'Daten', ['Nach Ende der Versorgung ist zu löschen, die Versorgung endet.', 'Für die Versorgung sind zu übermitteln.'])],
+  })
+
+  it('changes every occurrence in each addressed unit', () => {
+    const { law: out, results } = run(gvg(), instr('In § 8 Abs. 1 und 2 wird jeweils das Wort "Versorgung" durch das Wort "Grundversorgung" ersetzt.'))
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Nach Ende der Grundversorgung ist zu löschen, die Grundversorgung endet.')
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Für die Grundversorgung sind zu übermitteln.')
+  })
+
+  it('inserts and deletes at every occurrence too', () => {
+    const l: StandingLaw = { paragraphs: [para('36', 'Handel', ['Der Handel mit Tabakerzeugnissen und der Versand von Tabakerzeugnissen.', 'Vorrat an Tabakerzeugnissen.'])] }
+    const { law: ins, results } = run(l, instr('In § 36 Abs. 1 und 2 wird nach dem Wort "Tabakerzeugnissen" jeweils die Wortfolge "und E-Liquids" eingefügt.'))
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(plainText(ins.paragraphs[0]!.children[0]!)).toBe('Der Handel mit Tabakerzeugnissen und E-Liquids und der Versand von Tabakerzeugnissen und E-Liquids.')
+    const l2: StandingLaw = { paragraphs: [para('9', 'V', ['Der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz und der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz.', 'Der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz.'])] }
+    const { law: del } = run(l2, instr('In § 9 Abs. 1 und 2 entfällt jeweils die Wortfolge "Verfassung, Reformen, Deregulierung und".'))
+    expect(plainText(del.paragraphs[0]!.children[0]!)).toBe('Der Bundesminister für Justiz und der Bundesminister für Justiz.')
+  })
+
+  // „In § 27a Abs. 2 und § 27b Abs. 2 wird in Z 16 jeweils das Wort ‚sowie'
+  // durch einen Beistrich ersetzt" means the „sowie" that closes Z 16; the
+  // Ziffer carries one more inside its own text (95/ME XXVIII).
+  it('keeps refusing a list word that stands twice', () => {
+    const l: StandingLaw = { paragraphs: [para('27', 'L', ['Gruppenpraxen sowie Beginn und Ende der Beteiligung sowie', 'Weiteres sowie'])] }
+    const { law: out, results } = run(l, instr('In § 27 Abs. 1 und 2 wird jeweils das Wort "sowie" durch das Wort "und" ersetzt.'))
+    expect(results[0]!.reason).toMatch(/Bindewort/)
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Weiteres sowie')
+  })
+
+  it('refuses where the change already stands at one occurrence', () => {
+    const l: StandingLaw = { paragraphs: [para('29', 'P', ['Die Arbeitnehmerinnen und Arbeitnehmer und die Arbeitnehmer.', 'Ihre Arbeitnehmer.'])] }
+    const { results } = run(l, instr('In § 29 Abs. 1 und 2 werden jeweils vor dem Wort "Arbeitnehmer" die Worte "Arbeitnehmerinnen und" eingefügt.'))
+    expect(results[0]!.reason).toMatch(/steht die Änderung schon/)
+  })
+
+  it('refuses where a Wortfolge stands inside another word', () => {
+    const l: StandingLaw = { paragraphs: [para('4', 'G', ['Die Gemeinschaft und die Gemeinschaftsorgane.', 'Die Gemeinschaft.'])] }
+    const { results } = run(l, instr('In § 4 Abs. 1 und 2 wird die Wortfolge "Gemeinschaft" jeweils durch die Wortfolge "Union" ersetzt.'))
+    expect(results[0]!.reason).toMatch(/Teil eines Wortes/)
+  })
+
+  // Two sentences named in one address are one slot that does not read back
+  // what was written to it (`partsSlot`): written hit by hit, the second
+  // write restored the first sentence (121/ME XXVIII, StVG § 182).
+  it('changes both sentences of „erster und zweiter Satz"', () => {
+    const l: StandingLaw = { paragraphs: [para('182', 'Vollziehung', ['Betraut ist der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz. Der Bundesminister für Verfassung, Reformen, Deregulierung und Justiz pflegt das Einvernehmen. Dritter Satz.'])] }
+    const { law: out, results } = run(l, instr('In § 182 Abs. 1 erster und zweiter Satz entfällt jeweils vor dem Wort "Justiz" die Wendung "Verfassung, Reformen, Deregulierung und".'))
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Betraut ist der Bundesminister für Justiz. Der Bundesminister für Justiz pflegt das Einvernehmen. Dritter Satz.')
+  })
+})
+
+describe('„am Ende" macht das Wort eindeutig (20.11.2026)', () => {
+  const list = (): StandingLaw => ({ paragraphs: [para('4', 'B', [{ text: 'Es gilt:', ziffern: ['eins,', 'Bund und Länder und', 'drei.'] }])] })
+  it.each([
+    ['In § 4 Abs. 1 wird am Ende der Z 2 das Wort "und" durch einen Strichpunkt ersetzt.', 'Bund und Länder;'],
+    ['In § 4 Abs. 1 wird das Wort "und" am Ende der Z 2 durch einen Beistrich ersetzt.', 'Bund und Länder,'],
+    ['In § 4 Abs. 1 Z 2 wird am Ende das Wort "und" durch das Wort "sowie" ersetzt.', 'Bund und Länder sowie'],
+    ['In § 4 Abs. 1 entfällt das Wort "und" am Ende der Z 2.', 'Bund und Länder'],
+  ])('„%s"', (line, z2) => {
+    const { law: out, results } = run(list(), instr(line))
+    expect(results.map((r) => r.reason)).toEqual(results.map(() => null))
+    expect(plainText(out.paragraphs[0]!.children[0]!.children[1]!)).toBe(`2. ${z2}`.replace(/^2\. /, ''))
+  })
+
+  it('refuses where the unit does not end on the word', () => {
+    const { results } = run(list(), instr('In § 4 Abs. 1 wird am Ende der Z 1 das Wort "und" durch einen Strichpunkt ersetzt.'))
+    expect(results[0]!.reason).toMatch(/nicht am Ende/)
+  })
+})
+
+describe('Einfügung ohne Anker, nach der eigenen Nummer (20.11.2026)', () => {
+  const ids = (n: LawNode) => n.children.map((c) => c.id)
+  it('places a new Absatz by its number where the § counts upwards', () => {
+    const l: StandingLaw = { paragraphs: [para('49c', 'P', ['Eins.', 'Zwei.', 'Drei.'])] }
+    const { law: a, results: r1 } = run(l, instr('In § 49c wird folgender Abs. 4 eingefügt:', ['(4) Vier.']))
+    expect(r1[0]!.reason).toBeNull()
+    expect(ids(a.paragraphs[0]!)).toEqual(['1', '2', '3', '4'])
+    const { law: b, results: r2 } = run({ paragraphs: [para('21g', 'P', ['Eins.', 'Zwei.', 'Drei.', 'Vier.'])] }, instr('Dem § 21g wird folgender Abs. 3a eingefügt:', ['(3a) Dreia.']))
+    expect(r2[0]!.reason).toBeNull()
+    expect(ids(b.paragraphs[0]!)).toEqual(['1', '2', '3', '3a', '4'])
+  })
+
+  it('places Ziffern inside the Absatz the address names', () => {
+    const l: StandingLaw = { paragraphs: [para('13', 'Z', [{ text: 'Es gilt:', ziffern: ['eins,', 'zwei,', 'drei.'] }])] }
+    const { law: out, results } = run(l, instr('In § 13 Abs. 1 wird folgende Z 2a eingefügt:', ['2a. zweia,']))
+    expect(results[0]!.reason).toBeNull()
+    expect(ids(out.paragraphs[0]!.children[0]!)).toEqual(['1', '2', '2a', '3'])
+  })
+
+  // KommAustria-G § 35 reads (1h) before (1g): where the § does not count
+  // upwards, the number places nothing.
+  it('refuses where the units do not run upwards, or the number is taken', () => {
+    const l: StandingLaw = { paragraphs: [para('35', 'K', ['Eins.', 'Zwei.'])] }
+    l.paragraphs[0]!.children[1]!.id = '1h'
+    l.paragraphs[0]!.children.push(makeNode('abs', '1g', '(1g)', 'Eins g.'))
+    const { results } = run(l, instr('In § 35 wird folgender Abs. 1i eingefügt:', ['(1i) Neu.']))
+    expect(results[0]!.reason).toMatch(/nicht aufsteigend/)
+    const { results: r2 } = run({ paragraphs: [para('5', 'F', ['Eins.', 'Zwei.'])] }, instr('In § 5 wird folgender Abs. 2 eingefügt:', ['(2) Neu.']))
+    expect(r2[0]!.reason).toMatch(/existiert bereits/)
+  })
+
+  // „Es werden folgende §§ 56a, 56b … samt Überschrift eingefügt" (125/ME
+  // XXVIII, GSpG): no anchor at all; the numbers place the new §§.
+  it('inserts new §§ with no anchor by their numbers', () => {
+    const l: StandingLaw = { paragraphs: [para('56', 'A', ['a.']), para('57', 'B', ['b.'])] }
+    const { law: out, results } = run(l, instr('Es werden folgende §§ 56a und 56b samt Überschrift eingefügt:', [{ text: '§ 56a. Erstens', heading: true }, 'Text a.', { text: '§ 56b. Zweitens', heading: true }, 'Text b.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['56', '56a', '56b', '57'])
+    const { results: r2 } = run({ paragraphs: [para('57', 'B', ['b.']), para('56', 'A', ['a.'])] }, instr('Es wird folgender § 56a eingefügt:', ['§ 56a. Text.']))
+    expect(r2[0]!.reason).toMatch(/nicht aufsteigend/)
+  })
+
+  it.each([
+    ['In § 4 Abs. 1 wird folgender zweiter Satz eingefügt:', 'Eins ist hier. Neu. Zwei ist hier. Drei ist hier.'],
+    ['In § 4 Abs. 1 wird folgender erster Satz eingefügt:', 'Neu. Eins ist hier. Zwei ist hier. Drei ist hier.'],
+    ['In § 4 Abs. 1 wird zu Beginn folgender Satz eingefügt:', 'Neu. Eins ist hier. Zwei ist hier. Drei ist hier.'],
+    ['In § 4 Abs. 1 wird folgender vierter Satz eingefügt:', 'Eins ist hier. Zwei ist hier. Drei ist hier. Neu.'],
+  ])('inserts a sentence at its ordinal: „%s"', (line, expected) => {
+    const l: StandingLaw = { paragraphs: [para('4', 'S', ['Eins ist hier. Zwei ist hier. Drei ist hier.'])] }
+    const { law: out, results } = run(l, instr(line, ['Neu.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe(expected)
+  })
+
+  it('refuses an ordinal sentence beyond the end, or a text of two sentences', () => {
+    const l: StandingLaw = { paragraphs: [para('4', 'S', ['Eins ist hier. Zwei ist hier.'])] }
+    expect(run(l, instr('In § 4 Abs. 1 wird folgender vierter Satz eingefügt:', ['Neu.'])).results[0]!.reason).toMatch(/nicht auffindbar/)
+    expect(run(l, instr('In § 4 Abs. 1 wird folgender zweiter Satz eingefügt:', ['Neu eins. Neu zwei.'])).results[0]!.reason).toMatch(/ein Satz/)
+  })
+
+  it('keeps refusing an insertion with another place word', () => {
+    expect(parseInstruction('In § 31 Abs. 6 werden anstelle des dritten Satzes folgende Sätze eingefügt:').reason).toMatch(/ohne Anker/)
+    expect(parseInstruction('In § 55 Abs. 1 Z 2 lit. a werden folgende Sätze eingefügt:').reason).toMatch(/ohne Anker/)
+  })
+})
+
+describe('Satzbereiche (20.11.2026)', () => {
+  const six = (): StandingLaw => ({ paragraphs: [para('4', 'S', ['Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier. Fünf ist hier. Sechs ist hier.'])] })
+  it.each([
+    ['In § 4 Abs. 1 entfallen der zweite, der dritte und der vierte Satz.', 'Eins ist hier. Fünf ist hier. Sechs ist hier.'],
+    ['In § 4 Abs. 1 entfallen der zweite und der dritte Satz.', 'Eins ist hier. Vier ist hier. Fünf ist hier. Sechs ist hier.'],
+    ['In § 4 Abs. 1 entfallen die Sätze vier bis sechs.', 'Eins ist hier. Zwei ist hier. Drei ist hier.'],
+    ['In § 4 Abs. 1 entfallen die Sätze sechs und sieben.', null],
+    ['In § 4 Abs. 1 entfallen die Sätze fünf und sechs.', 'Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier.'],
+    ['In § 4 Abs. 1 entfallen die beiden letzten Sätze.', 'Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier.'],
+    ['In § 4 Abs. 1 entfallen der vorletzte und der letzte Satz.', 'Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier.'],
+  ])('„%s"', (line, expected) => {
+    const { law: out, results } = run(six(), instr(line))
+    if (expected === null) {
+      expect(results[0]!.reason).toMatch(/nicht auffindbar/)
+      expect(plainText(out.paragraphs[0]!.children[0]!)).toContain('Sechs ist hier.')
+      return
+    }
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe(expected)
+  })
+
+  it('replaces a run named one by one', () => {
+    const { law: out, results } = run(six(), instr('In § 4 Abs. 1 lauten der vierte und der fünfte Satz:', ['Neu vier. Neu fünf.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Eins ist hier. Zwei ist hier. Drei ist hier. Neu vier. Neu fünf. Sechs ist hier.')
+  })
+
+  // Cut after „sowie" but not at the semicolon, the run reached the reader as
+  // the anchor of the insertion behind it, and the deletion it belongs to
+  // was dropped without a refusal (BVergG 2018 § 350, BGBl. I Nr. 8/2026).
+  it('keeps refusing a run that is the object of another clause', () => {
+    const parsed = parseInstruction('In § 4 Abs. 5 entfallen die Wortfolge "ist" im ersten Satz sowie die beiden letzten Sätze; nach Abs. 5 werden folgende Abs. 6 und 7 eingefügt:')
+    expect(parsed.reason).toMatch(/Teil nicht gelesen/)
+  })
+
+  it('refuses a gap', () => {
+    expect(parseInstruction('In § 4 Abs. 1 entfallen der zweite und der vierte Satz.').ops).toHaveLength(0)
+    expect(parseInstruction('In § 4 Abs. 1 entfallen die Sätze zwei und vier.').ops).toHaveLength(0)
+  })
+
+  // A phrase operation over the pair stays two places, each with the phrase.
+  it('leaves a phrase operation over a pair as two places', () => {
+    const ops = parseInstruction('In § 4 Abs. 1 wird im zweiten und im dritten Satz das Wort "ist" durch das Wort "war" ersetzt.').ops
+    expect(ops.map((o) => ('target' in o ? [o.target.satz, o.target.satzCount] : null))).toEqual([['dritter', 1], ['zweiter', 1]])
+  })
+})
+
+describe('Umbenennungslisten und „eingereiht" (20.11.2026)', () => {
+  const chain = (): StandingLaw => ({ paragraphs: [para('92a', 'A', ['a.']), para('92b', 'B', ['b.']), para('92c', 'C', ['c.']), para('93', 'D', ['d.'])] })
+
+  it('moves a § list up by one, at once', () => {
+    const { law: out, results } = run(chain(), instr('Die §§ 92b und 92c erhalten die Paragraphenbezeichnungen "§ 92c." und "§ 92d.".'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs.map((p) => `${p.id}:${p.heading}`)).toEqual(['92a:A', '92c:B', '92d:C', '93:D'])
+  })
+
+  it('files a renumbered § behind the § the line names', () => {
+    const l: StandingLaw = { paragraphs: [para('15', 'Alt', ['x.']), para('16', 'S', ['s.']), para('17', 'T', ['t.'])] }
+    const { law: out, results } = run(l, instr('§ 15 erhält die Paragraphenbezeichnung "§ 18." und wird nach § 17 eingereiht.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['16', '17', '18'])
+  })
+
+  it('refuses a place the new number contradicts', () => {
+    const l: StandingLaw = { paragraphs: [para('15', 'Alt', ['x.']), para('16', 'S', ['s.']), para('17', 'T', ['t.'])] }
+    const { law: out, results } = run(l, instr('§ 15 erhält die Paragraphenbezeichnung "§ 18." und wird nach § 16 eingereiht.'))
+    expect(results[0]!.reason).toMatch(/gehört nicht an diese Stelle/)
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['15', '16', '17'])
+    const { results: r2 } = run(l, instr('§ 15 erhält die Paragraphenbezeichnung "§ 18." und wird nach § 20 eingereiht.'))
+    expect(r2[0]!.reason).toMatch(/nicht im geltenden Text/)
+  })
+})
+
+describe('„die Klammern um das Wort" (20.11.2026)', () => {
+  // Energie-Control-Gesetz § 29 (32/ME XXVIII): the word was read as the
+  // operand and deleted, „das (), BGBl. Nr. 292/1921" counted as applied.
+  it('deletes the brackets and keeps the word', () => {
+    const l: StandingLaw = { paragraphs: [para('29', 'Personal', ['Anzuwenden sind das Bundesgesetz über den Dienstvertrag der Privatangestellten (Angestelltengesetz), BGBl. Nr. 292/1921, und andere Vorschriften.'])] }
+    const { law: out, results } = run(l, instr('In § 29 Abs. 1 entfallen die Wortfolge "Bundesgesetz über den Dienstvertrag der Privatangestellten" und die Klammern um das Wort "Angestelltengesetz".'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Anzuwenden sind das Angestelltengesetz, BGBl. Nr. 292/1921, und andere Vorschriften.')
+  })
+
+  it('refuses brackets named any other way', () => {
+    expect(parseInstruction('In § 29 Abs. 1 entfallen die Klammern und das Wort "Angestelltengesetz".').reason).toMatch(/Klammern genannt/)
+  })
+})
+
 describe('an Abschnitt is not the § of its number (02.10.2026)', () => {
   // The standing text holds no Abschnitt. Looked up by the number, every one
   // of these wrote into § 4 and reported success.

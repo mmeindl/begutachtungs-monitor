@@ -41,6 +41,16 @@ describe('parseAddress', () => {
     expect(parsed.ops).toHaveLength(4)
   })
 
+  // „jeweils" inside the quoted old text is the law's word, not the
+  // instruction's (148/ME XXVIII, VersStG § 12 Abs. 3 Z 36): since „jeweils"
+  // takes every occurrence in each unit, it must not be read there (20.11.2026).
+  it('reads „jeweils" outside the quotations only', () => {
+    const quoted = parseInstruction('In § 12 Abs. 3 und 4 wird die Wortfolge "§ 7, jeweils in der Fassung BGBl. I Nr. 97/2025" durch die Wortfolge "§ 8" ersetzt.')
+    expect(quoted.ops[0]).toMatchObject({ kind: 'replacePhrase', eachUnit: false })
+    const own = parseInstruction('In § 12 Abs. 3 und 4 wird jeweils die Wortfolge "§ 7" durch die Wortfolge "§ 8" ersetzt.')
+    expect(own.ops[0]).toMatchObject({ kind: 'replacePhrase', eachUnit: true })
+  })
+
   it('expands "und" lists and integer ranges', () => {
     expect(parseAddress('§ 5 Abs. 2 und 3')!.siblings).toEqual(['3'])
     expect(parseAddress('§ 5 Z 4 bis 7')!.siblings).toEqual(['5', '6', '7'])
@@ -368,8 +378,31 @@ describe('renumbering (2026-09-09)', () => {
     expect(parsed.ops[1]).toMatchObject({ target: { para: '§ 107', z: '5', siblings: ['6', '7', '8', '9'] }, to: '4.', toLast: '8' })
   })
 
+  // Refused since 09.09.2026 because nothing paired a list yet; Absatz and
+  // Ziffer lists of the same shape are paired since. A § list now is too,
+  // where every designation carries its sign and the counts match
+  // (20.11.2026, 147/ME XXVIII: JN §§ 92b, 92c; ZPO §§ 423, 424).
+  it('pairs a list of §§ with as many § designations, in order', () => {
+    const parsed = parseInstruction('Die §§ 92b und 92c erhalten die Paragraphenbezeichnungen "§ 92c." und "§ 92d.".')
+    expect(parsed.ops).toMatchObject([
+      { kind: 'renumber', target: { para: '§ 92b', siblings: [] }, to: '§ 92c' },
+      { kind: 'renumber', target: { para: '§ 92c', siblings: [] }, to: '§ 92d' },
+    ])
+  })
+
   it('refuses several new designations it cannot pair', () => {
-    expect(parseInstruction('Die §§ 5 und 9 erhalten die Bezeichnungen "§ 6." und "§ 10."').ops).toHaveLength(0)
+    expect(parseInstruction('Die §§ 5 und 9 erhalten die Bezeichnungen "§ 6." , "§ 7." und "§ 10."').ops).toHaveLength(0)
+    // „8." without its sign (116/ME XXVIII): which kind it names is a guess.
+    expect(parseInstruction('Die §§ 10 und 11 erhalten die Paragraphenbezeichnungen "§ 7." und "8.".').ops).toHaveLength(0)
+  })
+
+  // „§ 15 erhält die Paragraphenbezeichnung ‚§ 18.' und wird nach § 17
+  // eingereiht" (2/ME XXVIII, StRegG): the place is not a second target.
+  it('reads „und wird nach § X eingereiht" as the place of one renumbered §', () => {
+    const parsed = parseInstruction('§ 15 erhält die Paragraphenbezeichnung "§ 18." und wird nach § 17 eingereiht.')
+    expect(parsed.ops).toMatchObject([{ kind: 'renumber', target: { para: '§ 15', siblings: [] }, to: '§ 18.', after: '17' }])
+    // A clause behind it (122/ME XXVIII, StGB § 322) keeps the line refused.
+    expect(parseInstruction('Der bisherige § 322 erhält die Paragrafenbezeichnung "§ 324" , wird nach § 323 eingereiht und erhält folgende Überschrift:').reason).toMatch(/eingereiht/)
   })
 
   it('reads „die nachfolgenden Absätze" as the units behind the one just deleted (58/ME XXVIII)', () => {
@@ -932,12 +965,31 @@ describe('two sentences of one unit (30.09.2026)', () => {
     for (const line of [
       // Deleted the fourth, or the last, alone.
       'In § 2 Abs. 2 entfallen der zweite und der vierte Satz.',
-      'In § 23 Abs. 3 entfallen der vorletzte und der letzte Satz.',
       '§ 3 Abs. 1b zweiter und letzter Satz lautet:',
       'In § 5 Abs. 1 wird im ersten und letzten Satz jeweils der Punkt durch einen Strichpunkt ersetzt.',
       'In § 5 Abs. 1 wird im zweiten und vorletzten Satz jeweils das Wort "A" durch das Wort "B" ersetzt.',
     ]) expect(parseInstruction(line).ops, line).toEqual([])
   })
+})
+
+// „der vorletzte und der letzte Satz" stood in the list above until
+// 20.11.2026, against the bug of deleting one of the two. It names the last
+// two sentences without a gap, as „die letzten beiden Sätze" does, and is
+// read as that run since (`sentenceRunPlaces`; 116/ME XXVIII, UFG § 23).
+it('reads „der vorletzte und der letzte Satz" of a deletion as the last two', () => {
+  expect(parseInstruction('In § 23 Abs. 3 entfallen der vorletzte und der letzte Satz.').ops).toMatchObject([{ kind: 'delete', target: { abs: '3', satz: 'letzter', satzCount: 2 } }])
+})
+
+// Three address forms of the corpus that named a place and were refused as
+// „keine auflösbare Adresse" (20.11.2026).
+it.each([
+  ['In § 270 Abs. 3 lautet Satz 7:', { kind: 'replace', target: { para: '§ 270', abs: '3', satz: 'siebenter' } }],
+  ['Im § 4 Abs. 2 einleitender Satz wird der Ausdruck "62. Lebensjahres" durch den Ausdruck "63. Lebensjahres" ersetzt.', { kind: 'replacePhrase', target: { para: '§ 4', abs: '2', satz: 'einleitung' } }],
+  ['In § 5 wird nach Abs. 3 ein neuer Abs. 3a eingefügt:', { kind: 'insertAfter', anchor: { para: '§ 5', abs: '3' }, childIds: ['3a'] }],
+])('reads „%s"', (line, op) => {
+  const parsed = parseInstruction(line)
+  expect(parsed.reason).toBeNull()
+  expect(parsed.ops[0]).toMatchObject(op)
 })
 
 describe('two clauses under one participle (30.09.2026)', () => {
