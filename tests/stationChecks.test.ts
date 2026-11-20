@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { parseLawUnits } from '../server/utils/lawtext/lawUnits'
 import { diffLawPackage, isCommencementArticle } from '../server/utils/diff/lawDiff'
-import { completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches } from '../scripts/lib/stationChecks'
+import { badgeMoves, completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches } from '../scripts/lib/stationChecks'
 
 /** One instruction in Parliament's Word HTML. */
 const html = (instruction: string, payload: string): string =>
@@ -42,5 +43,26 @@ describe('the checks the station harness runs (`scripts/lib/stationChecks.ts`)',
     const diff = diffLawPackage(from, to)
     expect(headingBreaches(to, diff)).toEqual([])
     expect(headingBreaches(to, { ...diff, units: [{ ...diff.units[0]!, heading: 'Ein fremder Satz' }] }).map((b) => b.kind)).toEqual(['überschrift'])
+  })
+})
+
+describe('the badges against the baseline (`station.ts --baseline`)', () => {
+  it('has a committed baseline that carries every changed unit\'s badge beside the reasons, so a move can be reported', () => {
+    const baseline = JSON.parse(readFileSync('scripts/harness/stationBaseline.json', 'utf8')) as { verdicts?: Record<string, string>; reasons?: Record<string, string>; pairs: number }
+    expect(Object.keys(baseline.verdicts ?? {}).length).toBeGreaterThan(baseline.pairs)
+    for (const badge of Object.values(baseline.verdicts ?? {})) expect(['geändert', 'redaktionell', 'ohne Wortdiff']).toContain(badge)
+    expect(Object.keys(baseline.reasons ?? {}).length).toBeGreaterThan(0)
+  })
+
+  it('says it cannot compare against a baseline without badges, rather than reporting that none moved', () => {
+    expect(badgeMoves(undefined, { '1/ME me>rv — · 2→2': 'geändert' })).toBeNull()
+  })
+
+  it('reports a badge that moved either way, and a changed unit that came or went', () => {
+    const moves = badgeMoves(
+      { a: 'geändert', b: 'redaktionell', c: 'geändert', d: 'ohne Wortdiff' },
+      { a: 'redaktionell', b: 'geändert', c: 'geändert', e: 'geändert' },
+    )
+    expect(moves).toEqual({ moved: [['a', 'geändert', 'redaktionell'], ['b', 'redaktionell', 'geändert']], came: ['e'], went: ['d'] })
   })
 })

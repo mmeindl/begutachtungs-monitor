@@ -48,7 +48,10 @@
  *
  * With `--baseline`, every changed unit whose badge moved („geändert",
  * „redaktionell", „ohne Wortdiff") is printed with its pieces, in both
- * directions — the line-by-line reading a rate cannot replace.
+ * directions — the line-by-line reading a rate cannot replace —, and every
+ * unit that is newly or no longer changed (`badgeMoves`). Printed, not
+ * failed; a baseline that carries no badges fails, because against it no
+ * move could show (`stationBaseline.json` had none until 20.11.2026).
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { LawStationId } from '../../shared/types'
@@ -60,7 +63,7 @@ import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/
 import { diffLawPackage, isCommencementArticle, scopeToDraft } from '../../server/utils/diff/lawDiff'
 import { compareWords } from '../../server/utils/diff/wordDiff'
 import { findLawStations } from '../../server/utils/diff/stationDocuments'
-import { completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches, type Breach, type Residue } from '../lib/stationChecks'
+import { badgeMoves, completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches, type Breach, type Residue } from '../lib/stationChecks'
 import { fetchRisBegutCorpus } from '../lib/corpus'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
@@ -317,14 +320,26 @@ if (jsonPath) {
 let failed = record.breaches.length > 0
 if (baselinePath) {
   const before = JSON.parse(readFileSync(baselinePath, 'utf8')) as Record_
-  // The badges first: a verdict that moved, in either direction, is a line to read.
-  const moved = Object.entries(record.verdicts).filter(([key, v]) => before.verdicts?.[key] !== undefined && before.verdicts[key] !== v)
-  const tally = new Map<string, number>()
-  for (const [key, v] of moved) tally.set(`${before.verdicts[key]} → ${v}`, (tally.get(`${before.verdicts[key]} → ${v}`) ?? 0) + 1)
-  console.log(`\n── Badges gegen die Baseline: ${moved.length} bewegt${[...tally].map(([k, n]) => ` · ${k} ${n}`).join('')}`)
-  for (const [key, v] of moved) {
-    console.log(`   ${before.verdicts[key]} → ${v}: ${key}`)
-    for (const p of piecesOf.get(key)?.slice(0, 6) ?? []) console.log(`        ${p}`)
+  // The badges first: a verdict that moved, in either direction, is a line to
+  // read, and so is a unit that is newly or no longer changed. A baseline
+  // without badges cannot say any of it, and fails rather than report none.
+  const badges = badgeMoves(before.verdicts, record.verdicts)
+  if (!badges) {
+    console.log(`\n── Badges gegen die Baseline: ${baselinePath} trägt keine (verdicts) — nicht verglichen`)
+    failed = true
+  } else {
+    const tally = new Map<string, number>()
+    for (const [, from, to] of badges.moved) tally.set(`${from} → ${to}`, (tally.get(`${from} → ${to}`) ?? 0) + 1)
+    console.log(`\n── Badges gegen die Baseline: ${badges.moved.length} bewegt${[...tally].map(([k, n]) => ` · ${k} ${n}`).join('')} · ${badges.came.length} neu geändert · ${badges.went.length} nicht mehr geändert`)
+    for (const [key, from, to] of badges.moved) {
+      console.log(`   ${from} → ${to}: ${key}`)
+      for (const p of piecesOf.get(key)?.slice(0, 6) ?? []) console.log(`        ${p}`)
+    }
+    for (const key of badges.came) {
+      console.log(`   + ${record.verdicts[key]}: ${key}`)
+      for (const p of piecesOf.get(key)?.slice(0, 6) ?? []) console.log(`        ${p}`)
+    }
+    for (const key of badges.went) console.log(`   − ${before.verdicts[key]}: ${key}`)
   }
   const lines = (r: Record_) => new Set(r.residues.map((x) => `${x.kind} ${residueLine(x)}`))
   const was = lines(before)

@@ -233,3 +233,25 @@ export function residuesOf(units: readonly LawDiffUnit[]): Residue[] {
       ceiling: u.change === 'changed' && !u.segments,
     }))
 }
+
+/** What `--baseline` finds of the badges: moved either way, and changed units that came or went. */
+export interface BadgeMoves {
+  moved: [key: string, from: string, to: string][]
+  came: string[]
+  went: string[]
+}
+
+/**
+ * The badge of every changed unit against a baseline's (`station.ts
+ * --baseline`). Null where the baseline carries no badges: until 20.11.2026
+ * `stationBaseline.json` had none, and the run reported „0 bewegt" against
+ * nothing — a comparison that could not fail.
+ */
+export function badgeMoves(before: Readonly<Record<string, string>> | undefined, now: Readonly<Record<string, string>>): BadgeMoves | null {
+  if (!before) return null
+  return {
+    moved: Object.entries(now).filter(([key, v]) => before[key] !== undefined && before[key] !== v).map(([key, v]) => [key, before[key]!, v]),
+    came: Object.keys(now).filter((key) => before[key] === undefined),
+    went: Object.keys(before).filter((key) => now[key] === undefined),
+  }
+}
