@@ -50,8 +50,16 @@ describe('recurringRuns — the same short run inserted or removed across a Land
     const three = (run: string) => ['ktn-1', 'ktn-2', 'ktn-3'].map((d) => unit('ktn', d, run))
     expect(recurringRuns(three('+LGBl Nr 12/2025'))).toEqual([])
     expect(recurringRuns(three(`+${'Wortfolge '.repeat(5)}`))).toEqual([])
-    expect(recurringRuns(three('+der')).map((r) => r.text)).toEqual(['der'])
     expect(recurringRuns(three('+REG.SITZG.').map((u) => ({ ...u, change: 'inserted' })))).toEqual([])
+  })
+
+  it('leaves out a run shorter than six characters: a corrected word or mark is wording, not furniture', () => {
+    const three = (run: string) => ['sbg-1', 'sbg-2', 'sbg-3'].map((d) => unit('sbg', d, run))
+    /* The runs the check found beside the stamp before it had a lower bound
+       (ktn-61525-2024-53 „wird der im Eintrag", sbg-32374 „geregelt ist ist",
+       „(§) 130", sbg-31395 „7. Im § 11", sbg-34443 „Die Ziffer 6 entfällt"). */
+    for (const run of ['-der', '+der', '-die', '-ist', '-Im', '+Die', '+(§)']) expect(recurringRuns(three(run))).toEqual([])
+    expect(recurringRuns(three('+Gesetz')).map((r) => r.text)).toEqual(['Gesetz'])
   })
 })
 

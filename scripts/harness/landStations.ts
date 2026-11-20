@@ -44,7 +44,9 @@
  *  - `Unteranweisung neu`: an instruction shown as new whose text opens
  *    with a sub-instruction's number („1.1. In der Z 6 …");
  *  - `Wiederkehrender Einschub`: a unit changed by nothing but a short run
- *    that changed units of three drafts of its Land insert, or remove, too
+ *    (six to 40 characters, no digit; shorter is a word, which recurs as
+ *    wording does) that changed units of three drafts of its Land insert,
+ *    or remove, too
  *    (`recurringRuns`, 20.11.2026) — a page's furniture read as law, known
  *    by its recurrence rather than its shape: Kärnten's session stamp
  *    „REG.SITZG." stood in 198 units, and `Kopfzeile` knows Salzburg's head.

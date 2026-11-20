@@ -36,6 +36,11 @@ export interface RecurringRun<T extends RunUnit> {
 
 /** A run longer than this is a sentence part, not furniture. */
 export const RECURRING_MAX_LENGTH = 40
+/**
+ * A run shorter than this is a word, not furniture: an article, a verb, a
+ * mark („der", „ist", „Im", „(§)") recurs as wording does (20.11.2026).
+ */
+export const RECURRING_MIN_LENGTH = 6
 /** In fewer drafts than this, a run is a coincidence of wording. */
 export const RECURRING_MIN_DRAFTS = 3
 
@@ -50,11 +55,12 @@ export const RECURRING_MIN_DRAFTS = 3
  * units of 20 drafts, the only change of 128, and no invariant knew it —
  * the running-head check knows Salzburg's head by its shape. This one knows
  * no shape: no digit (a number recurs for its own reasons — a year, an
- * LGBl number filled in), at most 40 characters, the same side, one Land.
+ * LGBl number filled in), six to 40 characters, the same side, one Land.
  *
- * A word does recur, as wording does: „der", „die", „Im" corrected in a
- * few instructions. So a hit is read, and accepted with its reason where
- * the documents carry it.
+ * Six, because a short word recurs as wording does: with no lower bound
+ * the check found the stamp and ten corrected function words and marks
+ * („der", „die", „ist", „Im", „Die", „(§)"), each accepted by hand. A hit
+ * is still read, and accepted with its reason where the documents carry it.
  */
 export function recurringRuns<T extends RunUnit>(units: readonly T[]): RecurringRun<T>[] {
   const groups = new Map<string, { land: string; side: 'inserted' | 'removed'; text: string; drafts: Set<string>; units: number; only: T[] }>()
@@ -63,7 +69,7 @@ export function recurringRuns<T extends RunUnit>(units: readonly T[]): Recurring
     const runs = u.segments.filter((s) => s.type !== 'equal').map((s) => ({ side: s.type as 'inserted' | 'removed', text: s.text.trim() }))
     const seen = new Set<string>()
     for (const r of runs) {
-      if (!r.text || r.text.length > RECURRING_MAX_LENGTH || /\d/.test(r.text)) continue
+      if (r.text.length < RECURRING_MIN_LENGTH || r.text.length > RECURRING_MAX_LENGTH || /\d/.test(r.text)) continue
       const key = `${u.land}\u0001${r.side}\u0001${r.text}`
       if (seen.has(key)) continue
       seen.add(key)
