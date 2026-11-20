@@ -587,13 +587,53 @@ function occurrences(hay: string, needle: string): number {
 
 /** What the comparison form and the word list both drop: the copy's spellings of the same text. */
 function sameText(t: string): string {
-  return t
+  return sameLayout(t)
     .replace(RIS_NOTE_RE, ' ')
     .replace(NOTE_REFERENCE_RE, ' ')
     .replace(WEB_VIEW_RE, ' ')
     .replace(VERSION_LABEL_RE, ' ')
     .replace(PLACEHOLDER_RE, 'XXX')
     .replace(REPEALED_RE, ' ')
+}
+
+/**
+ * The same words in another setting (20.11.2026), read alike on both sides —
+ * RIS's own text carries some of them too — since no draft orders and no
+ * engine makes any of it:
+ *
+ *  - „lit. b)": the Litera named with its bracket, which the marker rule
+ *    below would take off with the letter (106/ME XXVIII, BUAG § 31);
+ *  - „Z." before a number, the abbreviation's other spelling (49/ME, MedienG
+ *    § 26);
+ *  - „a." where RIS prints „a)": a list marker in another spelling, at the
+ *    head of the text, behind a colon, a semicolon or an omission mark, or
+ *    behind another marker (4/ME, UGB § 189; 74/ME, BFA-VG § 43) — never
+ *    behind a comma or a word, where „d. h." and „u. a." stand;
+ *  - „|", a table's column rule (104/ME, FAG 2024 § 11).
+ *
+ * Commas, full stops inside a sentence, quotation marks and spellings stay
+ * as they are: no fault class injects punctuation, so a wrong comma of the
+ * engine would pass unseen (`docs/decisions.md`, „More tolerance when matching
+ * against the annex").
+ */
+function sameLayout(t: string): string {
+  return t
+    .replace(/\|/g, ' ')
+    .replace(/(?<![\p{L}])(lit\.)(?=[a-z]{1,2}\b)/gu, '$1 ')
+    .replace(/(?<![\p{L}])(lit\.\s*[a-z]{1,2})\)/gu, '$1')
+    .replace(/(?<![\p{L}])Z\.(?=\s*\d)/gu, 'Z')
+    .replace(/(^\s*|(?:[:;…]|\.\.\.)\s*|(?:^|\s)(?:\(\d+[a-z]*\)|\d+[a-z]*\.)\s+)([a-z])\.(?=\s)/g, '$1$2)')
+}
+
+/**
+ * A marker glued to its word, „3.eine", „, 5.das", „.2.sonstigen" — the PDF
+ * text layer of the ressort's annex (21/ME, 19/ME, 113/ME XXVIII,
+ * 20.11.2026). In the annex's cells only (`oracleVerdict`): where the
+ * engine's result carries „2.vom", inherited from a draft that glues its
+ * markers, check 2 has to see it.
+ */
+function unglued(t: string): string {
+  return t.replace(/(?<![\p{L}\d])(\d+[a-z]?\.)(?=\p{Ll}{2})/gu, '$1 ')
 }
 
 /**
@@ -2104,6 +2144,8 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   // An omission without its „…", written out where the standing § proves it
   // (`silentOmissions`) — every check below then reads it as an omission.
   rows = withoutHeldGroupTitle(withoutNextGroup(silentOmissions(rows, standingUnits).rows), before)
+  // The transcript's glued markers, in the cells only (`unglued`).
+  rows = rows.map((r) => (r.kind === 'pair' ? { ...r, current: unglued(r.current), proposed: unglued(r.proposed) } : r))
   const substantive = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')
   if (substantive.length === 0) return { para: id, verdict: 'stumm', rows: rows.length, note: null }
 
@@ -2115,8 +2157,13 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   const opener = rows.find((r) => r.kind === 'pair')
   const opensWithHeading = (row: ComparisonRow): boolean =>
     row === opener && (headingOf(row.proposed).some((w) => /\p{L}/u.test(w)) || (!row.gld && isHeadingRow(row, rows.slice(rows.indexOf(row) + 1).find((r) => r.kind === 'pair'))))
+  // ß and ss alike in the left column only (20.11.2026): the ressort copies
+  // the standing text in today's spelling, „Kostenzuschuss" for RIS's
+  // „Kostenzuschuß". Held against the result, a „daß" the draft turns into
+  // „dass" still has to be there.
+  const sharpS = (t: string) => t.replace(/ß/g, 'ss')
   for (const row of substantive) {
-    const missing = row.current ? unaccountedStretch(beforeKey, row.current) : null
+    const missing = row.current ? unaccountedStretch(sharpS(beforeKey), sharpS(row.current)) : null
     if (missing !== null) {
       return { para: id, verdict: 'fremd', rows: rows.length, note: `Geltende Fassung der Gegenüberstellung nicht im Ausgangstext: "${missing.slice(0, 60)}"` }
     }
