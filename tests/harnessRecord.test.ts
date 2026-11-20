@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
-import { DIRTY, UNKNOWN_COMMIT, commitStamp, corpusReach, harnessStamp } from '../scripts/lib/harnessRecord'
+import { DIRTY, UNKNOWN_COMMIT, commitStamp, corpusReach, floorOf, harnessStamp } from '../scripts/lib/harnessRecord'
 
 /**
  * Every harness record names its code and its reach (20.11.2026), so the
@@ -38,5 +38,21 @@ describe('corpusReach', () => {
   it('counts what was reached from what was asked for and what failed', () => {
     expect(corpusReach(60, [{ id: 'BGBLA_2025_I_7', cause: 'offline' }])).toEqual({ requested: 60, reached: 59, unreached: [{ id: 'BGBLA_2025_I_7', cause: 'offline' }] })
     expect(corpusReach(3, [])).toMatchObject({ requested: 3, reached: 3 })
+  })
+})
+
+describe('floorOf', () => {
+  it('holds a class tried 20 times or more to the floor, and fails it below', () => {
+    const floor = floorOf([{ key: 'Payload', tried: 432, caught: 416 }, { key: 'E-neben', tried: 162, caught: 150 }], 95)
+    expect(floor).toMatchObject({ min: 95, passed: false, failed: ['E-neben'], unheld: [] })
+    expect(floor.status.get('Payload')).toBe('gehalten')
+    expect(floor.status.get('E-neben')).toBe('verfehlt')
+  })
+
+  it('says „nicht gehalten" of a class tried fewer than 20 times, rather than passing it in silence', () => {
+    const floor = floorOf([{ key: 'Fehlt', tried: 0, caught: 0 }, { key: 'Lücke', tried: 14, caught: 14 }, { key: 'E', tried: 133, caught: 133 }], 95)
+    expect(floor).toMatchObject({ passed: true, failed: [], unheld: ['Fehlt', 'Lücke'] })
+    expect(floor.status.get('Lücke')).toBe('nicht gehalten')
+    expect(floor.status.get('E')).toBe('gehalten')
   })
 })

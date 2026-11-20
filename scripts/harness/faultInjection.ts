@@ -290,8 +290,9 @@
  *
  * Held to the `--mindestens` floor (`flooredWordClasses`): every class at
  * ≥ 95 % on both paths with ≥ 20 tries when measured — Überschrift,
- * Ungedruckt-weg/-neu and Zurück since 19.11.2026. Zurück-gleich has 3
- * tries per path and is printed, not floored.
+ * Ungedruckt-weg/-neu and Zurück since 19.11.2026, Payload since 20.11.2026
+ * (`flooredClasses`). Zurück-gleich has 3 tries per path and is printed,
+ * not floored.
  *
  * **Duplicate Absatz numbers are RIS's, not the engine's** (19.11.2026). The
  * Reihe fault used to swap two Absätze of the same number — Listing Act
@@ -341,7 +342,7 @@ import { windowLine, windowOf } from '../lib/annexReport'
 import { renditionOfPages, witnessVerdict, type DraftRendition, type WitnessInstruction, type WitnessPlace } from '../../server/utils/kons/draftWitness'
 import { writeFileSync } from 'node:fs'
 import { argAssigned, argFlag } from '../lib/args'
-import { corpusReach, harnessStamp } from '../lib/harnessRecord'
+import { corpusReach, floorOf, harnessStamp } from '../lib/harnessRecord'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
 
@@ -408,6 +409,12 @@ interface FaultTally {
    * cannot be added up to it, because they overlap.
    */
   shipped: number
+  /**
+   * Of `shipped`, the sites the gate as shipped withheld without the fault
+   * too (20.11.2026): caught, but not because of this fault. Beside the
+   * per-rule counts below, for the record `/genauigkeit` is built from.
+   */
+  shippedAlready: number
   /** Catches that were already firing without any fault — not this fault's */
   rule1Already: number
   rule2WideAlready: number
@@ -427,7 +434,7 @@ interface FaultTally {
 }
 
 function tally(label: string): FaultTally {
-  return { label, tried: 0, leftPasses: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, shipped: 0, rule1Already: 0, rule2WideAlready: 0, rule2ParaAlready: 0, silenced: 0 }
+  return { label, tried: 0, leftPasses: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, shipped: 0, shippedAlready: 0, rule1Already: 0, rule2WideAlready: 0, rule2ParaAlready: 0, silenced: 0 }
 }
 
 function record(into: FaultTally, verdict: Verdict, base: Verdict): void {
@@ -438,7 +445,9 @@ function record(into: FaultTally, verdict: Verdict, base: Verdict): void {
   if (verdict.rule2Para) into.rule2Para++
   if (verdict.rule1 || verdict.rule2Wide) into.eitherWide++
   if (verdict.rule1 || verdict.rule2Para) into.eitherPara++
-  if (!verdict.leftPasses || verdict.rule1 || verdict.rule2Para) into.shipped++
+  const withheld = (v: Verdict): boolean => !v.leftPasses || v.rule1 || v.rule2Para
+  if (withheld(verdict)) into.shipped++
+  if (withheld(verdict) && withheld(base)) into.shippedAlready++
   if (verdict.rule1 && base.rule1) into.rule1Already++
   if (verdict.rule2Wide && base.rule2Wide) into.rule2WideAlready++
   if (verdict.rule2Para && base.rule2Para) into.rule2ParaAlready++
@@ -1783,6 +1792,15 @@ const oracleFaults = {
 const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich]
 /** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
 const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck]
+/**
+ * Every class `--mindestens` holds, one list for the floor and the record.
+ * Not „Lücke-beide": a unit RIS lacks where the annex jumps over it silently
+ * is a blind spot by construction (`withoutUnit`), not a reach. Payload since
+ * 20.11.2026 (416/432 on the PDF path, 183/187 on the table path): the second
+ * witness shows what the annex does not confirm, and a misread payload it
+ * lets through is a § shown that is not the draft.
+ */
+const flooredClasses = [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, ...flooredWordClasses, oracleFaults.Payload]
 
 const docs: any[] = []
 // As many pages as `--limit` asks for; the loop stopped at page 4 whatever the
@@ -1864,8 +1882,8 @@ for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
 // was there before it. Small by construction (the false-positive rate above),
 // and printed rather than assumed.
 for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
-  if (fault.rule1Already === 0 && fault.rule2WideAlready === 0 && fault.rule2ParaAlready === 0) continue
-  console.log(`    ${fault.label.trim()}: davon schon ohne Injektion gemeldet — Regel 1 ${fault.rule1Already}, Regel 2 ganz ${fault.rule2WideAlready}, je § ${fault.rule2ParaAlready}`)
+  if (fault.rule1Already === 0 && fault.rule2WideAlready === 0 && fault.rule2ParaAlready === 0 && fault.shippedAlready === 0) continue
+  console.log(`    ${fault.label.trim()}: davon schon ohne Injektion gemeldet — Regel 1 ${fault.rule1Already}, Regel 2 ganz ${fault.rule2WideAlready}, je § ${fault.rule2ParaAlready}, Tor wie ausgeliefert ${fault.shippedAlready}`)
 }
 // And the other direction: a fault that takes an alarm *away*. Zero is the
 // claim, not the assumption — the left column exempts the right one, so text
@@ -1922,16 +1940,46 @@ if (argFlag('misses')) {
 }
 
 /**
+ * `--mindestens=95`: fail (exit 1) when the oracle catches less than this
+ * share of any fault class it was tried on at least 20 times (26.10.2026).
+ *
+ * The five classes are the oracle's measured reach, and a reach that is only
+ * printed regresses unseen — the first three classes stood at 1 to 3 % for
+ * weeks before anyone injected them. With a floor, a change to
+ * `kons/tguOracle.ts` or to the engine that loses a class fails the run the
+ * way a test does. Twenty tries, because below that one miss is five points.
+ *
+ * A class below twenty tries is not held (`floorOf`): printed as „nicht
+ * gehalten" and recorded so (20.11.2026), where the floor used to skip it
+ * unsaid — „Fehlt" with 0 tries on the PDF path passed the floor of
+ * 20.11.2026 as if held. The outcome goes into the record before the exit,
+ * so a run whose floor failed leaves a record that says so.
+ */
+const keyOf = (label: string): string => label.trim().split(/\s+/)[0]!
+const floorArg = argAssigned('mindestens')
+const floor = floorArg === null ? null : floorOf(flooredClasses.map((f) => ({ key: keyOf(f.label), tried: f.tried, caught: f.caught })), Number(floorArg))
+if (floor) {
+  for (const f of flooredClasses) {
+    const status = floor.status.get(keyOf(f.label))
+    if (status === 'verfehlt') console.log(`  ✗ unter ${floor.min} %: ${f.label.trim()} — ${f.caught}/${f.tried}`)
+    if (status === 'nicht gehalten') console.log(`  · nicht gehalten (unter 20 Versuchen): ${f.label.trim()} — ${f.caught}/${f.tried}`)
+  }
+  if (floor.passed) console.log(`  ✓ jede Fehlerklasse mit mindestens 20 Versuchen zu mindestens ${floor.min} % gefangen${floor.unheld.length ? `; nicht gehalten: ${floor.unheld.join(', ')}` : ''}`)
+}
+
+/**
  * `--json=<file>`: the tallies above as a record (19.11.2026), for
  * `scripts/harness/genauigkeit.ts`, which writes the figures `/genauigkeit`
  * shows. Each class with its key (the label's first word), its label, how
  * often it was tried and caught; the annex faults with what the shipped gate
- * catches (`shipped`). `floored` marks the classes `--mindestens` holds.
+ * catches (`shipped`) and how many of those it withheld without the fault
+ * too (`alreadyWithheld`). `floored` marks the classes `--mindestens` holds,
+ * `floor` what it made of each, and the record's `floor` the outcome — null
+ * where the run had no floor, which the builder refuses.
  */
 const jsonPath = argAssigned('json')
 if (jsonPath) {
-  const keyOf = (label: string): string => label.trim().split(/\s+/)[0]!
-  const floored = new Set<object>([oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, ...flooredWordClasses])
+  const floored = new Set<object>(flooredClasses)
   const out = {
     ...harnessStamp(),
     // Of the drafts of the list, every one whose reading threw; a draft
@@ -1941,32 +1989,18 @@ if (jsonPath) {
     path: xmlMode ? 'table' : 'pdf',
     window: listWindow,
     drafts,
-    annex: [faults.L, faults.Rold, faults.Rnew, faults.U].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.shipped })),
-    result: [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses, oracleFaults.Payload].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f) })),
+    floor: floor ? { min: floor.min, passed: floor.passed, failed: floor.failed, unheld: floor.unheld } : null,
+    annex: [faults.L, faults.Rold, faults.Rnew, faults.U].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.shipped, alreadyWithheld: f.shippedAlready })),
+    result: [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses, oracleFaults.Payload].map((f) => ({
+      key: keyOf(f.label),
+      label: f.label.trim(),
+      tried: f.tried,
+      caught: f.caught,
+      floored: floored.has(f),
+      ...(floor && floored.has(f) ? { floor: floor.status.get(keyOf(f.label)) } : {}),
+    })),
   }
   writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonPath}`)
 }
-
-/**
- * `--mindestens=95`: fail (exit 1) when the oracle catches less than this
- * share of any fault class it was tried on at least 20 times (26.10.2026).
- *
- * The five classes are the oracle's measured reach, and a reach that is only
- * printed regresses unseen — the first three classes stood at 1 to 3 % for
- * weeks before anyone injected them. With a floor, a change to
- * `kons/tguOracle.ts` or to the engine that loses a class fails the run the
- * way a test does. Twenty tries, because below that one miss is five points.
- */
-const floor = argAssigned('mindestens')
-if (floor !== null) {
-  // Not „Lücke-beide": a unit RIS lacks where the annex jumps over it
-  // silently is a blind spot by construction (`withoutUnit`), not a reach.
-  // Of the word classes only those measured at ≥ 95 % on both paths
-  // (19.11.2026); the rest are printed above, not floored.
-  const short = [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, ...flooredWordClasses]
-    .filter((f) => f.tried >= 20 && (100 * f.caught) / f.tried < Number(floor))
-  for (const f of short) console.log(`  ✗ unter ${floor} %: ${f.label.trim()} — ${f.caught}/${f.tried}`)
-  if (short.length) process.exit(1)
-  console.log(`  ✓ jede Fehlerklasse mit mindestens 20 Versuchen zu mindestens ${floor} % gefangen`)
-}
+if (floor && !floor.passed) process.exit(1)

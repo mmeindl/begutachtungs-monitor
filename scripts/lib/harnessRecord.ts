@@ -69,6 +69,30 @@ export function harnessStamp(cwd: string = process.cwd()): HarnessStamp {
   }
 }
 
+/** What the floor made of one class: held to it, below it, or tried too seldom to be held at all. */
+export type FloorStatus = 'gehalten' | 'verfehlt' | 'nicht gehalten'
+
+/** The floor's outcome as a record carries it: `failed` and `unheld` by class key. */
+export interface FloorResult {
+  min: number
+  passed: boolean
+  failed: string[]
+  unheld: string[]
+}
+
+/**
+ * A floor of `min` % over fault classes (`faultInjection.ts --mindestens`).
+ * A class tried fewer than `FLOOR_MIN_TRIES` times is not failed — one miss
+ * would be five points — and not passed either: it is „nicht gehalten", and
+ * the record says so, where until 20.11.2026 the floor skipped it unsaid.
+ */
+export function floorOf(classes: readonly { key: string; tried: number; caught: number }[], min: number): FloorResult & { status: Map<string, FloorStatus> } {
+  const status = new Map<string, FloorStatus>()
+  for (const c of classes) status.set(c.key, c.tried < FLOOR_MIN_TRIES ? 'nicht gehalten' : (100 * c.caught) / c.tried < min ? 'verfehlt' : 'gehalten')
+  const keys = (s: FloorStatus) => [...status].filter(([, v]) => v === s).map(([k]) => k)
+  return { min, passed: keys('verfehlt').length === 0, failed: keys('verfehlt'), unheld: keys('nicht gehalten'), status }
+}
+
 /** A reach from what was asked for and what failed, each failure with its cause. */
 export function corpusReach(requested: number, unreached: { id: string; cause: string }[]): CorpusReach {
   return { requested, reached: requested - unreached.length, unreached }
