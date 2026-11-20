@@ -1188,6 +1188,8 @@ export type NovaoOp =
     wordBound: boolean
     /** „der Punkt am Ende … durch einen Beistrich": the mark that ends the unit's text, not any occurrence of it. */
     atEnd?: boolean
+    /** „am Ende der Z 3 das Wort ‚und'": the occurrence that ends the unit's text, and only where one does (`END_WORD_RE`). */
+    endWord?: true
     /**
      * „… wird der Strichpunkt durch einen Punkt ersetzt; der nachfolgende
      * Halbsatz entfällt": the new mark ends the sentence, and what followed
@@ -1216,7 +1218,7 @@ export type NovaoOp =
     bareEnd?: boolean
   }
   /** "In § 5 Abs. 1 entfällt die Wortfolge X." */
-  | { kind: 'deletePhrase'; target: NovaoAddress; text: string; eachUnit: boolean; wordBound: boolean }
+  | { kind: 'deletePhrase'; target: NovaoAddress; text: string; eachUnit: boolean; wordBound: boolean; endWord?: true }
   /**
    * "Der bisherige § 10 erhält die Paragrafenbezeichnung „§ 11.“"; with
    * `toLast`, a run: "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“"
@@ -1498,6 +1500,15 @@ function operandQuotes(line: string): QuoteMark[] {
  * a renumbered § goes to (20.11.2026). Group 1 is the bare id.
  */
 const EINGEREIHT_RE = /\s*,?\s*(?:und\s+)?wird\s+nach\s+§\s*(\d+[a-z]*)\s+eingereiht\b/i
+
+/**
+ * „am Ende der Z 3 das Wort ‚und'", „das Wort ‚oder' am Ende der Z 8", „am
+ * Ende das Wort ‚oder'" (20.11.2026): the position word bound to the one
+ * quoted operand, the unit (if any) between them. Only „am Ende" right
+ * beside the operand counts — „der Punkt am Ende der Z 5" further on in the
+ * line belongs to another clause.
+ */
+const END_WORD_RE = /\bam\s+Ende(?:\s+(?:der|des)\s+(?:Z|Ziffer|lit\.?|Abs\.?)\s*\d+[a-z]*)?\s+(?:das|die|der)\s+(?:Wort|Wortfolge|Ausdruck)\s*""|\b(?:das|die|der)\s+(?:Wort|Wortfolge|Ausdruck)\s*""\s*am\s+Ende\b/i
 
 /** „die Klammern um das Wort", directly in front of the quotation it names. */
 const BRACKETS_AROUND_RE = /\b(?:die\s+)?Klammern?\s+um\s+(?:das|den|die)\s+(?:Wort|Ausdruck|Wortfolge|Zitat|Wendung)\s*$/i
@@ -2558,7 +2569,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
           // „der Punkt am Ende der Z 4 durch das Wort ‚oder'": the mark named
           // in words is the one the unit ends on, as in the form with both
           // marks named (`atEnd` above).
-          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, ...(/^[.;,:]$/.test(mixed.from) && /\bam\s+Ende\b/i.test(maskQuotes(head)) ? { atEnd: true } : {}), ...(beside ? { beside } : {}), everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
+          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, ...(/^[.;,:]$/.test(mixed.from) && /\bam\s+Ende\b/i.test(maskQuotes(head)) ? { atEnd: true } : !/^[.;,:]$/.test(mixed.from) && END_WORD_RE.test(maskQuotes(head)) ? { endWord: true as const } : {}), ...(beside ? { beside } : {}), everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
           reason: null,
           line,
         }
@@ -2592,7 +2603,8 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       const from = reversed ? operands[1]! : operands[0]!
       const to = reversed ? operands[0]! : operands[1]!
       const everywhere = everyOccurrence(head, targets)
-      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: from.text, to: to.text, everywhere, eachUnit, wordBound: wordOperand(line, from.ord), ...(beside && !everywhere ? { beside } : {}) })), reason: null, line }
+      const endWord = !reversed && END_WORD_RE.test(maskQuotes(head)) && (head.match(/"/g)?.length ?? 0) === 4 ? { endWord: true as const } : {}
+      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: from.text, to: to.text, everywhere, eachUnit, wordBound: wordOperand(line, from.ord), ...(beside && !everywhere ? { beside } : {}), ...endWord })), reason: null, line }
     }
     if (/\beingefügt\b|\bergänzt\b|\bangefügt\b|\bvorangestellt\b|\beinzufügen\b|\bgesetzt\b/i.test(head)) {
       const before = BEFORE_ANCHOR_RE.test(head) || /vorangestellt/i.test(head)
@@ -2699,7 +2711,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       return {
         ops: places.flatMap((t) => objects.map((q) => (bracketsAround(q)
           ? { kind: 'replacePhrase' as const, target: t, from: `(${q.text.trim()})`, to: q.text.trim(), everywhere: false, eachUnit, wordBound: false }
-          : { kind: 'deletePhrase' as const, target: t, text: q.text, eachUnit, wordBound: wordOperand(line, q.ord) }))),
+          : { kind: 'deletePhrase' as const, target: t, text: q.text, eachUnit, wordBound: wordOperand(line, q.ord), ...(objects.length === 1 && END_WORD_RE.test(maskQuotes(head)) ? { endWord: true as const } : {}) }))),
         reason: null,
         line,
       }

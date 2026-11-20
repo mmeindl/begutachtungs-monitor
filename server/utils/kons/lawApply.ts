@@ -1666,6 +1666,28 @@ function everyInUnit(slots: readonly Slot[], needle: string, wordBound: boolean,
   return { hits }
 }
 
+/**
+ * **„am Ende der Z 3 das Wort ‚und'"** (20.11.2026, `endWord` in
+ * `kons/novao.ts`): in each unit, the operand that ends its text — standing
+ * as a word, with nothing behind it but a closing mark. A Ziffer that joins
+ * the next with „und" often carries another „und" inside, and asked for a
+ * unique occurrence the line was refused (BilDokG 2020 § 4, 14/ME XXVIII,
+ * and seven more). A unit whose text does not end on the operand disagrees
+ * with the draft and refuses the line.
+ */
+function endWordHits(units: readonly (readonly Slot[])[], needle: string): { hits: (Span & { slot: Slot })[] } | { error: string } {
+  const hits: (Span & { slot: Slot })[] = []
+  const word = needle.trim()
+  for (const slots of units) {
+    const last = [...slots].reverse().find((sl) => sl.read().trim() !== '')
+    const text = last?.read() ?? ''
+    const at = text.trimEnd().lastIndexOf(word)
+    if (!last || !word || at < 0 || !atWordBoundary(text, word, at) || !/^\s*[.,;:]?\s*$/.test(text.slice(at + word.length))) return { error: `„${word.slice(0, 40)}" steht nicht am Ende der Einheit` }
+    hits.push({ slot: last, at, len: word.length })
+  }
+  return { hits }
+}
+
 /** A replacement already stands where `to` is written around the hit. */
 function replacedAlready(from: string, to: string): EveryOccurrence {
   const k = to.indexOf(from)
@@ -2562,8 +2584,9 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // „jeweils" is the ressort saying every one of them carries it, so a
       // unit that does not is a disagreement about the standing text and not
       // a place to skip quietly.
-      const located = locatePhrase(law, op.target, units, op.eachUnit, op.from, op.wordBound, op.beside ? undefined : replacedAlready(op.from, op.to))
+      const located = op.endWord ? endWordHits(units, op.from) : locatePhrase(law, op.target, units, op.eachUnit, op.from, op.wordBound, op.beside ? undefined : replacedAlready(op.from, op.to))
       if ('error' in located) {
+        if (op.endWord) return located.error
         // „vor der Wortfolge ‚des Sachverständigen' das Wort ‚oder'": where
         // the operand recurs, the anchor says which one — the operand and
         // the anchor side by side, and that pair must be unique in turn.
@@ -2619,7 +2642,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
     case 'deletePhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
       if ('error' in units) return units.error
-      const located = locatePhrase(law, op.target, units, op.eachUnit, op.text, op.wordBound, { alreadyThere: () => false })
+      const located = op.endWord ? endWordHits(units, op.text) : locatePhrase(law, op.target, units, op.eachUnit, op.text, op.wordBound, { alreadyThere: () => false })
       if ('error' in located) return located.error
       writeHits(
         located.hits,

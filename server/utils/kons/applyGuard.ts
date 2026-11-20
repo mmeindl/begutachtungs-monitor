@@ -166,7 +166,7 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
   // a whole § in its body, below the § in the unit or sentence `carrying`
   // read.
   const times = (op: Extract<Instruction['op'], { kind: 'replacePhrase' | 'insertPhrase' | 'deletePhrase' }>, scope: string | null, needle: string): number => {
-    if (!op.eachUnit || ('atEnd' in op && op.atEnd) || ('beside' in op && op.beside) || !scope) return 1
+    if (!op.eachUnit || ('atEnd' in op && op.atEnd) || ('endWord' in op && op.endWord) || ('beside' in op && op.beside) || !scope) return 1
     const t = op.target
     const where = t.heading ? (beforeTree?.heading ?? null) : t.level === 'para' && !t.satz && !t.halbsatz && beforeTree ? plainText({ ...beforeTree, heading: null }) : scope
     return where ? Math.max(1, phraseOccurrences(where, needle, op.wordBound)) : 1

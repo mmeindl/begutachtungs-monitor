@@ -1653,6 +1653,25 @@ describe('„jeweils" über eine Liste: jede Fundstelle in jeder Einheit (20.11.
   })
 })
 
+describe('„am Ende" macht das Wort eindeutig (20.11.2026)', () => {
+  const list = (): StandingLaw => ({ paragraphs: [para('4', 'B', [{ text: 'Es gilt:', ziffern: ['eins,', 'Bund und Länder und', 'drei.'] }])] })
+  it.each([
+    ['In § 4 Abs. 1 wird am Ende der Z 2 das Wort "und" durch einen Strichpunkt ersetzt.', 'Bund und Länder;'],
+    ['In § 4 Abs. 1 wird das Wort "und" am Ende der Z 2 durch einen Beistrich ersetzt.', 'Bund und Länder,'],
+    ['In § 4 Abs. 1 Z 2 wird am Ende das Wort "und" durch das Wort "sowie" ersetzt.', 'Bund und Länder sowie'],
+    ['In § 4 Abs. 1 entfällt das Wort "und" am Ende der Z 2.', 'Bund und Länder'],
+  ])('„%s"', (line, z2) => {
+    const { law: out, results } = run(list(), instr(line))
+    expect(results.map((r) => r.reason)).toEqual(results.map(() => null))
+    expect(plainText(out.paragraphs[0]!.children[0]!.children[1]!)).toBe(`2. ${z2}`.replace(/^2\. /, ''))
+  })
+
+  it('refuses where the unit does not end on the word', () => {
+    const { results } = run(list(), instr('In § 4 Abs. 1 wird am Ende der Z 1 das Wort "und" durch einen Strichpunkt ersetzt.'))
+    expect(results[0]!.reason).toMatch(/nicht am Ende/)
+  })
+})
+
 describe('Einfügung ohne Anker, nach der eigenen Nummer (20.11.2026)', () => {
   const ids = (n: LawNode) => n.children.map((c) => c.id)
   it('places a new Absatz by its number where the § counts upwards', () => {
