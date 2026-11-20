@@ -8,7 +8,7 @@ import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, 
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
+import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, withheldMatches, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
 import { landReasoningGapNote, reasoningGapNote } from '~/utils/reasoningNotes'
 import { comparisonLaws, landReasonsAt, unplacedLandReasons } from '~/utils/landReasons'
@@ -243,11 +243,14 @@ const viewOf = (u: LawDiffUnit): UnitView => ({ unit: u, label: unitName(u, null
  * group's header („nicht gezeigt", the Bund's dashed pill) and named at the
  * top of its body. A § filed under no law joins the only group there is; a
  * § of another law stands in that law's group (`withheldGroups`). A search
- * hides them, as the Bund's: there is no text of theirs to find.
+ * keeps those it names by designation or law, as the Bund's keeps a withheld
+ * row by its `para` (`withheldMatches`, 20.11.2026): they have no text to
+ * be found by, and dropped, a search for one ended in „Nichts gefunden.".
  */
 const withheldByGroup = computed(() => {
-  if (!data.value?.available || query.value.trim()) return new Map<string, LandLawDiffResponse['withheld']>()
-  return withheldGroups(data.value.withheld, units.value.map((u) => u.article))
+  if (!data.value?.available) return new Map<string, LandLawDiffResponse['withheld']>()
+  const q = query.value.trim()
+  return withheldGroups(q ? data.value.withheld.filter((w) => withheldMatches(w, q)) : data.value.withheld, units.value.map((u) => u.article))
 })
 
 /* §§ shown whose new text was not held word for word against the draft:
@@ -575,7 +578,7 @@ const hasUnits = computed(() => units.value.length > 0)
             </div>
           </Disclosure>
         </section>
-        <NoMatches v-if="hasUnits" :found="visible.length > 0" />
+        <NoMatches v-if="hasUnits" :found="visible.length > 0 || withheldByGroup.size > 0" />
       </ListBox>
       <!-- Whose texts and whose reading: the Land's and the Landtag's PDFs,
            RIS's Kundmachung, and the comparison ours — read from PDFs,

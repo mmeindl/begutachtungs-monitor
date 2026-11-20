@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { enactedNote, moveTargets, quotedInstruction, reachesGroups, reachesNote, renumberedNote, unreadAnnouncedNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
+import { enactedNote, moveTargets, quotedInstruction, reachesGroups, reachesNote, renumberedNote, unreadAnnouncedNote, withheldGroups, withheldMatches, withheldNotes } from '../app/utils/landWithheld'
 
 describe('withheldGroups — where the page counts a § it does not show', () => {
   it('files a § of another law under that law, not under the one group shown (Kärnten 38532/2024)', () => {
@@ -15,6 +15,21 @@ describe('withheldGroups — where the page counts a § it does not show', () =>
   it('lets a § of no law join the only group there is, and stand apart where there are several', () => {
     expect([...withheldGroups([{ law: null, id: '§9' }], ['Wiener Reinhaltegesetz']).keys()]).toEqual(['Wiener Reinhaltegesetz'])
     expect([...withheldGroups([{ law: null, id: '§9' }], ['A', 'B']).keys()]).toEqual([''])
+  })
+})
+
+describe('withheldMatches — a search keeps a withheld § it names (20.11.2026)', () => {
+  const w = { law: 'Oö. Beispielgesetz', id: '§13', fromId: '§9', reason: 'draftDiffers' as const }
+  it('by its designation as the page prints it, or as the response carries it, old or new', () => {
+    for (const q of ['§ 13', '§13', '13', '§ 9']) expect(withheldMatches(w, q)).toBe(true)
+  })
+  it('by its law, in any case', () => {
+    expect(withheldMatches(w, 'beispielgesetz')).toBe(true)
+    expect(withheldMatches(w, 'Oö. Beispiel')).toBe(true)
+  })
+  it('not by text it has none of', () => {
+    expect(withheldMatches(w, 'Landesregierung')).toBe(false)
+    expect(withheldMatches({ law: null, id: '§4' }, '§ 5')).toBe(false)
   })
 })
 

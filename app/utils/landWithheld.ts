@@ -30,6 +30,20 @@ export function withheldGroups(withheld: readonly LandWithheld[], shownLaws: rea
   return out
 }
 
+/**
+ * Whether a search keeps a withheld § (20.11.2026): by its designation —
+ * as the response carries it („§13") and as the page prints it („§ 13"),
+ * old or new number — or by its law, as the Bund's annex keeps a withheld
+ * row by its `para` and `law` (`TextComparisonSection`). It has no text to
+ * be found by. Until then a search dropped every withheld §, and where none
+ * shown matched the page said „Nichts gefunden." of a § it names. `q`:
+ * the query, trimmed.
+ */
+export function withheldMatches(w: LandWithheld, q: string): boolean {
+  const ids = [w.id, w.fromId].filter((id): id is string => !!id)
+  return [...ids, ...ids.map(displayId), w.law].filter(Boolean).join('\n').toLowerCase().includes(q.toLowerCase())
+}
+
 /** Why a § is withheld, `standing` where the server gives no reason: RIS refused its text in force. */
 export type WithheldCause = NonNullable<LandWithheld['reason']> | 'standing'
 
