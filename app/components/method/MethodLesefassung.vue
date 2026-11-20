@@ -13,8 +13,8 @@
     <div>
       <dt>Keine amtliche Fassung</dt>
       <dd>
-        Wir nehmen den geltenden Text aus dem RIS und wenden die Anweisungen
-        des Entwurfs darauf an.
+        Wir nehmen aus dem RIS den Text, der am Beginn der Begutachtung galt,
+        und wenden die Anweisungen des Entwurfs darauf an.
       </dd>
     </div>
     <div>

@@ -25,7 +25,7 @@
  * a hairline frame, the box grammar's „to consult".
  */
 import { formatNumberDe } from '#shared/utils/format'
-import { FUNNEL_GROUP_WHY_DE, GENAUIGKEIT_WEG, WEG_BEISPIEL, shareDe, wegFunnel } from '#shared/utils/genauigkeit'
+import { FUNNEL_GROUP_WHY_DE, GENAUIGKEIT_WEG, WEG_BEISPIEL, wegFunnel } from '#shared/utils/genauigkeit'
 import { risSource } from '#shared/utils/provenance'
 import { lesefassungCauseText } from '~/utils/lesefassung'
 
@@ -34,8 +34,13 @@ const ex = WEG_BEISPIEL
 const funnel = wegFunnel()
 const sources = [risSource('Geltender Text'), risSource('Entwurf'), risSource('Textgegenüberstellung')]
 
-/** „1.085 · 23,0 %": a count and its share of the §§ that set out. */
-const figure = (count: number) => `${formatNumberDe(count)} · ${shareDe(count, funnel.total)}\u00a0%`
+/**
+ * „1.085 Paragraphen (23,0 %)": a count with its unit and its share of the
+ * §§ that set out. Rounded to the nearest tenth, not down as `shareDe` does
+ * for a catch rate: these are parts of one whole, and rounded down they
+ * added up to 99,8 %.
+ */
+const figure = (count: number) => `${formatNumberDe(count)} Paragraphen (${((100 * count) / funnel.total).toFixed(1).replace('.', ',')}\u00a0%)`
 </script>
 
 <template>
@@ -55,7 +60,7 @@ const figure = (count: number) => `${formatNumberDe(count)} · ${shareDe(count, 
         />
         <div class="min-w-0 flex-1">
           <h3 class="text-base font-semibold text-ink">
-            {{ step.title }}<template v-if="step.who">
+            {{ i + 1 }}. {{ step.title }}<template v-if="step.who">
               <span class="font-normal text-ink-secondary"> · {{ step.who }}</span>
             </template>
           </h3>
@@ -84,7 +89,7 @@ const figure = (count: number) => `${formatNumberDe(count)} · ${shareDe(count, 
               <p class="font-medium text-ink">Beides stimmt: Die Prüfung ist bestanden.</p>
             </dl>
             <p v-else class="text-ink">
-              Bestätigt: Beim Entwurf {{ ex.draft.citation }} steht unter {{ ex.para }}
+              So auch hier: Beim Entwurf {{ ex.draft.citation }} steht unter {{ ex.para }}
               der ganze Paragraph.
               <NuxtLink :to="ex.draft.href" class="link-inline">Zum Entwurf</NuxtLink>
             </p>

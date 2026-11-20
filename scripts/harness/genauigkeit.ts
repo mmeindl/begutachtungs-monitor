@@ -108,7 +108,7 @@ if (!station.nullUnits) throw new Error('station.json was written before the nul
 
 /* --- The Länder ------------------------------------------------------- */
 
-const landGuard = read<{ lands: string[]; documents: number; shown: number; judged: number; found: number; faults: GenauigkeitFault[] }>('land-guard/summary.json')
+const landGuard = read<{ lands: string[]; documents: number; compared: number; shown: number; judged: number; found: number; faults: GenauigkeitFault[]; strict: { held: number; differs: number; unchecked: number } }>('land-guard/summary.json')
 const landStations = read<GenauigkeitRecord['laender']['stations'] & { stale: number }>('land-st/summary.json')
 
 /* --- The record ------------------------------------------------------- */
@@ -153,7 +153,7 @@ const record: GenauigkeitRecord = {
     nullSubstantive: station.residues.filter((r) => !r.residue.editorial).length,
   },
   laender: {
-    tgu: { lands: landGuard.lands, documents: landGuard.documents, shown: landGuard.shown, judged: landGuard.judged, found: landGuard.found, faults: landGuard.faults },
+    tgu: { lands: landGuard.lands, documents: landGuard.documents, compared: landGuard.compared, shown: landGuard.shown, strict: { held: landGuard.strict.held, differs: landGuard.strict.differs, unchecked: landGuard.strict.unchecked }, judged: landGuard.judged, found: landGuard.found, faults: landGuard.faults },
     stations: {
       pairs: landStations.pairs,
       compared: landStations.compared,

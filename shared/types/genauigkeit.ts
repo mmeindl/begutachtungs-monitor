@@ -104,8 +104,18 @@ export interface GenauigkeitRecord {
     tgu: {
       lands: string[]
       documents: number
+      /** §§ the comparisons carry as changed or new. */
+      compared: number
+      /** Of those, the §§ the page shows. */
       shown: number
-      /** §§ with enough new words to be judged. */
+      /**
+       * The right column word for word against the wording the draft
+       * quotes for the § (`landTguStrict.ts`, 20.11.2026): `held` are
+       * shown, `differs` withheld, `unchecked` shown on the older rule
+       * alone (the new words occur in the draft).
+       */
+      strict: { held: number; differs: number; unchecked: number }
+      /** §§ with enough new words for the older rule to judge. */
       judged: number
       /** Of those, whose new text the draft carries. */
       found: number

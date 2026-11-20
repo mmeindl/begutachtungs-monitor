@@ -47,10 +47,6 @@ usePageSeo({
 
 const arten = genauigkeitArten()
 const kurz = genauigkeitKurz()
-const kurzFacts = [
-  { key: 'shows', title: 'Was die Messung zeigt', lines: kurz.shows },
-  { key: 'check', title: 'Was selbst zu prüfen bleibt', lines: kurz.check },
-]
 const funnel = wegFunnel()
 const drafts = GENAUIGKEIT.lesefassung.funnel.drafts
 const risOnly = GENAUIGKEIT.lesefassung.risOnly
@@ -73,74 +69,91 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
       Wie genau der Monitor vergleicht
     </h1>
     <p class="mt-3 leading-relaxed text-ink-secondary">
-      Der Monitor prüft seine Textvergleiche gegen amtliche Texte. Hier
-      steht, wogegen er prüft, wie oft das stimmt – und welche Fehler die
-      Prüfung nicht fängt.
+      Der Monitor vergleicht Gesetzestexte und prüft jeden Vergleich an
+      amtlichen Texten. Diese Seite sagt, woran er prüft, wie oft er
+      richtig liegt und welche Fehler die Prüfung übersieht.
     </p>
     <p class="mt-2 text-sm text-ink-secondary">
       {{ measuredLineDe() }}
     </p>
 
-    <!-- In short, for the reader who has to decide what to rely on. The
-         site's frame for facts to consult is `FactList` — a name in the
-         rail's station style, the fact under it in plain ink — so the box
-         is that one, not a second kind with a heading and bullets of its
-         own (20.11.2026). -->
-    <section aria-label="Kurz gesagt" class="mt-8">
-      <FactList :facts="kurzFacts">
-        <template v-for="fact in kurzFacts" :key="fact.key" #[`value-${fact.key}`]>
-          <ul role="list" class="list-none space-y-1.5 pl-0 leading-relaxed">
-            <li v-for="line in fact.lines" :key="line">{{ line }}</li>
-          </ul>
-        </template>
-      </FactList>
-    </section>
-
-    <ProseSection id="weg" heading="Ein Paragraph auf dem Weg">
-      <p>
-        Was ein Entwurf ändert, zeigt der Monitor an der
-        Textgegenüberstellung des Ministeriums: bei
-        {{ formatNumberDe(annexShown) }} von
-        {{ formatNumberDe(annexShown + annex.withheld) }} Paragraphen. Das
-        sind alle {{ formatNumberDe(annex.drafts) }} Entwürfe für Gesetze
-        und Verordnungen, deren Gegenüberstellung der Monitor lesen kann.
-      </p>
-      <p>
-        Zusätzlich setzt er den ganzen Paragraphen in der vorgeschlagenen
-        Fassung selbst zusammen: so, wie er lautet, wenn der Entwurf
-        unverändert Gesetz wird. Er zeigt ihn nur, wenn die Prüfung aufgeht:
-        bei {{ formatNumberDe(funnel.shown) }} von
-        {{ formatNumberDe(funnel.total) }} Paragraphen in den
-        {{ formatNumberDe(drafts) }} Ministerialentwürfen, also den
-        Entwürfen für Gesetze ({{ shareDe(funnel.shown, funnel.total) }}&nbsp;%).
-        Bei den übrigen bleibt die Textgegenüberstellung des Ministeriums
-        zu sehen, soweit sie den Paragraphen zeigt, und am Paragraphen
-        steht, warum der ganze fehlt.
-      </p>
-      <p>
-        So geht das, an einem echten Beispiel. Die Balken zeigen, wie viele
-        der {{ formatNumberDe(funnel.total) }} Paragraphen an welchem
-        Schritt ausscheiden:
-      </p>
-      <GenauigkeitWeg />
-      <p v-if="funnel.outside" class="mt-6">
-        Nicht mitgezählt sind {{ formatNumberDe(funnel.outside) }}
-        Paragraphen, die ein Entwurf aufhebt oder mit einem neuen Gesetz
-        erlässt: Dort gibt es nichts zusammenzusetzen.
-      </p>
-      <p>
-        Bei den Entwürfen, die nur im RIS stehen, meist Verordnungen, kommen
-        {{ formatNumberDe(risOnly.shown) }} von {{ formatNumberDe(risOnly.changed) }}
-        geänderten Paragraphen in {{ formatNumberDe(risOnly.drafts) }} Entwürfen an.
-      </p>
+    <!-- In short, for the reader who has to decide what to rely on. Bare
+         text under the section's heading, not a frame (20.11.2026): the
+         frame means „facts to consult", these are sentences to read, and
+         since the section has a heading the frame only repeated its
+         boundary. What the measurement shows reads as paragraphs; what is
+         left to the reader are three separate instructions, so a list. -->
+    <ProseSection id="kurz" heading="Das Wichtigste in Kürze" first>
+      <h3 class="mt-4 text-lg font-semibold text-ink">Was die Messung zeigt</h3>
+      <p v-for="line in kurz.shows" :key="line">{{ line }}</p>
+      <h3 class="mt-6 text-lg font-semibold text-ink">Was selbst zu prüfen bleibt</h3>
+      <ul>
+        <li v-for="line in kurz.check" :key="line">{{ line }}</li>
+      </ul>
     </ProseSection>
 
-    <ProseSection id="pruefungen" heading="Wie gut die Prüfungen sind">
+    <ProseSection id="weg" heading="Ein Paragraph auf dem Weg durch die Prüfung">
+      <!-- One total per sentence, and what it counts before the figure
+           (20.11.2026): two totals in one sentence is where a reader with
+           no legal training stopped. -->
       <p>
-        Jede Art von Vergleich hat ihre eigene Prüfung. Um zu messen, ob sie
-        Fehler bemerkt, verfälschen wir Texte absichtlich – ein Wort, eine
-        Zahl, einen Absatz – und zählen, wie oft sie es merkt. Das zeigen
-        die Balken; wie oft ein Vergleich richtig ist, steht darüber.
+        Bei {{ formatNumberDe(annex.drafts) }} Entwürfen für Gesetze und
+        Verordnungen kann der Monitor die Textgegenüberstellung lesen. Sie
+        enthalten {{ formatNumberDe(annexShown + annex.withheld) }}
+        Paragraphen, {{ formatNumberDe(annexShown) }} davon zeigt der
+        Monitor.
+      </p>
+      <p>
+        Bei den {{ formatNumberDe(drafts) }} Ministerialentwürfen, den
+        Entwürfen der Ministerien für Gesetze, schreibt der Monitor
+        zusätzlich ganze Paragraphen aus: so, wie sie lauten, wenn der
+        Entwurf unverändert Gesetz wird. Das betrifft
+        {{ formatNumberDe(funnel.total) }} Paragraphen. Den ganzen
+        Paragraphen zeigt der Monitor nur, wenn alle Prüfungen bestanden
+        sind: bei {{ formatNumberDe(funnel.shown) }}, das sind
+        {{ shareDe(funnel.shown, funnel.total) }}&nbsp;%.
+      </p>
+      <p>
+        Fehlt der ganze Paragraph, heißt das nicht, dass etwas falsch ist:
+        Der Monitor konnte ihn nicht sicher prüfen. Die
+        Textgegenüberstellung bleibt zu sehen, soweit sie den Paragraphen
+        enthält, und am Paragraphen steht der Grund.
+      </p>
+      <p>
+        Die Schritte zeigen das an einem echten Beispiel. Unter jedem
+        Schritt steht, wie viele der {{ formatNumberDe(funnel.total) }}
+        Paragraphen dort ausscheiden, also nicht als ganzer Paragraph
+        gezeigt werden.
+      </p>
+      <GenauigkeitWeg />
+      <!-- Bookkeeping, folded: a second population in the open flow broke the count the steps tell. -->
+      <Disclosure size="sm" tone="secondary" class="mt-4">
+        <template #summary>Was hier nicht mitgezählt ist</template>
+        <div class="mt-1 space-y-2 text-sm">
+          <p v-if="funnel.outside">
+            {{ formatNumberDe(funnel.outside) }} Paragraphen sind nicht
+            mitgezählt: Ein Entwurf streicht sie ganz oder schreibt sie mit
+            einem neuen Gesetz neu. Dort gibt es keinen alten Text, den der
+            Monitor ändern könnte.
+          </p>
+          <p>
+            Entwürfe, die nur im RIS stehen und nicht beim Parlament, sind
+            meist Verordnungen. Dort zeigt der Monitor
+            {{ formatNumberDe(risOnly.shown) }} von
+            {{ formatNumberDe(risOnly.changed) }} geänderten Paragraphen
+            ganz, in {{ formatNumberDe(risOnly.drafts) }} Entwürfen.
+          </p>
+        </div>
+      </Disclosure>
+    </ProseSection>
+
+    <ProseSection id="pruefungen" heading="Wie zuverlässig die Prüfungen sind">
+      <p>
+        Jede Art von Vergleich hat ihre eigene Prüfung. Wir testen jede mit
+        absichtlich eingebauten Fehlern: Wir ändern ein Wort, eine Zahl
+        oder einen Absatz und zählen, wie viele dieser Fehler die Prüfung
+        bemerkt. Das zeigen die Balken. Sie sagen nicht, wie oft der Monitor
+        falsch liegt: Was die Prüfung bemerkt, wird nicht gezeigt.
       </p>
       <div class="mt-6 space-y-10">
         <section
@@ -152,10 +165,10 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         >
           <h3 :id="`${art.id}-heading`" class="text-lg font-semibold text-ink">{{ art.heading }}</h3>
           <p class="mt-1 text-sm text-ink-secondary">
-            <template v-if="art.pageName">Auf der Seite eines Entwurfs: „{{ art.pageName }}“. </template>Geprüft gegen {{ art.against }}.
+            <template v-if="art.pageName">Auf der Seite eines Entwurfs: „{{ art.pageName }}“. </template>{{ art.against }}
           </p>
-          <p v-for="line in art.result" :key="line" class="mt-2 font-medium text-ink">{{ line }}</p>
-          <h4 v-if="art.faults.length" class="mt-5 text-sm font-semibold text-ink">Eingebaute Fehler, die die Prüfung bemerkt</h4>
+          <p v-for="line in art.result" :key="line" class="mt-3 leading-relaxed text-ink-secondary">{{ line }}</p>
+          <h4 v-if="art.faults.length" class="mt-6 text-sm font-medium text-ink">Test mit eingebauten Fehlern: Das bemerkt die Prüfung</h4>
           <ul
             v-if="art.faults.length"
             class="mt-2 list-none space-y-3 pl-0"
@@ -173,7 +186,7 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
           </ul>
           <!-- The blind spot apart, under its own name, with what it means
                for someone who quotes the comparison. -->
-          <h4 class="mt-5 text-sm font-semibold text-ink">Was die Prüfung nicht fängt</h4>
+          <h4 class="mt-6 text-sm font-medium text-ink">Was die Prüfung übersieht</h4>
           <ul v-if="art.faults.some((f) => f.blind)" class="mt-2 list-none space-y-3 pl-0">
             <li v-for="fault in art.faults.filter((f) => f.blind)" :key="fault.label">
               <GenauigkeitMeter

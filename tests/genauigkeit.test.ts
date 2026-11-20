@@ -8,7 +8,7 @@ import {
   GENAUIGKEIT,
   GENAUIGKEIT_GRENZEN,
   GENAUIGKEIT_WEG,
-  LAND_BLIND,
+  LAND_WORDING,
   LAND_OTHER_DRAFT,
   LAND_OWN_DRAFT,
   RESULT_BLIND,
@@ -56,7 +56,7 @@ describe('the fault classes', () => {
   it('places every class the record carries in exactly one group, so a new one needs a decision', () => {
     const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND] as string[]
     const annex = [...ANNEX_MISFILED, ...ANNEX_LOST, ...ANNEX_BLIND] as string[]
-    const land = [...LAND_OWN_DRAFT, ...LAND_OTHER_DRAFT, ...LAND_BLIND] as string[]
+    const land = [...LAND_OWN_DRAFT, ...LAND_OTHER_DRAFT, ...LAND_WORDING] as string[]
     for (const [groups, keys] of [
       [result, [...GENAUIGKEIT.lesefassung.faults.pdf, ...GENAUIGKEIT.lesefassung.faults.table].map((f) => f.key)],
       [annex, [...GENAUIGKEIT.annex.faults.pdf, ...GENAUIGKEIT.annex.faults.table].map((f) => f.key)],
@@ -106,7 +106,7 @@ describe('wegFunnel', () => {
 })
 
 describe('genauigkeitArten', () => {
-  const lines = (r?: GenauigkeitRecord) => genauigkeitArten(r).flatMap((a) => [`Geprüft gegen ${a.against}.`, ...a.result, a.rule, ...a.measured, ...a.missed])
+  const lines = (r?: GenauigkeitRecord) => genauigkeitArten(r).flatMap((a) => [a.against, ...a.result, a.rule, ...a.measured, ...a.missed])
 
   it('says every figure from the record, each sentence closed', () => {
     const all = lines()
@@ -127,7 +127,7 @@ describe('genauigkeitArten', () => {
     expect(all).toContain('sind 10 Wort für Wort das Gesetz. Ein Wort, das nicht im Gesetz steht, hat keiner.')
     expect(all).toContain('keiner verletzt diese Regeln')
     expect(all).toContain('kein Regelverstoß.')
-    expect(all).toContain('erscheinen keine als geändert.')
+    expect(all).toContain('zeigte der Monitor keinen von')
     expect(all).toContain('alle als „redaktionell“ markiert.')
     expect(all).not.toMatch(/bis auf 0|\b0 Stellen/)
   })
@@ -188,21 +188,21 @@ describe('in short', () => {
       expect(line).toMatch(/\.$/)
       expect(line).not.toMatch(/undefined|NaN|Paragraf(?!h)/)
     }
-    expect(kurz.shows[1]).toContain(`${GENAUIGKEIT.lesefassung.bench.identical} von ${GENAUIGKEIT.lesefassung.bench.shown}`)
+    expect(kurz.shows[1]).toContain(`${GENAUIGKEIT.lesefassung.bench.shown} ganze Paragraphen gezeigt, ${GENAUIGKEIT.lesefassung.bench.identical} davon`)
   })
 
-  it('does not say „nicht" of a blind spot the check caught something in', async () => {
+  it('says of the Länder how many shown §§ were held word for word, from the record', async () => {
     const { genauigkeitKurz } = await import('../shared/utils/genauigkeit')
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
-    r.laender.tgu.faults = r.laender.tgu.faults.map((f) => (f.key === 'Wort' ? { ...f, caught: 3 } : f))
-    expect(genauigkeitKurz(r).check[1]).toContain('selten')
-    expect(genauigkeitKurz().check[1]).toContain(' nicht:')
+    r.laender.tgu = { ...r.laender.tgu, shown: 20, strict: { held: 17, differs: 2, unchecked: 3 } }
+    expect(genauigkeitKurz(r).check[1]).toContain('bei 17 von 20 gezeigten Paragraphen Wort für Wort')
   })
 
   it('sets every blind spot apart, with what it means for a reader', () => {
     for (const art of genauigkeitArten()) {
       if (art.faults.length) {
-        expect(art.faults.filter((f) => f.blind)).toHaveLength(1)
+        // A Land's Textgegenüberstellung has no blind class since 20.11.2026: its blind spot is the §§ not held word for word, a count in the sentence.
+        expect(art.faults.filter((f) => f.blind)).toHaveLength(art.id === 'land-gegenueberstellung' ? 0 : 1)
         expect(art.consequence).toMatch(/\.$/)
       } else expect(art.consequence).toBeNull()
     }

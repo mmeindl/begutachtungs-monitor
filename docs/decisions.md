@@ -991,6 +991,57 @@ gets an entry of its own only where it carries a reason the rule does not.
     another Fassung, 32 differing from every Fassung and half of those
     typos. The site says nothing about a ministry's text that this does
     not prove per case.
+- **A § whose standing text RIS now files in a later BGBl's version says
+  so at the §** (20.11.2026). Where `standingOnDay` replaces RIS's answer
+  for the first day of the Begutachtung, it names the later BGBl and its
+  issue date (`superseded`); `consolidate` carries them to the shown § and
+  to a withheld § whose standing text it read (`laterAmendment`). The page
+  says one sentence: inside the fold under the RIS link (which shows the
+  later text), and beside a withheld §'s reason. The sentence reports
+  RIS's record, never „rückwirkend geändert": RIS dates such versions back
+  to the law's first day (the Pensionskassenvorsorgegesetz of BGBl. I
+  Nr. 88/2026, „BBG" become „BBezG", filed from 01.08.1997) or files an
+  Inkrafttretens-§ from its earliest date, and what took effect when only
+  the BGBl says. It is not a gap sentence (no lead word, no `GapNote`):
+  nothing is missing. A failed issue-date lookup drops only the date from
+  the sentence, never the law. Measured: 21 §§ in 13 of 164 drafts of
+  GP XXVIII.
+- **One reader decides an annex row's unit, for the oracle and the page**
+  (20.11.2026). The oracle files a row under its § and the page finds the
+  outcome for a § block through the same functions in
+  `shared/utils/explanationKey.ts`: `explanationParaId` for a § („§ 5.",
+  „§. 39."), `articleUnitId` with `articleUnitLaws` for a law whose units
+  are Artikel („Artikel 53." in a law with no § designation, the B-VG).
+  The oracle had learnt „§. 39." and „Artikel 53." alone, and 13 confirmed
+  units of 18, 82, 116 and 127/ME stood at the end of their law, away from
+  the rows that confirmed them (`ortlos`). A form one side learns goes
+  into the shared reader, never into a pattern of one side. The schedule
+  key is still built twice (`unitKey` on the server, `annexUnitId` on the
+  page, both through `scheduleNumber`) and agrees by lowercasing.
+- **The Artikel a line creates are counted and withheld under their own
+  number, and new text that opens an Artikel as a unit is refused**
+  (20.11.2026). The payload reader knows the § as the only unit:
+  „Artikel 52a." went in as words, with the Absatz behind it as the unit's
+  heading. Such new text is refused before it is read
+  (`ARTICLE_IN_PAYLOAD` in `kons/lawApply.ts`), with its Artikel as the
+  refused line's `created`; a renumbering of Artikel names its new numbers
+  through `articleUnitId` (`renumberedParagraphs`). 127/ME XXVIII: Art. 52c
+  and 94a to 94d say „verweigert" where they said „nicht gefunden"
+  (touched 4,798 → 4,803, shown unchanged). Carrying such lines out needs
+  a payload reader for Artikel and is not built: two drafts of the corpus
+  amend an Artikel law.
+- **The page compares a block's numbers as the law counts its units**
+  (`numberedUnitId`, 20.11.2026): a §'s, or an Artikel's in a law whose
+  units are Artikel. Through `explanationParaId` alone „Artikel 90a." and
+  „Artikel 94a." were both nothing and therefore equal, and no Artikel was
+  ever renumbered. Never a schedule's number.
+- **An Artikel's key is a join value, never a label** (20.11.2026). Where
+  the key is a qualifier („(Verfassungsbestimmung)", 17 of the cached
+  texts, 127/ME XXVIII), the reader is shown the Artikel's title, or its
+  number where it prints nothing else (`articleNames`, `lawNameOf`); the
+  responses carry the map as `lawNames`. Open: two Artikel of one text can
+  share that key (4 of the 17), and then their units share one group; and
+  the cause sentences say „Paragraph" at an Artikel block.
 - **A schedule is keyed by its own number, a Roman one in Arabic**
   (19.11.2026): „Anhang XIV" is „Anl. 14" on the engine's side and the
   page's, because RIS files every schedule so; a letter or an unreadable
@@ -1182,6 +1233,36 @@ gets an entry of its own only where it carries a reason the rule does not.
   stored. Kärnten is not asked: its right column is the Novelle's
   instructions. Extraction noise is answered in the reader, never by
   loosening thresholds.
+- **The right column is held word for word where the draft quotes the
+  wording** (20.11.2026, `landTguStrict.ts`). The bag rule cannot see a
+  wrong word, a changed number or a lost sentence (0 of 476, 551 and 338
+  injected). So a § is first aligned, in order, with the payloads of the
+  draft's instructions for it; a stretch quoted in an instruction's line
+  must stand in the column as one stretch. A number is a word, one word is
+  a finding, and only typography is normalised (case, quotes, dashes,
+  punctuation, a broken word, where a space stands). Where the two differ
+  the § is withheld as `draftDiffers`, said without saying whose deviation
+  it is. A § that cannot be held this way — no instruction names it, a
+  quotation's role is not read, a payload for several §§ without
+  designations — is never passed for having been asked: the bag rule
+  decides, and the harness counts it apart (1,044 held, 72 not, 46
+  withheld of 1,162; Zahl 611/652, Wort 876/934, Satz weg 315/348).
+  Rejected: a tolerance of one or two words (a Wien fine „3 000"/„2 500"
+  is one word); requiring the position of a stretch quoted in an
+  instruction line (the line gives it in words). Open: the Tirol font
+  residue („fl" for ß) is answered in this module, not in the reader.
+- **Oberösterreich's marks are read where the page puts each letter**
+  (20.11.2026, `landTguPdf.ts` `textState`, `landTgu.ts` `placedCentres`).
+  A run's width shared out over its glyphs put a letter after a space up
+  to half a letter off, and at the edge of an underlined and a struck
+  stretch it changed sides („einzuhaltend"; „Z 3, 4 und 4" for „und 5").
+  The glyph positions come from the page's text operators, with the text
+  state restored at Q; the estimate remains only where a run is not found
+  letter for letter (0 of 84,679 runs). An internet address underlined on
+  its own is a link, not an addition. Rejected: computing the spaces from
+  the run's leftover width, and anchoring at rule ends — each broke a §
+  the estimate had right. The word-for-word rule found the defect: 47 of
+  its 93 first refusals were this reader.
 - **The draft reader drops only real division headings:** a Roman numeral
   in capitals with a capitalised title, never one the next word declines
   („des I. Teiles") or counts („I. Dienstklasse"), and never a line opening

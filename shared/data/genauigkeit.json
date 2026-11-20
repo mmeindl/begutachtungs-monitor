@@ -1,99 +1,98 @@
 {
-  "date": "2026-11-19",
-  "commit": "f2568e39",
+  "date": "2026-11-20",
+  "commit": "fc46be74",
   "gp": "XXVIII",
   "lesefassung": {
     "bench": {
       "bgbl": 60,
       "laws": 207,
       "checked": 1794,
-      "shown": 431,
-      "identical": 430,
+      "shown": 460,
+      "identical": 459,
       "invented": 0,
       "incomplete": 1,
       "otherwise": 0,
       "ungated": {
-        "shown": 1469,
-        "identical": 1434
+        "shown": 1486,
+        "identical": 1451
       }
     },
     "faults": {
       "pdf": [
-        { "key": "E", "tried": 123, "caught": 123 },
-        { "key": "E-neben", "tried": 208, "caught": 208 },
-        { "key": "Reihe", "tried": 1138, "caught": 1132 },
+        { "key": "E", "tried": 133, "caught": 133 },
+        { "key": "E-neben", "tried": 220, "caught": 220 },
+        { "key": "Reihe", "tried": 1274, "caught": 1267 },
         { "key": "Fehlt", "tried": 0, "caught": 0 },
-        { "key": "Datum", "tried": 122, "caught": 122 },
+        { "key": "Datum", "tried": 164, "caught": 164 },
         { "key": "Lücke", "tried": 14, "caught": 14 },
         { "key": "Lücke-beide", "tried": 14, "caught": 3 },
-        { "key": "Wort-weg", "tried": 1393, "caught": 1391 },
-        { "key": "Wort-weg-Sinn", "tried": 1239, "caught": 1239 },
-        { "key": "Wort-neu", "tried": 1393, "caught": 1393 },
-        { "key": "Wort-tausch", "tried": 1393, "caught": 1393 },
-        { "key": "Zahl", "tried": 496, "caught": 495 },
-        { "key": "Verweis", "tried": 980, "caught": 979 },
-        { "key": "Ziffer-Reihe", "tried": 274, "caught": 274 },
-        { "key": "Überschrift", "tried": 1097, "caught": 1096 },
-        { "key": "Ungedruckt-weg", "tried": 1045, "caught": 1035 },
-        { "key": "Ungedruckt-neu", "tried": 1045, "caught": 1042 },
-        { "key": "Ungedruckt-Zahl", "tried": 521, "caught": 519 },
-        { "key": "Zurück", "tried": 46, "caught": 46 },
-        { "key": "Zurück-gleich", "tried": 3, "caught": 3 }
+        { "key": "Wort-weg", "tried": 1546, "caught": 1544 },
+        { "key": "Wort-weg-Sinn", "tried": 1374, "caught": 1374 },
+        { "key": "Wort-neu", "tried": 1546, "caught": 1546 },
+        { "key": "Wort-tausch", "tried": 1546, "caught": 1546 },
+        { "key": "Zahl", "tried": 569, "caught": 567 },
+        { "key": "Verweis", "tried": 1108, "caught": 1107 },
+        { "key": "Ziffer-Reihe", "tried": 311, "caught": 311 },
+        { "key": "Überschrift", "tried": 1215, "caught": 1214 },
+        { "key": "Ungedruckt-weg", "tried": 1174, "caught": 1163 },
+        { "key": "Ungedruckt-neu", "tried": 1174, "caught": 1171 },
+        { "key": "Ungedruckt-Zahl", "tried": 621, "caught": 618 },
+        { "key": "Zurück", "tried": 49, "caught": 49 },
+        { "key": "Zurück-gleich", "tried": 5, "caught": 5 }
       ],
       "table": [
-        { "key": "E", "tried": 116, "caught": 116 },
-        { "key": "E-neben", "tried": 158, "caught": 155 },
-        { "key": "Reihe", "tried": 846, "caught": 842 },
-        { "key": "Fehlt", "tried": 573, "caught": 568 },
-        { "key": "Datum", "tried": 126, "caught": 126 },
+        { "key": "E", "tried": 119, "caught": 119 },
+        { "key": "E-neben", "tried": 162, "caught": 159 },
+        { "key": "Reihe", "tried": 961, "caught": 955 },
+        { "key": "Fehlt", "tried": 678, "caught": 670 },
+        { "key": "Datum", "tried": 181, "caught": 181 },
         { "key": "Lücke", "tried": 0, "caught": 0 },
         { "key": "Lücke-beide", "tried": 0, "caught": 0 },
-        { "key": "Wort-weg", "tried": 1021, "caught": 1021 },
-        { "key": "Wort-weg-Sinn", "tried": 887, "caught": 886 },
-        { "key": "Wort-neu", "tried": 1021, "caught": 1021 },
-        { "key": "Wort-tausch", "tried": 1021, "caught": 1021 },
-        { "key": "Zahl", "tried": 299, "caught": 297 },
-        { "key": "Verweis", "tried": 659, "caught": 658 },
-        { "key": "Ziffer-Reihe", "tried": 115, "caught": 115 },
-        { "key": "Überschrift", "tried": 57, "caught": 57 },
-        { "key": "Ungedruckt-weg", "tried": 879, "caught": 875 },
-        { "key": "Ungedruckt-neu", "tried": 879, "caught": 878 },
-        { "key": "Ungedruckt-Zahl", "tried": 395, "caught": 392 },
-        { "key": "Zurück", "tried": 27, "caught": 27 },
+        { "key": "Wort-weg", "tried": 1145, "caught": 1145 },
+        { "key": "Wort-weg-Sinn", "tried": 990, "caught": 989 },
+        { "key": "Wort-neu", "tried": 1145, "caught": 1145 },
+        { "key": "Wort-tausch", "tried": 1145, "caught": 1145 },
+        { "key": "Zahl", "tried": 345, "caught": 343 },
+        { "key": "Verweis", "tried": 754, "caught": 754 },
+        { "key": "Ziffer-Reihe", "tried": 134, "caught": 134 },
+        { "key": "Überschrift", "tried": 60, "caught": 60 },
+        { "key": "Ungedruckt-weg", "tried": 999, "caught": 995 },
+        { "key": "Ungedruckt-neu", "tried": 999, "caught": 998 },
+        { "key": "Ungedruckt-Zahl", "tried": 487, "caught": 484 },
+        { "key": "Zurück", "tried": 28, "caught": 28 },
         { "key": "Zurück-gleich", "tried": 3, "caught": 3 }
       ]
     },
     "funnel": {
       "drafts": 164,
-      "changed": 4798,
-      "shown": 2395,
+      "changed": 4803,
+      "shown": 2772,
       "causes": {
-        "anhang-fremd": 232,
-        "anhang-schweigt": 188,
+        "anhang-fremd": 195,
+        "anhang-schweigt": 186,
         "anhang-ungeteilt": 84,
-        "anhang-widerspricht": 453,
-        "entfaellt": 59,
-        "gesetz-unbekannt": 46,
+        "anhang-widerspricht": 523,
+        "entfaellt": 67,
+        "gesetz-unbekannt": 11,
         "kein-anhang": 9,
         "neu-erlassen": 42,
-        "nummer-doppelt": 37,
-        "unplausibel": 251,
-        "verweigert": 997,
-        "zu-lang": 5
+        "nummer-doppelt": 3,
+        "unplausibel": 43,
+        "verweigert": 868
       }
     },
     "risOnly": {
       "drafts": 222,
       "changed": 1518,
-      "shown": 636
+      "shown": 663
     }
   },
   "annex": {
     "drafts": 243,
-    "confirmed": 3598,
-    "withheld": 225,
-    "withheldStanding": 95,
-    "unchecked": 2033,
+    "confirmed": 3603,
+    "withheld": 223,
+    "withheldStanding": 93,
+    "unchecked": 2034,
     "faults": {
       "pdf": [
         { "key": "L", "tried": 1231, "caught": 774 },
@@ -102,10 +101,10 @@
         { "key": "U", "tried": 1187, "caught": 29 }
       ],
       "table": [
-        { "key": "L", "tried": 375, "caught": 249 },
-        { "key": "R-alt", "tried": 358, "caught": 283 },
-        { "key": "R-neu", "tried": 357, "caught": 270 },
-        { "key": "U", "tried": 358, "caught": 0 }
+        { "key": "L", "tried": 376, "caught": 250 },
+        { "key": "R-alt", "tried": 359, "caught": 285 },
+        { "key": "R-neu", "tried": 358, "caught": 272 },
+        { "key": "U", "tried": 359, "caught": 0 }
       ]
     }
   },
@@ -126,15 +125,21 @@
         "w"
       ],
       "documents": 63,
-      "shown": 1160,
+      "compared": 1162,
+      "shown": 1116,
+      "strict": {
+        "held": 1044,
+        "differs": 46,
+        "unchecked": 72
+      },
       "judged": 552,
       "found": 552,
       "faults": [
-        { "key": "R-neu", "tried": 547, "caught": 312 },
-        { "key": "R-fremd", "tried": 552, "caught": 422 },
-        { "key": "Zahl", "tried": 476, "caught": 0 },
-        { "key": "Wort", "tried": 551, "caught": 0 },
-        { "key": "Satz weg", "tried": 338, "caught": 0 }
+        { "key": "R-neu", "tried": 1106, "caught": 1061 },
+        { "key": "R-fremd", "tried": 1116, "caught": 1102 },
+        { "key": "Zahl", "tried": 652, "caught": 611 },
+        { "key": "Wort", "tried": 934, "caught": 876 },
+        { "key": "Satz weg", "tried": 348, "caught": 315 }
       ]
     },
     "stations": {
