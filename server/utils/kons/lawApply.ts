@@ -1781,6 +1781,37 @@ function spliceChildren(host: LawNode, anchor: LawNode, level: NodeLevel, nodes:
 }
 
 /**
+ * **A new unit placed by its own number** (20.11.2026, `where: 'number'` in
+ * `kons/novao.ts`): „In § 49c wird folgender Abs. 6 eingefügt" names the
+ * host and no place. Refused until then, for the reason recorded at the
+ * whole-§ anchor below: a § need not list its units in order (KommAustria-G
+ * § 35 reads (1h) before (1g)). So the number decides only where that
+ * reason does not hold: every unit of the level in the host carries a
+ * number and they run strictly upwards, the new numbers run upwards too,
+ * none is taken, and all of them fall into one gap — behind the last unit
+ * below them, in front of the first above. Anything else is refused with
+ * what was missing. Returns null on success.
+ */
+function placeByNumber(host: LawNode, level: NodeLevel, nodes: readonly LawNode[]): string | null {
+  const units = host.children.filter((c) => c.level === level)
+  if (units.length === 0) return 'Keine Einheit dieser Ebene — Stelle aus der Nummer nicht bestimmbar'
+  const order = units.map((u) => designationOrder(u.id))
+  if (order.some((o) => o === null)) return 'Bezeichnungen nicht aufzählbar — Stelle aus der Nummer nicht bestimmbar'
+  for (let i = 1; i < order.length; i++) if (compareOrder(order[i - 1]!, order[i]!) >= 0) return 'Bezeichnungen nicht aufsteigend — Stelle aus der Nummer nicht bestimmbar'
+  const fresh = nodes.map((n) => designationOrder(n.id))
+  if (fresh.some((o) => o === null)) return 'Neue Bezeichnung nicht aufzählbar — Stelle aus der Nummer nicht bestimmbar'
+  for (let i = 1; i < fresh.length; i++) if (compareOrder(fresh[i - 1]!, fresh[i]!) >= 0) return 'Neue Bezeichnungen nicht aufsteigend'
+  for (const [i, o] of fresh.entries()) if (order.some((x) => compareOrder(x!, o!) === 0)) return `${nodes[i]!.marker} existiert bereits`
+  const first = fresh[0]!
+  const last = fresh[fresh.length - 1]!
+  if (order.some((o) => compareOrder(o!, first) > 0 && compareOrder(o!, last) < 0)) return 'Neue Einheiten nicht in einer Lücke'
+  const below = units.filter((_, i) => compareOrder(order[i]!, first) < 0).at(-1)
+  const above = units.find((_, i) => compareOrder(order[i]!, last) > 0)
+  host.children.splice(below ? host.children.indexOf(below) + 1 : host.children.indexOf(above!), 0, ...nodes)
+  return null
+}
+
+/**
  * Where a new § stands among the Paragraphen when no § anchors it: in front
  * of the first one its number precedes — § 148a behind § 148, before § 149 —
  * and before the schedules, which a law prints last.
@@ -2342,7 +2373,14 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         // 148b eingefügt": the stock holds no Abschnitt to stand behind, but a
         // new § is wholly its payload, so it goes where its number puts it
         // (`numberedSlot`) — only where the payload is exactly the announced §§.
-        const byNumber = isDivision(op.anchor.para)
+        const byNumber = isDivision(op.anchor.para) || op.where === 'number'
+        // With no anchor at all („Es werden folgende §§ 56a … eingefügt"),
+        // only where the §§ of the stock run upwards: a slot by number among
+        // §§ out of order is a guess (20.11.2026, as `placeByNumber`).
+        if (op.where === 'number') {
+          const paras = law.paragraphs.filter((p) => !isSchedule(p.marker))
+          for (let i = 1; i < paras.length; i++) if (byParagraphOrder(paras[i - 1]!.id, paras[i]!.id) >= 0) return 'Paragraphen nicht aufsteigend — Stelle aus der Nummer nicht bestimmbar'
+        }
         const anchor = byNumber ? null : findParagraph(law, op.anchor)
         if (!anchor && !byNumber) return `Anker nicht im geltenden Text: ${op.anchor.para}`
         // A payload without a § line of its own is the body of one new §:
@@ -2407,6 +2445,18 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       if (op.anchor.siblings.length > 0) return ONE_PLACE_SIBLINGS
       const para = findParagraph(law, op.anchor)
       if (!para) return `§ nicht im geltenden Text: ${op.anchor.para}`
+      if (op.where === 'number') {
+        const host = op.anchor.level === 'para' ? para : resolveTarget(law, op.anchor)
+        if (!host) return `${repeatedOnTheWay(para, op.anchor) ? 'Einheit nicht eindeutig' : 'Nicht im geltenden Text'}: ${op.anchor.raw.slice(0, 60)}`
+        if (payload.some((p) => !p.id || p.level !== level)) return 'Eingefügte Einheit ohne eigene Bezeichnung'
+        const notAnnounced = missingAnnounced(op.childIds, payload)
+        if (notAnnounced) return notAnnounced
+        const nodes = payload.map((p) => ({ ...p, level }))
+        const placed = placeByNumber(host, level, nodes)
+        if (placed) return placed
+        for (const n of nodes) arriveUnit(law, n)
+        return null
+      }
       // „Nach § 18c wird folgender Abs. 1a eingefügt" names no unit inside
       // the § to stand behind, and pushed onto the § the new Absatz read
       // (1)(2)(3)(1a) where RIS has (1)(1a)(2)(3) (AVRAG, BGBl. I Nr.

@@ -1152,8 +1152,19 @@ export type NovaoOp =
      */
     behind?: { level: 'z' | 'lit'; id: string }
   }
-  /** "Nach § 5 wird folgender § 5a eingefügt:" — inserted behind the anchor */
-  | { kind: 'insertAfter'; anchor: NovaoAddress; child: ChildLevel; childIds: string[]; where: 'after' | 'before' }
+  /**
+   * "Nach § 5 wird folgender § 5a eingefügt:" — inserted behind the anchor.
+   * `number`: „In § 49c wird folgender Abs. 6 eingefügt" names the host and
+   * no place; the new unit goes where its number puts it among the host's
+   * units (`placeByNumber` in `kons/lawApply.ts`).
+   */
+  | {
+    kind: 'insertAfter'
+    anchor: NovaoAddress
+    child: ChildLevel
+    childIds: string[]
+    where: 'after' | 'before' | 'number'
+  }
   /** "§ 5 Abs. 3 entfällt." */
   | { kind: 'delete'; target: NovaoAddress; withHeading: boolean }
   /**
@@ -2299,6 +2310,8 @@ const NAMED_AS_RE = /\bals\s+(Abs\.|Z|lit\.)\s*(\d+[a-z]*|[a-z])\s+bezeichnet\b/
  * Bezeichnungen §§ 5 und 6".
  */
 const PARA_LIST = String.raw`§§?\s*${PARAGRAPH_NUMBER}(?:\s*(?:,|und|bis)\s*(?:§\s*)?${PARAGRAPH_NUMBER})*`
+/** „Es werden folgende §§ 56a, 56b …", „Es wird folgender § 51a": the head of an unanchored § insertion, group 1 the list. */
+const NEW_PARAS_RE = new RegExp(String.raw`^\s*(?:Es\s+)?(?:wird|werden)\s+(?:die\s+)?folgende[rn]?\s+(${PARA_LIST})(?:\s*,?\s*(?:jeweils\s+)?samt\s+Überschrift(?:en)?)?\s+eingefügt\b`, 'i')
 /**
  * And with the text drawn into Abs. 1 on the way: „Der bisherige § 15 wird zu
  * § 23 Abs. 1", „§ 19 erhält die Bezeichnung § 19. (1)" — the renumbering, and
@@ -2374,6 +2387,16 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   const addressBase = filed ? (scope || head).slice(0, filed.index) + (scope || head).slice(filed.index + filed[0].length) : scope || head
   const addressText = redundantLocator ? addressBase.replace(locator[0], `${locator[1]} `) : namedAs ? addressBase.replace(namedAs[0], 'bezeichnet') : paraRenamed ? addressBase.replace(paraRenamed[0], '') : addressBase
   const targets = spreadSentence(head, payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : SENTENCE_RUN_VERB_RE.test(maskQuotes(head)) && !SENTENCE_RUN_OTHER_VERB_RE.test(maskQuotes(head)) ? sentenceRunPlaces(addressText, inherited) : null)))
+  // „Es werden folgende §§ 56a, 56b, 56c, 56d, 56e samt Überschrift
+  // eingefügt", „Es wird folgender § 51a samt Überschrift eingefügt"
+  // (125/ME XXVIII, GSpG; 20.11.2026): new §§ and no place at all. Each one
+  // is wholly its payload, so its number places it among the law's §§, as
+  // behind a division heading (`numberedSlot`) — the first new § is the
+  // address, so a standing one of that number is loaded and collides.
+  const unanchored = (!targets || targets.length === 0) && /\beingefügt\b/i.test(head) && !/\b(?:nach|vor)\b/i.test(maskQuotes(scope || head)) ? NEW_PARAS_RE.exec(maskQuotes(head)) : null
+  const newIds = unanchored ? paragraphNumbers(unanchored[1]!) : null
+  const newAnchor = newIds?.length ? parseAddress(`§ ${newIds[0]}`, inherited) : null
+  if (newIds?.length && newAnchor && newAnchor.level === 'para') return ok({ kind: 'insertAfter', anchor: newAnchor, child: 'para', childIds: newIds, where: 'number' })
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
     // two Strich forms are perfectly readable addresses that this model has no
@@ -2780,7 +2803,21 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
 
   if (/\beingefügt\b|\beingereiht\b/i.test(head)) {
     const before = /\bvor\b/i.test(scope) && !/\bnach\b/i.test(scope)
-    if (!/\bnach\b|\bvor\b/i.test(scope)) return fail('Einfügung ohne Anker')
+    if (!/\bnach\b|\bvor\b/i.test(scope)) {
+      // „In § 49c wird folgender Abs. 6 eingefügt", „Dem § 21g wird folgender
+      // Abs. 3a eingefügt", „In § 13 Abs. 2 wird folgende Z 2a eingefügt"
+      // (20.11.2026): the host and the new unit's number, no place word. The
+      // number places it — where the host's units run in order, which only
+      // the standing text can say (`placeByNumber`). A sentence, a unit
+      // without its number, several hosts or a place word of another kind
+      // („anstelle des dritten Satzes") stay refused.
+      const child = childLevel(payload || whole)
+      const ids = childIds(payload, child)
+      if ((child === 'abs' || child === 'z' || child === 'lit') && ids.length > 0 && targets.length === 1 && target.siblings.length === 0 && !target.satz && !target.halbsatz && !target.heading && /^folgende[rn]?\s/i.test(payload) && !/\ban\s*(?:die\s+)?stelle\b|\banstelle\b|\bzu\s+Beginn\b|\bam\s+Ende\b/i.test(maskQuotes(head))) {
+        return ok({ kind: 'insertAfter', anchor: target, child, childIds: ids, where: 'number' })
+      }
+      return fail('Einfügung ohne Anker')
+    }
     const child = childLevel(payload || whole)
     return ok({ kind: 'insertAfter', anchor: target, child, childIds: childIds(payload, child), where: before ? 'before' : 'after' })
   }

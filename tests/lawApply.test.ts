@@ -1653,6 +1653,54 @@ describe('„jeweils" über eine Liste: jede Fundstelle in jeder Einheit (20.11.
   })
 })
 
+describe('Einfügung ohne Anker, nach der eigenen Nummer (20.11.2026)', () => {
+  const ids = (n: LawNode) => n.children.map((c) => c.id)
+  it('places a new Absatz by its number where the § counts upwards', () => {
+    const l: StandingLaw = { paragraphs: [para('49c', 'P', ['Eins.', 'Zwei.', 'Drei.'])] }
+    const { law: a, results: r1 } = run(l, instr('In § 49c wird folgender Abs. 4 eingefügt:', ['(4) Vier.']))
+    expect(r1[0]!.reason).toBeNull()
+    expect(ids(a.paragraphs[0]!)).toEqual(['1', '2', '3', '4'])
+    const { law: b, results: r2 } = run({ paragraphs: [para('21g', 'P', ['Eins.', 'Zwei.', 'Drei.', 'Vier.'])] }, instr('Dem § 21g wird folgender Abs. 3a eingefügt:', ['(3a) Dreia.']))
+    expect(r2[0]!.reason).toBeNull()
+    expect(ids(b.paragraphs[0]!)).toEqual(['1', '2', '3', '3a', '4'])
+  })
+
+  it('places Ziffern inside the Absatz the address names', () => {
+    const l: StandingLaw = { paragraphs: [para('13', 'Z', [{ text: 'Es gilt:', ziffern: ['eins,', 'zwei,', 'drei.'] }])] }
+    const { law: out, results } = run(l, instr('In § 13 Abs. 1 wird folgende Z 2a eingefügt:', ['2a. zweia,']))
+    expect(results[0]!.reason).toBeNull()
+    expect(ids(out.paragraphs[0]!.children[0]!)).toEqual(['1', '2', '2a', '3'])
+  })
+
+  // KommAustria-G § 35 reads (1h) before (1g): where the § does not count
+  // upwards, the number places nothing.
+  it('refuses where the units do not run upwards, or the number is taken', () => {
+    const l: StandingLaw = { paragraphs: [para('35', 'K', ['Eins.', 'Zwei.'])] }
+    l.paragraphs[0]!.children[1]!.id = '1h'
+    l.paragraphs[0]!.children.push(makeNode('abs', '1g', '(1g)', 'Eins g.'))
+    const { results } = run(l, instr('In § 35 wird folgender Abs. 1i eingefügt:', ['(1i) Neu.']))
+    expect(results[0]!.reason).toMatch(/nicht aufsteigend/)
+    const { results: r2 } = run({ paragraphs: [para('5', 'F', ['Eins.', 'Zwei.'])] }, instr('In § 5 wird folgender Abs. 2 eingefügt:', ['(2) Neu.']))
+    expect(r2[0]!.reason).toMatch(/existiert bereits/)
+  })
+
+  // „Es werden folgende §§ 56a, 56b … samt Überschrift eingefügt" (125/ME
+  // XXVIII, GSpG): no anchor at all; the numbers place the new §§.
+  it('inserts new §§ with no anchor by their numbers', () => {
+    const l: StandingLaw = { paragraphs: [para('56', 'A', ['a.']), para('57', 'B', ['b.'])] }
+    const { law: out, results } = run(l, instr('Es werden folgende §§ 56a und 56b samt Überschrift eingefügt:', [{ text: '§ 56a. Erstens', heading: true }, 'Text a.', { text: '§ 56b. Zweitens', heading: true }, 'Text b.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['56', '56a', '56b', '57'])
+    const { results: r2 } = run({ paragraphs: [para('57', 'B', ['b.']), para('56', 'A', ['a.'])] }, instr('Es wird folgender § 56a eingefügt:', ['§ 56a. Text.']))
+    expect(r2[0]!.reason).toMatch(/nicht aufsteigend/)
+  })
+
+  it('keeps refusing an insertion with another place word', () => {
+    expect(parseInstruction('In § 31 Abs. 6 werden anstelle des dritten Satzes folgende Sätze eingefügt:').reason).toMatch(/ohne Anker/)
+    expect(parseInstruction('In § 55 Abs. 1 Z 2 lit. a werden folgende Sätze eingefügt:').reason).toMatch(/ohne Anker/)
+  })
+})
+
 describe('Satzbereiche (20.11.2026)', () => {
   const six = (): StandingLaw => ({ paragraphs: [para('4', 'S', ['Eins ist hier. Zwei ist hier. Drei ist hier. Vier ist hier. Fünf ist hier. Sechs ist hier.'])] })
   it.each([
