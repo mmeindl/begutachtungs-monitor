@@ -210,6 +210,17 @@ describe('oracleVerdict', () => {
     expect(oracleVerdict('104c', null, 'Etwas anderes.', [pair('', '3a. Abschnitt'), pair('', 'Organhandel')]).verdict).not.toBe('bestätigt')
   })
 
+  it('drops „ABSCHNITT 3" glued to the last sentence of a § (20.11.2026)', () => {
+    // 30/ME XXVIII, FKG § 11.
+    const before = 'Die Unternehmen haben ein Risikomanagement.'
+    const got = `${before} Die FMA kann durch Verordnung ein Format festlegen.`
+    const rows = [pair('§ 11. (1) Die Unternehmen haben ein Risikomanagement. ABSCHNITT 3 MASSNAHMEN', '§ 11. (1) Die Unternehmen haben ein Risikomanagement. (2) Die FMA kann durch Verordnung ein Format festlegen. ABSCHNITT 3', '§ 11.')]
+    expect(oracleVerdict('11', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // Law text that opens with a unit is no heading.
+    const text = [pair('§ 11. (1) Die Unternehmen haben ein Risikomanagement.', '§ 11. (1) Die Unternehmen haben ein Risikomanagement. Abschnitt 3 gilt sinngemäß', '§ 11.')]
+    expect(oracleVerdict('11', before, before, text).verdict).toBe('widersprochen')
+  })
+
   it('contradicts a result that lacks the change the annex shows', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })

@@ -897,6 +897,15 @@ function isNextHeading(stretch: string): boolean {
 const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+[a-z]?)\.\s*|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?\s+)(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})[^.;:!?]*$/iu
 
 /**
+ * The same with the unit first, „… festlegen. ABSCHNITT 3" (FKG § 11, 30/ME
+ * XXVIII, 20.11.2026): alone or with a capitalised title behind it, so that
+ * law text opening with a unit („… gilt. Abschnitt 3 gilt sinngemäß") is
+ * never taken. Case-sensitive, since under the `i` flag `\p{Lu}` matches a
+ * lower-case letter too: the unit capitalised or in capitals.
+ */
+const TRAILING_UNIT_FIRST_RE = /(?<=[.;!?])\s*(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel|TEIL|HAUPTST(?:Ü|UE)CK|ABSCHNITT|UNTERABSCHNITT|KAPITEL|TITEL)\s+(?:\d+[a-z]*|[IVXLCDM]+[A-Z]?)(?![\p{L}\d])(?:\s+[\p{Lu}\d][^.;:!?]*)?$/u
+
+/**
  * An Absatz chain the annex prints without its „…" — „(2) bis (3)", „(1)
  * und (2)" — marked as the omission it is.
  *
@@ -999,8 +1008,9 @@ function placedStretches(text: string, cell: string, from: number, anchor: ((at:
         found = retry
       }
     }
-    if (found < 0 && TRAILING_GROUP_RE.test(stretch)) {
-      const trimmed = key(stretch.replace(TRAILING_GROUP_RE, ''))
+    const trailing = [TRAILING_GROUP_RE, TRAILING_UNIT_FIRST_RE].find((re) => re.test(stretch))
+    if (found < 0 && trailing) {
+      const trimmed = key(stretch.replace(trailing, ''))
       const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)
       if (retry >= 0) {
         piece = trimmed
