@@ -43,7 +43,8 @@ import { COVERAGE_ROWS, LAND_COVERAGE, type CoverageRow } from './laenderCoverag
 import { ANLIEGEN_SECTION_DE } from './anliegen'
 import { EU_FEEDBACK_AUTO_PAGES, EU_FEEDBACK_MAX_PAGES, EU_FEEDBACK_PAGE_SIZE } from './euPortal'
 import { EU_MEMBER_STATE_NAME_DE, EU_PAGE_TITLE_DE, EU_UMSETZUNG_YEARS, euPath } from './eu'
-import { formatNumberDe } from './format'
+import { formatDateDe, formatNumberDe } from './format'
+import { GENAUIGKEIT, landList, wegFunnel } from './genauigkeit'
 
 /**
  * The state of one cell. Four say what the SOURCE does, two what the
@@ -1023,6 +1024,83 @@ export const DATENLAGE_EU: DatenlageObject = {
       date: '14.11.2026',
     },
   ],
+}
+
+/* ------------------------------------------------------------------ */
+/* What the text comparison would need                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What a source would have to publish for the monitor's text comparisons
+ * to show more and to check more surely (20.11.2026) — the other side of
+ * `/genauigkeit`. That page says how often a comparison holds and where a §
+ * ends on its way; this block says which of those ends are the source's to
+ * close, and with what. Each need stands beside what happens today, with
+ * the count of the measurement round (`shared/data/genauigkeit.json`), so a
+ * figure is never typed here and never differs from the other page.
+ *
+ * A NEED, NOT A REPROACH: the sentence names the data and what the monitor
+ * does without it. Nothing here says a source ought to have published it —
+ * no law asks a ministry for a consolidated text of its draft.
+ *
+ * ONLY WHAT THE RECORD CARRIES. A need whose size no harness has measured
+ * (tables in RIS, a draft written against a text RIS does not carry yet) is
+ * not listed until it is. And none whose cause is not proven the source's:
+ * the 232 §§ where the annex's standing text was „not found like this in
+ * RIS" stood here for an hour as a need towards RIS, until all 232 were held
+ * against every Fassung — in 152 the monitor misread the annex or the RIS
+ * text, or looked up a Fassung promulgated after the reference date.
+ */
+export interface DatenlageBedarf {
+  /** Whose data it would be: „Vom Bund". */
+  from: string
+  needs: readonly { what: string; today: string }[]
+}
+
+export const DATENLAGE_BEDARF_ID = 'vergleich-bedarf'
+
+export function datenlageBedarf(r = GENAUIGKEIT): DatenlageBedarf[] {
+  const n = formatNumberDe
+  const funnel = wegFunnel(r.lesefassung.funnel)
+  const cause = r.lesefassung.funnel.causes
+  const ls = r.laender.stations
+  return [
+    {
+      from: 'Vom Bund',
+      needs: [
+        {
+          what: 'Den ganzen Paragraphen in der vorgeschlagenen Fassung, vom Ministerium selbst veröffentlicht',
+          today: `Ein Entwurf enthält nur die Anweisungen, was zu ändern ist. Der Monitor wendet sie selbst an; bei ${n(cause.verweigert ?? 0)} von ${n(funnel.total)} Paragraphen gelingt das nicht sicher.`,
+        },
+        {
+          what: 'Die Textgegenüberstellung als Daten: je Paragraph, mit dem Gesetz, zu dem er gehört',
+          today: `Der Monitor liest sie aus einer Tabelle oder einem PDF. Bei ${n(cause['anhang-ungeteilt'] ?? 0)} Paragraphen liest er nicht heraus, wo ein Gesetz endet und das nächste beginnt.`,
+        },
+        {
+          what: 'Eine Textgegenüberstellung, die jeden geänderten Paragraphen ganz zeigt',
+          today: `Oft zeigt sie Auszüge. Bei ${n(cause['anhang-schweigt'] ?? 0)} Paragraphen zeigt sie keine Änderung, an der sich unser Ergebnis prüfen ließe.`,
+        },
+      ],
+    },
+    {
+      from: 'Von den Ländern',
+      needs: [
+        {
+          what: 'Eine Textgegenüberstellung zu jedem Gesetzesentwurf, in einer Form, die sich lesen lässt',
+          today: `Der Monitor liest sie bei ${landList(r.laender.tgu.lands)}. Wie es bei den anderen Ländern steht, sagt die Übersicht oben unter ${datenlageStepLabel('tgu')}.`,
+        },
+        {
+          what: 'Die Dokumente von Land und Landtag als Text, nicht nur als PDF',
+          today: `Aus den PDFs liest der Monitor nicht alles: ${n(ls.unread)} Anordnungen sind als „Nicht lesbar“ benannt, ${n(ls.withheld)} nicht gezeigt.`,
+        },
+      ],
+    },
+  ]
+}
+
+/** „Die Zahlen sind vom 19.11.2026." */
+export function datenlageBedarfDateDe(r = GENAUIGKEIT): string {
+  return formatDateDe(r.date)
 }
 
 /** The objects that walk rails of their own, in the page's order: the levels top down. */

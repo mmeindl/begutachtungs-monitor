@@ -11,24 +11,31 @@
  * makes of it. The short „Methode" at each comparison stays where it is —
  * it is about that document — and links here for the measurement.
  *
- * FOUR PARTS, from the mechanism to the limits: one real § through every
- * step, each step with where an error can come in; per kind of comparison
- * what it is held against, what was measured, and what the check does not
- * catch; what becomes of every § the drafts change; and how it is measured.
- * The last row of each kind is the reason the page exists: a reader who
- * knows where the check is blind knows where to look twice.
+ * THREE PARTS (19.11.2026, the evening the page was made; until then five).
+ * One real § through every step, with the §§ of the period that end at each
+ * step counted there; per kind of comparison what it is held against, the
+ * result, and the injected faults as bars; and what the figures do not say.
+ * The first telling gave each kind five rows of running text, drew the
+ * steps and the counts as two sections, and listed the harnesses file by
+ * file: a reader had to read all of it to find the two things the page is
+ * for — how much is shown, and where a check is blind. Now a short bar says
+ * the second, and the sentences stand under „Im Einzelnen".
+ *
+ * THE FIRST FIGURE A READER MEETS is how much of a draft's change is shown
+ * at all (the annex), before the share of whole §§ the monitor composes
+ * itself. Read alone, „half of the §§" sounds as if half the changes were
+ * missing; the composed § is the addition, the annex is the change.
  */
-import { formatDateDe, formatNumberDe } from '#shared/utils/format'
+import { formatNumberDe } from '#shared/utils/format'
 import {
   GENAUIGKEIT,
-  GENAUIGKEIT_CODE_BASE,
   GENAUIGKEIT_GRENZEN,
-  GENAUIGKEIT_INSTRUMENTE,
   GENAUIGKEIT_ROW_DE,
-  commitUrl,
-  funnelRows,
   genauigkeitArten,
+  genauigkeitKurz,
   measuredLineDe,
+  shareDe,
+  wegFunnel,
   type GenauigkeitArt,
 } from '#shared/utils/genauigkeit'
 
@@ -39,19 +46,24 @@ usePageSeo({
 })
 
 const arten = genauigkeitArten()
-const funnel = GENAUIGKEIT.lesefassung.funnel
+const kurz = genauigkeitKurz()
+const kurzFacts = [
+  { key: 'shows', title: 'Was die Messung zeigt', lines: kurz.shows },
+  { key: 'check', title: 'Was selbst zu prüfen bleibt', lines: kurz.check },
+]
+const funnel = wegFunnel()
+const drafts = GENAUIGKEIT.lesefassung.funnel.drafts
 const risOnly = GENAUIGKEIT.lesefassung.risOnly
-const rows = funnelRows()
+const annex = GENAUIGKEIT.annex
+const annexShown = annex.confirmed + annex.unchecked
 
-/** The rows of one kind, in the page's order; a row with nothing to say is left out. */
-function rowsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; lines: string[] }[] {
-  return ([
-    { key: 'where', lines: [art.where] },
-    { key: 'against', lines: [art.against] },
+/** The sentences of one kind, under „Im Einzelnen". */
+function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; lines: string[] }[] {
+  return [
+    { key: 'rule', lines: [art.rule] },
     { key: 'measured', lines: art.measured },
-    { key: 'injected', lines: art.injected },
     { key: 'missed', lines: art.missed },
-  ] as const).filter((r) => r.lines.length).map((r) => ({ key: r.key, lines: [...r.lines] }))
+  ]
 }
 </script>
 
@@ -61,7 +73,7 @@ function rowsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; li
       Wie genau der Monitor vergleicht
     </h1>
     <p class="mt-3 leading-relaxed text-ink-secondary">
-      Der Monitor zeigt eine Änderung nur, wenn er sie prüfen konnte. Hier
+      Der Monitor prüft seine Textvergleiche gegen amtliche Texte. Hier
       steht, wogegen er prüft, wie oft das stimmt – und welche Fehler die
       Prüfung nicht fängt.
     </p>
@@ -69,24 +81,66 @@ function rowsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; li
       {{ measuredLineDe() }}
     </p>
 
-    <ProseSection id="weg" heading="Ein Paragraph auf dem Weg" first>
+    <!-- In short, for the reader who has to decide what to rely on. The
+         site's frame for facts to consult is `FactList` — a name in the
+         rail's station style, the fact under it in plain ink — so the box
+         is that one, not a second kind with a heading and bullets of its
+         own (20.11.2026). -->
+    <section aria-label="Kurz gesagt" class="mt-8">
+      <FactList :facts="kurzFacts">
+        <template v-for="fact in kurzFacts" :key="fact.key" #[`value-${fact.key}`]>
+          <ul role="list" class="list-none space-y-1.5 pl-0 leading-relaxed">
+            <li v-for="line in fact.lines" :key="line">{{ line }}</li>
+          </ul>
+        </template>
+      </FactList>
+    </section>
+
+    <ProseSection id="weg" heading="Ein Paragraph auf dem Weg">
       <p>
-        Auf der Seite eines Entwurfs zeigt der Monitor unter einem
-        geänderten Paragraphen den ganzen Paragraphen in der vorgeschlagenen
-        Fassung: so, wie er lautet, wenn der Entwurf unverändert Gesetz wird.
-        Hier ist an einem echten Beispiel zu sehen, wie der Monitor ihn aus
-        dem geltenden Text und der Änderungsanweisung des Entwurfs bildet und
-        an der Textgegenüberstellung des Ministeriums prüft. An jedem Schritt
-        steht, wo ein Fehler hineinkommen kann und was der Monitor dann tut.
+        Was ein Entwurf ändert, zeigt der Monitor an der
+        Textgegenüberstellung des Ministeriums: bei
+        {{ formatNumberDe(annexShown) }} von
+        {{ formatNumberDe(annexShown + annex.withheld) }} Paragraphen. Das
+        sind alle {{ formatNumberDe(annex.drafts) }} Entwürfe für Gesetze
+        und Verordnungen, deren Gegenüberstellung der Monitor lesen kann.
+      </p>
+      <p>
+        Zusätzlich setzt er den ganzen Paragraphen in der vorgeschlagenen
+        Fassung selbst zusammen: so, wie er lautet, wenn der Entwurf
+        unverändert Gesetz wird. Er zeigt ihn nur, wenn die Prüfung aufgeht:
+        bei {{ formatNumberDe(funnel.shown) }} von
+        {{ formatNumberDe(funnel.total) }} Paragraphen in den
+        {{ formatNumberDe(drafts) }} Ministerialentwürfen, also den
+        Entwürfen für Gesetze ({{ shareDe(funnel.shown, funnel.total) }}&nbsp;%).
+        Bei den übrigen bleibt die Textgegenüberstellung des Ministeriums
+        zu sehen, soweit sie den Paragraphen zeigt, und am Paragraphen
+        steht, warum der ganze fehlt.
+      </p>
+      <p>
+        So geht das, an einem echten Beispiel. Die Balken zeigen, wie viele
+        der {{ formatNumberDe(funnel.total) }} Paragraphen an welchem
+        Schritt ausscheiden:
       </p>
       <GenauigkeitWeg />
+      <p v-if="funnel.outside" class="mt-6">
+        Nicht mitgezählt sind {{ formatNumberDe(funnel.outside) }}
+        Paragraphen, die ein Entwurf aufhebt oder mit einem neuen Gesetz
+        erlässt: Dort gibt es nichts zusammenzusetzen.
+      </p>
+      <p>
+        Bei den Entwürfen, die nur im RIS stehen, meist Verordnungen, kommen
+        {{ formatNumberDe(risOnly.shown) }} von {{ formatNumberDe(risOnly.changed) }}
+        geänderten Paragraphen in {{ formatNumberDe(risOnly.drafts) }} Entwürfen an.
+      </p>
     </ProseSection>
 
-    <ProseSection id="pruefungen" heading="Was geprüft wird, und wie gut">
+    <ProseSection id="pruefungen" heading="Wie gut die Prüfungen sind">
       <p>
-        Jede Art von Vergleich hat ihre eigene Prüfung. Gemessen wird an
-        Fällen, deren richtiges Ergebnis feststeht, und mit Fehlern, die wir
-        absichtlich einbauen.
+        Jede Art von Vergleich hat ihre eigene Prüfung. Um zu messen, ob sie
+        Fehler bemerkt, verfälschen wir Texte absichtlich – ein Wort, eine
+        Zahl, einen Absatz – und zählen, wie oft sie es merkt. Das zeigen
+        die Balken; wie oft ein Vergleich richtig ist, steht darüber.
       </p>
       <div class="mt-6 space-y-10">
         <section
@@ -97,71 +151,58 @@ function rowsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; li
           class="scroll-mt-6"
         >
           <h3 :id="`${art.id}-heading`" class="text-lg font-semibold text-ink">{{ art.heading }}</h3>
-          <dl class="mt-3 divide-y divide-hairline border-y border-hairline text-sm">
-            <div
-              v-for="row in rowsOf(art)"
-              :key="row.key"
-              class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4"
-            >
-              <dt class="text-ink-secondary">{{ GENAUIGKEIT_ROW_DE[row.key] }}</dt>
-              <dd class="mt-0.5 space-y-1.5 sm:mt-0">
-                <p v-for="(line, i) in row.lines" :key="i" class="text-ink">{{ line }}</p>
-              </dd>
-            </div>
-          </dl>
+          <p class="mt-1 text-sm text-ink-secondary">
+            <template v-if="art.pageName">Auf der Seite eines Entwurfs: „{{ art.pageName }}“. </template>Geprüft gegen {{ art.against }}.
+          </p>
+          <p v-for="line in art.result" :key="line" class="mt-2 font-medium text-ink">{{ line }}</p>
+          <h4 v-if="art.faults.length" class="mt-5 text-sm font-semibold text-ink">Eingebaute Fehler, die die Prüfung bemerkt</h4>
+          <ul
+            v-if="art.faults.length"
+            class="mt-2 list-none space-y-3 pl-0"
+            :aria-label="`Eingebaute Fehler und wie viele die Prüfung gefangen hat: ${art.heading}`"
+          >
+            <li v-for="fault in art.faults.filter((f) => !f.blind)" :key="fault.label">
+              <GenauigkeitMeter
+                :label="fault.label"
+                :figure="`${shareDe(fault.caught, fault.tried)}\u00a0%`"
+                :part="fault.caught"
+                :whole="fault.tried"
+                :note="`${formatNumberDe(fault.caught)} von ${formatNumberDe(fault.tried)} eingebauten Fehlern gefangen`"
+              />
+            </li>
+          </ul>
+          <!-- The blind spot apart, under its own name, with what it means
+               for someone who quotes the comparison. -->
+          <h4 class="mt-5 text-sm font-semibold text-ink">Was die Prüfung nicht fängt</h4>
+          <ul v-if="art.faults.some((f) => f.blind)" class="mt-2 list-none space-y-3 pl-0">
+            <li v-for="fault in art.faults.filter((f) => f.blind)" :key="fault.label">
+              <GenauigkeitMeter
+                :label="fault.label"
+                :figure="`${shareDe(fault.caught, fault.tried)}\u00a0%`"
+                :part="fault.caught"
+                :whole="fault.tried"
+                :note="`${formatNumberDe(fault.caught)} von ${formatNumberDe(fault.tried)} eingebauten Fehlern gefangen`"
+              />
+            </li>
+          </ul>
+          <p class="mt-2 text-sm text-ink">{{ art.consequence ?? art.missed[0] }}</p>
+          <Disclosure size="sm" tone="secondary" class="mt-2">
+            <template #summary>Im Einzelnen</template>
+            <dl class="mt-1 divide-y divide-hairline border-y border-hairline text-sm">
+              <div
+                v-for="row in detailsOf(art)"
+                :key="row.key"
+                class="py-2 sm:grid sm:grid-cols-[9rem_1fr] sm:gap-x-4"
+              >
+                <dt class="text-ink-secondary">{{ GENAUIGKEIT_ROW_DE[row.key] }}</dt>
+                <dd class="mt-0.5 space-y-1.5 sm:mt-0">
+                  <p v-for="(line, i) in row.lines" :key="i" class="text-ink">{{ line }}</p>
+                </dd>
+              </div>
+            </dl>
+          </Disclosure>
         </section>
       </div>
-    </ProseSection>
-
-    <ProseSection id="gezeigt" heading="Was gezeigt wird und was nicht">
-      <p>
-        Von {{ formatNumberDe(funnel.changed) }} Paragraphen, die die
-        {{ formatNumberDe(funnel.drafts) }} Ministerialentwürfe der
-        {{ GENAUIGKEIT.gp }}. Gesetzgebungsperiode ändern, zeigt der Monitor
-        bei {{ formatNumberDe(funnel.shown) }} den ganzen Paragraphen in der
-        vorgeschlagenen Fassung. Bei
-        jedem anderen steht am Paragraphen, warum nicht – hier mit dem Satz,
-        der dort steht.
-      </p>
-      <figure>
-        <GenauigkeitBalken :rows="rows" :total="funnel.changed" />
-        <figcaption class="sr-only">
-          Was aus {{ formatNumberDe(funnel.changed) }} geänderten Paragraphen wird, nach Grund.
-        </figcaption>
-      </figure>
-      <p class="mt-6">
-        Fehlt der ganze Paragraph in der vorgeschlagenen Fassung, heißt das
-        nie, dass er gleich bleibt: Was der Entwurf an ihm ändert, zeigt die
-        Textgegenüberstellung darüber, soweit sie es abdruckt.
-      </p>
-      <p>
-        Bei den Entwürfen, die nur im RIS stehen, meist Verordnungen, sind es
-        {{ formatNumberDe(risOnly.shown) }} von {{ formatNumberDe(risOnly.changed) }}
-        geänderten Paragraphen in {{ formatNumberDe(risOnly.drafts) }} Entwürfen.
-      </p>
-    </ProseSection>
-
-    <ProseSection id="messen" heading="Wie gemessen wird">
-      <p>
-        Jede Zahl auf dieser Seite stammt aus einem Messprogramm, das mit dem
-        Quellcode veröffentlicht ist. Gemessen wird nach Änderungen am
-        Vergleich; die Zahlen hier sind vom {{ formatDateDe(GENAUIGKEIT.date) }},
-        mit dem Programmstand
-        <ExternalLink :href="commitUrl()" class="link-inline">{{ GENAUIGKEIT.commit.slice(0, 7) }}</ExternalLink>.
-      </p>
-      <dl class="mt-4 divide-y divide-hairline border-y border-hairline text-sm">
-        <div
-          v-for="tool in GENAUIGKEIT_INSTRUMENTE"
-          :key="tool.file"
-          class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4"
-        >
-          <dt class="text-ink-secondary">{{ tool.name }}</dt>
-          <dd class="mt-0.5 sm:mt-0">
-            <span class="block text-ink">{{ tool.text }}</span>
-            <ExternalLink :href="`${GENAUIGKEIT_CODE_BASE}${tool.file}`" class="link-muted">{{ tool.file }}</ExternalLink>
-          </dd>
-        </div>
-      </dl>
     </ProseSection>
 
     <ProseSection id="grenzen" heading="Was die Zahlen nicht sagen">

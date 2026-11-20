@@ -1078,6 +1078,20 @@ gets an entry of its own only where it carries a reason the rule does not.
   a Land's right column — is printed with its count of tries, not left out
   of a range. Shares are rounded down, so the page never claims a catch
   that was not measured.
+- **The share of whole §§ shown counts only the §§ that have a proposed
+  version to compose** (19.11.2026, `wegFunnel`). A § the draft repeals has
+  none, and a § of a law the draft enacts anew is the draft's own text;
+  both stood in the denominator and are now named beside the figure. And
+  the page gives the annex's figure first: the annex is the change, the
+  composed § the addition, and „half of the §§" read alone sounds as if
+  half the changes were missing.
+- **On `/genauigkeit` a § that is not shown is counted at the step it ended
+  at, and a blind spot is a short bar** (19.11.2026). The first telling
+  drew the steps and the counts as two sections, gave each kind of
+  comparison five rows of running text and listed the harnesses file by
+  file. The sentences stay, folded under „Im Einzelnen"; the harnesses and
+  the commit measured are not on the page, which is for a reader and not
+  for a developer — the record carries both.
 - **Report per-draft figures (median, share of drafts)** over pooled
   percentages, which a few large laws dominate (§12.12).
 - **Figures about windows, claims and joins are measured on a production

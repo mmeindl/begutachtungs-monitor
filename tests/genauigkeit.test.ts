@@ -7,7 +7,6 @@ import {
   FUNNEL_GROUP_OF,
   GENAUIGKEIT,
   GENAUIGKEIT_GRENZEN,
-  GENAUIGKEIT_INSTRUMENTE,
   GENAUIGKEIT_WEG,
   LAND_BLIND,
   LAND_OTHER_DRAFT,
@@ -21,6 +20,7 @@ import {
   measuredLineDe,
   rangeDe,
   shareDe,
+  wegFunnel,
 } from '../shared/utils/genauigkeit'
 
 /**
@@ -81,13 +81,32 @@ describe('funnelRows', () => {
 
   it('orders the groups and their causes by size', () => {
     const rows = funnelRows({ drafts: 2, changed: 10, shown: 1, causes: { verweigert: 2, 'anhang-fremd': 3, 'anhang-schweigt': 4 } })
-    expect(rows.map((r) => [r.key, r.count])).toEqual([['gezeigt', 1], ['beilage', 7], ['zusammensetzen', 2]])
+    expect(rows.map((r) => [r.key, r.count])).toEqual([['gezeigt', 1], ['beilage', 7], ['anweisung', 2]])
     expect(rows[1]!.causes.map((c) => c.cause)).toEqual(['anhang-schweigt', 'anhang-fremd'])
   })
 })
 
+describe('wegFunnel', () => {
+  it('counts only the §§ with a proposed version to compose, and names the others beside the figure', () => {
+    const f = wegFunnel({ drafts: 1, changed: 20, shown: 8, causes: { verweigert: 4, unplausibel: 2, 'anhang-schweigt': 3, entfaellt: 2, 'neu-erlassen': 1 } })
+    expect(f.total).toBe(17)
+    expect(f.outside).toBe(3)
+    expect(f.shown).toBe(8)
+  })
+
+  it('puts every group at the step it ends at, and loses no § between the steps', () => {
+    const f = wegFunnel()
+    const ended = Object.values(f.exits).flat().reduce((n, r) => n + r.count, 0)
+    expect(f.shown + ended).toBe(f.total)
+    expect(f.total + f.outside).toBe(GENAUIGKEIT.lesefassung.funnel.changed)
+    expect(f.exits.ergebnis).toBeUndefined()
+    expect(f.exits.gezeigt).toBeUndefined()
+    expect(f.exits.pruefung?.map((r) => r.key).sort()).toEqual(['beilage', 'pruefung'])
+  })
+})
+
 describe('genauigkeitArten', () => {
-  const lines = (r?: GenauigkeitRecord) => genauigkeitArten(r).flatMap((a) => [a.where, a.against, ...a.measured, ...a.injected, ...a.missed])
+  const lines = (r?: GenauigkeitRecord) => genauigkeitArten(r).flatMap((a) => [`Geprüft gegen ${a.against}.`, ...a.result, a.rule, ...a.measured, ...a.missed])
 
   it('says every figure from the record, each sentence closed', () => {
     const all = lines()
@@ -107,6 +126,8 @@ describe('genauigkeitArten', () => {
     const all = lines(zero).join(' ')
     expect(all).toContain('sind 10 Wort für Wort das Gesetz. Ein Wort, das nicht im Gesetz steht, hat keiner.')
     expect(all).toContain('keiner verletzt diese Regeln')
+    expect(all).toContain('kein Regelverstoß.')
+    expect(all).toContain('erscheinen keine als geändert.')
     expect(all).toContain('alle als „redaktionell“ markiert.')
     expect(all).not.toMatch(/bis auf 0|\b0 Stellen/)
   })
@@ -116,6 +137,18 @@ describe('genauigkeitArten', () => {
     r.lesefassung.bench = { ...r.lesefassung.bench, shown: 10, identical: 7, invented: 1, incomplete: 1, otherwise: 1 }
     const measured = genauigkeitArten(r)[0]!.measured[0]!
     expect(measured).toContain('sind 7 Wort für Wort das Gesetz. Einem fehlt ein Teil, einer ist aus einem anderen Grund nicht das Gesetz. Ein Wort, das nicht im Gesetz steht, hat einer.')
+  })
+
+  it('draws every class of fault in one bar, the tries adding up to the record', () => {
+    const [lesefassung, annex, , land] = genauigkeitArten()
+    const tries = (faults: { tried: number }[]) => faults.reduce((n, f) => n + f.tried, 0)
+    expect(tries(lesefassung!.faults)).toBe(tries([...GENAUIGKEIT.lesefassung.faults.pdf, ...GENAUIGKEIT.lesefassung.faults.table]))
+    expect(tries(annex!.faults)).toBe(tries([...GENAUIGKEIT.annex.faults.pdf, ...GENAUIGKEIT.annex.faults.table]))
+    expect(tries(land!.faults)).toBe(tries(GENAUIGKEIT.laender.tgu.faults))
+  })
+
+  it('says what a check does not catch in words, where no fault can be injected', () => {
+    for (const art of genauigkeitArten()) expect(art.faults.length || art.missed.length).toBeTruthy()
   })
 
   it('gives every kind an anchor of its own, the ones the method notes link to', () => {
@@ -130,8 +163,8 @@ describe('the § on its way', () => {
     for (const s of WEG_BEISPIEL.result.filter((x) => x.type !== 'equal')) expect(WEG_BEISPIEL.instruction).toContain(`"${s.text}"`)
   })
 
-  it('names a source of error at every step that makes something', () => {
-    expect(GENAUIGKEIT_WEG.filter((s) => s.key !== 'gezeigt').every((s) => s.risk && s.who)).toBe(true)
+  it('says at every step that makes something who supplies it', () => {
+    expect(GENAUIGKEIT_WEG.filter((s) => s.key !== 'gezeigt').every((s) => s.who)).toBe(true)
   })
 })
 
@@ -142,8 +175,36 @@ describe('the record', () => {
     expect(measuredLineDe()).toMatch(/^Gemessen am \d{2}\.\d{2}\.\d{4} an den Entwürfen der [IVXL]+\. Gesetzgebungsperiode\.$/)
   })
 
-  it('links every instrument by its path in the repository', () => {
-    for (const tool of GENAUIGKEIT_INSTRUMENTE) expect(tool.file).toMatch(/^scripts\/harness\/\w+\.ts$/)
+  it('says what the figures do not', () => {
     expect(GENAUIGKEIT_GRENZEN.length).toBeGreaterThan(0)
+  })
+})
+
+describe('in short', () => {
+  it('says the page in closed sentences, every figure from the record', async () => {
+    const { genauigkeitKurz } = await import('../shared/utils/genauigkeit')
+    const kurz = genauigkeitKurz()
+    for (const line of [...kurz.shows, ...kurz.check]) {
+      expect(line).toMatch(/\.$/)
+      expect(line).not.toMatch(/undefined|NaN|Paragraf(?!h)/)
+    }
+    expect(kurz.shows[1]).toContain(`${GENAUIGKEIT.lesefassung.bench.identical} von ${GENAUIGKEIT.lesefassung.bench.shown}`)
+  })
+
+  it('does not say „nicht" of a blind spot the check caught something in', async () => {
+    const { genauigkeitKurz } = await import('../shared/utils/genauigkeit')
+    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+    r.laender.tgu.faults = r.laender.tgu.faults.map((f) => (f.key === 'Wort' ? { ...f, caught: 3 } : f))
+    expect(genauigkeitKurz(r).check[1]).toContain('selten')
+    expect(genauigkeitKurz().check[1]).toContain(' nicht:')
+  })
+
+  it('sets every blind spot apart, with what it means for a reader', () => {
+    for (const art of genauigkeitArten()) {
+      if (art.faults.length) {
+        expect(art.faults.filter((f) => f.blind)).toHaveLength(1)
+        expect(art.consequence).toMatch(/\.$/)
+      } else expect(art.consequence).toBeNull()
+    }
   })
 })

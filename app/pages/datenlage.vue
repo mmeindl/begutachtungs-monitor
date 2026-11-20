@@ -23,6 +23,7 @@
  */
 import {
   DATENLAGE_DEFAULT_VIEW,
+  DATENLAGE_BEDARF_ID,
   DATENLAGE_FIGURES,
   DATENLAGE_LAW_STATES,
   DATENLAGE_OBJECT_DE,
@@ -36,6 +37,8 @@ import {
   DATENLAGE_VIEW_PARAM,
   datenlageByState,
   datenlageFigureSourceName,
+  datenlageBedarf,
+  datenlageBedarfDateDe,
   datenlageStepLabel,
   parseDatenlageView,
   type DatenlageCell,
@@ -71,6 +74,8 @@ const viewOptions: { value: DatenlageView; label: string }[] = [
   { value: 'quelle', label: 'Nach Quelle' },
   { value: 'schritt', label: 'Nach Schritt' },
 ]
+
+const bedarf = datenlageBedarf()
 
 const stepsById = new Map(DATENLAGE_STEPS.map((s) => [s.key, s]))
 const stepInfo = (key: DatenlageStep) => stepsById.get(key)!
@@ -235,6 +240,31 @@ function cellText(cell: DatenlageCell): string | undefined {
       <p class="mt-4 text-sm">
         <NuxtLink :to="object.link.href" class="link-inline">{{ object.link.label }}</NuxtLink>
       </p>
+    </ProseSection>
+
+    <!-- What the text comparison would need from a source (20.11.2026): the
+         other side of /genauigkeit, in the object blocks' grammar. -->
+    <ProseSection :id="DATENLAGE_BEDARF_ID" heading="Was der Textvergleich bräuchte">
+      <p>
+        Wie viel der Monitor von einer Änderung zeigen kann, hängt an dem,
+        was die Quellen veröffentlichen. Mit diesen Angaben könnte er mehr
+        zeigen und sicherer prüfen. Die Zahlen sind die der Seite
+        <NuxtLink :to="GENAUIGKEIT_PATH" class="link-inline">Genauigkeit</NuxtLink>,
+        gemessen am {{ datenlageBedarfDateDe() }}.
+      </p>
+      <dl class="mt-4 divide-y divide-hairline border-y border-hairline text-sm">
+        <div v-for="group in bedarf" :key="group.from" class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4">
+          <dt class="text-ink-secondary">{{ group.from }}</dt>
+          <dd class="mt-0.5 sm:mt-0">
+            <ul class="list-none space-y-2 pl-0">
+              <li v-for="need in group.needs" :key="need.what">
+                <span class="block text-ink">{{ need.what }}</span>
+                <span class="block text-ink-secondary">{{ need.today }}</span>
+              </li>
+            </ul>
+          </dd>
+        </div>
+      </dl>
     </ProseSection>
 
     <!-- The measured figures, one compact block: each with what was counted

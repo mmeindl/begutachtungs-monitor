@@ -194,3 +194,26 @@ describe('datenlage', () => {
     expect(parseDatenlageView('quatsch')).toBe('quelle')
   })
 })
+
+describe('what the text comparison would need', () => {
+  it('takes every count from the measurement record, so the two pages never differ', async () => {
+    const { datenlageBedarf } = await import('../shared/utils/datenlage')
+    const { GENAUIGKEIT } = await import('../shared/utils/genauigkeit')
+    const record = structuredClone(GENAUIGKEIT)
+    record.lesefassung.funnel.causes = { ...record.lesefassung.funnel.causes, verweigert: 1234, 'anhang-ungeteilt': 77, 'anhang-schweigt': 66 }
+    record.laender.stations = { ...record.laender.stations, unread: 44, withheld: 33 }
+    const text = datenlageBedarf(record).flatMap((g) => g.needs.map((x) => x.today)).join(' ')
+    for (const figure of ['1.234', '77', '66', '44', '33']) expect(text).toContain(figure)
+  })
+
+  it('names a need and what happens today, each a closed sentence, for Bund and Länder', async () => {
+    const { datenlageBedarf } = await import('../shared/utils/datenlage')
+    const groups = datenlageBedarf()
+    expect(groups.map((g) => g.from)).toEqual(['Vom Bund', 'Von den Ländern'])
+    for (const need of groups.flatMap((g) => g.needs)) {
+      expect(need.what).not.toMatch(/[.:]$/)
+      expect(need.today).toMatch(/\.$/)
+      expect(`${need.what} ${need.today}`).not.toMatch(/undefined|NaN|Paragraf(?!h)/)
+    }
+  })
+})
