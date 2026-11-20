@@ -81,7 +81,12 @@ const CONCURRENCY = 4
  * would be an outage reported as a cause on the page.
  */
 export interface KonsSources {
-  /** The law a Stammnorm names on a date — null where RIS knows none or cannot tell two apart. */
+  /**
+   * The law a Stammnorm names on a date — null where RIS knows none or cannot
+   * tell two apart. Asked with an empty `organ` and `nummer` where the clause
+   * cites no Stammnorm we can read: then the law is the one the clause names
+   * (`resolveLawByName` in `ris/konsLaw.ts`).
+   */
   resolveLaw(organ: string, nummer: string, date: string, title: string, clause: ClauseName | null): Promise<KonsLawAtDate | null>
   /** One § document's XML (called only for a ref that carries an XML URL). */
   paragraphXml(ref: KonsParagraphRef): Promise<string>
@@ -391,7 +396,12 @@ export async function consolidate(
     // *throws* where RIS is unreachable. An error caught into null would be
     // an outage cached as a verdict about the draft; that is exactly what
     // `annex/annexGuardService.ts` cost once already.
-    const law = article.bgbl ? await sources.resolveLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '', article.clause) : null
+    // A clause that names its law and cites no Stammnorm we can read
+    // („zuletzt geändert durch … BGBl. I Nr. 21/2026" alone, „BGBl I
+    // 2013/105", „29/200") is looked up by that name (20.11.2026).
+    const law = article.bgbl
+      ? await sources.resolveLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '', article.clause)
+      : article.clause ? await sources.resolveLaw('', '', asOf, article.title ?? '', article.clause) : null
     if (!law) return { kind: 'failed' as const, w, cause: 'gesetz-unbekannt' as const }
     // Two §§ of this Artikel share a number under different Artikel of the
     // standing law. The stock is held by bare id, so one of them would

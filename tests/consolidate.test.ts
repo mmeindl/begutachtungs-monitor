@@ -206,6 +206,30 @@ describe('consolidate — a law RIS files by Artikel (20.11.2026)', () => {
   })
 })
 
+describe('consolidate — a clause that names its law and cites no Stammnorm (20.11.2026)', () => {
+  // 146/ME XXVIII: „Das Bundesgesetz … (Mediengesetz - MedienG), zuletzt
+  // geändert durch das Bundesgesetz, mit dem …, BGBl. I Nr. 21/2026, wird
+  // wie folgt geändert:" — every § went out as „law unknown".
+  const I = 'Änderung des Testgesetzes'
+  const blocks = draft(`<ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="g2">${I}</ueberschrift>` +
+    '<absatz typ="promkleinlsatz">Das Testgesetz, zuletzt ge&auml;ndert durch das Bundesgesetz, mit dem etwas ge&auml;ndert wird, BGBl. I Nr. 5/2020, wird wie folgt ge&auml;ndert:</absatz>' +
+    '<absatz typ="novao1">1. Dem &sect; 5 wird folgender Abs. 3 angef&uuml;gt:</absatz><absatz typ="abs">&bdquo;(3) Drei gilt.&ldquo;</absatz>')
+  const rows = [pair(I, '§ 5. (1) bis (2) …', '§ 5. (1) bis (2) …', '§ 5.', true), pair(I, '', '(3) Drei gilt.', null)]
+
+  it('asks for the law by the name the clause gives', async () => {
+    const asked: unknown[][] = []
+    const r = await consolidate(who, blocks, '2026-01-01', {
+      ...sources(rows),
+      resolveLaw: async (...args) => {
+        asked.push(args)
+        return args[1] === '' && args[4]?.name === 'Testgesetz' ? LAW : null
+      },
+    })
+    expect(asked.map((a) => [a[0], a[1]])).toEqual([['', '']])
+    expect(r.paragraphs.map((p) => p.id)).toEqual(['5'])
+  })
+})
+
 describe('consolidate — one number under two Artikel (20.11.2026)', () => {
   // 40/ME XXVIII: „Artikel I lautet" beside „Artikel II § 1 …" and „Artikel
   // II § 6 …". RIS holds „Art. 1" and „Art. 2 § 1" under one bare id.
