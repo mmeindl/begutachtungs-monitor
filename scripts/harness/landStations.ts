@@ -38,6 +38,7 @@
  *    („§ 8#dup", „Z 15#dup") and pairs it as a unit of its own;
  *  - `Nur Ziffern neu`: a unit changed by nothing but inserted bare numbers
  *    — a table value or an enumerator one side's reader dropped;
+ *    `Nur Ziffern weg` its mirror, removed (`numbersOnly`, 20.11.2026);
  *  - `Kopfzeile`: the Land's running head (a file path, Word's save stamp)
  *    in a unit's text;
  *  - `Unteranweisung neu`: an instruction shown as new whose text opens
@@ -74,7 +75,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
-import { recurringRuns } from '../lib/landStationChecks'
+import { numbersOnly, recurringRuns } from '../lib/landStationChecks'
 
 const outDir = argPair('out')
 const onlyLand = argPair('land') as LandCode | undefined
@@ -133,8 +134,8 @@ const pagesOf = (url: string) => {
 }
 
 // --- The invariants ------------------------------------------------------
-type Invariant = '#dup' | 'Nur Ziffern neu' | 'Kopfzeile' | 'Unteranweisung neu' | 'Wiederkehrender Einschub'
-const INVARIANTS: Invariant[] = ['#dup', 'Nur Ziffern neu', 'Kopfzeile', 'Unteranweisung neu', 'Wiederkehrender Einschub']
+type Invariant = '#dup' | 'Nur Ziffern neu' | 'Nur Ziffern weg' | 'Kopfzeile' | 'Unteranweisung neu' | 'Wiederkehrender Einschub'
+const INVARIANTS: Invariant[] = ['#dup', 'Nur Ziffern neu', 'Nur Ziffern weg', 'Kopfzeile', 'Unteranweisung neu', 'Wiederkehrender Einschub']
 /** A running head of Salzburg's template: a drive or network path, or Word's save stamp „….docx \ 27.11.2025 07:29:00". */
 const HEAD_RE = /(?:^|\s)(?:[A-Z]:\\|\\\\)\S|\.docx?\s*\\\s*\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}/
 /** What the instruction's number leaves when the parser takes only its first level: „1.1. In der Z 6", „1a. …", „2 Abs 3". */
@@ -143,8 +144,8 @@ const SUB_REST_RE = /^\s*\d+[a-z]?(?:\.\s?\d|\.[a-z]?\s|\s+(?:Im|In|Nach|Vor|Der
 function violations(u: LawDiffUnit): Invariant[] {
   const out: Invariant[] = []
   if (/#dup/.test(u.id) || /#dup/.test(u.fromId ?? '')) out.push('#dup')
-  const changed = (u.segments ?? []).filter((s) => s.type !== 'equal')
-  if (u.change === 'changed' && changed.length && changed.every((s) => s.type === 'inserted' && /^[\s\d.,%]+$/.test(s.text) && /\d/.test(s.text))) out.push('Nur Ziffern neu')
+  const numbers = numbersOnly(u.change, u.segments ?? [])
+  if (numbers) out.push(numbers === 'neu' ? 'Nur Ziffern neu' : 'Nur Ziffern weg')
   if (HEAD_RE.test(u.fromText ?? '') || HEAD_RE.test(u.toText ?? '')) out.push('Kopfzeile')
   if (u.change === 'inserted' && /^Z\d+[a-z]*#dup/.test(u.id) && SUB_REST_RE.test(u.toText ?? '')) out.push('Unteranweisung neu')
   return out

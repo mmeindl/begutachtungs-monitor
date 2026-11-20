@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
+import { numbersOnly, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
 
 /* A changed unit of a station pair: its Land, its draft, and the runs the
    comparison shows inserted („+…") or removed („-…"). */
@@ -48,5 +48,25 @@ describe('recurringRuns — the same short run inserted or removed across a Land
     expect(recurringRuns(three(`+${'Wortfolge '.repeat(5)}`))).toEqual([])
     expect(recurringRuns(three('+der')).map((r) => r.text)).toEqual(['der'])
     expect(recurringRuns(three('+REG.SITZG.').map((u) => ({ ...u, change: 'inserted' })))).toEqual([])
+  })
+})
+
+describe('numbersOnly — a unit changed by nothing but bare numbers, inserted or removed', () => {
+  const seg = (...runs: string[]) => runs.map((r) => ({ type: r.startsWith('+') ? 'inserted' as const : r.startsWith('-') ? 'removed' as const : 'equal' as const, text: r.slice(1) }))
+
+  it('says „neu" where only numbers were inserted — a table value or an enumerator one reader dropped (K-TDBG § 10)', () => {
+    expect(numbersOnly('changed', seg('=innerhalb von 14 Tagen ', '+1.', '=ab der Gewährung oder ', '+2.', '=ab Aus- oder Rückzahlung'))).toBe('neu')
+  })
+
+  it('says „weg" where only numbers were removed — the same fault seen from the other side', () => {
+    expect(numbersOnly('changed', seg('=Stufe A ', '-100', '=Stufe B ', '-60 %'))).toBe('weg')
+  })
+
+  it('says nothing where a number changed, a word moved with it, or the unit is not „geändert"', () => {
+    expect(numbersOnly('changed', seg('-60', '+80'))).toBeNull()
+    expect(numbersOnly('changed', seg('-60', '-Prozent'))).toBeNull()
+    expect(numbersOnly('changed', seg('-.', '-,'))).toBeNull()
+    expect(numbersOnly('removed', seg('-60'))).toBeNull()
+    expect(numbersOnly('changed', seg('=gleich'))).toBeNull()
   })
 })

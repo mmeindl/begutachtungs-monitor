@@ -76,3 +76,22 @@ export function recurringRuns<T extends RunUnit>(units: readonly T[]): Recurring
     .filter((g) => g.drafts.size >= RECURRING_MIN_DRAFTS && g.only.length > 0)
     .map((g) => ({ land: g.land, side: g.side, text: g.text, drafts: g.drafts.size, units: g.units, only: g.only }))
 }
+
+/** A run of bare numbers: digits, with the dots, commas, percent signs and spaces between them. */
+const BARE_NUMBERS_RE = /^[\s\d.,%]+$/
+
+/**
+ * A changed unit whose every run is bare numbers inserted („neu") or removed
+ * („weg"), or null. Inserted: a table value or an enumerator the earlier
+ * side's reader dropped (Salzburg 34234 § 130, 19.11.2026). Removed — the
+ * mirror, 20.11.2026: the same fault in the later side's reader, or a
+ * value the Landtag struck. Either is read before it is accepted.
+ */
+export function numbersOnly(change: string, segments: readonly RunSegment[]): 'neu' | 'weg' | null {
+  if (change !== 'changed') return null
+  const runs = segments.filter((s) => s.type !== 'equal')
+  if (!runs.length || !runs.every((s) => BARE_NUMBERS_RE.test(s.text) && /\d/.test(s.text))) return null
+  if (runs.every((s) => s.type === 'inserted')) return 'neu'
+  if (runs.every((s) => s.type === 'removed')) return 'weg'
+  return null
+}
