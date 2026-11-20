@@ -131,6 +131,14 @@ const LIST_OPEN_RE = /<(?:aufzaehlung|[a-z]*liste)\b[^>]*\bebene="(\d+)"/g
  * 10.09.2026, so the two sides read a note alike again (28.09.2026).
  */
 const ANNOTATION_RE = /\(Anm\.?(?:\s|<[^>]+>)*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+/**
+ * „75 000 Euro (Anm. 1)": RIS's reference to its numbered footnote, the
+ * valorisation note behind the § that the footnote rule already drops
+ * (`NUMBERED_NOTE_RE`, 20.11.2026). Left standing, it pointed at nothing on
+ * the page, stood between the words a phrase instruction looks for, and was
+ * held against annexes that leave it out (58/ME XXVIII, BVergG 2018 § 213).
+ */
+const NOTE_REFERENCE_RE = /\(\s*Anm\.?\s*\d+[a-z]?\s*\)/g
 
 /**
  * **A note RIS splits over two blocks** (19.11.2026). Tabakmonopolgesetz § 1
@@ -244,6 +252,7 @@ function text(inner: string): string {
         inner
           .replace(BINARY_RE, ` ${FIGURE_MARK} `)
           .replace(ANNOTATION_RE, ' ')
+          .replace(NOTE_REFERENCE_RE, ' ')
           .replace(/<gdash\s*\/>/g, '-')
           .replace(/<nbsp\s*\/>/g, ' ')
           .replace(/<amp\s*\/>/g, '&amp;'),

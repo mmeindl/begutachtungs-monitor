@@ -570,11 +570,37 @@ function occurrences(hay: string, needle: string): number {
 
 /** What the comparison form and the word list both drop: the copy's spellings of the same text. */
 function sameText(t: string): string {
-  return t.replace(RIS_NOTE_RE, ' ').replace(PLACEHOLDER_RE, 'XXX').replace(REPEALED_RE, ' ')
+  return t
+    .replace(RIS_NOTE_RE, ' ')
+    .replace(NOTE_REFERENCE_RE, ' ')
+    .replace(WEB_VIEW_RE, ' ')
+    .replace(VERSION_LABEL_RE, ' ')
+    .replace(PLACEHOLDER_RE, 'XXX')
+    .replace(REPEALED_RE, ' ')
 }
 
-/** „(Anm.: Abs. 2 aufgehoben durch Art. 4 Z 54, BGBl. I Nr. 118/2016)" */
-const RIS_NOTE_RE = /\(Anm\.?:[^()]*\)/g
+/**
+ * „(Anm.: Abs. 2 aufgehoben durch Art. 4 Z 54, BGBl. I Nr. 118/2016)" — and
+ * one bracket inside it (20.11.2026), the shape `lawtext/konsTree.ts` and
+ * `annex/annexText.ts` strip: the ressort's own „(Anm.: § 85 (2) bleibt
+ * inhaltlich unverändert …)" in 61/ME XXVIII's BAO annex stood as text of
+ * the left column.
+ */
+const RIS_NOTE_RE = /\(Anm\.?\s*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+/**
+ * RIS's web view, copied into the left column with the law (20.11.2026): the
+ * footnote reference „75 000 Euro (Anm. 1)" — the number's valorisation note,
+ * which `lawtext/konsTree.ts` drops from the standing text — the line
+ * „Beachte für folgende Bestimmung", and the label over a version, „Ab
+ * 1.9.2025:", „Ab 1.9.2025 bzw. mit dem der Kundmachung folgenden Tag:". In
+ * no § document's text, and on either side no word of the law: 21 §§ of
+ * period XXVIII were withheld as `anhang-fremd` for nothing else (58/ME
+ * BVergG 2018 § 213, 24/ME BSFG 2017 §§ 27, 28). The label only with a date
+ * in figures and its colon, as RIS prints it; the law writes its dates out.
+ */
+const NOTE_REFERENCE_RE = /\(\s*Anm\.?\s*\d+[a-z]?\s*\)/g
+const WEB_VIEW_RE = /Beachte für folgende Bestimmung(?:en)?/g
+const VERSION_LABEL_RE = /(?<![\p{L}\d])Ab \d{1,2}\.\s?\d{1,2}\.\s?\d{4}(?:\s+bzw\.\s[^:.;]{0,80})?:/gu
 /**
  * The citation of a Bundesgesetzblatt not yet issued: the draft writes „BGBl.
  * I Nr. xxx/xxxx", its own annex „xxx/yyyy" or „XX/2025" — one placeholder,
