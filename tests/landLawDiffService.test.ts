@@ -120,3 +120,26 @@ describe('compareReadTexts — an instruction whose announced text one side did 
     expect(got.unreadAnnounced).toEqual([{ law: 'Abschussplanverordnung', id: 'Z1' }])
   })
 })
+
+// A page inside a Land's PDF with no text on it (a scanned page in a
+// document set in Word): what stands on it reads as removed or inserted,
+// and nothing said so (audit of 20.11.2026, G078). The Textgegenüberstellung
+// says its dropped pages; the station pairs now say their textless ones.
+describe('compareReadTexts — pages without text inside a document', () => {
+  const unit = (id: string, text: string) => ({ article: 'K-BO', articleNumber: null, id, heading: null, quotedHeadings: [], text, blocks: [{ kind: 'novao', cls: 'pdf', text, gld: null }] }) as never
+  const doc = (label: string) => ({ label, url: null, publisher: 'Land Kärnten' })
+  const units = [unit('Z1', 'Im § 2 wird das Wort „A“ durch das Wort „B“ ersetzt.'), unit('Z2', 'Im § 3 entfällt Abs. 2.')]
+
+  it('counts the empty pages between the first and the last page with text, on both sides', () => {
+    const got = compareReadTexts('entwurf', 'rv', [
+      { units, text: '', pages: ['Seite 1 von 4 Gesetz', '', ' \n ', 'Seite 4 von 4'] },
+      { units, text: '', pages: ['Seite 1', '', 'Seite 3'] },
+    ], [doc('Entwurf'), doc('Regierungsvorlage')])
+    expect(got.droppedPages).toBe(3)
+  })
+
+  it('counts no empty page before the first or after the last text, and none of the Landesgesetzblatt', () => {
+    const got = compareReadTexts('entwurf', 'lgbl', [{ units, text: '', pages: ['', 'Seite 1', 'Seite 2', ''] }, { units, text: '' }], [doc('Entwurf'), doc('LGBl. Nr. 1/2026')])
+    expect(got.droppedPages).toBeUndefined()
+  })
+})

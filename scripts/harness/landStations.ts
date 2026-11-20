@@ -67,7 +67,8 @@
  * Counted beside them, not asserted: the instructions a pair withholds or
  * names as unread because one side or both did not read what they announce
  * (`announcedText.ts`, 19.11.2026), per pair in `comparisons.jsonl` and
- * `--against`.
+ * `--against`; and the pages inside a PDF without text (`textlessPages`,
+ * 20.11.2026), which the page says.
  *
  * Output: `<dir>/comparisons.jsonl` (one line per pair: state, stats, every
  * unit with its non-equal segments), `<dir>/summary.md`. `--against <dir>`
@@ -186,6 +187,8 @@ interface ComparisonLine {
   /** The Bund's checks (`stationChecks.ts`): breaches fail the run, symmetry is listed. */
   breaches: string[]
   symmetry: string[]
+  /** Pages inside either PDF without text (`textlessPages`), which the page says (20.11.2026). */
+  droppedPages?: number
 }
 const lines: ComparisonLine[] = []
 /** Every draft of the population: its detail in the cache, and the pairs it offers (`pairsPerLand`). */
@@ -235,6 +238,7 @@ for (const item of items) {
       line.units = value.units.map((u) => ({ article: u.article, id: u.id, fromId: u.fromId, change: u.change, editorial: !!u.editorial, segments: segmentsOf(u), violations: violations(u) }))
       line.withheld = value.withheld.map((w) => `${w.law ?? '-'}|${w.id}|${w.reason ?? 'standing'}`)
       line.unread = (value.unreadAnnounced ?? []).map((w) => `${w.law ?? '-'}|${w.id}`)
+      if (value.droppedPages) line.droppedPages = value.droppedPages
       // The Bund's checks (`landPairChecks`).
       const back = compareReadTexts(to, from, [reads[1], reads[0]], [b.document, a.document])
       const checks = landPairChecks({
@@ -312,6 +316,8 @@ for (const k of stale) out.push(`- [angenommen, tritt nicht mehr auf] ${k} — $
 const withheldUnits = lines.flatMap((l) => l.withheld.filter((w) => w.endsWith('|announced')))
 const unreadUnits = lines.flatMap((l) => l.unread)
 out.push('')
+const droppedLines = lines.filter((l) => l.droppedPages)
+out.push(`Seiten ohne Text im Dokument (textlessPages): ${droppedLines.reduce((n, l) => n + l.droppedPages!, 0)} in ${droppedLines.length} Vergleichen${droppedLines.length ? ` — ${droppedLines.map((l) => `${l.draft} ${l.pair}`).join(', ')}` : ''}`)
 out.push(`Angekündigter Text nicht gelesen (announcedText.ts): ${withheldUnits.length} Anweisungen zurückgehalten in ${lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length} Vergleichen, ${unreadUnits.length} gezeigt und als „nicht lesbar" genannt in ${lines.filter((l) => l.unread.length).length} Vergleichen`)
 const breachLines = lines.flatMap((l) => l.breaches.map((b) => ({ l, b })))
 const symmetryLines = lines.flatMap((l) => l.symmetry.map((b) => ({ l, b })))

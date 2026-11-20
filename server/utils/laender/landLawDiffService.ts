@@ -36,7 +36,7 @@ import { announcedKey, announcedReading, announcedVerdict } from './announcedTex
 import { comparedText, diffLandDraft, packageChanges } from './landLawDiff'
 import { compareTgu } from './landTguService'
 import { draftsSharingKundmachung } from './sources'
-import { NOT_A_DRAFT, type ReadText } from './texts/read'
+import { NOT_A_DRAFT, textlessPages, type ReadText } from './texts/read'
 import { cachedPdfPages } from './texts/pdfPagesService'
 import { textSources } from './texts/stations'
 
@@ -127,6 +127,8 @@ export function compareReadTexts(from: LandTextStation, to: LandTextStation, rea
   if (!overall.unchanged && !overall.changed) return unavailable(from, to, NOTHING_PAIRS, docs)
   const { units, withheld, unread } = settleAnnounced(all, x, y)
   const s = summarizeDiff(units)
+  // Pages inside either PDF without text: what stood on them reads as removed or new (`textlessPages`).
+  const droppedPages = textlessPages(read[0].pages) + textlessPages(read[1].pages)
   return {
     from,
     to,
@@ -140,6 +142,7 @@ export function compareReadTexts(from: LandTextStation, to: LandTextStation, rea
     sharedWith: [],
     withheld,
     ...(unread.length ? { unreadAnnounced: unread } : {}),
+    ...(droppedPages ? { droppedPages } : {}),
   }
 }
 

@@ -122,6 +122,21 @@ export async function pdfStyledPages(url: string): Promise<StyledPages> {
   return styledPages(await landPdfBytes(url))
 }
 
+/**
+ * The pages of a PDF with no text on them between the first and the last
+ * page that has some (20.11.2026): a scanned page in a document set in
+ * Word, whose §§ read as removed or inserted. Said on the page as the
+ * Textgegenüberstellung's dropped pages are (`compareReadTexts`). A
+ * document with no text at all is said otherwise („Nicht lesbar", no
+ * unit). Of the 849 cached Land PDFs one has such pages, a scanned letter
+ * of the Kärntner Landtag in no station pair.
+ */
+export function textlessPages(pages: readonly string[] | undefined): number {
+  const has = (pages ?? []).map((p) => p.trim().length > 0)
+  const first = has.indexOf(true)
+  return first < 0 ? 0 : has.slice(first, has.lastIndexOf(true)).filter((h) => !h).length
+}
+
 export async function readPdf(url: string, pagesOf: PagesReader = pdfPages): Promise<ReadText> {
   const pages = await pagesOf(url)
   return { units: landDraftUnits(pages), text: pages.join('\n'), pages }
