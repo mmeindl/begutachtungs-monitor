@@ -570,6 +570,29 @@ gets an entry of its own only where it carries a reason the rule does not.
   „redaktionell", except a separator between two digits („1 3" is not
   „13") and a minus sign. The runs stay shown as they are; folding them to `equal` would print
   the earlier spelling as agreed.
+- **A separator between two digits is no spacing, for the unit key as for
+  the badge** (20.11.2026, `foldSpacing` in
+  `server/utils/lawtext/normalize.ts`, read by `compareKey` and
+  `spacingOnly`): between two digits a run that holds a hyphen is a range
+  („3-5" equals „3 - 5", never „35"), a run of spaces alone a separator
+  („1 3" is never „13"). Until then the unit key dropped both, so „§§ 3-5"
+  against „§§ 35" read „unverändert" while the word level kept them apart.
+  One gap is layout, measured: between an amount and its footnote mark
+  („35,82 1)": a two-digit fraction before it, one or two digits and „)"
+  after). A Land's PDF glues the mark to the amount where the
+  Landesgesetzblatt sets it apart; 15 such sites, all in Salzburg amount
+  tables, none in the Bund's texts. Thousands groupings are not folded: no
+  two sources differed in one. Bund: no badge and no residue moved over 453
+  pairs; Länder: no pair moved against the state before.
+- **A changed sign is a changed word** (20.11.2026, `WORD_SIGN_RE` in
+  `server/utils/diff/wordDiff.ts`): a mathematical sign, a currency sign,
+  „%", „‰" and „°" standing as a token count as words for „redaktionell".
+  As punctuation they never ended the editorial verdict, and „5 %" → „5 ‰",
+  „> 50 mg" → „< 50 mg" and „+ 2 mm" → „− 2 mm" were badged „redaktionell".
+  All 843 such tokens in the station texts of GP XXVIII carry meaning;
+  quotation marks, the free dash, „§" and the list bullet stay punctuation.
+  No badge of the Bund's pairs moved; one Land unit did, for a lone „+" the
+  Landesgesetzblatt prints (Salzburg 34234 § 20).
 - **A changed text without a word diff says so and stands unmarked**
   (19.11.2026, `NO_WORD_DIFF_DE` in `app/utils/diffSides.ts`, `DiffBody`):
   „Nicht im Monitor: Texte dieser Länge …", never both versions marked as
@@ -1166,6 +1189,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   in five is a trivial difference (a title fragment, a reprinted contents
   line); the sentence stays true there. A part set otherwise that yields
   no row counts its pages as unread (`droppedPages`).
+- **A § refused under one Artikel stays withheld under every later Artikel
+  of the same law** (20.11.2026, `refusedBefore` in `kons/consolidate.ts`).
+  In a chain the later Artikel starts from what the earlier one left, and
+  what it left of a refused § lacks a change the draft makes; each Artikel
+  had locked only its own refusals. Census over 330 cached drafts: no
+  outcome moved (in 126/ME, Teil II refuses the same §§ itself).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
@@ -1253,6 +1282,63 @@ gets an entry of its own only where it carries a reason the rule does not.
   the dev server: its derived cache keeps entries from before a code change,
   and the RIS stock grows between two runs, so two such figures can
   contradict each other.
+- **The § comparison is held to faults** (20.11.2026,
+  `scripts/lib/stationMutations.ts`, `station.ts --mutationen`,
+  `tests/diffMutations.test.ts`): nine changes of substance — a digit, a
+  minus sign, „nicht" removed, „und" and „oder" either way, „%" for „‰",
+  „<" for „>", two numbers joined, a range collapsed — are set into every
+  unit of the later texts, each unit compared against its changed self
+  through `diffLawUnits`. None may come out „unverändert", „redaktionell" or
+  without a marked run; a miss fails the run. The folded minus sign and
+  „1 3" equal to „13" were found by reading; this finds both.
+- **A round reaches `/genauigkeit` only where it passed its own gates**
+  (20.11.2026, `scripts/lib/genauigkeitRound.ts`). Every harness record
+  names its commit (`+dirty` over an uncommitted tree), its time and how
+  much of its corpus it reached (`scripts/lib/harnessRecord.ts`). The
+  builder refuses an accounting with failures, a fault floor that failed or
+  did not run, a floored class tried fewer than 20 times („nicht gehalten",
+  never a pass: „Fehlt" had passed with 0 tries on the PDF path), records
+  of several commits or of a dirty tree, a corpus reached in part, and a
+  confirmed § whose designations deviate from the enacted text. Two
+  exceptions, only by name and written into the record:
+  `--erlaube-ungehalten`, `--erlaube-gemischt`. Until then it stopped on a
+  missing file, an unbalanced funnel, station breaches and Länder hits, and
+  stamped the commit checked out while it wrote: the record of 20.11.2026
+  names one commit for parts measured across three.
+- **The harness cache never answers the Begut list** (20.11.2026,
+  `isBegutSearch` in `scripts/lib/harnessCache.ts`). The list is one
+  constant URL per page. Served from disk for ever, it froze every annex
+  and fault-injection round at the list of 09.09.2026 (newest Beginn
+  08.09.2026, oldest 29.04.2024, so drafts of GP XXVII were counted for
+  GP XXVIII), and the weekly drift alarm, whose cache is carried from run to run, could
+  not see a new draft, the only thing that shows a ressort's new layout.
+  The list is fetched on every run and still written; `--liste-aus-cache`
+  replays it on purpose, and the run's first line says when it was
+  fetched. Every annex report and fault-injection record says its window,
+  and the alarm reports „Fenster veraltet" where the newest Beginn lies
+  more than 35 days before the run (the longest stretch without a new
+  Beginn since 2003 is 26 days). The standing-law lookups stay cached: they
+  are pinned to the draft's Beginn.
+- **The station baseline carries every badge** (20.11.2026,
+  `scripts/harness/stationBaseline.json`, `badgeMoves`): a run against it
+  prints each unit whose badge moved and each that is newly or no longer
+  changed, and a baseline without badges fails. The committed one had none,
+  so the comparison its head comment promised never ran.
+- **The Länder's harnesses fail as the Bund's do** (20.11.2026).
+  `landStations.ts` runs the Bund's checks over every pair
+  (`lib/stationChecks.ts`: reconstruction, completeness, heading; symmetry
+  listed), fails on a run of six characters or more that drafts of one Land
+  insert or remove again and again (`recurringRuns`: furniture read as law
+  is caught by its recurrence where no invariant knows its shape) and on a
+  unit changed by nothing but removed bare numbers, and says per Land what
+  it requested and reached. `landGuard.ts` has a floor (`--mindestens`;
+  none is set by default: at 95 the three wording classes fail with 93.7,
+  93.8 and 90.5 %, at 90 all fourteen classes hold), a baseline of the
+  withheld §§ compared for equality (`landGuardBaseline.json`, drawn in the
+  commit that moves it) and the page accounting: every § the comparison
+  compares ends exactly once, shown or withheld. Kärnten's comparison
+  stands in the record apart from the four Länder the draft rules are
+  asked of.
 
 ### Länder
 
@@ -1363,6 +1449,35 @@ gets an entry of its own only where it carries a reason the rule does not.
   the Vorlage adds table-of-contents sub-instructions, real but unreadable
   in content). Reading the tables in place, from the page's geometry, is
   the fix that would show these instead; not built.
+- **Kärnten's session stamp at a page's head is the page's furniture**
+  (20.11.2026, `SESSION_STAMP_RE` in `draftPdfLaw.ts`). „REG.SITZG." opens
+  every page of a Vorlage for the Regierungssitzung; joined to the line
+  before it, it read as text the Landesregierung inserted and the Landtag
+  removed: 198 units of Kärnten's station pairs, 128 of them changed by
+  nothing else, 9 under an Artikel title that carried it. Dropped only as a
+  page's first line, where all 170 measured lines stand (34 PDFs, three
+  spellings).
+- **A line under „§ N" that closes with a full stop, colon or semicolon, or
+  that fills the measure with no numbered Absatz under it, is the §'s
+  first line of text and not its title** (20.11.2026, `isFirstTextLine` in
+  `draftPdfLaw.ts`). Read as the title, it stood on the page as a heading
+  the Landesgesetzblatt inserted. Measured over 849 cached Land PDFs: of
+  1,433 lines taken as titles 45 were first lines; the rule takes 36 back
+  and no real title (none closes with such a mark; real titles run to 83
+  characters without „(1)" under them, the measure is 85). Nine first
+  lines of 64 to 84 characters are still read as titles: at that length a
+  line does not tell its kind. The Bund's heading check found the fault on
+  its first run over the Länder pairs.
+- **A Land draft's own documents are told from the Vorlage's by one rule**
+  (20.11.2026, `draftExplanationsDocument` in `texts/read.ts`): Kärnten and
+  Tirol list „Regierungsvorlage, Erläuterungen" in the draft's record, and
+  the Erläuterungen section took the first title with „erläuter" in it. An
+  answer that rests on a failed read of the draft's PDF is served and not
+  kept (`onlyComplete`), as the Bund's is.
+- **A § a Landesgesetzblatt repeals, of which RIS holds no earlier
+  version, is withheld as `unpaired`** (20.11.2026,
+  `landLawChangesService.ts`): neither side was read, and the § fell out
+  of both lists.
 - **A document a Land files as the draft but that is not one is not read as
   the draft;** the page says so (§12.63). Among several candidates the
   content decides, not the title: where the first holds no law text, the
@@ -2836,6 +2951,7 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | A struck Absatz put back under its old number (fault class Zurück) | 45 of 45 (PDF), 25 of 25 (table); 41 of 46 and 20 of 25 before checks 4 and 5 read a struck Absatz that opens like the next | GP XXVIII · 19.11.2026 |
 | The annex gate as shipped (left check, rule 1, rule 2 per §) under fault injection | another §'s sentence in the right column withheld 68.9 / 79.5 % (old text, PDF / table: 818 of 1,187, 283 of 358) and 79.5 / 75.6 % (proposed text: 941 of 1,184, 270 of 357); a sentence of the left column lost 62.8 / 66.4 % (774 of 1,231, 249 of 375); another §'s sentence in both columns alike 2.4 / 0 % (29 of 1,187, 0 of 358), outside the gate by construction | GP XXVIII, `faultInjection.ts --json` · 19.11.2026 |
 | § comparison, the two null comparisons (`station.ts`) | last parliamentary text → Kundmachung 452 residues in 4,867 units, 1 not editorial; one draft read as HTML → as XML 6 in 4,675, 3 not editorial; 453 pairs of 91 drafts, no invariant breached | GP XXVIII · 19.11.2026 |
+| § comparison under fault injection (`station.ts --mutationen`) | 22,787 changes of substance in nine classes, set into 7,153 units of the later texts: every one shown as a change of substance, none „redaktionell", none „unverändert". Before the rules of 20.11.2026: two numbers joined 0 of 234, a range collapsed 0 of 146, „%" → „‰" 89 of 106 | GP XXVIII, 91 drafts · 20.11.2026 |
 | Silent omission read (`silentOmissions`) under fault injection | a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16 | GP XXVIII · 14.11.2026 |
 | Changed §§ with an outcome on the page | all 4,798 in 164 drafts (ME) on 19.11.2026, no invariant violated, „verloren" included (4,701 in 163 on 18.11.2026); 1,518 in 222 without Gegenstand on 19.11.2026, none violated (1,490 in 219 on 18.11.2026); 4,463 and 1,541 on 27.10.2026. The second fell although five drafts came, and none of it is the engine: six drafts left the set (−89; four got a Parliament page as 150/ME to 153/ME, two were lost by the corpus read, next table), eleven came (+38), and on the 208 in both the count stayed 1,452. Reconstructed by running the code of 27.10. offline on the same inputs: 214 drafts, 1,541, 630, the recorded figures. The JSON of an `accounting.ts` run is the per-draft record from now on | GP XXVIII · 18.11.2026 (§12.12c) |
 | Of those shown | 2,395 and 636 on the evening of 19.11.2026, main a953024c (2,393 at noon, after the engine and annex fixes of 18. and 19.11.); 2,267 and 623 on 18.11.2026; 2,167 and 630 on 27.10.2026. Without Gegenstand: −33 with the six that left, +11 with the eleven that came, +15 on the 208 in both (7262426, omissions without „…": 14; 14984f1, letter-spaced words: 1) | same |
@@ -2878,9 +2994,10 @@ circular of 10.12.2015).
 | Procedure numbers with a page in the Legislative Observatory | 180 of 187; of the 181 the rule links, 178 (the other three, 2016/0224(COD), 2018/0063(COD), 2023/0077(COD), are split into files A and B and linked by `OBSERVATORY_FILE`) | every number of the map, one request each · 15.11.2026 |
 | Rail against the Legislative Observatory: proposal, Parliament, Council, signature | identical in 15 of 18 procedures with a page; in 3 the difference has a named reason (Council position adopted a day before the Observatory dates its publication; an act on two procedures; a consent procedure whose „proposal" the Observatory dates later); 2 of 20 have no page | 20 acts across six procedure types · 15.11.2026 |
 | Land Textgegenüberstellung, right column found in the draft | 552 of 552 judgeable §§ (550 of 550 on 12.11.2026) | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,160 §§ shown, GP XXVIII · 19.11.2026 |
-| The same check under fault injection, caught | another § of the same draft appended 57.0 % (312/547), another draft's sentence 76.4 % (422/552); by design none of a number changed, one word swapped, a sentence dropped (0 of 476 / 551 / 338): a single misread word or figure in a Land's right column is caught by nothing, where the Bund's engine and oracle catch 99.7 % | same (57.8 % and 76.4 % on 12.11.2026) |
+| The same check under fault injection, caught | another § of the same draft appended 57.0 % (312/547), another draft's sentence 76.4 % (422/552); under the bag rule none of a number changed, one word swapped, a sentence dropped (0 of 476 / 551 / 338). Since 20.11.2026 the word-for-word rule catches them where the draft quotes the wording: 611 of 652, 876 of 934, 315 of 348 (`landTguStrict.ts`). The Bund's annex gate has no such rule: its right column is held by bags, and the 99.7 % this row named until 20.11.2026 are the oracle's on the Lesefassung, not the annex rows' | same (57.8 % and 76.4 % on 12.11.2026) |
 | Land station pairs: instructions whose announced text a reader did not find in its place (`announcedText.ts`) | withheld 37 in 21 pairs, named „nicht lesbar" 189 in 88 | 372 cached pairs, GP XXVIII · 19.11.2026 |
 | Land station pairs: invariant hits (`landStations.ts`) | `#dup`, running head, sub-instruction as new: 0; „Nur Ziffern neu": 2, both the documents' own (`landStationsAccepted.json`); 3 before the announced-text rule withheld Salzburg 33884 | same |
+| The same after the stamp and title rules, with the Bund's checks | hits 0, breaches 0, symmetry 0, 3 accepted, in 362 compared pairs with 8,461 units; changed units Entwurf → Vorlage 772 (821), Vorlage → Landesgesetzblatt 242 (326); Kärnten 93 of 99 pairs compared, Oberösterreich 69 of 69, Salzburg 200 of 201, Tirol 0 of 3 (PDFs not in the cache) | 372 cached pairs, GP XXVIII · 20.11.2026 |
 
 ### Laws without a Begutachtung
 
