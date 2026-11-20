@@ -64,7 +64,7 @@
  */
 import { writeFileSync } from 'node:fs'
 import type { ConsolidatedTextResponse, DraftsResponse, ExplanationsResponse, RisConsultationsResponse, TextComparisonResponse } from '../../shared/types'
-import { annexUnitId } from '../../shared/utils/explanationKey'
+import { annexUnitId, articleUnitLaws } from '../../shared/utils/explanationKey'
 import { KONS_MAX_PARAGRAPHS, annexKeepsUnit, consolidationBalance } from '../../server/utils/kons/consolidate'
 import { showsInstructedChange, type Lesefassung } from '../../app/utils/lesefassung'
 import { annexParas, groupAnnexRows, placeAtParagraphs, type ParaPlacement } from '../../app/utils/annexGroups'
@@ -173,6 +173,8 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
   // (61/ME, EStG § 70). Grouped by the placement each row maps to, which is
   // one per block (`placeAtParagraphs`).
   const { groups } = groupAnnexRows(annex.rows, { matches: null, hidden: [] })
+  // A block's unit as the page and the oracle read it: „Artikel 53." in a law divided into Artikel.
+  const articleLaws = articleUnitLaws(annex.rows)
   /** Each server outcome (by the object `outcomeIndex` hands every block it is placed at) and the blocks it stands at. */
   const blocksOf = new Map<Lesefassung, string[]>()
   for (const g of groups) {
@@ -187,7 +189,7 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
       const label = `${g.article ? `${g.article}: ` : ''}${first.para ?? '(ohne §)'}`
       const repealed = rows.every((r) => r.change === 'removed')
       const { lesefassungen } = at
-      if (ran && lesefassungen.length === 0 && !at.outcomeElsewhere && annexUnitId(first.para) && showsInstructedChange(rows) && !repealed) report.failures.push(`stumm: ${label} zeigt eine Änderung und sagt nichts zur Lesefassung`)
+      if (ran && lesefassungen.length === 0 && !at.outcomeElsewhere && annexUnitId(first.para, articleLaws.has(first.law ?? '')) && showsInstructedChange(rows) && !repealed) report.failures.push(`stumm: ${label} zeigt eine Änderung und sagt nichts zur Lesefassung`)
       for (const { lesefassung } of lesefassungen) {
         if (lesefassung.kind === 'withheld' && lesefassung.cause === 'entfaellt' && annexKeepsUnit(rows.filter((r) => r.check !== 'withheld'))) {
           report.failures.push(`entfällt-stehend: ${label} — die Beilage zeigt die Einheit danach stehend, die Seite sagt nichts`)
