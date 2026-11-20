@@ -284,6 +284,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
   const annexBlind = classes(r.annex.faults, ANNEX_BLIND)
   const breaches = (count: number) => (count === 0 ? 'kein Regelverstoß' : count === 1 ? 'ein Regelverstoß' : `${n(count)} Regelverstöße`)
   const st = r.stations
+  const stFaults = st.faults?.length ? total(st.faults) : null
   const tgu = r.laender.tgu
   const ls = r.laender.stations
   const landWording = tgu.faults.filter((f) => (LAND_WORDING as readonly string[]).includes(f.key))
@@ -315,7 +316,8 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         'Der Monitor setzt den Paragraphen selbst zusammen, aus dem geltenden Text im RIS und den Anweisungen des Entwurfs, und hält ihn gegen die Textgegenüberstellung des Ministeriums. Was sie als geltend zeigt, muss so im RIS stehen, was sie als neu zeigt, in unserem Ergebnis; ihre Absätze müssen in derselben Reihenfolge stehen, und unser Ergebnis darf nichts ändern, was sie nicht zeigt.',
       measured: [
         `Die Probe: ${n(bench.bgbl)} Bundesgesetzblätter, deren Text nach dem Inkrafttreten im RIS steht. Von ${n(bench.shown)} Paragraphen, die der Monitor gezeigt hätte, sind ${n(bench.identical)} Wort für Wort das Gesetz.${notLaw ? ` ${restSentence(bench)}` : ''} Ein Wort, das nicht im Gesetz steht, hat${bench.invented ? ` ${bench.invented === 1 ? 'einer' : n(bench.invented)}` : ' keiner'}.`,
-        `Ohne die Prüfung gegen die Gegenüberstellung – jeder Paragraph, bei dem sich alle Anweisungen anwenden ließen – wären es ${n(bench.ungated.identical)} von ${n(bench.ungated.shown)} gewesen.`,
+        // What „ohne" leaves in force (20.11.2026): the rules that judge each instruction and its result by themselves still decide.
+        `Ohne die Prüfung gegen die Gegenüberstellung – jeder Paragraph, bei dem sich alle Anweisungen anwenden ließen und das Ergebnis für sich stimmig ist – wären es ${n(bench.ungated.identical)} von ${n(bench.ungated.shown)} gewesen.`,
       ],
       missed: [
         `Fehlt unserem Ergebnis ein Teil, den auch der geltende Text im RIS nicht hat und den die Gegenüberstellung stillschweigend überspringt, fällt das kaum auf: ${blind.caught === 0 ? 'keiner' : n(blind.caught)} von ${n(blind.tried)} Versuchen gefangen.`,
@@ -357,12 +359,16 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         `${n(st.pairs)} Vergleiche, ${breaches(st.breaches)}. Eine Regel lautet zum Beispiel: Jede als geändert markierte Stelle muss eine sichtbare Änderung zeigen.`,
         `Im Test mit Texten, die gleich sein müssen, zeigte der Monitor ${st.nullSubstantive === 0 ? 'keinen' : st.nullSubstantive === 1 ? 'einen' : n(st.nullSubstantive)} von ${n(st.nullUnits)} Textteilen fälschlich als geändert.`,
       ],
-      faults: [],
+      // Held to faults since 20.11.2026 (`station.ts --mutationen`): one token changed in a unit of a real text must read as a change of substance.
+      faults: st.faults?.length ? [bar('Eine Ziffer, ein Zeichen oder ein Wort wie „nicht“ in einem der beiden Texte geändert', st.faults)] : [],
       consequence: null,
       rule:
-        'Verglichen wird der Entwurf mit der Regierungsvorlage, diese mit den Fassungen von Ausschuss und Plenum, und der ganze Weg mit dem Bundesgesetzblatt. Eine dritte Fassung gibt es nicht: Ob ein Unterschied zwischen zwei verschiedenen Texten richtig erkannt ist, lässt sich an nichts Drittem prüfen. Geprüft wird, dass jeder Vergleich beide Texte vollständig wiedergibt und jede als geändert markierte Stelle eine sichtbare Änderung zeigt – und an Texten, die gleich sein müssen, dass der Vergleich nichts findet.',
+        `Verglichen wird der Entwurf mit der Regierungsvorlage, diese mit den Fassungen von Ausschuss und Plenum, und der ganze Weg mit dem Bundesgesetzblatt. Eine dritte Fassung gibt es nicht: Ob ein Unterschied zwischen zwei verschiedenen Texten richtig erkannt ist, lässt sich an nichts Drittem prüfen. Geprüft wird, dass jeder Vergleich beide Texte vollständig wiedergibt und jede als geändert markierte Stelle eine sichtbare Änderung zeigt – und an Texten, die gleich sein müssen, dass der Vergleich nichts findet.${stFaults ? ' Dazu ändern wir in echten Texten je eine Stelle und prüfen, dass der Vergleich sie als Änderung zeigt und nicht als „redaktionell“ oder „unverändert“.' : ''}`,
       measured: [
         `${n(st.pairs)} Vergleiche zu ${n(st.drafts)} Entwürfen: ${st.breaches ? `${n(st.breaches)} verletzen` : 'keiner verletzt'} diese Regeln.`,
+        ...(stFaults
+          ? [`${n(stFaults.tried)} eingebaute Änderungen – eine Ziffer, ein Vorzeichen, „nicht“, „und“ statt „oder“ –: ${stFaults.caught === stFaults.tried ? 'Der Vergleich zeigt jede als Änderung' : `Der Vergleich zeigt ${n(stFaults.caught)} als Änderung`}.`]
+          : []),
         `Texte, die gleich sein müssen – die letzte Fassung des Parlaments und das Bundesgesetzblatt, derselbe Entwurf aus zwei Quellen –: in ${n(st.nullUnits)} Einheiten ${n(st.nullResidues)} Unterschiede, ${st.nullSubstantive ? `alle als „redaktionell“ markiert bis auf ${n(st.nullSubstantive)}; ${st.nullSubstantive === 1 ? 'dieser erscheint' : 'diese erscheinen'} als Änderung` : 'alle als „redaktionell“ markiert'}.`,
       ],
       missed: [

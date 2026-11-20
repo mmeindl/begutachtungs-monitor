@@ -119,6 +119,13 @@ export interface GenauigkeitRecord {
     nullResidues: number
     /** Of those, the ones not marked „redaktionell": they would read as a change. */
     nullSubstantive: number
+    /**
+     * One token changed in a unit of a real text (`station.ts --mutationen`,
+     * 20.11.2026): a digit, a sign, „nicht", „und" for „oder". Caught where
+     * the page shows the unit as a change of substance; absent in a round
+     * before that day.
+     */
+    faults?: GenauigkeitFault[]
   }
 
   laender: {

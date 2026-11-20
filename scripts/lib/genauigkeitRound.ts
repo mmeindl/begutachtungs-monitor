@@ -62,10 +62,12 @@ interface KonsRecord extends Stamped {
 }
 
 interface FaultClass extends GenauigkeitFault { floored?: boolean }
+/** An annex fault class: `alreadyWithheld` of its `caught` sat at a § the gate withheld without the fault too. */
+interface AnnexFaultClass extends GenauigkeitFault { alreadyWithheld?: number }
 interface FaultRecord extends Stamped {
   path: 'pdf' | 'table'
   drafts: number
-  annex: GenauigkeitFault[]
+  annex: AnnexFaultClass[]
   result: FaultClass[]
   /** The floor's outcome (`--mindestens`); absent in a record written before 20.11.2026 or without the flag. */
   floor?: { min: number; passed: boolean; failed: string[]; unheld: string[] } | null
@@ -85,6 +87,8 @@ interface StationRecord extends Stamped {
   breaches: unknown[]
   residues: { residue: { editorial: boolean } }[]
   nullUnits?: Record<string, number>
+  /** `station.ts --mutationen`: per class how often one changed token was tried, and how the page shows it (`änderung` is the catch). */
+  mutations?: { units: number; classes: Record<string, { tried: number; änderung: number }> }
 }
 
 type LandGuardRecord = Stamped & { lands: string[]; documents: number; compared: number; shown: number; judged: number; found: number; faults: GenauigkeitFault[]; strict: { held: number; differs: number; unchecked: number } }
@@ -193,6 +197,14 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
     if (!unheld.some((u) => u.key === key)) refusals.push(`--erlaube-ungehalten names „${key}", which is no floored class tried fewer than ${FLOOR_MIN_TRIES} times`)
   }
   const classes = (list: GenauigkeitFault[]): GenauigkeitFault[] => list.map(({ key, tried, caught }) => ({ key, tried, caught }))
+  /**
+   * The annex faults without the sites the gate had withheld before the fault
+   * (20.11.2026). Such a § stays withheld whatever is injected, so it counted
+   * as a catch of every class: on the PDF path all 29 „caught" of a sentence
+   * standing equal in both columns were of that kind but five.
+   */
+  const annexClasses = (list: AnnexFaultClass[]): GenauigkeitFault[] =>
+    list.map(({ key, tried, caught, alreadyWithheld = 0 }) => ({ key, tried: tried - alreadyWithheld, caught: caught - alreadyWithheld }))
 
   function funnel(name: string, record: AccountingRecord) {
     const failures = record.reports.flatMap((r) => (r.failures ?? []).map((f) => `${r.citation}: ${f}`))
@@ -222,6 +234,7 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
 
   if (!station.nullUnits) refusals.push('station.json was written before the null comparisons counted their units')
   if (station.breaches.length) refusals.push(`station.json records ${station.breaches.length} invariant breaches`)
+  if (!station.mutations) refusals.push('station.json was not held to faults: run station.ts with --mutationen')
   if (landStations.hits) refusals.push(`land-st/summary.json records ${landStations.hits} invariant hits not accounted for`)
   if (landStations.stale) refusals.push(`land-st/summary.json holds ${landStations.stale} stale accepted hits`)
 
@@ -241,7 +254,11 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
         invented: gate((p) => shown(p) && p[2] === 'abweichend'),
         incomplete: gate((p) => shown(p) && p[2] === 'unvollständig'),
         otherwise: gate((p) => shown(p) && !['identisch', 'abweichend', 'unvollständig'].includes(p[2]!)),
-        ungated: { shown: kons.unrefused.checked, identical: kons.unrefused.identical },
+        // „Ohne die Prüfung" is the page's gate without the oracle: refusal and
+        // plausibility still decide (`konsGate.ts`). Until 20.11.2026 this read
+        // `unrefused` — every § without a refused instruction, the implausible
+        // ones included, which no state of the page would have shown.
+        ungated: { shown: gate((p) => p[0] === 'plausibel'), identical: gate((p) => p[0] === 'plausibel' && p[2] === 'identisch') },
         ...(kons.witness ? { witnessed: { shown: tallied(kons.witness, (p) => p[0] === 'gezeigt'), identical: tallied(kons.witness, (p) => p[0] === 'gezeigt' && p[1] === 'identisch') } } : {}),
       },
       faults: { pdf: classes(faults.pdf.result), table: classes(faults.table.result) },
@@ -254,7 +271,7 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
       withheld: annexSum((d) => d.withheldParas),
       withheldStanding: annexSum((d) => d.withheldStanding),
       unchecked: annexSum((d) => d.uncheckedParas),
-      faults: { pdf: classes(faults.pdf.annex), table: classes(faults.table.annex) },
+      faults: { pdf: annexClasses(faults.pdf.annex), table: annexClasses(faults.table.annex) },
     },
     stations: {
       drafts: station.drafts,
@@ -263,6 +280,7 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
       nullUnits: Object.values(station.nullUnits!).reduce((n, v) => n + v, 0),
       nullResidues: station.residues.length,
       nullSubstantive: station.residues.filter((r) => !r.residue.editorial).length,
+      faults: Object.entries(station.mutations!.classes).map(([key, c]) => ({ key, tried: c.tried, caught: c.änderung })),
     },
     laender: {
       tgu: { lands: landGuard.lands, documents: landGuard.documents, compared: landGuard.compared, shown: landGuard.shown, strict: { held: landGuard.strict.held, differs: landGuard.strict.differs, unchecked: landGuard.strict.unchecked }, judged: landGuard.judged, found: landGuard.found, faults: landGuard.faults },

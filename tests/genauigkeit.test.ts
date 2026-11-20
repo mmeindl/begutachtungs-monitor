@@ -153,6 +153,19 @@ describe('genauigkeitArten', () => {
     expect(tries(land!.faults)).toBe(tries(GENAUIGKEIT.laender.tgu.faults))
   })
 
+  it('draws the station comparison\'s injected changes as a bar, and says them in a sentence, once a round carries them', () => {
+    expect(genauigkeitArten()[2]!.faults).toEqual(GENAUIGKEIT.stations.faults?.length ? [expect.objectContaining({ tried: expect.any(Number) })] : [])
+    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+    r.stations.faults = [{ key: 'ziffer', tried: 40, caught: 40 }, { key: 'minus', tried: 30, caught: 28 }]
+    const art = genauigkeitArten(r)[2]!
+    expect(art.faults).toEqual([{ label: expect.stringContaining('in einem der beiden Texte geändert'), tried: 70, caught: 68 }])
+    expect(art.measured.join(' ')).toContain('70 eingebaute Änderungen')
+    expect(art.measured.join(' ')).toContain('Der Vergleich zeigt 68 als Änderung.')
+    expect(art.rule).toContain('Dazu ändern wir in echten Texten je eine Stelle')
+    r.stations.faults = [{ key: 'ziffer', tried: 40, caught: 40 }]
+    expect(genauigkeitArten(r)[2]!.measured.join(' ')).toContain('Der Vergleich zeigt jede als Änderung.')
+  })
+
   it('says what a check does not catch in words, where no fault can be injected', () => {
     for (const art of genauigkeitArten()) expect(art.faults.length || art.missed.length).toBeTruthy()
   })
@@ -208,7 +221,8 @@ describe('in short', () => {
     for (const art of genauigkeitArten()) {
       if (art.faults.length) {
         // A Land's Textgegenüberstellung has no blind class since 20.11.2026: its blind spot is the §§ not held word for word, a count in the sentence.
-        expect(art.faults.filter((f) => f.blind)).toHaveLength(art.id === 'land-gegenueberstellung' ? 0 : 1)
+        // Nor has the Bund's station comparison: what it cannot see — one word misread alike in both texts — no fault can be injected for.
+        expect(art.faults.filter((f) => f.blind)).toHaveLength(['land-gegenueberstellung', 'stationen'].includes(art.id) ? 0 : 1)
         expect(art.consequence).toMatch(/\.$/)
       } else expect(art.consequence).toBeNull()
     }

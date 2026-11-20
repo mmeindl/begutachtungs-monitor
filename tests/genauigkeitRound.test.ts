@@ -43,7 +43,10 @@ function round(): Record<string, any> {
     'acc-ris.json': { ...stamp, ...reach(1), reports: [{ citation: '4D9E1224', touched: 1, shown: 0, causes: { 'kein-anhang': 1 }, failures: [] }] },
     'annex-pdf.json': { ...stamp, drafts: [{ note: null, verifiedParas: 5, withheldParas: 1, withheldStanding: 0, uncheckedParas: 0 }] },
     'annex-xml.json': { ...stamp, drafts: [] },
-    'station.json': { ...stamp, ...reach(91), drafts: 91, pairs: 453, breaches: [], residues: [], nullUnits: { 'parlament-bgbl': 10, 'html-xml': 5 } },
+    'station.json': {
+      ...stamp, ...reach(91), drafts: 91, pairs: 453, breaches: [], residues: [], nullUnits: { 'parlament-bgbl': 10, 'html-xml': 5 },
+      mutations: { units: 50, classes: { ziffer: { tried: 40, änderung: 40, redaktionell: 0, unverändert: 0, unsichtbar: 0, ungepaart: 0 }, minus: { tried: 30, änderung: 28, redaktionell: 1, unverändert: 1, unsichtbar: 0, ungepaart: 0 } } },
+    },
     'land-guard/summary.json': { ...stamp, lands: ['Wien'], documents: 1, compared: 2, shown: 2, judged: 1, found: 1, faults: [], strict: { held: 2, differs: 0, unchecked: 0 } },
     'land-st/summary.json': { ...stamp, pairs: 1, compared: 1, hits: 0, accepted: 0, withheld: 0, withheldPairs: 0, unread: 0, unreadPairs: 0, stale: 0 },
   }
@@ -227,5 +230,40 @@ describe('the bench\'s designations and its second witness', () => {
     const r = round()
     delete r['kons.json'].witness
     expect(build(r).lesefassung.bench.witnessed).toBeUndefined()
+  })
+})
+
+describe('what the figures count', () => {
+  it('reads „ohne die Prüfung" as the gate without the oracle: every plausible §, not every § without a refusal', () => {
+    const records = round()
+    records['kons.json'].gate = {
+      'plausibel|bestätigt|identisch|ohne Verweigerung|XML': 459,
+      'plausibel|bestätigt|unvollständig|ohne Verweigerung|PDF': 1,
+      'plausibel|widersprochen|identisch|ohne Verweigerung|PDF': 900,
+      'plausibel|widersprochen|abweichend|ohne Verweigerung|PDF': 4,
+      'unplausibel|kein Orakel|identisch|ohne Verweigerung|—': 9,
+      'unplausibel|kein Orakel|abweichend|verweigert|—': 16,
+    }
+    expect(build(records).lesefassung.bench.ungated).toEqual({ shown: 1364, identical: 1359 })
+  })
+
+  it('leaves out an annex fault at a § the gate had withheld before the fault: it says nothing about the fault', () => {
+    const records = round()
+    records['fi-pdf.json'].annex = [{ key: 'U', tried: 100, caught: 29, alreadyWithheld: 24 }]
+    records['fi-xml.json'].annex = [{ key: 'U', tried: 50, caught: 0 }]
+    const { faults } = build(records).annex
+    expect(faults.pdf).toEqual([{ key: 'U', tried: 76, caught: 5 }])
+    expect(faults.table).toEqual([{ key: 'U', tried: 50, caught: 0 }])
+  })
+
+  it('carries the changes injected into the station comparison, caught where the page shows a change', () => {
+    const record = build(round())
+    expect(record.stations.faults).toEqual([{ key: 'ziffer', tried: 40, caught: 40 }, { key: 'minus', tried: 30, caught: 28 }])
+  })
+
+  it('refuses a station record that was not held to faults', () => {
+    const records = round()
+    delete records['station.json'].mutations
+    expect(refusals(records)).toEqual([expect.stringMatching(/station\.json.*--mutationen/)])
   })
 })
