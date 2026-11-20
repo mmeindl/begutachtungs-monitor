@@ -20,6 +20,7 @@ import { gapDe, type GapKind } from '#shared/utils/gaps'
 import { formatDateDe } from '#shared/utils/format'
 import type { AnnexWithheldCause, ConsolidatedLaterAmendment, ConsolidatedNotRun, ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheldCause, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
 import { annexUnitId, explanationKey } from '#shared/utils/explanationKey'
+import { UNIT_WORD_DE, type UnitKind, type UnitWordDe } from '#shared/utils/unitWord'
 
 /**
  * Why a § carries no Lesefassung: the server's causes, and one only the page
@@ -54,6 +55,8 @@ export interface UnplacedOutcome {
 export interface LawEnd {
   outcomes: UnplacedOutcome[]
   explanations: ParagraphExplanationView[]
+  /** What the law's units are, where they are not Paragraphen (`unitWord.ts`); absent for a law of §§. */
+  unit?: UnitKind
 }
 
 /**
@@ -154,45 +157,61 @@ export function showsInstructedChange(rows: readonly TextComparisonRow[]): boole
   return rows.some((r) => r.kind === 'pair' && r.change !== 'unchanged' && !r.editorial && !r.elisionRange)
 }
 
-const CAUSE_TEXT: Record<LesefassungCause, string> = {
-  verweigert: 'Eine Anweisung des Entwurfs zu diesem Paragraphen konnten wir nicht sicher anwenden.',
-  unplausibel: 'Unser Ergebnis hat die Plausibilitätsprüfung nicht bestanden.',
-  'nicht-geladen': 'Der Entwurf ändert mehr Paragraphen, als wir für eine Seite laden.',
-  'kein-anhang': 'Ohne lesbare Gegenüberstellung bestätigt niemand unser Ergebnis.',
-  'anhang-schweigt': 'Zu diesem Paragraphen fanden wir in der Beilage keine Änderung, an der sich unser Ergebnis prüfen ließe.',
+/**
+ * The sentences take the unit's word (`unitWord.ts`): `u` is the unit the
+ * sentence stands at, `all` the plural over the whole draft, for the one
+ * sentence that counts across its laws.
+ */
+const CAUSE_TEXT: Record<LesefassungCause, (u: UnitWordDe, all: string) => string> = {
+  verweigert: (u) => `Eine Anweisung des Entwurfs zu diesem ${u.oblique} konnten wir nicht sicher anwenden.`,
+  unplausibel: () => 'Unser Ergebnis hat die Plausibilitätsprüfung nicht bestanden.',
+  'nicht-geladen': (_, all) => `Der Entwurf ändert mehr ${all}, als wir für eine Seite laden.`,
+  'kein-anhang': () => 'Ohne lesbare Gegenüberstellung bestätigt niemand unser Ergebnis.',
+  'anhang-schweigt': (u) => `Zu diesem ${u.oblique} fanden wir in der Beilage keine Änderung, an der sich unser Ergebnis prüfen ließe.`,
   // 20.11.2026: „fanden wir so nicht im RIS" read as the ministry's fault. All 232 such §§ were held
   // against every RIS Fassung: in 152 the monitor misread the annex or the RIS text, or looked up a
   // Fassung promulgated later. The sentence says what is known — the two could not be matched.
-  'anhang-fremd': 'Den geltenden Text, von dem die Beilage hier ausgeht, konnten wir nicht mit dem RIS abgleichen.',
+  'anhang-fremd': () => 'Den geltenden Text, von dem die Beilage hier ausgeht, konnten wir nicht mit dem RIS abgleichen.',
   // 20.11.2026: „weicht von der Beilage ab" put the deviation on our result. In a sample of 64, the
   // annex differed from the draft's own wording in 40. Who deviates, the comparison alone does not say.
-  'anhang-widerspricht': 'Unser Ergebnis und die Beilage stimmen hier nicht überein.',
-  'gesetz-unbekannt': 'Das geänderte Gesetz fanden wir im RIS nicht eindeutig.',
-  'nummer-doppelt': 'Die Nummer steht im geänderten Gesetz mehrmals, in verschiedenen Artikeln.',
-  'nicht-im-ris': 'Diesen Paragraphen fanden wir im geltenden Text im RIS nicht.',
-  'nicht-lesbar': 'Das RIS führt diesen Paragraphen in einer Form, die wir nicht lesen können, etwa als Tabelle.',
-  'zu-lang': 'Der Paragraph ist zu lang für unseren Vergleich.',
-  entfaellt: 'Unter dieser Nummer steht nach dem Entwurf kein Paragraph mehr.',
-  'anhang-ungeteilt': 'Wo in der Beilage ein Gesetz endet und das nächste beginnt, lesen wir nicht heraus; so ordnen wir den Paragraphen keinem Gesetz sicher zu.',
-  'neu-erlassen': 'Dieses Gesetz erlässt der Entwurf neu, und seinen ganzen Text enthält er selbst; wir setzen nur Änderungen bestehender Gesetze zusammen.',
-  'nicht-gefunden': 'Eine Anweisung des Entwurfs zu diesem Paragraphen fanden wir nicht.',
+  'anhang-widerspricht': () => 'Unser Ergebnis und die Beilage stimmen hier nicht überein.',
+  'gesetz-unbekannt': () => 'Das geänderte Gesetz fanden wir im RIS nicht eindeutig.',
+  'nummer-doppelt': () => 'Die Nummer steht im geänderten Gesetz mehrmals, in verschiedenen Artikeln.',
+  'nicht-im-ris': (u) => `Diesen ${u.oblique} fanden wir im geltenden Text im RIS nicht.`,
+  'nicht-lesbar': (u) => `Das RIS führt diesen ${u.oblique} in einer Form, die wir nicht lesen können, etwa als Tabelle.`,
+  'zu-lang': (u) => `Der ${u.nominative} ist zu lang für unseren Vergleich.`,
+  entfaellt: (u) => `Unter dieser Nummer steht nach dem Entwurf kein ${u.nominative} mehr.`,
+  'anhang-ungeteilt': (u) => `Wo in der Beilage ein Gesetz endet und das nächste beginnt, lesen wir nicht heraus; so ordnen wir den ${u.oblique} keinem Gesetz sicher zu.`,
+  'neu-erlassen': () => 'Dieses Gesetz erlässt der Entwurf neu, und seinen ganzen Text enthält er selbst; wir setzen nur Änderungen bestehender Gesetze zusammen.',
+  'nicht-gefunden': (u) => `Eine Anweisung des Entwurfs zu diesem ${u.oblique} fanden wir nicht.`,
 }
 
-/** The reason as it stands at the §, alone — for `/genauigkeit`, which lists every reason with its count. */
-export function lesefassungCauseText(cause: LesefassungCause): string {
-  return CAUSE_TEXT[cause]
+/**
+ * The reason as it stands at the unit, alone. Without a unit it speaks of
+ * the Paragraph — for `/genauigkeit` and `/datenlage`, which list every
+ * reason with its count over all drafts. `all`: the units of the whole
+ * draft in the plural (`unitsPluralDe`), the unit's own where not given.
+ */
+export function lesefassungCauseText(cause: LesefassungCause, unit: UnitKind = 'paragraph', all: string = UNIT_WORD_DE[unit].plural): string {
+  return CAUSE_TEXT[cause](UNIT_WORD_DE[unit], all)
 }
 
 /**
  * The line that stands at a § of the annex where the disclosure would — or
  * null where the block needs none: a § the draft repeals or moves away
  * (`entfaellt`) stands in the annex as struck rows, which say it already.
- * `designation` names the § where a block carries more than one.
+ * `designation` names the § where a block carries more than one; `unit` is
+ * what the block's law counts in, `all` as for `lesefassungCauseText`.
  */
-export function lesefassungLine(lesefassung: Lesefassung, designation: string | null = null): string | null {
+export function lesefassungLine(lesefassung: Lesefassung, designation: string | null = null, unit: UnitKind = 'paragraph', all?: string): string | null {
   if (lesefassung.kind !== 'withheld' || lesefassung.cause === 'entfaellt') return null
-  const what = designation ? `${designation.replace(/\.$/, '')} ` : 'Paragraph '
-  return `Ganzer ${what}in der vorgeschlagenen Fassung nicht gezeigt: ${CAUSE_TEXT[lesefassung.cause]}`
+  const what = designation ? `${designation.replace(/\.$/, '')} ` : `${UNIT_WORD_DE[unit].nominative} `
+  return `Ganzer ${what}in der vorgeschlagenen Fassung nicht gezeigt: ${lesefassungCauseText(lesefassung.cause, unit, all)}`
+}
+
+/** The fold over a unit our Lesefassung shows: „Ganzer Paragraph in der vorgeschlagenen Fassung (nicht amtlich)". */
+export function lesefassungSummary(unit: UnitKind = 'paragraph'): string {
+  return `Ganzer ${UNIT_WORD_DE[unit].nominative} in der vorgeschlagenen Fassung (nicht amtlich)`
 }
 
 /** Why the run did not happen, and whose gap that is (`shared/utils/gaps.ts`). */
@@ -203,24 +222,37 @@ const NOT_RUN: Record<ConsolidatedNotRun, { kind: GapKind; text: string }> = {
   'keine-novelle': { kind: 'outOfScope', text: 'So wie der Monitor den Entwurf liest, ändert er kein bestehendes Gesetz; ganze Paragraphen setzt er nur für Änderungen zusammen.' },
 }
 
-/** Said once, at the foot of the section, where the run did not happen — null where it did. */
-export function lesefassungNotRunText(response: ConsolidatedTextResponse | null): string | null {
+/** What the two sentences about the whole layer are about, after the lead word. */
+const lesefassungWhole = (all: string): string => `die ganzen ${all} in der vorgeschlagenen Fassung.`
+
+/**
+ * Said once, at the foot of the section, where the run did not happen — null
+ * where it did. `all`: what the draft's laws count in (`unitsPluralDe`).
+ */
+export function lesefassungNotRunText(response: ConsolidatedTextResponse | null, all: string = UNIT_WORD_DE.paragraph.plural): string | null {
   if (!response?.notRun) return null
   const { kind, text } = NOT_RUN[response.notRun]
-  return gapDe(kind, `die ganzen Paragraphen in der vorgeschlagenen Fassung. ${text}`)
+  return gapDe(kind, `${lesefassungWhole(all)} ${text}`)
+}
+
+/** The same layer where its request failed. */
+export function lesefassungUnreachableText(all: string = UNIT_WORD_DE.paragraph.plural): string {
+  return gapDe('unavailable', lesefassungWhole(all))
 }
 
 /**
  * „§ 12", „§§ 12 und 14", „§§ 12, 14 und 30", schedules as RIS names them
  * („Anl. 1") — the units an end-of-law list names, in the server's order.
+ * „Art. 94", „Art. 94 und 94a" in a law whose units are Artikel (`unit`).
  */
-export function unitList(ids: readonly string[]): string {
+export function unitList(ids: readonly string[], unit: UnitKind = 'paragraph'): string {
+  const { sign, signs } = UNIT_WORD_DE[unit]
   const paras = ids.filter((id) => !/^Anl\.?/i.test(id))
   const schedules = ids.filter((id) => /^Anl\.?/i.test(id))
   const and = (xs: readonly string[]): string => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} und ${xs[xs.length - 1]}`)
   const parts: string[] = []
-  if (paras.length === 1) parts.push(`§ ${paras[0]}`)
-  else if (paras.length > 1) parts.push(`§§ ${and(ranges(paras))}`)
+  if (paras.length === 1) parts.push(`${sign} ${paras[0]}`)
+  else if (paras.length > 1) parts.push(`${signs} ${and(ranges(paras))}`)
   if (schedules.length) parts.push(and(schedules))
   return parts.join(' sowie ')
 }
@@ -257,8 +289,18 @@ function ranges(ids: readonly string[]): string[] {
  * group for it. „fanden wir" and not „enthält nicht": the block may be there
  * under a designation we read differently, and then the gap is ours.
  */
-export function unplacedText(ids: readonly string[]): string {
-  return `Der Entwurf ändert hier auch ${unitList(ids)}; in der Beilage fanden wir ${ids.length === 1 ? 'dazu' : 'zu ihnen'} keine Gegenüberstellung.`
+export function unplacedText(ids: readonly string[], unit: UnitKind = 'paragraph'): string {
+  return `Der Entwurf ändert hier auch ${unitList(ids, unit)}; in der Beilage fanden wir ${ids.length === 1 ? 'dazu' : 'zu ihnen'} keine Gegenüberstellung.`
+}
+
+/**
+ * Under a law's name where the annex's units could not be told apart by law
+ * (`boundaryNote`): the law may well be in it. `explained`: the ministry's
+ * reasoning on it stands below, and the second sentence says why here.
+ */
+export function undividedText(explained: boolean, unit: UnitKind = 'paragraph'): string {
+  const u = UNIT_WORD_DE[unit]
+  return `Die ${u.plural} der Gegenüberstellung ließen sich keinem einzelnen Gesetz zuordnen.${explained ? ` Was das Ministerium zu diesem Gesetz schreibt, steht deshalb hier und nicht am ${u.oblique}.` : ''}`
 }
 
 /**
@@ -272,7 +314,9 @@ export function mergesIntoNotice(lesefassung: Lesefassung | null, annexCause: An
 }
 
 /** The sentence the annex notice then ends with. */
-export const NOTICE_LESEFASSUNG_TOO = 'Den ganzen Paragraphen in der vorgeschlagenen Fassung zeigen wir deshalb auch nicht.'
+export function noticeLesefassungToo(unit: UnitKind = 'paragraph'): string {
+  return `Den ganzen ${UNIT_WORD_DE[unit].oblique} in der vorgeschlagenen Fassung zeigen wir deshalb auch nicht.`
+}
 
 /**
  * The sentence at a § whose standing text is not what RIS returns today for
@@ -290,13 +334,13 @@ export const NOTICE_LESEFASSUNG_TOO = 'Den ganzen Paragraphen in der vorgeschlag
  * on a withheld one it stands beside the reason. `designation` names the §
  * where a block carries more than one.
  */
-export function laterAmendmentText(note: ConsolidatedLaterAmendment, shown: boolean, designation: string | null = null): string {
-  const what = designation ? designation.replace(/\.$/, '') : 'diesen Paragraphen'
+export function laterAmendmentText(note: ConsolidatedLaterAmendment, shown: boolean, designation: string | null = null, unit: UnitKind = 'paragraph'): string {
+  const what = designation ? designation.replace(/\.$/, '') : `diesen ${UNIT_WORD_DE[unit].oblique}`
   const issued = note.issued ? ` vom ${formatDateDe(note.issued)}` : ''
   return `Ausgangstext ist die Fassung vom Beginn der Begutachtung (${formatDateDe(note.asOf)}). Für diesen Tag führt das RIS ${what} heute in einer Fassung, die erst das ${note.cite}${issued} gebracht hat${shown ? '; sie ist hier nicht eingearbeitet' : ''}.`
 }
 
 /** The same sentence for a withheld § at its block, or null where none is owed. */
-export function laterAmendmentLine(lesefassung: Lesefassung, designation: string | null = null): string | null {
-  return lesefassung.kind === 'withheld' && lesefassung.laterAmendment ? laterAmendmentText(lesefassung.laterAmendment, false, designation) : null
+export function laterAmendmentLine(lesefassung: Lesefassung, designation: string | null = null, unit: UnitKind = 'paragraph'): string | null {
+  return lesefassung.kind === 'withheld' && lesefassung.laterAmendment ? laterAmendmentText(lesefassung.laterAmendment, false, designation, unit) : null
 }

@@ -17,14 +17,16 @@
  */
 import type { ConsolidatedParagraph } from '#shared/types'
 import { absaetze } from '~/utils/absaetze'
-import { laterAmendmentText } from '~/utils/lesefassung'
+import type { UnitKind } from '#shared/utils/unitWord'
+import { laterAmendmentText, lesefassungSummary } from '~/utils/lesefassung'
 
-defineProps<{ paragraph: ConsolidatedParagraph }>()
+/** `unit`: what the law counts in, where that is not Paragraphen („Ganzer Artikel …", the B-VG). */
+defineProps<{ paragraph: ConsolidatedParagraph; unit?: UnitKind }>()
 </script>
 
 <template>
   <Disclosure size="xs" tone="ink">
-    <template #summary>Ganzer Paragraph in der vorgeschlagenen Fassung (nicht amtlich)</template>
+    <template #summary>{{ lesefassungSummary(unit) }}</template>
     <div class="mt-1 pl-6">
       <!-- „nicht amtlich" stands IN the summary since 30.09.2026, so it is
            read before the disclosure opens, not after; inside, only how
@@ -57,7 +59,7 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
            it brought (`standingOnDay`, 20.11.2026). In the line's own
            register, not a `GapNote`: nothing is missing, the sentence says
            which text this is. -->
-      <p v-if="paragraph.laterAmendment" class="mt-1 text-xs text-ink-muted">{{ laterAmendmentText(paragraph.laterAmendment, true) }}</p>
+      <p v-if="paragraph.laterAmendment" class="mt-1 text-xs text-ink-muted">{{ laterAmendmentText(paragraph.laterAmendment, true, null, unit) }}</p>
       <p v-if="paragraph.headingSegments" class="mt-2 text-sm font-semibold text-ink">
         <DiffText :segments="paragraph.headingSegments" removed-normal-weight />
       </p>

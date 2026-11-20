@@ -22,11 +22,13 @@ import { annexBadge, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexPa
 import { enactedHaystack, newLawGroups } from '~/utils/newLawGroups'
 import { annexParagraphCiteDe, citeLineDe } from '#shared/utils/citations'
 import { lawNameOf } from '#shared/utils/lawName'
-import { NOTICE_LESEFASSUNG_TOO, laterAmendmentLine, lesefassungLine, lesefassungNotRunText, mergesIntoNotice } from '~/utils/lesefassung'
+import { laterAmendmentLine, lesefassungLine, lesefassungNotRunText, lesefassungUnreachableText, mergesIntoNotice, noticeLesefassungToo } from '~/utils/lesefassung'
+import { unitsPluralDe, type UnitKind } from '#shared/utils/unitWord'
 import {
   annexDoubtfulGroupNote,
   annexDoubtfulNote,
   annexDroppedPagesNote,
+  annexElisionLead,
   annexFrontMatterGroupNote,
   annexFrontMatterNotes,
   annexUncheckedNote,
@@ -166,9 +168,17 @@ watch([status, data], () => {
  * about the layer below the annex, not about the annex.
  */
 const lesefassungNote = computed(() => {
-  if (consolidatedStatus.value === 'error') return 'Gerade nicht abrufbar: die ganzen Paragraphen in der vorgeschlagenen Fassung.'
-  return lesefassungNotRunText(consolidated.value ?? null)
+  if (consolidatedStatus.value === 'error') return lesefassungUnreachableText(draftUnits.value)
+  return lesefassungNotRunText(consolidated.value ?? null, draftUnits.value)
 })
+/**
+ * What the draft's laws count in, for a sentence about all of them:
+ * „Paragraphen", „Artikel" where every law of the annex is divided into
+ * Artikel (82/ME XXVIII), „Paragraphen und Artikel" where it carries both
+ * (127/ME XXVIII). From the annex's rows, so it is known even where the
+ * Lesefassung's request failed.
+ */
+const draftUnits = computed(() => unitsPluralDe(placed.value.unitKinds))
 
 /**
  * The line at a § where the disclosure would stand — null where there is
@@ -177,7 +187,7 @@ const lesefassungNote = computed(() => {
  */
 function lineFor(p: AnnexPara, l: PlacedLesefassung): string | null {
   if (p.blocks.some((b) => b.kind === 'withheld' && mergesIntoNotice(l.lesefassung, b.cause))) return null
-  return lesefassungLine(l.lesefassung, p.lesefassungen.length > 1 ? l.designation : null)
+  return lesefassungLine(l.lesefassung, p.lesefassungen.length > 1 ? l.designation : null, p.unit, draftUnits.value)
 }
 
 /** Whether the withheld notice of this § takes the Lesefassung's sentence. */
@@ -378,10 +388,9 @@ const doubtfulGroupNote = computed(() => annexDoubtfulGroupNote(data.value?.read
  *  said in the law's group, above the comparison only for an undivided annex
  *  and a law no group carries (the doubtful-law rule). */
 const frontMatterLaws = computed(() => new Set(data.value?.frontMatterDiffers ?? []))
-const frontMatterGroupNote = annexFrontMatterGroupNote()
 const frontMatterNotes = computed(() => {
   const keys = new Set(placed.value.groupKeys)
-  return annexFrontMatterNotes([...frontMatterLaws.value].filter((l) => l === null || !keys.has(l)).map(lawName))
+  return annexFrontMatterNotes([...frontMatterLaws.value].filter((l) => l === null || !keys.has(l)).map(lawName), placed.value.unitOf(null))
 })
 const doubtfulNote = computed(() => {
   const keys = new Set(placed.value.groupKeys)
@@ -389,9 +398,9 @@ const doubtfulNote = computed(() => {
 })
 /** Why the §'s changes are not shown, and — where the cause is the layout
  *  — whose layout: the blame asked for once. */
-function withheldReason(cause: AnnexWithheldCause | null): string {
-  const blame = annexWithheldBlame(cause, data.value?.readFrom ?? null)
-  return blame ? `${annexWithheldText(cause)} ${blame}` : annexWithheldText(cause)
+function withheldReason(cause: AnnexWithheldCause | null, unit: UnitKind): string {
+  const blame = annexWithheldBlame(cause, data.value?.readFrom ?? null, unit)
+  return blame ? `${annexWithheldText(cause, unit)} ${blame}` : annexWithheldText(cause, unit)
 }
 </script>
 
@@ -483,7 +492,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
           @more="showAll(g.key)"
         >
           <p v-if="doubtfulLaws.has(g.key)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ doubtfulGroupNote }}</p>
-          <GapNote v-if="frontMatterLaws.has(g.key)" :text="frontMatterGroupNote" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary" />
+          <GapNote v-if="frontMatterLaws.has(g.key)" :text="annexFrontMatterGroupNote(placed.unitOf(g.key))" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary" />
           <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-4 py-3 last:border-b-0">
             <!-- The paragraph as law prints it: designation and title on one
                  line, once, above its Absätze — and no rule between the two,
@@ -561,9 +570,9 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                 <!-- The space as a string: Vue's whitespace condensing drops
                      a leading space inside `<template v-if>`, which printed
                      „…im RIS.Das kann …" (seen 30.09.2026). -->
-                {{ withheldReason(b.cause) }}
+                {{ withheldReason(b.cause, p.unit) }}
                 Die Beilage des Ministeriums sagt, was sich ändert.
-                <template v-if="noticeTakesLesefassung(p, b.cause)">{{ ' ' + NOTICE_LESEFASSUNG_TOO }}</template>
+                <template v-if="noticeTakesLesefassung(p, b.cause)">{{ ' ' + noticeLesefassungToo(p.unit) }}</template>
               </p>
               <Disclosure v-else-if="b.kind === 'context'" size="xs" tone="muted">
                 <template #summary>{{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert</template>
@@ -609,7 +618,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                      hides what it means. -->
                 <template v-if="b.row.elisionRange" #lead>
                   <p class="mb-1 text-sm leading-relaxed text-ink-secondary">
-                    Nicht der Paragraph ändert sich, sondern der Bereich, den die Beilage auslässt.
+                    {{ annexElisionLead(p.unit) }}
                   </p>
                 </template>
               </DiffBody>
@@ -632,7 +641,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
             <template v-for="l in p.lesefassungen" :key="l.designation ?? ''">
               <div v-if="l.lesefassung.kind === 'shown'" class="mt-3">
                 <p v-if="p.lesefassungen.length > 1" class="text-xs font-medium text-ink">{{ l.designation }}</p>
-                <LesefassungDisclosure :paragraph="l.lesefassung.paragraph" />
+                <LesefassungDisclosure :paragraph="l.lesefassung.paragraph" :unit="p.unit" />
               </div>
               <p v-else-if="lineFor(p, l)" class="mt-3 text-xs text-ink-muted">{{ lineFor(p, l) }}</p>
               <!-- A withheld § for whose day RIS files a later BGBl's
@@ -640,7 +649,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                    does inside its disclosure — also where the reason line
                    merged into the annex notice above. -->
               <p v-if="laterAmendmentLine(l.lesefassung)" :class="lineFor(p, l) ? 'mt-1' : 'mt-3'" class="text-xs text-ink-muted">
-                {{ laterAmendmentLine(l.lesefassung, p.lesefassungen.length > 1 ? l.designation : null) }}
+                {{ laterAmendmentLine(l.lesefassung, p.lesefassungen.length > 1 ? l.designation : null, p.unit) }}
               </p>
             </template>
           </section>
