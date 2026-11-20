@@ -822,6 +822,41 @@ function isGroupHeadingOnly(stretch: string): boolean {
 }
 
 /**
+ * The rows of a § without the next group's heading at their foot
+ * (20.11.2026). The table path files the heading of the group that follows
+ * a § — „3a. Abschnitt", then its title „Organhandel und verwandte strafbare
+ * Handlungen" on a row of its own — under the § above it (StGB § 104b,
+ * 122/ME XXVIII; EU-JZG § 23, 161/ME: „IIa. Hauptstück", „Durchführung der
+ * Verordnung (EU) 2024/3011"). The result carries no group headings by
+ * design, so check 2 looked for them in vain. A stretch that is nothing but a
+ * group heading was passed over already (`isGroupHeadingOnly`); its title on
+ * the next row was not.
+ *
+ * Only at the foot: from a row that is a group heading alone to the last
+ * row, every row after it a title — short, no full stop, colon or semicolon
+ * at its end, no § symbol, no Absatz marker — and at least one row of the §
+ * itself above. A § heading stands above the § body, never below it, so the
+ * rule cannot take one.
+ */
+function withoutNextGroup(rows: readonly ComparisonRow[]): readonly ComparisonRow[] {
+  let cut = rows.length
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i]!
+    if (row.kind !== 'pair' || row.elided) break
+    const cells = [row.current, row.proposed].filter(Boolean)
+    if (cells.length === 0) break
+    if (cells.every(isGroupHeadingOnly)) {
+      cut = i
+      continue
+    }
+    if (cells.every((c) => c.length <= 120 && /^[\p{Lu}\d]/u.test(c) && !/[.;:]$/.test(c) && !/§|^\s*\(\d/.test(c))) continue
+    break
+  }
+  if (cut === rows.length || !rows.slice(0, cut).some((r) => r.kind === 'pair' && !r.elided && (r.current || r.proposed))) return rows
+  return rows.slice(0, cut)
+}
+
+/**
  * The older laws close the unit and the title with a full stop — „VI.
  * Hauptstück. Behandlung der aufzubewahrenden Acten.", „II. Abschnitt."
  * (Notariatsordnung). Those two dots are a heading's; any other is not.
@@ -1944,7 +1979,7 @@ function opensWith(cell: string, marker: { end: number }, opening: string): bool
 export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null, standingUnits: StandingUnits | null = null): OracleReport {
   // An omission without its „…", written out where the standing § proves it
   // (`silentOmissions`) — every check below then reads it as an omission.
-  rows = silentOmissions(rows, standingUnits).rows
+  rows = withoutNextGroup(silentOmissions(rows, standingUnits).rows)
   const substantive = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')
   if (substantive.length === 0) return { para: id, verdict: 'stumm', rows: rows.length, note: null }
 

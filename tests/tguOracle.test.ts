@@ -198,6 +198,18 @@ describe('oracleVerdict', () => {
     expect(oracleVerdict('19a', null, got.replace('Einstufung', 'Eintragung'), rows).verdict).toBe('widersprochen')
   })
 
+  it('drops the next group\'s heading and title rows at the foot of a § (20.11.2026)', () => {
+    // 122/ME XXVIII, StGB § 104b on the table path.
+    const head = 'Inanspruchnahme von Dienstleistungen eines Opfers von Menschenhandel'
+    const body = 'Wer eine Dienstleistung eines Opfers in Anspruch nimmt, ist mit Freiheitsstrafe bis zu zwei Jahren zu bestrafen.'
+    const rows = [pair('', head), pair('', body), pair('', '3a. Abschnitt'), pair('', 'Organhandel und verwandte strafbare Handlungen')]
+    expect(oracleVerdict('104b', null, `${head} ${body}`, rows)).toMatchObject({ verdict: 'bestätigt' })
+    // A title row above the body is the § heading and is still held.
+    expect(oracleVerdict('104b', null, `Inanspruchnahme von Leistungen ${body}`, rows).verdict).toBe('widersprochen')
+    // Nor is a § that is nothing but such rows emptied.
+    expect(oracleVerdict('104c', null, 'Etwas anderes.', [pair('', '3a. Abschnitt'), pair('', 'Organhandel')]).verdict).not.toBe('bestätigt')
+  })
+
   it('contradicts a result that lacks the change the annex shows', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })
