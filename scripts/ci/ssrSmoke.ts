@@ -112,6 +112,8 @@ interface Route {
   /** Was im Körper stehen muss — der `<title>`, den die Seite selbst setzt. */
   marker: string
   status?: number
+  /** Eine Server-Route, die JSON antwortet: der Körper muss sich als Objekt lesen lassen. */
+  json?: boolean
 }
 
 /**
@@ -129,6 +131,9 @@ const ROUTES: Route[] = [
   { path: '/datenschutz', marker: '<title>Datenschutz · Begutachtungs-Monitor</title>' },
   { path: '/quellen', marker: '<title>Quellen &amp; Lizenzen · Begutachtungs-Monitor</title>' },
   { path: '/wege', marker: '<title>Wege der Gesetzgebung in Österreich · Begutachtungs-Monitor</title>' },
+  // Beide rendern aus eingecheckten Daten, ohne Upstream (20.11.2026).
+  { path: '/genauigkeit', marker: '<title>Wie genau der Monitor vergleicht · Begutachtungs-Monitor</title>' },
+  { path: '/datenlage', marker: '<title>Datenlage · Begutachtungs-Monitor</title>' },
   { path: '/feed.xml', marker: '<rss' },
   { path: '/kalender.ics', marker: 'BEGIN:VCALENDAR' },
   { path: '/sitemap.xml', marker: '<urlset' },
@@ -137,23 +142,57 @@ const ROUTES: Route[] = [
   { path: '/entwuerfe/XXVIII/999999', marker: '', status: 404 },
 ]
 
-/** Die zwei Detailseiten, aus der Liste des laufenden Servers geholt. */
+/**
+ * Die zwei Detailseiten, aus der Liste des laufenden Servers geholt — und
+ * die Vergleiche, die ihre Abschnitte erst im Browser holen (20.11.2026).
+ *
+ * Die Vergleichsabschnitte laden mit `server: false`: die gerenderte Seite
+ * antwortet 200, auch wenn die Route dahinter im Bündel bricht. Genau dort
+ * sitzt aber, was nur das Artefakt zeigt — der PDF-Leser, als externes Modul
+ * aufgelöst. Darum werden die Routen selbst geholt: dieselben Upstreams wie
+ * die Seite, also keine neue Quelle für eine rote Nacht ohne Befund.
+ *
+ * KEINE Länderseite. Sie holte beim ersten Mal die Seite eines Landes von
+ * einem CI-Rechner, und ob die antwortet, entscheidet deren Firewall: eine
+ * rote Nacht, die nichts über unseren Code sagt. Die Länder hält der
+ * Uptime-Lauf an der laufenden Seite (`uptime.yml`, `/api/laender`).
+ */
 async function detailRoutes(): Promise<Route[]> {
   const out: Route[] = []
   const drafts = (await (await drive(`${base}/api/drafts?status=all`)).json()) as {
     items?: { gp: string; inr: number }[]
   }
   const first = drafts.items?.[0]
-  if (first) out.push({ path: `/entwuerfe/${first.gp}/${first.inr}`, marker: '<title>' })
+  if (first) {
+    out.push({ path: `/entwuerfe/${first.gp}/${first.inr}`, marker: '<title>' })
+    for (const part of ['gegenueberstellung', 'konsolidiert', 'diff', 'begruendung']) {
+      out.push({ path: `/api/drafts/${first.gp}/${first.inr}/${part}`, marker: '', json: true })
+    }
+  }
   const ris = (await (await drive(`${base}/api/ris-drafts?status=all`)).json()) as {
     items?: { id: string }[]
   }
   const firstRis = ris.items?.[0]
-  if (firstRis) out.push({ path: `/entwuerfe/${firstRis.id}`, marker: '<title>' })
-  if (out.length < 2) {
+  if (firstRis) {
+    out.push({ path: `/entwuerfe/${firstRis.id}`, marker: '<title>' })
+    for (const part of ['gegenueberstellung', 'konsolidiert']) {
+      out.push({ path: `/api/ris-drafts/${firstRis.id}/${part}`, marker: '', json: true })
+    }
+  }
+  if (!first || !firstRis) {
     throw new Error('Keine Detailseite zu prüfen — die Liste des Servers ist leer, und das ist selbst ein Befund')
   }
   return out
+}
+
+/** Ob der Körper ein JSON-Objekt ist: eine Fehlerseite in HTML oder ein leerer Körper ist es nicht. */
+function isJsonObject(body: string): boolean {
+  try {
+    const value: unknown = JSON.parse(body)
+    return typeof value === 'object' && value !== null
+  } catch {
+    return false
+  }
 }
 
 await waitForServer()
@@ -167,11 +206,13 @@ for (const route of routes) {
   try {
     const res = await drive(`${base}${route.path}`, { signal: AbortSignal.timeout(120_000) })
     const body = await res.text()
-    const ok = res.status === want && (route.marker === '' || body.includes(route.marker))
+    const readable = !route.json || isJsonObject(body)
+    const ok = res.status === want && readable && (route.marker === '' || body.includes(route.marker))
     line = `${ok ? '✔' : '✘'} ${String(res.status).padStart(3)}  ${route.path}  (${Date.now() - started} ms, ${body.length} B)`
     if (!ok) {
       failed++
       if (res.status !== want) line += `\n     erwartet: HTTP ${want}`
+      else if (!readable) line += '\n     der Körper ist kein JSON-Objekt'
       else line += `\n     fehlt im Körper: ${route.marker}`
     }
   } catch (err) {
