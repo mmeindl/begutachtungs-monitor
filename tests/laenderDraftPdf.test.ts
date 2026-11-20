@@ -484,3 +484,49 @@ describe('a § whose sign is lost, and a title over two lines', () => {
     expect(lgblUnits(lgbl).map((u) => u.id)).toEqual(['§35', '§36'])
   })
 })
+
+// A new law's „§ N" over a § with no title: its first line is text. Taken
+// for the title, the page showed it as a heading the Landesgesetzblatt
+// inserted (Salzburg 31933 § 1, 32477 § 2, 33078 § 3; 20.11.2026).
+describe('the first line of an untitled § is its text, not its title', () => {
+  const headings = (pages: string[]) => lawBlocksFromPdfPages(pages)!.filter((b) => b.kind === 'para_head').map((b) => b.text)
+  const texts = (pages: string[]) => landDraftUnits(pages)!.map((u) => `${u.id} ${u.text}`)
+
+  it('reads a line that fills the measure, with no „(1)" under it, as the start of the text (sbg-32477)', () => {
+    const pages = [page('Verordnung der Salzburger Landesregierung vom ........................................... über die',
+      'Umlegung der Landesstraße L 214 Kleinarler Straße im Bereich der Marktgemeinde',
+      'Wagrain (Straßenumlegungsverordnung Marktgemeinde Wagrain)',
+      'Auf Grund § 19 Abs 2 des Salzburger Landesstraßengesetzes 1972, LGBl Nr 119/1972, in der',
+      'geltenden Fassung wird verordnet:',
+      '§ 1',
+      '(1) Die L 214 Kleinarler Landesstraße wird im Ortsgebiet von Wagrain wie folgt umgelegt:',
+      'Die neue Trasse der L 214 Kleinarler Straße beginnt bei dem neu errichteten Kreisverkehr bei',
+      'Bezugspunkt Straßenkilometer D 0,00 (neu), verläuft sodann westlich der Kleinarler Ache entlang des',
+      'Grafenberges, schwenkt in der Folge in Richtung Süd-Osten und bindet im Bereich des',
+      'Kirchbodenanschlusses beim neu errichteten Kreisverkehr bei Straßenkilometer D 0,51 (neu) wieder in',
+      'den Bestand der L 214 ein.',
+      '(2) Im Einzelnen ist der Verlauf der neuen Straßentrasse aus der einen wesentlichen Bestandteil',
+      'dieser Verordnung bildenden Anlage (Verordnungsplan vom 14.02.2022, M 1:1000) zu entnehmen.',
+      '§ 2',
+      'Mit der Umlegung des neuen Straßenabschnittes gemäß § 1 gilt die bestehende L 214 Kleinarler',
+      'Straße zwischen Bezugspunkt Straßenkilometer 0,00 (alt) und Bezugspunkt Straßenkilometer 0,36 (alt)',
+      'als Landesstraße L aufgelassen.')]
+    expect(headings(pages)).toEqual([])
+    expect(texts(pages).at(-1)).toBe('§2 Mit der Umlegung des neuen Straßenabschnittes gemäß § 1 gilt die bestehende L 214 Kleinarler Straße zwischen Bezugspunkt Straßenkilometer 0,00 (alt) und Bezugspunkt Straßenkilometer 0,36 (alt) als Landesstraße L aufgelassen.')
+  })
+
+  it('reads a line closed by a full stop as text (Salzburg 32027 § 2)', () => {
+    const pages = [page('Verordnung der Salzburger Landesregierung vom ...', 'wird verordnet:', '§ 1', '(1) Die Grenze wird geändert.',
+      '§ 2', 'Diese Verordnung tritt mit 1. Juli 2025 in Kraft.')]
+    expect(headings(pages)).toEqual([])
+    expect(texts(pages).at(-1)).toBe('§2 Diese Verordnung tritt mit 1. Juli 2025 in Kraft.')
+  })
+
+  it('keeps a title as long, where „(1)" opens below it (Wettunternehmer, § 5)', () => {
+    const pages = [page('Der Landtag hat beschlossen:', '§ 5',
+      'Voraussetzungen für die Erteilung der Bewilligung als Wettunternehmer und Anzeigepflichten',
+      '(1) Die Ausübung der Tätigkeit eines Wettunternehmers in einer oder mehreren Betriebsstätten',
+      'bedarf einer Bewilligung.')]
+    expect(headings(pages)).toEqual(['Voraussetzungen für die Erteilung der Bewilligung als Wettunternehmer und Anzeigepflichten'])
+  })
+})

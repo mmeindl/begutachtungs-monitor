@@ -227,6 +227,32 @@ function restoreLostSigns(lines: string[]): string[] {
   })
 }
 
+/** A line this long fills the measure: text that wraps, not a title set on its own line. */
+const TEXT_MEASURE = 85
+
+/**
+ * The line under a new law's „§ N" that is the first line of its text, not
+ * its title (20.11.2026): a line closed by a full stop, colon or semicolon
+ * („Diese Verordnung tritt mit 1. Jänner 2027 in Kraft.", „Im Sinn dieser
+ * Verordnung bedeuten die Begriffe:"), or one that fills the measure with no
+ * numbered Absatz under it („Für die Ausübung der sicherheitsrelevanten
+ * Tätigkeiten des Rauchfangkehrergewerbes im Sinn des" / „§ 120 Abs 1 …",
+ * Salzburg 31933). Taken for the title, it stood on the page as a heading
+ * the Landesgesetzblatt inserted, and the text lost its first line.
+ *
+ * Measured over the 849 cached Land PDFs: the title rule kept 1,433 lines
+ * as titles, 45 of them first lines of text read by hand; this check takes
+ * 36 of them back and no real title. No real title ends in one of these
+ * marks; real titles run to 90 characters with „(1)" under them, to 83
+ * without. Still read as titles: nine first lines of 64 to 84 characters
+ * (five Burgenland Gemeindegrenzen, a Burgenland Gemeindeverband, two
+ * Inkrafttreten and an Aufhebung in Oberösterreich): at that length a
+ * line does not tell its kind, and every lower measure costs real titles.
+ */
+function isFirstTextLine(line: string, next: string | undefined): boolean {
+  return /[.;:]$/.test(line) || (line.length >= TEXT_MEASURE && !/^\(\d/.test(next ?? ''))
+}
+
 /**
  * The legal text of a draft PDF as blocks, or null where no enacting clause
  * marks it — then the PDF is not a draft law this reader can take apart.
@@ -471,7 +497,7 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
         titledAbove = titleAbove !== null
         continue
       }
-      if (pendingGld && title === null && !titledAbove && !OPENS_RE.test(line)) {
+      if (pendingGld && title === null && !titledAbove && !OPENS_RE.test(line) && !isFirstTextLine(line, body[i + 1])) {
         title = line
         continue
       }

@@ -85,13 +85,15 @@ describe('numbersOnly — a unit changed by nothing but bare numbers, inserted o
 
 describe('landPairChecks — the Bund\'s checks over a Land pair (20.11.2026)', () => {
   /* Salzburg's Kehrgebietsverordnung (sbg-31933 § 1): the draft PDF prints
-     „§ 1" over a sentence whose first line ends without punctuation, and the
-     reader takes that line for the §'s title; the Landesgesetzblatt reads the
-     sentence whole, with no title. */
-  const pdf = landDraftUnits([page('Verordnung des Landeshauptmannes von Salzburg über die Festlegung von Kehrgebieten', 'Auf Grund des § 120 Abs 1 GewO 1994 wird verordnet:',
-    '§ 1', 'Für die Ausübung der sicherheitsrelevanten Tätigkeiten des Rauchfangkehrergewerbes im Sinn des',
+     „§ 1" over a sentence whose first line ends without punctuation. The
+     reader took that line for the §'s title until 20.11.2026 (`pdf`, the
+     fault rebuilt); the Landesgesetzblatt reads the sentence whole, with no
+     title, and so does the reader since (`lgbl`). */
+  const first = 'Für die Ausübung der sicherheitsrelevanten Tätigkeiten des Rauchfangkehrergewerbes im Sinn des'
+  const lgbl = landDraftUnits([page('Verordnung des Landeshauptmannes von Salzburg über die Festlegung von Kehrgebieten', 'Auf Grund des § 120 Abs 1 GewO 1994 wird verordnet:',
+    '§ 1', first,
     '§ 120 Abs 1 zweiter Satz GewO 1994 im Land Salzburg werden folgende Kehrgebiete festgelegt:', '1. Jene Gebiete der Stadtgemeinde Salzburg.')])!
-  const lgbl = pdf.map((u) => ({ ...u, heading: null, text: `${u.heading} ${u.text}` }))
+  const pdf = lgbl.map((u) => ({ ...u, heading: first, text: u.text.slice(first.length + 1) }))
   const checks = (from: LawUnit[], to: LawUnit[]) => {
     const served = diffLandDraft(from, to)
     return landPairChecks({ from, to, served, before: served, back: diffLandDraft(to, from), compared: comparedText })
@@ -102,7 +104,8 @@ describe('landPairChecks — the Bund\'s checks over a Land pair (20.11.2026)', 
   })
 
   it('names a unit that carries the earlier side\'s heading where the later side has none', () => {
-    expect(pdf[0]!.heading).toBe('Für die Ausübung der sicherheitsrelevanten Tätigkeiten des Rauchfangkehrergewerbes im Sinn des')
+    expect(lgbl[0]!.heading).toBeNull()
+    expect(lgbl[0]!.text.startsWith(`${first} § 120 Abs 1`)).toBe(true)
     expect(checks(pdf, lgbl).breaches.map((b) => b.kind)).toEqual(['überschrift'])
   })
 
