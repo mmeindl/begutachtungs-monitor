@@ -281,9 +281,39 @@ export function paragraphRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>,
   // A struck § is filed under its own number, so another number's struck rows
   // stand in that number's drawer only.
   const inherited = originId === null || origin === id ? [] : drawerRows(byParagraph, originId, law).filter((r) => struck.has(r) && standing.get(r) === originId)
-  if (inherited.length === 0) return kept
+  if (inherited.length === 0) return movedLeftColumn(byParagraph, kept, own, originId, id, origin, law, struck, standing)
   const position = POSITION.get(byParagraph)!
   return [...kept, ...inherited].sort((a, b) => position.get(a)! - position.get(b)!)
+}
+
+/**
+ * A renumbered § whose old text the PDF path paired with another § by number
+ * (20.11.2026): where 35/ME XXVIII moves the old § 44f to § 44g, the row
+ * „§ 44g." carries the old § 44g on the left and the new one on the right,
+ * and the row „§ 44f." the old § 44f on the left. The new § 44g kept only its
+ * right column, every word the draft struck from the old § 44f stood in no
+ * cell, and check 3 reported „daß" → „dass" as a removal the annex does not
+ * show. Its left column is the origin's row's: one row of each, the origin's
+ * standing for the origin and struck nowhere. Anything else stays as it was.
+ */
+function movedLeftColumn(
+  byParagraph: ReadonlyMap<string, ComparisonRow[]>,
+  kept: ComparisonRow[],
+  own: readonly ComparisonRow[],
+  originId: string | null,
+  id: string,
+  origin: string | null,
+  law: string | null | undefined,
+  struck: ReadonlySet<ComparisonRow>,
+  standing: ReadonlyMap<ComparisonRow, string>,
+): ComparisonRow[] {
+  if (originId === null || origin === id) return kept
+  const pairs = kept.filter((r) => r.kind === 'pair')
+  if (pairs.length !== 1 || pairs[0]!.current || pairs[0]!.elided || own.filter((r) => r.kind === 'pair').length !== 1) return kept
+  const left = drawerRows(byParagraph, originId, law).filter((r) => r.kind === 'pair' && !struck.has(r) && standing.get(r) === originId && r.current)
+  if (left.length !== 1 || left[0]!.elided) return kept
+  const moved: ComparisonRow = { ...pairs[0]!, current: left[0]!.current, change: 'changed', segments: null, editorial: false, elisionRange: false }
+  return kept.map((r) => (r === pairs[0] ? moved : r))
 }
 
 /** A row as the § its right column belongs to sees it: text the draft brings in. */

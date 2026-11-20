@@ -873,6 +873,21 @@ describe('rowsByParagraph — a § filed under the designation it carries after 
     expect(paragraphRows(grouped, '44g').map((r) => r.current)).toEqual(['§ 44g. Die Kosten der Verlautbarung sind von Amts wegen zu tragen.'])
   })
 
+  it('gives a moved § the left column its origin\'s row prints, where the move changes words (20.11.2026)', () => {
+    // 35/ME XXVIII: the old § 44f moves to § 44g with „daß" → „dass"; the
+    // words the move strikes stand only in the row „§ 44f.".
+    const grouped = rowsByParagraph([
+      pair('§ 44f. Ist der Antrag kundgemacht worden, so gilt, daß die Behörde durch Edikt zustellt.', '§ 44f. Die Behörde kann Zahlungen anweisen.', '§ 44f.'),
+      pair('§ 44g. Die Kosten sind von Amts wegen zu tragen.', '§ 44g. Ist der Antrag kundgemacht worden, so gilt, dass die Behörde durch Edikt zustellt.', '§ 44g.'),
+    ])
+    const rows = paragraphRows(grouped, '44g', undefined, '44f')
+    expect(rows.map((r) => r.change)).toEqual(['changed'])
+    const before = 'Ist der Antrag kundgemacht worden, so gilt, daß die Behörde durch Edikt zustellt.'
+    expect(oracleVerdict('44g', before, before.replace('daß', 'dass'), rows).verdict).toBe('bestätigt')
+    // The move's change still has to be carried out.
+    expect(oracleVerdict('44g', before, before, rows).verdict).toBe('widersprochen')
+  })
+
   it('reads a struck § and the new one it becomes, both under one heading, as the § renamed (51/ME XXVIII: § 10 → § 17)', () => {
     // „Der bisherige § 10 wird zu § 17 und lautet samt Überschrift": the
     // annex strikes § 10 whole and prints § 17 as new, the heading on both.
