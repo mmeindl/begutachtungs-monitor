@@ -72,7 +72,7 @@ for (const [path, record] of Object.entries(faults)) {
 }
 const classes = (list: GenauigkeitFault[]): GenauigkeitFault[] => list.map(({ key, tried, caught }) => ({ key, tried, caught }))
 
-interface AccountingRecord { reports: { touched: number; shown: number; causes: Record<string, number> }[] }
+interface AccountingRecord { reports: { touched: number; shown: number; witnessed?: number; causes: Record<string, number> }[] }
 function funnel(record: AccountingRecord) {
   const causes: Partial<Record<ConsolidatedWithheldCause, number>> = {}
   for (const r of record.reports) {
@@ -84,7 +84,8 @@ function funnel(record: AccountingRecord) {
   if (shownCount + withheld !== changed) throw new Error(`accounting does not balance: ${shownCount} shown + ${withheld} withheld ≠ ${changed} changed`)
   /* By name, so two rounds' files differ only where a count moved. */
   const sorted = Object.fromEntries(Object.entries(causes).sort(([a], [b]) => a.localeCompare(b))) as typeof causes
-  return { drafts: record.reports.length, changed, shown: shownCount, causes: sorted }
+  const witnessed = record.reports.reduce((n, r) => n + (r.witnessed ?? 0), 0)
+  return { drafts: record.reports.length, changed, shown: shownCount, causes: sorted, witnessed }
 }
 const accounted = funnel(read<AccountingRecord>('acc.json'))
 const risOnly = funnel(read<AccountingRecord>('acc-ris.json'))

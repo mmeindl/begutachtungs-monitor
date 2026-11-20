@@ -539,6 +539,12 @@ export interface WegFunnel {
   /** §§ with something to compose. */
   total: number
   shown: number
+  /**
+   * Of `shown`, the §§ shown on the draft's own Gesetzestext where the annex
+   * did not confirm them (`draftWitness`, 20.11.2026) — never counted as
+   * confirmed by the annex.
+   */
+  witnessed: number
   /** The groups ending at each step, largest first. */
   exits: Partial<Record<WegSchritt['key'], FunnelRow[]>>
   /** Repealed or newly enacted: outside the whole. */
@@ -553,7 +559,7 @@ export function wegFunnel(funnel: GenauigkeitRecord['lesefassung']['funnel'] = G
     if (row.key === 'gezeigt' || row.key === 'nichts') continue
     ;(exits[FUNNEL_STEP_OF[row.key]] ??= []).push(row)
   }
-  return { total: funnel.changed - outside, shown: funnel.shown, exits, outside }
+  return { total: funnel.changed - outside, shown: funnel.shown, witnessed: funnel.witnessed ?? 0, exits, outside }
 }
 
 /* ------------------------------------------------------------------ */
