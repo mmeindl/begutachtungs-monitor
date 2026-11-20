@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { headingParas, headingZiffern, parseLandExplanations } from '../server/utils/laender/landExplanations'
-import { explainedParagraphs } from '../server/utils/laender/landExplanationsRead'
+import { explainedParagraphs, readLandExplanations } from '../server/utils/laender/landExplanationsRead'
+import { draftExplanationsDocument } from '../server/utils/laender/texts/read'
 import type { LawUnit } from '../server/utils/lawtext/lawUnits'
 
 describe('a Land\'s Erläuterungen', () => {
@@ -184,5 +185,31 @@ describe('parseLandExplanations — Burgenland\'s Vorblatt (30.10.2026)', () => 
   it('reads a document without a Vorblatt as any other', () => {
     const without = [pages[0]!, pages[1]!.replace('Vorblatt\n', '')]
     expect(parseLandExplanations(without, undefined, { vorblatt: true })).toEqual(parseLandExplanations(without))
+  })
+})
+
+describe('the draft\'s own Erläuterungen, never the Vorlage\'s (20.11.2026)', () => {
+  // As Kärnten (`kaernten.ts`) and Tirol (`tirol.ts`) list a record: the draft's documents, then the Vorlage's, „Regierungsvorlage, …".
+  const doc = (title: string, file: string) => ({ title, url: `https://www.ktn.gv.at/DE/repos/files/${file}.pdf` })
+  const draftDocs = [doc('Entwurf', 'entwurf'), doc('Erläuterungen', 'erl'), doc('Textgegenüberstellung', 'tgue')]
+  const vorlageDocs = [doc('Regierungsvorlage', 'rv'), doc('Regierungsvorlage, Erläuterungen', 'rv-erl'), doc('Regierungsvorlage, Windkraftanlagen - Erläuterungs- und Umweltbericht samt Anhänge', 'rv-wind')]
+
+  it('takes the draft\'s Erläuterungen, and none where only the Vorlage\'s are listed', () => {
+    expect(draftExplanationsDocument([...vorlageDocs, ...draftDocs])?.title).toBe('Erläuterungen')
+    expect(draftExplanationsDocument(vorlageDocs)).toBeNull()
+    // Burgenland's draft and Erläuterungen in one, Tirol's Verordnungen, Salzburg's own document.
+    expect(draftExplanationsDocument([doc('Entwurf und Erläuterungen', 'e')])?.title).toBe('Entwurf und Erläuterungen')
+    expect(draftExplanationsDocument([doc('Tiroler Aufzugs- und Hebeanlagenverordnung - Erläuterungen', 'e')])).not.toBeNull()
+  })
+
+  it('reads the draft\'s PDF, not the Vorlage\'s Erläuterungen, where the draft has none of its own', async () => {
+    const pagesRead: string[] = []
+    const pagesOf = async (url: string) => {
+      pagesRead.push(url)
+      return url.endsWith('/rv-erl.pdf') ? ['Erläuterungen', 'Allgemeiner Teil', 'Die Vorlage regelt das Beispiel.'] : ['Gesetz vom …, mit dem das Kärntner Beispielgesetz geändert wird', '1. § 1 lautet:']
+    }
+    const read = await readLandExplanations('ktn', { draft: { title: 'Kärntner Beispielgesetz', documents: [doc('Entwurf', 'entwurf'), ...vorlageDocs] } }, async () => new Uint8Array(), pagesOf)
+    expect(pagesRead).not.toContain('https://www.ktn.gv.at/DE/repos/files/rv-erl.pdf')
+    expect(read.response.document?.url).toBe('https://www.ktn.gv.at/DE/repos/files/entwurf.pdf')
   })
 })

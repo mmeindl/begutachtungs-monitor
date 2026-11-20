@@ -17,7 +17,7 @@ import { cachedLandComparison } from './landLawDiffService'
 import { parseLandExplanations } from './landExplanations'
 import { explainedParagraphs } from './landExplanationsRead'
 import { amendedLawsOf } from './landTgu'
-import { NOT_A_DRAFT } from './texts/read'
+import { draftExplanationsDocument, NOT_A_DRAFT } from './texts/read'
 import { cachedPdfPages } from './texts/pdfPagesService'
 import { textSources } from './texts/stations'
 
@@ -52,13 +52,10 @@ export async function compareLandReasoning(land: LandCode, number: string, detai
   const laws = amendedLawsOf(detail.draft.title)
   // Their own documents, where the Land files them so: the draft's „Erläuterungen", the Vorlage's „Regierungsvorlage, Erläuterungen".
   const docs = detail.draft.documents
-  const ownUrl = (re: RegExp) => {
-    const doc = docs.find((d) => re.test(d.title))
-    return doc ? safeExternalUrl(doc.url) : null
-  }
+  const urlOf = (doc: { url: string } | null | undefined) => (doc ? safeExternalUrl(doc.url) : null)
   const [before, after, comparison] = await Promise.all([
-    reasonsByParagraph(draftUrl, ownUrl(/^(?!Regierungsvorlage).*erläuter/i), laws),
-    reasonsByParagraph(rvUrl, ownUrl(/^Regierungsvorlage, Erläuterungen$/), laws),
+    reasonsByParagraph(draftUrl, urlOf(draftExplanationsDocument(docs)), laws),
+    reasonsByParagraph(rvUrl, urlOf(docs.find((d) => /^Regierungsvorlage, Erläuterungen$/.test(d.title))), laws),
     cachedLandComparison(land, number, 'entwurf', 'rv', detail),
   ])
   // What the Land filed as the draft and evidently is none: said as the comparison says it (`notADraft`).

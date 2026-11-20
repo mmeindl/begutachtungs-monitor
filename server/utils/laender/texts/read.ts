@@ -153,6 +153,19 @@ export function isDraftWithExplanations(title: string): boolean {
 }
 
 /**
+ * The draft's own Erläuterungen among its documents, where the Land files
+ * them as a document of their own — never the Vorlage's. Kärnten and Tirol
+ * list the Vorlage's documents in the same record, „Regierungsvorlage,
+ * Erläuterungen" (`kaernten.ts`, `tirol.ts`); the Erläuterungen section took
+ * the first title with „erläuter" in it and, where the draft has none of its
+ * own, would have read the Vorlage's as the draft's (20.11.2026). The one
+ * rule for the section and the Begründungsvergleich (`landReasoningService.ts`).
+ */
+export function draftExplanationsDocument(documents: readonly LandDocument[]): LandDocument | null {
+  return documents.find((d) => /^(?!Regierungsvorlage).*erläuter/i.test(d.title)) ?? null
+}
+
+/**
  * The draft's own text among its documents. Salzburg files Erläuterungen,
  * the Textgegenüberstellung and plans as documents of their own; seven of
  * its drafts carry no draft at all, and until 23.10.2026 the first document

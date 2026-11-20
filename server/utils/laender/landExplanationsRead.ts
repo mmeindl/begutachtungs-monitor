@@ -28,7 +28,7 @@ import { landDraftUnits } from './landLawDiff'
 import { headingZiffern, parseLandExplanations, type LandExplanationsParse } from './landExplanations'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { amendedLawsOf } from './landTgu'
-import { draftByContent, draftCandidates, isDraftWithExplanations, landPdfBytes, NOT_A_DRAFT, notADraft, pagesOfBytes, type PagesReader } from './texts/read'
+import { draftByContent, draftCandidates, draftExplanationsDocument, isDraftWithExplanations, landPdfBytes, NOT_A_DRAFT, notADraft, pagesOfBytes, type PagesReader } from './texts/read'
 import { styledPages } from './texts/styledPages'
 import type { LandDraftRecord } from './texts/stations'
 
@@ -118,7 +118,7 @@ export async function readLandExplanations(
   const publisher = `Land ${LAND_NAME[land]}`
   const pages = new Map<string, string[]>()
   const docs = detail.draft.documents
-  const own = docs.find((d) => /erläuter/i.test(d.title))
+  const own = draftExplanationsDocument(docs)
   const candidates = draftCandidates(docs)
   const draft = candidates[0] ?? null
   let draftUrl = draft ? safeExternalUrl(draft.url) : null
