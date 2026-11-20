@@ -148,7 +148,7 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     // without a closing full stop, right before a row that opens a §, is
     // that §'s heading.
     const next = rows[i + 1]
-    if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld) && isHeadingRow(row)) {
+    if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld) && isHeadingRow(row, next)) {
       id = paraIdOfGld(next.gld)
       opener = next
     }
@@ -425,7 +425,17 @@ function rowsById(byParagraph: ReadonlyMap<string, ComparisonRow[]>): Map<string
   return index
 }
 
-function isHeadingRow(row: ComparisonRow): boolean {
+/**
+ * `next`, where given, is the row below. A row the parser already filed
+ * under the § that row opens (`para` = its `gld`) is that §'s heading at any
+ * length (20.11.2026): capped at 120 characters, „Einholung einer
+ * Strafregisterauskunft aus einem anderen Mitgliedstaat der Europäischen
+ * Union oder aus dem Vereinigten Königreich" stayed with § 9b, and § 9c of
+ * the Strafregistergesetz (2/ME XXVIII) met the words of its heading as
+ * inventions; § 10b and ARHG § 17a the same. Never a group heading: the
+ * parser hands the § below the group headings it held back too.
+ */
+function isHeadingRow(row: ComparisonRow, next?: ComparisonRow): boolean {
   // An elided row is the annex's notation for text it leaves out — „(3) …"
   // at the foot of the § before — and never a heading, however short it is
   // and whatever it does not end with. Read as one, the previous §'s tail
@@ -437,7 +447,8 @@ function isHeadingRow(row: ComparisonRow): boolean {
   // without its „…", is the same tail of the § before (Schulunterrichtsgesetz
   // § 19/§ 20, ASVG § 31c/§ 31d). A § heading never opens with one.
   if (cells.some((c) => /^\s*\(\d/.test(c))) return false
-  return cells.length > 0 && cells.every((c) => c.length <= 120 && !/[.;:]$/.test(c))
+  const typed = next !== undefined && next.kind === 'pair' && !row.gld && row.para !== null && next.gld === row.para
+  return cells.length > 0 && cells.every((c) => (c.length <= 120 || (typed && !isGroupHeadingOnly(c))) && !/[.;:]$/.test(c))
 }
 
 /**
@@ -854,6 +865,28 @@ function withoutNextGroup(rows: readonly ComparisonRow[]): readonly ComparisonRo
   }
   if (cut === rows.length || !rows.slice(0, cut).some((r) => r.kind === 'pair' && !r.elided && (r.current || r.proposed))) return rows
   return rows.slice(0, cut)
+}
+
+/**
+ * The rows of a § without a group's title the parser held back for it and
+ * `isHeadingRow` read as the §'s heading (20.11.2026). Past 120 characters a
+ * row the parser files under the § below is that §'s heading
+ * (`isHeadingRow`, `next`) — and so is the title of the group above it,
+ * which the parser hands on the same way: „Europäische Ermittlungsanordnung,
+ * Europäische Herausgabe- und Sicherungsanordnung, …" over EU-JZG § 55a
+ * (161/ME XXVIII), whose left column stands nowhere in the standing §. It
+ * goes from the comparison, as it went from this § before; it no longer
+ * lands in the § above either, where it made § 47 `fremd`. A heading the
+ * standing § does carry stays, and so does one with no left column: a new
+ * §'s heading is held against the result.
+ */
+function withoutHeldGroupTitle(rows: readonly ComparisonRow[], before: string | null): readonly ComparisonRow[] {
+  const pairs = rows.filter((r) => r.kind === 'pair')
+  const head = pairs[0]
+  if (!head || head.gld || !head.current || (head.current.length <= 120 && head.proposed.length <= 120)) return rows
+  if (!isHeadingRow(head, pairs[1])) return rows
+  if (unaccountedStretch(key(before ?? ''), head.current) === null) return rows
+  return rows.filter((r) => r !== head)
 }
 
 /**
@@ -1989,7 +2022,7 @@ function opensWith(cell: string, marker: { end: number }, opening: string): bool
 export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null, standingUnits: StandingUnits | null = null): OracleReport {
   // An omission without its „…", written out where the standing § proves it
   // (`silentOmissions`) — every check below then reads it as an omission.
-  rows = withoutNextGroup(silentOmissions(rows, standingUnits).rows)
+  rows = withoutHeldGroupTitle(withoutNextGroup(silentOmissions(rows, standingUnits).rows), before)
   const substantive = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')
   if (substantive.length === 0) return { para: id, verdict: 'stumm', rows: rows.length, note: null }
 
@@ -2000,7 +2033,7 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   // Its first stretch is where the result begins (`unaccountedStretch`).
   const opener = rows.find((r) => r.kind === 'pair')
   const opensWithHeading = (row: ComparisonRow): boolean =>
-    row === opener && (headingOf(row.proposed).some((w) => /\p{L}/u.test(w)) || (!row.gld && isHeadingRow(row)))
+    row === opener && (headingOf(row.proposed).some((w) => /\p{L}/u.test(w)) || (!row.gld && isHeadingRow(row, rows.slice(rows.indexOf(row) + 1).find((r) => r.kind === 'pair'))))
   for (const row of substantive) {
     const missing = row.current ? unaccountedStretch(beforeKey, row.current) : null
     if (missing !== null) {

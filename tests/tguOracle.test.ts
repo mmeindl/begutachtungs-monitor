@@ -854,6 +854,42 @@ it('files the previous §\'s elided tail under that §, not as the next one\'s h
   expect(grouped.get('#116')).toHaveLength(1)
 })
 
+describe('rowsByParagraph — a heading row the parser filed under its § (20.11.2026)', () => {
+  // 2/ME XXVIII, StRegG § 9c on the table path: the heading row carries
+  // `para` „§ 9c." and no `gld`, and is longer than 120 characters.
+  const typed = (current: string, proposed: string, para: string): ComparisonRow => ({ ...pair(current, proposed), para, paraAfter: para })
+  const oldHead = 'Einholung von Strafregisterauskünften aus den anderen Mitgliedstaaten der Europäischen Union'
+  const newHead = 'Einholung einer Strafregisterauskunft aus einem anderen Mitgliedstaat der Europäischen Union oder aus dem Vereinigten Königreich'
+  const rows = [
+    pair('§ 9b. (1) Die Auskunft wird erteilt.', '§ 9b. (1) Die Auskunft wird erteilt.', '§ 9b.'),
+    typed(oldHead, newHead, '§ 9c.'),
+    pair('Die Landespolizeidirektion hat Ersuchen zu übermitteln.', 'Die Landespolizeidirektion hat Ersuchen zu übermitteln.', '§ 9c.'),
+  ]
+
+  it('files a long heading row with the § it names, not the § above', () => {
+    const grouped = rowsByParagraph(rows)
+    expect(paragraphRows(grouped, '9b')).toHaveLength(1)
+    expect(paragraphRows(grouped, '9c').map((r) => r.proposed)).toEqual([newHead, 'Die Landespolizeidirektion hat Ersuchen zu übermitteln.'])
+    const body = 'Die Landespolizeidirektion hat Ersuchen zu übermitteln.'
+    expect(oracleVerdict('9c', `${oldHead} ${body}`, `${newHead} ${body}`, paragraphRows(grouped, '9c'))).toMatchObject({ verdict: 'bestätigt' })
+    // The heading is held: a result that keeps the old one is contradicted.
+    expect(oracleVerdict('9c', `${oldHead} ${body}`, `${oldHead} ${body}`, paragraphRows(grouped, '9c')).verdict).toBe('widersprochen')
+  })
+
+  it('drops a long group title the parser held back for the § below, where the standing § has none of it', () => {
+    // 161/ME XXVIII, EU-JZG § 55a: the title of the group above, typed like a heading.
+    const title = 'Europäische Ermittlungsanordnung, Europäische Herausgabe- und Sicherungsanordnung, Benennung eines Adressaten für die Erhebung elektronischer Beweismittel'
+    const grouped = rowsByParagraph([
+      pair('§ 47. (1) Eine Vollstreckung ist unzulässig.', '§ 47. (1) Eine Vollstreckung ist unzulässig.', '§ 47.'),
+      typed('Europäische Ermittlungsanordnung, Rechtshilfe und sonstige Zusammenarbeit in Strafsachen', title, '§ 55a.'),
+      pair('§ 55a. (1) Die Vollstreckung ist zulässig.', '§ 55a. (1) Die Vollstreckung ist zulässig. (3) Auch sonst.', '§ 55a.'),
+    ])
+    expect(paragraphRows(grouped, '47')).toHaveLength(1)
+    const before = 'Die Vollstreckung ist zulässig.'
+    expect(oracleVerdict('55a', before, `${before} Auch sonst.`, paragraphRows(grouped, '55a'))).toMatchObject({ verdict: 'bestätigt' })
+  })
+})
+
 describe('rowsByParagraph — a § filed under the designation it carries after the draft (26.10.2026)', () => {
   // `pair` gives every row its own number as `paraAfter`; a renumbering or a repeal says otherwise.
   const moved = (current: string, proposed: string, gld: string | null, after: string | null): ComparisonRow => ({ ...pair(current, proposed, gld), paraAfter: after })
