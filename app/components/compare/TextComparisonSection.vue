@@ -21,7 +21,6 @@ import { UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { annexBadge, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexPara, type PlacedLesefassung } from '~/utils/annexGroups'
 import { enactedHaystack, newLawGroups } from '~/utils/newLawGroups'
 import { annexParagraphCiteDe, citeLineDe } from '#shared/utils/citations'
-import { lawNameOf } from '#shared/utils/lawName'
 import { laterAmendmentLine, lesefassungLine, lesefassungNotRunText, lesefassungUnreachableText, mergesIntoNotice, noticeLesefassungToo } from '~/utils/lesefassung'
 import { unitsPluralDe, type UnitKind } from '#shared/utils/unitWord'
 import {
@@ -290,18 +289,9 @@ const renderedGroups = computed(() =>
  */
 const annexUrl = computed(() => data.value?.pdf?.url ?? data.value?.source?.url ?? null)
 const severalLaws = computed(() => placed.value.groupKeys.length > 1 || !!data.value?.boundaryNote)
-/**
- * A law named by its key alone, as the reader is told it: the key, except
- * where it is a qualifier and no name („(Verfassungsbestimmung)",
- * `TextComparisonResponse.lawNames`). A group's own title is the annex's
- * heading and needs none of this.
- */
-function lawName<K extends string | null>(key: K): K | string {
-  return lawNameOf(data.value?.lawNames, key)
-}
 function paraCite(g: { key: string; article: string }, p: AnnexPara): { text: string; subject: string } | null {
   if (!props.citeAs || !annexUrl.value) return null
-  const law = g.article.trim() || (g.key.startsWith('#') ? null : lawName(g.key))
+  const law = g.article.trim() || (g.key.startsWith('#') ? null : g.key)
   const cited = annexParagraphCiteDe(props.citeAs, p.gld, law, { severalLaws: severalLaws.value, repeated: p.key.includes('#') })
   return cited ? { text: citeLineDe(cited, annexUrl.value), subject: cited.slice(cited.lastIndexOf(', ') + 2) } : null
 }
@@ -390,11 +380,11 @@ const doubtfulGroupNote = computed(() => annexDoubtfulGroupNote(data.value?.read
 const frontMatterLaws = computed(() => new Set(data.value?.frontMatterDiffers ?? []))
 const frontMatterNotes = computed(() => {
   const keys = new Set(placed.value.groupKeys)
-  return annexFrontMatterNotes([...frontMatterLaws.value].filter((l) => l === null || !keys.has(l)).map(lawName), placed.value.unitOf(null))
+  return annexFrontMatterNotes([...frontMatterLaws.value].filter((l) => l === null || !keys.has(l)), placed.value.unitOf(null))
 })
 const doubtfulNote = computed(() => {
   const keys = new Set(placed.value.groupKeys)
-  return annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !keys.has(l)).map(lawName), data.value?.readFrom ?? null)
+  return annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !keys.has(l)), data.value?.readFrom ?? null)
 })
 /** Why the §'s changes are not shown, and — where the cause is the layout
  *  — whose layout: the blame asked for once. */
@@ -666,7 +656,7 @@ function withheldReason(cause: AnnexWithheldCause | null, unit: UnitKind): strin
         <NewLawGroup
           v-for="g in newLaws"
           :key="g.key"
-          :law="lawName(g.law)"
+          :law="g.law"
           :total="g.total"
           :paragraphs="g.paragraphs"
           :end="g.end"
@@ -676,7 +666,7 @@ function withheldReason(cause: AnnexWithheldCause | null, unit: UnitKind): strin
           @more="showAll(g.key)"
         />
         <section v-for="r in plainRest" :key="r.law ?? ''" class="border-b border-hairline px-4 py-3 last-of-type:border-b-0">
-          <p class="text-sm font-semibold text-ink">{{ lawName(r.law) || 'Gesetzestext' }}</p>
+          <p class="text-sm font-semibold text-ink">{{ r.law || 'Gesetzestext' }}</p>
           <AnnexLawEnd :end="r" outside-annex :enacted="r.law !== null && enactedLaws.has(r.law)" :undivided="!!data?.boundaryNote" class="mt-1" />
         </section>
         <!-- Same wording as the § comparison (`NoMatches`). -->

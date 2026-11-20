@@ -19,7 +19,7 @@
  * reads it, the others show their defaults, so a shared link still opens one
  * comparison.
  */
-import type { LawDiffSegment, LawDiffUnit, LawPackageEntry, LawStationId, ReasoningDiffEntry } from '#shared/types'
+import type { LawDiffSegment, LawDiffUnit, LawStationId, ReasoningDiffEntry } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { isNovelleUnits } from '#shared/utils/changeShare'
@@ -27,7 +27,6 @@ import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } fro
 import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
-import { lawNameOf } from '#shared/utils/lawName'
 import { lawDiffCredits } from '~/utils/lawDiffCredits'
 import { reasoningComparisonNote, reasoningGapNote } from '~/utils/reasoningNotes'
 import {
@@ -204,23 +203,12 @@ const sideCites = computed(() => {
   }
 })
 
-/**
- * A law as the reader is told it: its `article`, except where that key is a
- * qualifier and no name („(Verfassungsbestimmung)", `LawDiffResponse.lawNames`).
- * Groups, open state and the added/dropped sets stay keyed by `article`.
- */
-function lawName<K extends string | null>(article: K): K | string {
-  return lawNameOf(data.value?.lawNames, article)
-}
-/** The same for the laws a sentence above the list names. */
-const named = (laws: readonly LawPackageEntry[]): LawPackageEntry[] => laws.map((l) => ({ ...l, article: lawName(l.article) }))
-
 function unitCite(u: LawDiffUnit): { text: string; subject: string } | null {
   const s = sideCites.value
   const removed = u.change === 'removed'
   const doc = removed ? s?.from : s?.to
   if (!s || !doc) return null
-  const cited = lawUnitCiteDe(doc.cited, u.id, u.articleKey, removed ? s.fromDivided : s.toDivided, lawName(removed ? (u.fromArticle ?? u.article) : u.article))
+  const cited = lawUnitCiteDe(doc.cited, u.id, u.articleKey, removed ? s.fromDivided : s.toDivided, removed ? (u.fromArticle ?? u.article) : u.article)
   return cited ? { text: citeLineDe(cited, doc.url), subject: cited.slice(doc.cited.length + 2) } : null
 }
 
@@ -358,7 +346,7 @@ function blockKey(b: Block): string {
  */
 const haystacks = computed(() =>
   (data.value?.units ?? []).map((u) =>
-    [u.id, u.fromId, u.heading, lawName(u.article), u.fromText, u.toText].filter(Boolean).join('\n').toLowerCase(),
+    [u.id, u.fromId, u.heading, u.article, u.fromText, u.toText].filter(Boolean).join('\n').toLowerCase(),
   ),
 )
 
@@ -537,7 +525,7 @@ function unitLabel(u: LawDiffUnit): string | null {
  */
 const mergedNote = computed(() =>
   mergedLawsNote(
-    named(data.value?.lawsOnlyInTo ?? []),
+    data.value?.lawsOnlyInTo ?? [],
     pair.value.from,
     pair.value.to,
     data.value?.largerAct ?? null,
@@ -562,10 +550,10 @@ const droppedLaws = computed(() => new Set((data.value?.droppedLaws ?? []).map((
 const outsideNote = computed(() =>
   pair.value.from === 'me' || !data.value?.bundledWithOtherDrafts
     ? null
-    : outsideDraftNote(named(data.value.lawsOutsideDraft), data.value.largerAct),
+    : outsideDraftNote(data.value.lawsOutsideDraft, data.value.largerAct),
 )
 const droppedNote = computed(() =>
-  droppedLawsNote(named(data.value?.lawsOnlyInFrom ?? []), pair.value.from, pair.value.to, first),
+  droppedLawsNote(data.value?.lawsOnlyInFrom ?? [], pair.value.from, pair.value.to, first),
 )
 /**
  * After the Bundesrat's Einspruch the Nationalrat adopted a changed text
@@ -630,7 +618,7 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
             <DiffGroup
               v-for="g in renderedGroups"
               :key="g.article"
-              :title="lawName(g.article)"
+              :title="g.article"
               :badges="badgeCounts(g.counts, BADGE_LABEL)"
               :open="groupOpen(g.article)"
               :more="g.hidden"

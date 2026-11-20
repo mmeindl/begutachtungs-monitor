@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { articleBlocks, articleNames, clauseNameOf, draftArticles, isAmendmentClause, promulgationByArticle } from '../server/utils/lawtext/draftArticles'
+import { articleBlocks, clauseNameOf, draftArticles, isAmendmentClause, promulgationByArticle } from '../server/utils/lawtext/draftArticles'
 import { segmentUnits } from '../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 
@@ -154,8 +154,8 @@ describe('draftArticles', () => {
   })
 
   // "(Verfassungsbestimmung)" stands where the law's name would and is not
-  // one. The key keeps it — `segmentUnits` does — but nothing may be matched
-  // against it, because the annex never prints it as a law title.
+  // one: neither the title an annex heading is matched against, nor the key
+  // (20.11.2026; the key kept it until then, as `segmentUnits` did).
   it('does not read a qualifier as the law’s name', () => {
     const xml = doc(
       `<ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="g2">(Verfassungsbestimmung)</ueberschrift>` +
@@ -163,7 +163,7 @@ describe('draftArticles', () => {
       `<absatz typ="promkleinlsatz">Das VfGG, BGBl. Nr. 85/1953, wird wie folgt geändert:</absatz>`,
     )
     const [first] = draftArticles(parseRisXml(xml))
-    expect(first!.key).toBe('(Verfassungsbestimmung)')
+    expect(first!.key).toBe('Änderung des Verfassungsgerichtshofgesetzes 1953')
     expect(first!.title).toBe('Änderung des Verfassungsgerichtshofgesetzes 1953')
   })
 
@@ -390,47 +390,75 @@ describe('a clause name ends where the amendment history begins (15.11.2026)', (
   })
 })
 
-describe('articleNames — what a reader is shown where the key is a qualifier (20.11.2026)', () => {
-  const qualified = (nr: string, title: string | null, clause: string) =>
+/**
+ * A QUALIFIER IS NEVER THE KEY (20.11.2026). „(Verfassungsbestimmung)" above
+ * the law's name was the key of its Artikel, in the draft's Artikel and in
+ * the units alike, and every law of a text that prints it shared one group.
+ */
+describe('an Artikel under „(Verfassungsbestimmung)" is keyed by its name, or by its number', () => {
+  const qualified = (nr: string, title: string | null, clause: string, instructions: string[] = ['Art. 90a entfällt.']) =>
     `<ueberschrift typ="g1">${nr}</ueberschrift><ueberschrift typ="g2">(Verfassungsbestimmung)</ueberschrift>` +
     (title ? `<ueberschrift typ="g2">${title}</ueberschrift>` : '') +
-    `<absatz typ="promkleinlsatz">${clause}</absatz><absatz typ="novao1">1. Art. 90a entfällt.</absatz>`
+    `<absatz typ="promkleinlsatz">${clause}</absatz>` + instructions.map((t, i) => `<absatz typ="novao1">${i + 1}. ${t}</absatz>`).join('')
   const bvg = 'Das Bundes-Verfassungsgesetz – B-VG, BGBl. Nr. 1/1930, wird wie folgt geändert:'
+  const keysOf = (xml: string) => {
+    const blocks = parseRisXml(doc(xml))
+    return { articles: draftArticles(blocks).map((a) => a.key), units: segmentUnits(blocks).map((u) => `${u.article} | ${u.id}`), clauses: [...promulgationByArticle(blocks).keys()] }
+  }
 
   // 127/ME XXVIII: Artikel 1 prints the qualifier above the law's name.
-  it('names the law of 127/ME\'s Artikel 1 and leaves the key and the other Artikel alone', () => {
-    const blocks = parseRisXml(doc(
+  it('keys 127/ME\'s Artikel 1 by the law\'s name, on the draft\'s side and the units\'', () => {
+    const { articles, units, clauses } = keysOf(
       qualified('Artikel 1', 'Änderung des Bundes-Verfassungsgesetzes', bvg) +
       article('Artikel 2', 'Änderung des Verfassungsgerichtshofgesetzes 1953', 'Das Verfassungsgerichtshofgesetz 1953 – VfGG, BGBl. Nr. 85/1953, wird wie folgt geändert:', ['Dem § 94 wird folgender Abs. xx angefügt:']),
-    ))
-    const articles = draftArticles(blocks)
-    expect(articles.map((a) => a.key)).toEqual(['(Verfassungsbestimmung)', 'Änderung des Verfassungsgerichtshofgesetzes 1953'])
-    expect([...articleNames(articles)]).toEqual([['(Verfassungsbestimmung)', 'Änderung des Bundes-Verfassungsgesetzes']])
-    // The units carry the name beside the key they are joined by.
-    const units = segmentUnits(blocks)
-    expect(units.map((u) => [u.article, u.articleName])).toEqual([
-      ['(Verfassungsbestimmung)', 'Änderung des Bundes-Verfassungsgesetzes'],
-      ['Änderung des Verfassungsgerichtshofgesetzes 1953', undefined],
-    ])
+    )
+    expect(articles).toEqual(['Änderung des Bundes-Verfassungsgesetzes', 'Änderung des Verfassungsgerichtshofgesetzes 1953'])
+    expect(units).toEqual(['Änderung des Bundes-Verfassungsgesetzes | Z1', 'Änderung des Verfassungsgerichtshofgesetzes 1953 | Z1'])
+    // The Stammnorm is looked up by the same key.
+    expect(clauses).toEqual(articles)
   })
 
-  it('falls back on the Artikel\'s number where it prints nothing but the qualifier', () => {
-    const articles = draftArticles(parseRisXml(doc(qualified('Artikel 5', null, 'Das Landes-Verfassungsgesetz 1999, LGBl. Nr. 25, wird wie folgt geändert:'))))
-    expect([...articleNames(articles)]).toEqual([['(Verfassungsbestimmung)', 'Artikel 5']])
-  })
-
-  // BGBl. I Nr. 41/2019 (cached): Artikel 1 and Artikel 3 both carry the
-  // qualifier and so share the key; the group under it holds both laws.
-  it('names both laws where two Artikel share the qualifier as their key', () => {
-    const articles = draftArticles(parseRisXml(doc(
+  // BGBl. I Nr. 41/2026 (cached): Artikel 1 and Artikel 3 both carry the
+  // qualifier. Under one key the Heimopferrentengesetz's „1." was „Z1#dup"
+  // of the B-VG's, and both stood in one group.
+  it('keeps two laws apart that both stand under the qualifier (BGBl. I Nr. 41/2026)', () => {
+    const { articles, units } = keysOf(
       qualified('Artikel 1', 'Änderung des Bundes-Verfassungsgesetzes', bvg) +
-      qualified('Artikel 3', 'Änderung des Heimopferrentengesetzes', 'Das Heimopferrentengesetz, BGBl. I Nr. 69/2017, wird wie folgt geändert:'),
-    )))
-    expect([...articleNames(articles)]).toEqual([['(Verfassungsbestimmung)', 'Änderung des Bundes-Verfassungsgesetzes / Änderung des Heimopferrentengesetzes']])
+      qualified('Artikel 3', 'Änderung des Heimopferrentengesetzes', 'Das Heimopferrentengesetz, BGBl. I Nr. 69/2017, wird wie folgt geändert:', ['In § 15 entfällt der Klammerausdruck.']),
+    )
+    expect(articles).toEqual(['Änderung des Bundes-Verfassungsgesetzes', 'Änderung des Heimopferrentengesetzes'])
+    expect(units).toEqual(['Änderung des Bundes-Verfassungsgesetzes | Z1', 'Änderung des Heimopferrentengesetzes | Z1'])
   })
 
-  it('has no entry for a key that is a name', () => {
-    const articles = draftArticles(parseRisXml(doc(article('Artikel 1', 'Änderung des Aktiengesetzes', 'Das Aktiengesetz, BGBl. Nr. 98/1965, wird wie folgt geändert:', ['§ 1 lautet:']))))
-    expect(articleNames(articles).size).toBe(0)
+  // LGBl. Nr. 76/2025 (Salzburg, cached): Artikel 1 and Artikel 4 print the
+  // qualifier and no name. The number is unique in its text.
+  it('falls back on the Artikel\'s number where nothing but the qualifier is printed', () => {
+    const { articles, units } = keysOf(
+      qualified('Artikel 1', null, 'Das Landes-Verfassungsgesetz 1999, LGBl. Nr. 25, wird wie folgt geändert:') +
+      qualified('Artikel 4', null, 'Das Salzburger Stadtrecht 1966, LGBl. Nr. 47, wird wie folgt geändert:', ['§ 4 entfällt.']),
+    )
+    expect(articles).toEqual(['Artikel 1', 'Artikel 4'])
+    expect(units).toEqual(['Artikel 1 | Z1', 'Artikel 4 | Z1'])
+  })
+
+  // Only the line directly below the qualifier names the Artikel: a heading
+  // further down is the enacted law's own, and as the key it would rename
+  // the law from that heading on.
+  it('takes no later heading for the name of an Artikel that prints only the qualifier', () => {
+    const { articles, units } = keysOf(
+      `<ueberschrift typ="g1">Artikel 2</ueberschrift><ueberschrift typ="g2">(Verfassungsbestimmung)</ueberschrift>` +
+      `<absatz typ="abs"><gldsym>§ 1.</gldsym> Die Erlassung von Vorschriften ist Bundessache.</absatz>` +
+      `<ueberschrift typ="g2">2. Abschnitt</ueberschrift><absatz typ="abs"><gldsym>§ 2.</gldsym> Dieses Gesetz tritt mit 1. Jänner in Kraft.</absatz>`,
+    )
+    expect(articles).toEqual(['Artikel 2'])
+    expect(units).toEqual(['Artikel 2 | §1', 'Artikel 2 | §2'])
+  })
+
+  it('leaves a name that stands first as the key, with the qualifier below it', () => {
+    const { articles } = keysOf(
+      `<ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="g2">Änderung des Aktiengesetzes</ueberschrift><ueberschrift typ="g2">(Verfassungsbestimmung)</ueberschrift>` +
+      `<ueberschrift typ="g2">1. Teil</ueberschrift><absatz typ="promkleinlsatz">Das Aktiengesetz, BGBl. Nr. 98/1965, wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 1 lautet:</absatz>`,
+    )
+    expect(articles).toEqual(['Änderung des Aktiengesetzes'])
   })
 })

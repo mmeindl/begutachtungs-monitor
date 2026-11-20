@@ -22,7 +22,7 @@
 import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
 import { diffTokens, isEditorialChange } from '../diff/wordDiff'
 import { normalizeText } from '../lawtext/normalize'
-import type { DraftArticle } from '../lawtext/draftArticles'
+import { isQualifierLine, type DraftArticle } from '../lawtext/draftArticles'
 import { classify, designateAfter, type ComparisonRow } from './comparisonRows'
 import { notationOnly } from './annexText'
 import { isElisionRangeOnly, isElidedPair } from './elision'
@@ -703,8 +703,6 @@ const UNIT_RE = new RegExp(String.raw`^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|
 const CITATION_TAIL_RE = /^\s*(?:Abs(?:\.|atz\b)|Satz\b|Z\s+\d|Ziffer\b|Punkte?\s+\d|Buchstabe|Unterabsatz|Teil\s+\d+\s+(?:und|bis|der|des)\b|Nr\.|Nummer|,|(?!zu\b)[a-zäöüß]|[\wÄÖÜäöüß-]*(?:[Rr]ichtlinie|[Vv]erordnung|-VO)\b|\((?:EU|EG|EWG)\)|(?:EMRK|B-VG|AEUV|EUV|GRC|DSGVO|StGG)\b)/
 /** "Artikel 3" with nothing else on the line. */
 const BARE_ARTICLE_RE = /^Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+)$/
-/** A qualifier that stands where the law's name would, and is not one. */
-const QUALIFIER_RE = /^\((?:Verfassungs|Grundsatz)bestimmung(?:en)?\)$/i
 
 /**
  * A PDF stores no spaces between text runs — it moves the cursor instead. So
@@ -1801,7 +1799,7 @@ function candidateLines(lines: readonly AnnexLine[], edges: ColumnEdges, lawName
       for (let j = i + 1; j < lines.length; j++) {
         const next = headingText(lines[j]!, edges)
         if (next === null) break
-        if (QUALIFIER_RE.test(next)) {
+        if (isQualifierLine(next)) {
           roles.set(j, { role: 'title', at })
           continue
         }
