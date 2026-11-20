@@ -76,8 +76,8 @@ const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/
  */
 const BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|table)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
-/** „§ 30.", „§ 27a", „Art. 5.", „Artikel 12": a designation with no name after it. */
-const DESIGNATION_ONLY_RE = /^(?:§|Art\.|Artikel)\s*\d+[a-z]*\.?$/i
+/** „§ 30.", „§ 27a", „Art. 5.", „Artikel 12", „§. 121." (the JN's own form, 20.11.2026): a designation with no name after it. */
+const DESIGNATION_ONLY_RE = /^(?:§\.?|Art\.|Artikel)\s*\d+[a-z]*\.?$/i
 const SYMBOL_RE = /<symbol\b[^>]*>([\s\S]*?)<\/symbol>/
 /** "(2) " opens an Absatz; "(2a)" and "(2b)" are legal too. */
 const ABS_MARKER_RE = /^\((\d+[a-z]*)\)\s*/
@@ -479,8 +479,17 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       // Privatschulgesetz § 30 this way, the next the other. Taken for the
       // §'s name it stood in the comparison text of one version only, and a
       // § replaced word for word read as „halb angewendet".
-      if (typ === 'para') heading = DESIGNATION_ONLY_RE.test(text(inner)) ? null : text(inner)
-      else if (root === null) {
+      //
+      // **Nor does a designation replace the heading read above it**
+      // (20.11.2026). The Jurisdiktionsnorm and the ZPO print both as
+      // `typ="para"`, the name first and „§. 121." below it; the last one
+      // read won, and JN § 121 lost its heading on both sides of the bench —
+      // while the draft's „Die Überschrift zu § 121 lautet" was right
+      // (116/ME XXVIII, BGBl. I Nr. 62/2026).
+      if (typ === 'para') {
+        const t = text(inner)
+        if (!DESIGNATION_ONLY_RE.test(t)) heading = t
+      } else if (root === null) {
         const t = text(inner)
         if (t) context.push(t)
       } else if (typ === 'erll' && opensNumberedAbsatz(blocks[at + 1])) {

@@ -30,8 +30,8 @@ import { compareKey } from '../lawtext/normalize'
  */
 /** A chain of designations joined by "bis"/"und", closed by three dots. */
 const ELISION_RE = /(?:§+\s*)?\(?\d+[a-z]*\)?\.?(?:\s*(?:bis|und|,)\s*(?:§+\s*)?\(?\d+[a-z]*\)?\.?)*\s*(?:\.\.\.|…)/g
-/** "§ 217." — the designation form, which ends in a period; a citation does not. */
-const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
+/** "§ 217." — the designation form, which ends in a period; a citation does not. „§. 517." too, the ZPO's and the JN's (20.11.2026). */
+const DESIGNATION_RE = /(?:^|\s)§+\.?\s*\d+[a-z]*\.(?=\s|$)/g
 /**
  * "(Anm.: Abs. 2 aufgehoben durch …)" — and the spellings the PDF text layer
  * makes of it.

@@ -172,9 +172,12 @@ const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSym
  * „§ 22." at the head of a column's text — a § designation with its full
  * stop, as a Gliederungssymbol is written, not a citation („§ 5 Abs. 2 gilt
  * …" carries none after the number). „§ 8.03." whole, as a Verordnung that
- * numbers its §§ by Kapitel writes it (`explanationParaId`).
+ * numbers its §§ by Kapitel writes it (`explanationParaId`). „§. 39.", with a
+ * full stop after the sign, as RIS prints the §§ of the Jurisdiktionsnorm and
+ * the ZPO (20.11.2026): unread, „§. 39. (1) und (2) ..." opened nothing and
+ * JN § 39's rows were held against § 15 (18/ME XXVIII).
  */
-const TYPED_DESIGNATION_RE = new RegExp(String.raw`^\s*(§+\s*${PARAGRAPH_NUMBER}\.)(?=\s|$)`, 'i')
+const TYPED_DESIGNATION_RE = new RegExp(String.raw`^\s*(§+\.?\s*${PARAGRAPH_NUMBER}\.)(?=\s|$)`, 'i')
 
 /**
  * The designation `text` opens with, where it opens a § at all: „§§ 1. bis

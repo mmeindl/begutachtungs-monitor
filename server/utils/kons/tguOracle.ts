@@ -69,8 +69,15 @@ export interface OracleReport {
   note: string | null
 }
 
-/** „§ 6.01a.", „§ 365m1." at the start of a Gliederungssymbol, read whole as every reader reads a § number (`PARAGRAPH_NUMBER`). */
-const GLD_PARAGRAPH_RE = new RegExp(String.raw`^§+\s*(${PARAGRAPH_NUMBER})`)
+/**
+ * „§ 6.01a.", „§ 365m1." at the start of a Gliederungssymbol, read whole as
+ * every reader reads a § number (`PARAGRAPH_NUMBER`) — and „§. 517.", the
+ * full stop after the sign with which RIS prints the §§ of the ZPO and the
+ * Jurisdiktionsnorm (20.11.2026). The PDF reader has opened such a § since
+ * 19.11.2026 (`UNIT_RE` in `annex/annexPdf.ts`); unread here, its rows stayed
+ * in the § above: ZPO §§ 517 and 518 were held against § 501 (116/ME XXVIII).
+ */
+const GLD_PARAGRAPH_RE = new RegExp(String.raw`^§+\.?\s*(${PARAGRAPH_NUMBER})`)
 
 /**
  * "§ 5." → "5", "§ 12a." → "12a"; null for anything else.
@@ -448,8 +455,18 @@ function isHeadingRow(row: ComparisonRow, next?: ComparisonRow): boolean {
   // § 19/§ 20, ASVG § 31c/§ 31d). A § heading never opens with one.
   if (cells.some((c) => /^\s*\(\d/.test(c))) return false
   const typed = next !== undefined && next.kind === 'pair' && !row.gld && row.para !== null && next.gld === row.para
-  return cells.length > 0 && cells.every((c) => (c.length <= 120 || (typed && !isGroupHeadingOnly(c))) && !/[.;:]$/.test(c))
+  // The laws that print „§. 39." close their § headings with a full stop
+  // too: „Rechtshilfe auf Ersuchen ausländischer Gerichte." over JN § 39,
+  // „Unzulässigkeit und Verweigerung des Zeugnisses." over ZPO § 320
+  // (20.11.2026). Over such a designation only, and one stop at the end of a
+  // short line: a sentence of the § above has its own form and its own row.
+  const oldStyle = next !== undefined && next.kind === 'pair' && OLD_STYLE_GLD_RE.test(normalizeText(next.gld ?? ''))
+  const ends = (c: string) => !/[.;:]$/.test(c) || (oldStyle && c.length <= 120 && /\p{L}\.$/u.test(c) && !/[.;:!?]\s/.test(c))
+  return cells.length > 0 && cells.every((c) => (c.length <= 120 || (typed && !isGroupHeadingOnly(c))) && ends(c))
 }
+
+/** „§. 39." — the sign with its own full stop, the form of the oldest laws RIS prints (`GLD_PARAGRAPH_RE`). */
+const OLD_STYLE_GLD_RE = /^§+\.\s*\d/
 
 /**
  * A Paragraphenkennung with its full stop, the number whole (`PARAGRAPH_NUMBER`,
@@ -457,7 +474,7 @@ function isHeadingRow(row: ComparisonRow, next?: ComparisonRow): boolean {
  * Kapitel's number, without one: „§ 8.03 Sicherheit an Bord …". Cut as „§ 8."
  * the rest „03" stayed in the comparison form.
  */
-const PARAGRAPH_MARKER_RE = new RegExp(String.raw`§+\s*(?=(${PARAGRAPH_NUMBER}))\1(?:\.|(?<=\.\d[\da-z]*)(?=\s|$))\s*`, 'g')
+const PARAGRAPH_MARKER_RE = new RegExp(String.raw`§+\.?\s*(?=(${PARAGRAPH_NUMBER}))\1(?:\.|(?<=\.\d[\da-z]*)(?=\s|$))\s*`, 'g')
 
 /**
  * Comparison form of annex text: markers the tree does not carry are
@@ -1262,7 +1279,7 @@ function runAt(hay: readonly string[], needle: readonly string[], from = 0): num
   return -1
 }
 
-const PARAGRAPH_SYMBOL_RE = new RegExp(String.raw`§+\s*${PARAGRAPH_NUMBER}\.`)
+const PARAGRAPH_SYMBOL_RE = new RegExp(String.raw`§+\.?\s*${PARAGRAPH_NUMBER}\.`)
 
 /** The words a cell prints ahead of its § symbol — the §'s heading on the PDF path, nothing on the table path. */
 function headingOf(cell: string): string[] {
