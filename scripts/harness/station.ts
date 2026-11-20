@@ -5,7 +5,7 @@
  * says what each check means).
  *
  * Usage:  npx vite-node -c vitest.config.ts scripts/harness/station.ts [--gp=XXVIII] [--only=80] [--cache]
- *                                                                     [--json=<file>] [--baseline=<file>] [--zeige=<text>]
+ *                                                                     [--json=<file>] [--baseline=<file>] [--zeige=<text>] [--mutationen]
  *
  * Every station text of every draft of the period that reached a
  * Regierungsvorlage, read through the page's own parsers, and every pair the
@@ -52,6 +52,15 @@
  * unit that is newly or no longer changed (`badgeMoves`). Printed, not
  * failed; a baseline that carries no badges fails, because against it no
  * move could show (`stationBaseline.json` had none until 20.11.2026).
+ *
+ * `--mutationen` (20.11.2026): fault injection for what the comparison
+ * forgives. Every distinct unit of every later text (Vorlage, Ausschuss,
+ * Plenum, Kundmachung) is compared through `diffLawUnits` against itself with
+ * one change of substance in it (`lib/stationMutations.ts`), per class; the
+ * table counts per class how often it applied, how often the unit came out a
+ * change of substance with a marked run, „redaktionell", „unverändert",
+ * „geändert" with nothing marked, and unpaired. A fault forgiven or hidden is
+ * a miss and fails the run; the record carries the table as `mutations`.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { LawStationId } from '../../shared/types'
@@ -60,10 +69,11 @@ import { bundlesOtherDrafts, extractBgblLink, findComparisonRvLink, findRvLinks,
 import { mapDraftRow } from '../../server/utils/parliament/list81'
 import { dedupeMeRows, joinRisToMe, toMeListRows } from '../../server/utils/ris/risJoin'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
-import { diffLawPackage, isCommencementArticle, scopeToDraft } from '../../server/utils/diff/lawDiff'
+import { diffLawPackage, diffLawUnits, isCommencementArticle, scopeToDraft } from '../../server/utils/diff/lawDiff'
 import { compareWords } from '../../server/utils/diff/wordDiff'
 import { findLawStations } from '../../server/utils/diff/stationDocuments'
 import { badgeMoves, completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches, type Breach, type Residue } from '../lib/stationChecks'
+import { MUTATION_KINDS, MUTATION_LABELS, isMiss, mutations, mutationOutcome, type MutationKind, type MutationOutcome } from '../lib/stationMutations'
 import { fetchRisBegutCorpus } from '../lib/corpus'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
@@ -79,6 +89,8 @@ const jsonPath = argAssigned('json')
 const baselinePath = argAssigned('baseline')
 /** `--zeige=<text>`: the pieces of every changed unit whose line contains the text, to read one case. */
 const show = argAssigned('zeige')
+/** `--mutationen`: the fault injection over every later text's units (see above). */
+const mutate = argFlag('mutationen')
 const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) => 1_200 * retry, timeoutMs: 60_000, retryOnHttpError: true }
 const getJson = <T = unknown>(url: string): Promise<T> => fetchJson<T>(url, { ...PATIENT, onExhausted: (u) => new Error(`nicht erreichbar: ${u}`) })
 const getText = (url: string): Promise<string> => fetchText(url, { script: SCRIPT, timeoutMs: 60_000 })
@@ -195,6 +207,12 @@ interface Record_ extends Partial<HarnessStamp>, Partial<CorpusReach> {
   verdicts: Record<string, 'geändert' | 'redaktionell' | 'ohne Wortdiff'>
   /** In a committed baseline (`stationBaseline.json`): why each residue that is not editorial stands. */
   reasons?: Record<string, string>
+  /** With `--mutationen`: per class, how the comparison answered a fault, and the misses to read. */
+  mutations?: {
+    units: number
+    classes: Record<MutationKind, { tried: number } & Record<MutationOutcome, number>>
+    misses: { kind: MutationKind; outcome: MutationOutcome; unit: string; before: string; after: string }[]
+  }
 }
 
 const rows = await list81()
@@ -221,6 +239,8 @@ const piecesOf = new Map<string, string[]>()
 /** The drafts of list 81 that could not be loaded, with why. */
 const unreached: { id: string; cause: string }[] = []
 const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
+/** With `--mutationen`: every distinct unit of a later text, by its text, with where it stands. */
+const laterUnits = new Map<string, { unit: LawUnit; where: string }>()
 const requested = numbers.filter((inr) => !only || inr === only)
 for (const inr of requested) {
   let d: Draft | null
@@ -233,6 +253,11 @@ for (const inr of requested) {
   }
   if (!d) continue
   record.drafts++
+  if (mutate) {
+    for (const id of ['rv', 'ausschuss', 'plenum', 'bgbl'] as const) {
+      for (const unit of d.stations.get(id) ?? []) if (!laterUnits.has(unit.text)) laterUnits.set(unit.text, { unit, where: `${inr}/ME ${id} ${(unit.article ?? '—').slice(0, 50)} · ${unit.id}` })
+    }
+  }
   process.stderr.write(`\r${record.drafts} Entwürfe · ${inr}/ME   `)
   for (const from of ORDER) {
     for (const to of ORDER) {
@@ -310,6 +335,30 @@ for (const c of record.ceiling) console.log(`   ${c.pair} ${c.unit} (${c.fromWor
 const slowest = slow.sort((x, y) => y.ms - x.ms).slice(0, 5)
 console.log(`\n── Dauer: die langsamsten Paare (diffLawPackage) — ${slowest.map((x) => `${x.pair} ${Math.round(x.ms)} ms`).join(' · ')}`)
 
+if (mutate) {
+  const empty = (): { tried: number } & Record<MutationOutcome, number> => ({ tried: 0, änderung: 0, redaktionell: 0, unverändert: 0, unsichtbar: 0, ungepaart: 0 })
+  const result: NonNullable<Record_['mutations']> = { units: laterUnits.size, classes: Object.fromEntries(MUTATION_KINDS.map((k) => [k, empty()])) as NonNullable<Record_['mutations']>['classes'], misses: [] }
+  let done = 0
+  for (const { unit, where } of laterUnits.values()) {
+    if (++done % 500 === 0) process.stderr.write(`\rMutationen: ${done}/${laterUnits.size} Einheiten   `)
+    for (const m of mutations(unit.text)) {
+      const outcome = mutationOutcome(diffLawUnits([unit], [{ ...unit, text: m.text }], { beyondCeiling: true }))
+      const tally = result.classes[m.kind]
+      tally.tried++
+      tally[outcome]++
+      if (isMiss(outcome)) result.misses.push({ kind: m.kind, outcome, unit: where, before: m.before, after: m.after })
+    }
+  }
+  process.stderr.write('\n')
+  record.mutations = result
+  console.log(`\n── 5. Mutationen über ${result.units} Einheiten der späteren Texte: versucht · Änderung · redaktionell · unverändert · ohne Markierung · ungepaart`)
+  for (const k of MUTATION_KINDS) {
+    const c = result.classes[k]
+    console.log(`   ${MUTATION_LABELS[k].padEnd(40)} ${[c.tried, c.änderung, c.redaktionell, c.unverändert, c.unsichtbar, c.ungepaart].map((n) => String(n).padStart(6)).join(' ')}`)
+  }
+  for (const miss of result.misses.slice(0, 60)) console.log(`   ✗ ${MUTATION_LABELS[miss.kind]} → ${miss.outcome}: ${miss.unit} „${miss.before}" → „${miss.after}"`)
+}
+
 if (jsonPath) {
   // The drafts of the list asked for and loaded: a draft that reached no
   // Regierungsvorlage is loaded and not compared, one that threw is not loaded.
@@ -317,7 +366,7 @@ if (jsonPath) {
   console.log(`\nBericht geschrieben: ${jsonPath}`)
 }
 
-let failed = record.breaches.length > 0
+let failed = record.breaches.length > 0 || (record.mutations?.misses.length ?? 0) > 0
 if (baselinePath) {
   const before = JSON.parse(readFileSync(baselinePath, 'utf8')) as Record_
   // The badges first: a verdict that moved, in either direction, is a line to
