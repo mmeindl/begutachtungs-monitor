@@ -24,7 +24,7 @@ export interface ExplanationPassage {
 }
 
 export interface ParticularExplanation {
-  /** „I" or „2", where the heading names an Artikel — the law, in a package. */
+  /** „I" or „2": the Artikel its heading names, else the last „Zu Artikel …" heading above it — the law, in a package. */
   article: string | null
   /** The §§ it explains, „5", „12a" — from the heading's brackets. */
   paras: string[]
@@ -214,6 +214,32 @@ export function headingZiffern(heading: string, known: readonly string[] = []): 
 }
 
 /**
+ * The package's Artikel an entry's heading names, by the Bund's rule
+ * (`ownArticleKeys`, `isCitedArticle` in `explanations/explanationsHtml.ts`;
+ * this module stays free of imports): outside the brackets, which carry the
+ * provision amended, before the colon, and without an Artikel another act's
+ * — one followed by „Abs", „lit", „Satz", „der"/„des" or an act's
+ * abbreviation. „Zu Art 28 Abs 3a:" under „Zu Art 1 (Landes-Verfassungsgesetz
+ * 1999)" (Salzburg 32374) is the Landesverfassung's Artikel 28, and read as
+ * the package's it carried the entries below it to the 28th law. A range
+ * („Zu Art 7 bis 17", „Zu Artikel III bis V") names several.
+ */
+function ownArticles(heading: string): { article: string | null; several: boolean } {
+  let address = heading
+  for (let i = 0; i < 2; i++) address = address.replace(/\([^()]*\)/g, ' ')
+  address = address.split(':')[0] ?? address
+  const out = new Set<string>()
+  let range = false
+  for (const m of address.matchAll(/(?<![a-zäöü])Art(?:ikel)?\.?\s*([IVXL]+|\d+)(?![\da-z])\s*(\S*)/gi)) {
+    const next = m[2]!
+    if (/^(?:Abs|Absatz|lit|Satz|der|des)\b/i.test(next) || /^[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]*[A-ZÄÖÜ]/.test(next)) continue
+    out.add(m[1]!)
+    if (/^bis$/i.test(next)) range = true
+  }
+  return { article: out.size === 1 && !range ? [...out][0]! : null, several: out.size > 1 || range }
+}
+
+/**
  * The particular part from its first entry on: one entry per „Zu …"
  * heading (`entry`), up to the document's end marker (`END_RE`).
  */
@@ -223,11 +249,23 @@ function particularOf(lines: readonly Line[], entry: RegExp): ParticularExplanat
   const end = body.findIndex((l, i) => i > 0 && END_RE.test(l.text))
   if (end > 0) body = body.slice(0, end)
   let current: { heading: string; lines: Line[] } | null = null
+  /*
+   * The Artikel heading in force (20.11.2026), as the Bund's reader keeps it
+   * (`explanationsHtml.ts`): a package heads each law once — „Zu Artikel II"
+   * — and its entries by Ziffer alone below it. Read from the entry's own
+   * heading only, „Zu Z 1:" under Artikel II stood under none and was looked
+   * up in Artikel I (`explainedParagraphs`): 705 entries of 32 drafts follow
+   * an Artikel heading other than the first.
+   */
+  let mark: string | null = null
   const flush = () => {
     if (!current) return
     const text = paragraphs(current.lines).flatMap((p) => [...(p.heading ? [p.heading] : []), ...p.text])
-    const article = /^Zu\s+Art(?:ikel)?\.?\s*([IVXL]+|\d+)\b/.exec(current.heading)?.[1] ?? null
-    particular.push({ article, paras: headingParas(current.heading), heading: current.heading, text })
+    const own = ownArticles(current.heading)
+    // One entry for several Artikel belongs to none, and the mark no longer says which law follows.
+    if (own.several) mark = null
+    else if (own.article) mark = own.article
+    particular.push({ article: own.several ? null : mark, paras: headingParas(current.heading), heading: current.heading, text })
   }
   let headingOpen = false
   for (const l of body) {

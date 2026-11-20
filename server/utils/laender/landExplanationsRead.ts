@@ -61,10 +61,14 @@ export function explainedParagraphs(parse: LandExplanationsParse, units: readonl
   }
   /** The Ziffern the draft's instructions number in one Artikel, for a range („Z 3 bis 5" holds „3a"). */
   const zifferOf = (article: number) => [...byZiffer.keys()].filter((k) => k.startsWith(`${article}|`)).map((k) => k.slice(k.indexOf('|') + 1))
+  // An entry under no Artikel is the first's only where the draft numbers
+  // Ziffern in one Artikel (the Novelle beside its Inkrafttreten); in a
+  // package its Ziffer could be any law's, and none is looked up (20.11.2026).
+  const zifferArticles = new Set([...byZiffer.keys()].map((k) => k.slice(0, k.indexOf('|'))))
   return parse.particular.map((e) => {
-    const article = e.article ? (/^\d+$/.test(e.article) ? Number(e.article) : romanValue(e.article)) : 1
-    const paras = e.paras.length ? e.paras : [...new Set(headingZiffern(e.heading, zifferOf(article)).map((z) => byZiffer.get(`${article}|${z}`)).filter((p): p is string => Boolean(p)))]
-    const law = laws.length === 1 ? laws[0]! : (e.article ? laws[article - 1] ?? null : null)
+    const article = e.article ? (/^\d+$/.test(e.article) ? Number(e.article) : romanValue(e.article)) : zifferArticles.size > 1 ? null : 1
+    const paras = e.paras.length || article === null ? e.paras : [...new Set(headingZiffern(e.heading, zifferOf(article)).map((z) => byZiffer.get(`${article}|${z}`)).filter((p): p is string => Boolean(p)))]
+    const law = laws.length === 1 ? laws[0]! : (e.article && article ? laws[article - 1] ?? null : null)
     return { law, paras, heading: e.heading, text: e.text }
   })
 }
