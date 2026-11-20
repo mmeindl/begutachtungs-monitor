@@ -5,6 +5,7 @@
  * would say of every § a Land's comparison shows (12.11.2026).
  *
  *   pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show ooe-2025-16106] [--cached-only] [--mindestens=<pct>]
+ *     [--baseline=<file> | --baseline-schreiben=<file>]
  *
  * THE PIPELINE IS THE PRODUCT'S: `compareTgu` reads the document and holds
  * its left column against RIS as the page does; `tguDraftBlocks` reads the
@@ -63,6 +64,13 @@
  * printed and recorded as „nicht gehalten", never passed in silence
  * (`lib/landGuardReport.ts`).
  *
+ * `--baseline=<file>` (20.11.2026): every § the comparison withholds, by
+ * document, law and § with its cause, and per document whether it was
+ * answered and how many §§ it shows, compared for equality with the file —
+ * the run fails on every entry that came or went (`landBaselineFindings`).
+ * `--baseline-schreiben=<file>` draws it anew from a whole run; the committed
+ * one is `landGuardBaseline.json`, drawn from the cached corpus.
+ *
  * Runs with `-c vitest.config.ts`: `texts/read.ts` imports `#shared`.
  */
 import { createHash } from 'node:crypto'
@@ -71,7 +79,7 @@ import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag, argPair } from '../lib/args'
-import { MIN_TRIES, floorFailed, floorRows, type FaultTally } from '../lib/landGuardReport'
+import { MIN_TRIES, baselineDocument, floorFailed, floorRows, landBaselineFindings, toLandBaseline, type FaultTally, type LandBaseline, type LandBaselineDocument } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
@@ -94,9 +102,22 @@ const show = argPair('show')
 const cachedOnly = argFlag('cached-only')
 const floorArg = argAssigned('mindestens')
 const floor = floorArg === null ? null : Number(floorArg)
-if (!outDir || (floor !== null && !(floor >= 0 && floor <= 100))) {
-  console.error('Usage: pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show <id>] [--cached-only] [--mindestens=<pct>]')
+const baselinePath = argAssigned('baseline')
+const baselineWrite = argAssigned('baseline-schreiben')
+// A baseline is drawn from the whole population only: one drawn from `--land` or `--show` would report every other document as unknown.
+if (!outDir || (floor !== null && !(floor >= 0 && floor <= 100)) || (baselinePath && baselineWrite) || (baselineWrite && (onlyLand || show))) {
+  console.error('Usage: pnpm harness:land-guard -- --out <dir> [--land ooe|sbg|t|w|ktn] [--show <id>] [--cached-only] [--mindestens=<pct>] [--baseline=<file> | --baseline-schreiben=<file> (ohne --land, --show)]')
   process.exit(1)
+}
+// Read before the run: a baseline that cannot be read is a failed run, not one with no finding.
+let baseline: LandBaseline | null = null
+if (baselinePath) {
+  try {
+    baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as LandBaseline
+  } catch (err) {
+    console.error(`FEHLER: Grundlinie ${baselinePath} ließ sich nicht lesen — ${String(err).slice(0, 160)}`)
+    process.exit(2)
+  }
 }
 mkdirSync(outDir, { recursive: true })
 installFetchCache('.harness-cache/land-guard')
@@ -214,6 +235,8 @@ interface TguAnswer {
   withheld: { law: string | null; id: string; fromId?: string; reason?: string }[]
 }
 const answers: TguAnswer[] = []
+/** Each document of the population as the baseline holds it (`--baseline`). */
+const baselineDocs: Record<string, LandBaselineDocument> = {}
 /** The §§ the rule passes, with what is needed to inject into them. */
 interface Site { record: UnitRecord; unit: LawDiffUnit; blocks: TextBlock[]; all: LawDiffUnit[] }
 const sites: Site[] = []
@@ -263,12 +286,14 @@ for (const item of items) {
   drafts.push(rec)
   if (!existsSync(file)) {
     rec.state = 'kein Detail im Cache'
+    baselineDocs[item.id] = baselineDocument(item.land, rec.state, null)
     continue
   }
   const detail = JSON.parse(readFileSync(file, 'utf8')) as LandDraftDetail
   const doc = item.land === 'w' ? (tguDocument(detail) ?? detail.draft.documents.at(-1)) : tguDocument(detail)
   if (!doc) {
     rec.state = 'keine Textgegenüberstellung'
+    baselineDocs[item.id] = baselineDocument(item.land, rec.state, null)
     continue
   }
   try {
@@ -287,6 +312,7 @@ for (const item of items) {
       units: value.units.map((u) => ({ law: u.article, id: u.id, fromId: u.fromId, change: u.change, editorial: !!u.editorial, fromText: u.fromText, toText: u.toText })),
       withheld: value.withheld,
     })
+    baselineDocs[item.id] = baselineDocument(item.land, 'beantwortet', value)
     // Kärnten: the answer only — its right column is the Novelle's instructions, which the guard does not judge.
     if (item.land === 'ktn') {
       rec.state = value.available ? 'nur Antwort (Kärnten)' : `nicht verfügbar: ${value.unavailableReason?.slice(0, 80)}`
@@ -356,6 +382,8 @@ for (const item of items) {
     }
   } catch (err) {
     rec.state = `Fehler: ${String(err).slice(0, 120)}`
+    // Only where `compareTgu` gave no answer: a later step failing does not unmake it.
+    baselineDocs[item.id] ??= baselineDocument(item.land, 'Fehler', null)
   }
   process.stderr.write(`\r${drafts.length}/${items.length} ${item.id}            `)
 }
@@ -671,6 +699,14 @@ if (floorTable) {
 writeFileSync(join(outDir, 'summary.md'), lines.join('\n'))
 /* The figures of the tables above as a record (19.11.2026), for
    `scripts/harness/genauigkeit.ts`, which writes what `/genauigkeit` shows. */
+/* The baseline: drawn anew, or compared. A document of the baseline is
+   asked of where this run's filters (`--land`, `--show`) would have asked
+   of it. */
+if (baselineWrite) writeFileSync(baselineWrite, `${JSON.stringify(toLandBaseline(baselineDocs), null, 1)}\n`)
+const baselineFindings = baseline
+  ? landBaselineFindings(baseline, baselineDocs, (id, d) => TGU_LANDS.includes(d.land as LandCode) && (!onlyLand || d.land === onlyLand) && (!show || id === show))
+  : null
+if (baselineFindings) writeFileSync(join(outDir, 'baseline-findings.txt'), baselineFindings.map((f) => `${f}\n`).join(''))
 writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   at: new Date().toISOString(),
   lands: LANDS,
@@ -700,19 +736,30 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   },
   // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten".
   floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },
+  // `--baseline`: null when the run compared none; the findings themselves in `baseline-findings.txt`.
+  baseline: baselineFindings === null ? null : { file: baselinePath, at: baseline!.at, findings: baselineFindings.length },
 }, null, 1)}\n`)
 console.log(lines.slice(0, lines.indexOf('## Abweichende §§ (die das Produkt zurückhalten würde)')).join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)
+let failed = false
 if (floorTable) {
   console.log(`\n## Boden (--mindestens=${floor})`)
   for (const r of floorTable) {
     if (r.verdict === 'unter dem Boden') console.log(`  ✗ unter ${floor} %: ${r.key} — ${r.caught}/${r.tried}`)
     else if (r.verdict === 'nicht gehalten') console.log(`  ? nicht gehalten (weniger als ${MIN_TRIES} Versuche): ${r.key} — ${r.caught}/${r.tried}`)
   }
-  if (floorFailed(floorTable)) process.exit(1)
+  if (floorFailed(floorTable)) failed = true
   const held = floorTable.filter((r) => r.verdict === 'gehalten').length
   // Zero of zero is no all-clear: a run too small for the floor says that it held nothing.
   console.log(held
     ? `  ✓ ${held} von ${floorTable.length} Fehlerklassen mit mindestens ${MIN_TRIES} Versuchen zu mindestens ${floor} % gefangen${held < floorTable.length ? `; ${floorTable.length - held} nicht gehalten` : ''}`
     : `  ? keine Fehlerklasse mit mindestens ${MIN_TRIES} Versuchen — der Boden hat nichts gehalten`)
 }
+if (baselineWrite) console.log(`\nGrundlinie geschrieben: ${baselineWrite} — ${Object.keys(baselineDocs).length} Entwürfe, ${Object.values(baselineDocs).reduce((n, d) => n + d.withheld.length, 0)} einbehaltene §§.`)
+if (baselineFindings) {
+  console.log(`\n## Grundlinie (${baselinePath}, gezogen ${baseline!.at.slice(0, 10)})`)
+  for (const f of baselineFindings) console.log(`  ✗ ${f}`)
+  if (baselineFindings.length) failed = true
+  else console.log(`  ✓ ohne Befund: ${Object.keys(baselineDocs).length} Entwürfe messen sich wie in der Grundlinie`)
+}
+if (failed) process.exit(1)
