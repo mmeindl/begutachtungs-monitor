@@ -44,6 +44,12 @@ export interface TguPage {
   rules: [number, number, number, number][]
   /** Every glyph the page draws, in drawing order, with its advance width in 1/1000 em */
   glyphs: { u: string; w: number }[]
+  /**
+   * Where each glyph of upright text stands, as the page's own text
+   * operators place it: left edge, width and baseline in user space
+   * (`landTguPdf.ts`). Absent where the reader could not follow them.
+   */
+  boxes?: { u: string; x: number; w: number; y: number }[]
 }
 
 interface Char { c: string; ins: boolean; del: boolean }
@@ -99,6 +105,47 @@ function centres(item: TguItem, glyphs: { text: string; widths: number[] }, curs
 }
 
 /**
+ * The x centre of each character of a run from where the page itself puts
+ * its glyphs (`TguPage.boxes`), or null where the run is not found among
+ * them letter for letter (20.11.2026).
+ *
+ * `centres` knows a run's start, its width and its glyphs' widths, and
+ * shares the width out — but not the spaces: a space has no glyph in its
+ * list and Word sets each stretch of a justified line at a position of its
+ * own, with its own gaps (one line of 2024-16085: 5.5, 4.5 and 4.2 pt). So
+ * every character after a space stood up to half a letter off, and at the
+ * edge between an underlined and a struck stretch one letter changed sides.
+ * The page showed „einzuhaltend" for „einzuhalten" beside the struck „das
+ * Amtsgeheimnis" (2025-16094), „Geheimhaltungsverpflichtungt", and „Z 3, 4
+ * und 4" for „Z 3, 4 und 5" beside the struck „Abs. 2 Z 3 und 4"
+ * (2026-16115) — a wrong number. Found by holding the right column word for
+ * word against the draft (`landTguStrict.ts`).
+ */
+function placedCentres(item: TguItem, boxes: readonly { u: string; x: number; w: number }[]): number[] | null {
+  const chars = [...item.s]
+  const inside = boxes.filter((b) => b.u.trim() !== '' && b.x >= item.x - 1.5 && b.x + b.w <= item.x + item.w + 1.5)
+  // A ligature is one glyph and several characters of the run: each gets its share.
+  const letters = inside.flatMap((b) => {
+    const us = [...b.u]
+    return us.map((u, k) => ({ u, x: b.x + (k * b.w) / us.length, w: b.w / us.length }))
+  })
+  const visible = chars.map((c, k) => [c, k] as const).filter(([c]) => c.trim() !== '')
+  if (!visible.length || letters.length !== visible.length || letters.some((l, v) => l.u !== visible[v]![0])) return null
+  const out: number[] = new Array(chars.length).fill(Number.NaN)
+  visible.forEach(([, k], v) => { out[k] = letters[v]!.x + letters[v]!.w / 2 })
+  // A space stands between the letters beside it.
+  for (let k = 0; k < chars.length; k++) {
+    if (!Number.isNaN(out[k]!)) continue
+    const before = visible.findLast(([, i]) => i < k)
+    const after = visible.find(([, i]) => i > k)
+    const left = before ? letters[visible.indexOf(before)]!.x + letters[visible.indexOf(before)]!.w : item.x
+    const right = after ? letters[visible.indexOf(after)]!.x : item.x + item.w
+    out[k] = (left + right) / 2
+  }
+  return out
+}
+
+/**
  * A hyphen that breaks a word at the end of a line belongs to that word, and
  * goes where the word goes (26.10.2026). The document's rule stops short of
  * it — „Gleichbehandlungs-" struck but its hyphen not (Oö. 2026-16120) — or
@@ -113,13 +160,43 @@ function breakHyphen(chars: Char[]): void {
   if (last > 0 && chars[last]!.c === '-' && before && /\p{L}/u.test(before.c)) chars[last] = { ...chars[last]!, ins: before.ins, del: before.del }
 }
 
+/**
+ * An internet address underlined on its own is a link, not an addition
+ * (20.11.2026): Word underlines „www.edm.gv.at" in the text in force, with
+ * the same rule it draws under new text, and the address read as inserted —
+ * the text in force came out „unter „"" and the page marked the address as
+ * new (2025-16103, § 18a, twice; the draft changes another word of the §).
+ * Only where the underline holds the address and nothing else: an address
+ * the draft adds stands in an underlined sentence, or comes back from RIS
+ * as missing from the text in force, and the § is then withheld.
+ */
+const LINK_RE = /^(?:https?:\/\/|www\.)[^\s„“”"]+\.[^\s„“”"]+$/i
+function linkUnderline(chars: Char[]): void {
+  for (let i = 0; i < chars.length; i++) {
+    if (!chars[i]!.ins || chars[i]!.del) continue
+    let j = i
+    while (j < chars.length && chars[j]!.ins && !chars[j]!.del) j++
+    if (LINK_RE.test(chars.slice(i, j).map((c) => c.c).join('').trim())) for (let k = i; k < j; k++) chars[k] = { ...chars[k]!, ins: false }
+    i = j
+  }
+}
+
 /** The lines of one page, top to bottom, each character marked as underlined or struck. */
 export function tguLines(page: TguPage): TguLine[] {
   const visible = page.glyphs.filter((g) => g.u.length === 1 && g.u !== ' ')
   const glyphs = { text: visible.map((g) => g.u).join(''), widths: visible.map((g) => g.w) }
   const cursor = { at: 0 }
   // Centres are computed in drawing order — the order the glyphs are in.
-  const placed = page.items.filter((it) => it.s.length).map((it) => ({ it, cx: centres(it, glyphs, cursor) }))
+  // By baseline, left to right: where the page puts its glyphs (`placedCentres`).
+  const boxes = new Map<number, NonNullable<TguPage['boxes']>>()
+  for (const b of page.boxes ?? []) boxes.set(Math.round(b.y), [...(boxes.get(Math.round(b.y)) ?? []), b])
+  for (const row of boxes.values()) row.sort((a, b) => a.x - b.x)
+  const boxesAt = (y: number) => [Math.round(y) - 1, Math.round(y), Math.round(y) + 1].flatMap((k) => boxes.get(k) ?? []).filter((b) => Math.abs(b.y - y) < 1).sort((a, b) => a.x - b.x)
+  const placed = page.items.filter((it) => it.s.length).map((it) => {
+    // `centres` moves the cursor either way: the next run is found from it.
+    const estimated = centres(it, glyphs, cursor)
+    return { it, cx: (page.boxes ? placedCentres(it, boxesAt(it.y)) : null) ?? estimated }
+  })
   const byLine = new Map<number, typeof placed>()
   for (const p of placed) {
     const key = Math.round(p.it.y / 2) * 2
@@ -141,6 +218,7 @@ export function tguLines(page: TguPage): TguLine[] {
       lastEnd = it.x + it.w
     }
     breakHyphen(chars)
+    linkUnderline(chars)
     const text = (keep: (c: Char) => boolean) => {
       // Where a left-out run held a space, its neighbours stay two words:
       // the document prints an added „der Landes-Personalvertretung" and a

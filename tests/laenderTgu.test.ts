@@ -55,6 +55,55 @@ describe('tguLines', () => {
     expect(c).toMatchObject({ old: '-', neu: 'neu -' })
   })
 
+  // Oö. 2025-16094, Statut Steyr § 10, as the PDF sets it: one run of 454 pt, the new
+  // „einzuhalten" run into the struck „das Amtsgeheimnis", each stretch with gaps of its own.
+  describe('a letter at the edge of two marks (20.11.2026)', () => {
+    const text = 'die Geheimhaltungsverpflichtung einzuhaltendas Amtsgeheimnis zu wahren und das Wohl der'
+    const ARIAL: Record<string, number> = { d: 556, i: 222, e: 556, G: 778, h: 556, m: 833, a: 556, l: 222, t: 278, u: 556, n: 556, g: 556, s: 500, v: 500, r: 333, p: 556, f: 278, c: 500, z: 500, A: 667, w: 722, W: 944, o: 556 }
+    const SIZE = 11.04
+    /** The gaps of the underlined stretch, of the struck one, and of what follows. */
+    const SPACES = [2.16, 2.16, 2.36, 2.36, 2.36, 2.45, 2.45, 2.45, 2.45]
+    const item = { s: text, x: 70.824, y: 119.09, w: 453.788, h: SIZE }
+    const rules: TguPage['rules'] = [[70.8, 117.2, 289.3, 117.9], [289.3, 121.5, 437.5, 122.0]]
+    const glyphs = [...text].filter((c) => c !== ' ').map((u) => ({ u, w: ARIAL[u]! }))
+    /** Each glyph where the page's text operators put it. */
+    const boxes = () => {
+      let x = item.x
+      let space = 0
+      return [...text].map((u) => {
+        const w = u === ' ' ? SPACES[space++]! : (ARIAL[u]! / 1000) * SIZE
+        const box = { u, x, w, y: item.y }
+        x += w
+        return box
+      })
+    }
+
+    it('estimated from the run\'s width alone, the struck „d" stays with the new word', () => {
+      const [l] = tguLines({ items: [item], rules, glyphs })
+      expect(l!.neu).toBe('die Geheimhaltungsverpflichtung einzuhaltend und das Wohl der')
+    })
+
+    it('placed where the page puts it, it goes with the struck words', () => {
+      const [l] = tguLines({ items: [item], rules, glyphs, boxes: boxes() })
+      expect(l).toMatchObject({ neu: 'die Geheimhaltungsverpflichtung einzuhalten und das Wohl der', old: 'das Amtsgeheimnis zu wahren und das Wohl der' })
+    })
+
+    it('falls back to the estimate where the run is not found among the glyphs letter for letter', () => {
+      const [l] = tguLines({ items: [item], rules, glyphs, boxes: boxes().slice(3) })
+      expect(l!.neu).toBe('die Geheimhaltungsverpflichtung einzuhaltend und das Wohl der')
+    })
+  })
+
+  it('does not take a link\'s underline for an addition (Oö. 2025-16103, § 18a)', () => {
+    const text = 'unter „www.edm.gv.at“ zu registrieren'
+    const [l] = tguLines({ items: [run(text, 0, 100)], rules: [rule(0, 100, 7, 20, 'under')], glyphs: glyphsOf(text) })
+    expect(l).toMatchObject({ old: text, neu: text, marked: false })
+    // An address the draft adds stands in an underlined stretch of more than itself.
+    const added = 'alt und unter www.edm.gv.at neu'
+    const [m] = tguLines({ items: [run(added, 0, 100)], rules: [rule(0, 100, 4, 27, 'under')], glyphs: glyphsOf(added) })
+    expect(m!.old).toBe('alt neu')
+  })
+
   it('reads lines top to bottom', () => {
     const page: TguPage = { items: [run('unten', 0, 100), run('oben', 0, 200)], rules: [], glyphs: glyphsOf('unten', 'oben') }
     expect(tguLines(page).map((l) => l.raw)).toEqual(['oben', 'unten'])
