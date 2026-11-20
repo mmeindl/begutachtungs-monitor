@@ -71,6 +71,13 @@ export interface GenauigkeitRecord {
       otherwise: number
       /** Without the annex: every § the engine refused nothing in. */
       ungated: { shown: number; identical: number }
+      /**
+       * Beside `shown`: the plausible §§ the oracle contradicts that the
+       * second witness, the draft's own PDF, shows (`kons.ts`, `witness`),
+       * and of those, word for word the law in force. Absent in rounds
+       * before 20.11.2026; no sentence reads it yet.
+       */
+      witnessed?: { shown: number; identical: number }
     }
     /** Faults injected into confirmed results (`faultInjection.ts`, its result classes). */
     faults: GenauigkeitPaths<GenauigkeitFault[]>

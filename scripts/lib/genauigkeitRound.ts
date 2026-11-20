@@ -55,6 +55,10 @@ interface KonsRecord extends Stamped {
   checked: number
   unrefused: { checked: number; identical: number; divergent: number }
   gate: Record<string, number>
+  /** The designations of the §§ whose text is the law's: `gleich|abweichend` `|Orakel|plausibel` (`markerSequence`, 20.11.2026). */
+  markers?: Record<string, number>
+  /** The second witness over the plausible §§ the oracle contradicts: `Ausgang|Ergebnis`. */
+  witness?: Record<string, number>
 }
 
 interface FaultClass extends GenauigkeitFault { floored?: boolean }
@@ -157,6 +161,17 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
   const gate = (pred: (p: string[]) => boolean): number =>
     Object.entries(kons.gate).filter(([k]) => pred(k.split('|'))).reduce((n, [, v]) => n + v, 0)
   const shown = (p: string[]) => p[0] === 'plausibel' && p[1] === 'bestätigt'
+  const tallied = (tally: Record<string, number>, pred: (p: string[]) => boolean): number =>
+    Object.entries(tally).filter(([k]) => pred(k.split('|'))).reduce((n, [, v]) => n + v, 0)
+
+  // „identisch" compares the text without its designations: a confirmed §
+  // under the wrong „(2)" would count as the law and be shown (19.11.2026).
+  if (!kons.markers) refusals.push('kons.json was written before the designations were counted (no "markers")')
+  else {
+    const misnumbered = tallied(kons.markers, (p) => p[0] === 'abweichend' && p[1] === 'bestätigt')
+    const which = misnumbered === 1 ? '1 § the oracle confirmed deviates from the enacted text in its' : `${misnumbered} §§ the oracle confirmed deviate from the enacted text in their`
+    if (misnumbered) refusals.push(`kons.json: ${which} designations („(2)", „3.", „b)"): the page would show the law under the wrong numbers`)
+  }
 
   for (const [path, record] of Object.entries(faults)) {
     const name = `fi-${path === 'table' ? 'xml' : 'pdf'}.json`
@@ -227,6 +242,7 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
         incomplete: gate((p) => shown(p) && p[2] === 'unvollständig'),
         otherwise: gate((p) => shown(p) && !['identisch', 'abweichend', 'unvollständig'].includes(p[2]!)),
         ungated: { shown: kons.unrefused.checked, identical: kons.unrefused.identical },
+        ...(kons.witness ? { witnessed: { shown: tallied(kons.witness, (p) => p[0] === 'gezeigt'), identical: tallied(kons.witness, (p) => p[0] === 'gezeigt' && p[1] === 'identisch') } } : {}),
       },
       faults: { pdf: classes(faults.pdf.result), table: classes(faults.table.result) },
       funnel: accounted,

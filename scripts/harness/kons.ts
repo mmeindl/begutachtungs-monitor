@@ -1293,6 +1293,13 @@ if (jsonFile) {
     gate: Object.fromEntries([...gateTally].sort(([a], [b]) => a.localeCompare(b))),
     /** The second witness: `Ausgang|Ergebnis` over the plausible §§ the oracle contradicts (20.11.2026). */
     witness: Object.fromEntries([...witnessTally].sort(([a], [b]) => a.localeCompare(b))),
+    /**
+     * The designations of every § whose text is the law's (`markerSequence`,
+     * 20.11.2026): „abweichend|bestätigt|…" is a confirmed § under the wrong
+     * numbers, which the builder of `/genauigkeit` refuses.
+     */
+    markerKey: 'gliederung|orakel|plausibel',
+    markers: Object.fromEntries([...markerTally].sort(([a], [b]) => a.localeCompare(b))),
   }
   writeFileSync(jsonFile, `${JSON.stringify(record, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonFile}`)

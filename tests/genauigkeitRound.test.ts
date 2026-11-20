@@ -34,6 +34,8 @@ function round(): Record<string, any> {
       ...stamp, ...reach(60), corpus: { bgbl: 60, laws: 207 }, checked: 1794,
       unrefused: { checked: 1486, identical: 1451, divergent: 6 },
       gate: { 'plausibel|bestätigt|identisch|ohne Verweigerung|XML': 459, 'plausibel|bestätigt|unvollständig|ohne Verweigerung|PDF': 1 },
+      markers: { 'gleich|bestätigt|plausibel': 459, 'abweichend|widersprochen|plausibel': 2, 'abweichend|kein Orakel|unplausibel': 5 },
+      witness: { 'gezeigt|identisch': 152, 'gezeigt|unvollständig': 1, 'pruefung|identisch': 95, 'kein PDF|identisch': 4 },
     },
     'fi-pdf.json': faultRecord('pdf'),
     'fi-xml.json': faultRecord('table'),
@@ -204,5 +206,26 @@ describe('the gates it had before', () => {
       'station.json records 1 invariant breaches',
       'land-st/summary.json records 2 invariant hits not accounted for',
     ])
+  })
+})
+
+describe('the bench\'s designations and its second witness', () => {
+  it('refuses a bench where a § the oracle confirmed carries other designations than the enacted text', () => {
+    const r = round()
+    r['kons.json'].markers['abweichend|bestätigt|unplausibel'] = 1
+    expect(refusals(r)).toEqual(['kons.json: 1 § the oracle confirmed deviates from the enacted text in its designations („(2)", „3.", „b)"): the page would show the law under the wrong numbers'])
+  })
+
+  it('refuses a bench record written before the designations were counted', () => {
+    const r = round()
+    delete r['kons.json'].markers
+    expect(refusals(r)).toEqual(['kons.json was written before the designations were counted (no "markers")'])
+  })
+
+  it('carries the §§ the second witness shows, and how many of them are the law, without a sentence reading them', () => {
+    expect(build(round()).lesefassung.bench.witnessed).toEqual({ shown: 153, identical: 152 })
+    const r = round()
+    delete r['kons.json'].witness
+    expect(build(r).lesefassung.bench.witnessed).toBeUndefined()
   })
 })
