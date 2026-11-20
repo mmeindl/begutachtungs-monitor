@@ -13,6 +13,7 @@ import {
   LAND_OWN_DRAFT,
   RESULT_BLIND,
   RESULT_STRUCTURE,
+  RESULT_WITNESS,
   RESULT_WORDS,
   WEG_BEISPIEL,
   funnelRows,
@@ -54,7 +55,7 @@ describe('rangeDe', () => {
 
 describe('the fault classes', () => {
   it('places every class the record carries in exactly one group, so a new one needs a decision', () => {
-    const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND] as string[]
+    const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND, ...RESULT_WITNESS] as string[]
     const annex = [...ANNEX_MISFILED, ...ANNEX_LOST, ...ANNEX_BLIND] as string[]
     const land = [...LAND_OWN_DRAFT, ...LAND_OTHER_DRAFT, ...LAND_WORDING] as string[]
     for (const [groups, keys] of [
@@ -87,6 +88,11 @@ describe('funnelRows', () => {
 })
 
 describe('wegFunnel', () => {
+  it('carries the §§ shown on the draft\'s own text apart, and none in a round before them', () => {
+    expect(wegFunnel({ drafts: 1, changed: 10, shown: 5, witnessed: 2, causes: { verweigert: 5 } }).witnessed).toBe(2)
+    expect(wegFunnel({ drafts: 1, changed: 10, shown: 5, causes: { verweigert: 5 } }).witnessed).toBe(0)
+  })
+
   it('counts only the §§ with a proposed version to compose, and names the others beside the figure', () => {
     const f = wegFunnel({ drafts: 1, changed: 20, shown: 8, causes: { verweigert: 4, unplausibel: 2, 'anhang-schweigt': 3, entfaellt: 2, 'neu-erlassen': 1 } })
     expect(f.total).toBe(17)

@@ -105,6 +105,8 @@ interface DraftReport {
   annex: 'tabelle' | 'pdf' | 'keine'
   touched: number
   shown: number
+  /** Of `shown`, those shown on the draft's own text where the annex did not confirm them (`draftWitness`). */
+  witnessed: number
   notRun: string | null
   causes: Record<string, number>
   /** Hard failures, as sentences. */
@@ -127,7 +129,7 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
   const report: DraftReport = {
     citation,
     annex: !annex?.available ? 'keine' : annex.readFrom === 'pdf' ? 'pdf' : 'tabelle',
-    touched: kons?.touched ?? 0, shown: kons?.paragraphs.length ?? 0, notRun: kons?.notRun ?? null,
+    touched: kons?.touched ?? 0, shown: kons?.paragraphs.length ?? 0, witnessed: kons?.paragraphs.filter((p) => p.draftWitness).length ?? 0, notRun: kons?.notRun ?? null,
     causes: {}, failures: [], notFound: [], unplaced: [], twoVerdicts: [],
     explanationsUnplaced: 0, explanationsTotal: 0,
   }
@@ -248,7 +250,7 @@ const causes: Record<string, number> = {}
 for (const r of reports) for (const [k, v] of Object.entries(r.causes)) causes[k] = (causes[k] ?? 0) + v
 const failures = reports.flatMap((r) => r.failures.map((f) => `${r.citation}: ${f}`))
 
-console.log(`\n${reports.length} Entwürfe, ${sum((r) => r.touched)} geänderte §§, ${sum((r) => r.shown)} mit Lesefassung`)
+console.log(`\n${reports.length} Entwürfe, ${sum((r) => r.touched)} geänderte §§, ${sum((r) => r.shown)} mit Lesefassung, davon ${sum((r) => r.witnessed)} nach dem Gesetzestext des Entwurfs`)
 console.log(`Gründe: ${Object.entries(causes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`)
 const notRun: Record<string, number> = {}
 for (const r of reports) if (r.notRun) notRun[r.notRun] = (notRun[r.notRun] ?? 0) + 1

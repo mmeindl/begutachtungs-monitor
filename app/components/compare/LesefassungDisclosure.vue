@@ -17,7 +17,8 @@
  */
 import type { ConsolidatedParagraph } from '#shared/types'
 import { absaetze } from '~/utils/absaetze'
-import { laterAmendmentText } from '~/utils/lesefassung'
+// Imported, not auto-imported: a helper used only in the template is not resolved at runtime.
+import { laterAmendmentText, witnessText } from '~/utils/lesefassung'
 
 defineProps<{ paragraph: ConsolidatedParagraph }>()
 </script>
@@ -58,6 +59,9 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
            register, not a `GapNote`: nothing is missing, the sentence says
            which text this is. -->
       <p v-if="paragraph.laterAmendment" class="mt-1 text-xs text-ink-muted">{{ laterAmendmentText(paragraph.laterAmendment, true) }}</p>
+      <!-- Shown on the draft's own text where the annex reads otherwise
+           (20.11.2026): both wordings, before the text they concern. -->
+      <p v-if="witnessText(paragraph)" class="mt-2 text-xs text-ink-muted">{{ witnessText(paragraph) }}</p>
       <p v-if="paragraph.headingSegments" class="mt-2 text-sm font-semibold text-ink">
         <DiffText :segments="paragraph.headingSegments" removed-normal-weight />
       </p>

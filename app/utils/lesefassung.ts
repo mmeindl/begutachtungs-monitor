@@ -300,3 +300,21 @@ export function laterAmendmentText(note: ConsolidatedLaterAmendment, shown: bool
 export function laterAmendmentLine(lesefassung: Lesefassung, designation: string | null = null): string | null {
   return lesefassung.kind === 'withheld' && lesefassung.laterAmendment ? laterAmendmentText(lesefassung.laterAmendment, false, designation) : null
 }
+
+const COUNT_DE = ['', 'einer', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf']
+
+/**
+ * The sentence at a § shown on the draft's own Gesetzestext where the annex
+ * did not confirm it (`draftWitness`, `server/utils/kons/draftWitness.ts`,
+ * 20.11.2026) — null at every other §. Per case, with both wordings at each
+ * place: never a claim about ministries. „lesen wir": the annex's wording is
+ * our reading of the annex, and where it is a PDF our reader can be the one
+ * that differs (a struck word read with the new one, 76/ME XXVIII IFG § 100).
+ */
+export function witnessText(paragraph: ConsolidatedParagraph): string | null {
+  const places = paragraph.draftWitness ?? []
+  if (places.length === 0) return null
+  const where = places.length === 1 ? 'Hier' : `An ${COUNT_DE[places.length] ?? places.length} Stellen`
+  const each = places.map((p) => `in der Textgegenüberstellung lesen wir „${p.annex}“, im Gesetzestext „${p.draft}“`).join('; ')
+  return `${where} stimmt die Textgegenüberstellung nicht mit dem Gesetzestext des Entwurfs überein: ${each.charAt(0).toUpperCase()}${each.slice(1)}. Gezeigt ist der Gesetzestext; so steht er auch in der PDF-Fassung des Entwurfs im RIS.`
+}

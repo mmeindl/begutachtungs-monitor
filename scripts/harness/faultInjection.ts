@@ -329,7 +329,7 @@ import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } 
 import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
-import { applyNovelle, instructionsFromUnits, renamedOrigins, type StandingLaw } from '../../server/utils/kons/lawApply'
+import { applyNovelle, instructionsFromUnits, renamedOrigins, type Instruction, type StandingLaw } from '../../server/utils/kons/lawApply'
 import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, PLACE_NOTE, ROW_ORDER_NOTE, absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
 import { printedStretches } from '../../server/utils/annex/elision'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
@@ -337,6 +337,7 @@ import { isDivision, isSchedule, unitKey } from '../../server/utils/text/designa
 import { unitsByKey } from '../../server/utils/kons/konsGate'
 import { loadKey } from './konsJudge'
 import { installFetchCache } from '../lib/harnessCache'
+import { renditionOfPages, witnessVerdict, type DraftRendition, type WitnessInstruction, type WitnessPlace } from '../../server/utils/kons/draftWitness'
 import { writeFileSync } from 'node:fs'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
@@ -722,7 +723,9 @@ async function inject(doc: any): Promise<DraftResult | null> {
     // The number that is not settled in advance is `silenced`.
     if (oldDonor !== null) record(faults.U, judge(withMirroredRow(para.rows, site, oldDonor), para.standing, wide, bagOf(para)), baseVerdict)
   }
-  await injectIntoResults(cite, draftBlocks, amending.length, parsed.rows, lawOf)
+  // The draft's PDF in the same record: the second witness's reading (`kons/draftRendition.ts`).
+  const mainPdf = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
+  await injectIntoResults(cite, draftBlocks, amending.length, parsed.rows, lawOf, () => renditionOf(mainPdf))
   return { cite, judged: confirmed.length, injected }
 }
 
@@ -1281,8 +1284,10 @@ async function injectIntoResults(
   amendingCount: number,
   rows: readonly ComparisonRow[],
   lawOf: (key: string | null) => Promise<KonsLawAtDate | null>,
+  renditionLoader: () => Promise<DraftRendition | null> = async () => null,
 ): Promise<void> {
   const byParagraph = rowsByParagraph(rows)
+  const rendition = await renditionLoader()
   for (const { blocks, article } of articleBlocks(draftBlocks).filter((p) => p.article.amends)) {
     const units = segmentUnits(blocks).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
     const { instructions, refused: grammarRefused } = instructionsFromUnits(units)
@@ -1314,6 +1319,9 @@ async function injectIntoResults(
     const law: StandingLaw = { paragraphs }
     const applied = applyNovelle(law, instructions)
     const { law: after, renamed } = applied
+    /** The instructions that acted on a § of this run, as the page hands them to the witness (`kons/consolidate.ts`). */
+    const touchingOf = (list: readonly Instruction[], report: typeof applied, node: LawNode): WitnessInstruction[] =>
+      list.flatMap((ins, i) => (('target' in ins.op && ins.op.target.level === 'document') || report.touches(i, node) ? [witnessInstruction(ins)] : []))
     // Paired as the page pairs them (`kons/consolidate.ts`): a renumbered §
     // against the standing § it came from.
     const originOf = renamedOrigins(renamed)
@@ -1332,6 +1340,50 @@ async function injectIntoResults(
       const standingUnits = beforeNode ? standingUnitsOf(beforeNode) : null
       const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
+      const touching = touchingOf(instructions, applied, node)
+      /**
+       * The page's gate since 20.11.2026: the oracle, and where it contradicts
+       * the second witness (`kons/draftWitness.ts`) — a faulted result shown
+       * on the witness is shown, and counts as a miss of its class.
+       */
+      const judgedVerdict = (...args: Parameters<typeof oracleVerdict>): OracleReport => {
+        const judged = oracleVerdict(...args)
+        if (judged.verdict !== 'widersprochen' || !rendition) return judged
+        const [pid, b, g, r, ra, sa, su] = args
+        const witnessed = witnessVerdict(pid, b, g, r, touching, rendition, ra, sa, su)
+        return witnessed.released ? { ...judged, verdict: 'bestätigt', note: `Zeuge: ${witnessed.places.map((pl) => `„${pl.annex}" / „${pl.draft}"`).join('; ')}` } : judged
+      }
+      if (report.verdict === 'widersprochen' && rendition) {
+        const witnessed = witnessVerdict(id, before, got, paraRows, touching, rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
+        if (witnessed.released) {
+          results.witnessed++
+          for (const kind of PAYLOAD_KINDS) {
+            const mutated = mutatedPayload(instructions, touching, witnessed.places, kind)
+            if (!mutated) continue
+            const again = applyNovelle(law, mutated.instructions)
+            const faultedNode = unitsByKey(again.law.paragraphs).get(id)
+            const faultedGot = faultedNode ? plainText(faultedNode) : null
+            if (faultedGot === got) continue
+            const into = oracleFaults.Payload
+            into.tried++
+            into.kinds.set(kind, (into.kinds.get(kind) ?? [0, 0]).map((n, k) => n + (k === 0 ? 1 : 0)) as [number, number])
+            // Who showed a fault that got through: the oracle (the misread
+            // turned our wording into the annex's — nobody's catch, before the
+            // witness or after) or the witness itself.
+            let by: 'Orakel' | 'Zeuge' | null = null
+            if (faultedNode !== undefined && faultedGot !== null) {
+              const judged = oracleVerdict(id, before, faultedGot, paraRows, absatzSequence(faultedNode), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
+              if (judged.verdict === 'bestätigt') by = 'Orakel'
+              else if (judged.verdict === 'widersprochen' && witnessVerdict(id, before, faultedGot, paraRows, touchingOf(mutated.instructions, again, faultedNode), rendition, absatzSequence(faultedNode), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits).released) by = 'Zeuge'
+            }
+            const shownAnyway = by !== null
+            if (!shownAnyway) {
+              into.caught++
+              into.kinds.set(kind, (into.kinds.get(kind) ?? [0, 0]).map((n, k) => n + (k === 1 ? 1 : 0)) as [number, number])
+            } else into.misses.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} (${kind}, gezeigt vom ${by}) — ${mutated.shows.slice(0, 220)}`)
+          }
+        }
+      }
       // `--urteile`: every verdict on a line of its own, so two runs of an
       // oracle change can be compared § by § (`diff`), not by their totals.
       if (argFlag('urteile')) console.log(`URTEIL ${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 40)}]` : ''} — ${report.verdict}${report.note ? ` — ${report.note.slice(0, 120)}` : ''}`)
@@ -1423,6 +1475,20 @@ async function injectIntoResults(
       }
       if (report.verdict !== 'bestätigt' || before === null) continue
       results.confirmed++
+      // The reverse (20.11.2026): a fault in the annex's proposed column of a
+      // confirmed § — a figure changed — contradicts our result, and the
+      // witness may then show it. The result is the unfaulted one, so a
+      // release here shows no wrong text; counted to show how often the
+      // witness stands in where the annex alone is wrong.
+      const annexFault = numberInAnnex(paraRows)
+      if (annexFault && rendition) {
+        const judged = oracleVerdict(id, before, got, annexFault, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
+        if (judged.verdict === 'widersprochen') {
+          oracleFaults.BeilageZahl.tried++
+          if (!witnessVerdict(id, before, got, annexFault, touching, rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits).released) oracleFaults.BeilageZahl.caught++
+          else oracleFaults.BeilageZahl.misses.push(`${cite} ${unitLabel(id)} — gezeigt ist das unveränderte Ergebnis`)
+        }
+      }
       for (const kind of ['Reihe', 'Fehlt'] as const) {
         const faulted = structuralFault(node, paraRows, kind)
         if (!faulted) continue
@@ -1434,7 +1500,7 @@ async function injectIntoResults(
         // annex's chain names it.
         const dropped = kind === 'Fehlt' ? absOf(node).find((a) => !absOf(faulted).includes(a)) ?? null : null
         const faultedBefore = dropped && beforeNode ? plainText(withoutAbsatz(beforeNode, dropped)) : before
-        const judged = oracleVerdict(id, faultedBefore, plainText(faulted), paraRows, absatzSequence(faulted), beforeNode ? (absatzSequence(dropped ? withoutAbsatz(beforeNode, dropped) : beforeNode) ?? null) : null)
+        const judged = judgedVerdict(id, faultedBefore, plainText(faulted), paraRows, absatzSequence(faulted), beforeNode ? (absatzSequence(dropped ? withoutAbsatz(beforeNode, dropped) : beforeNode) ?? null) : null)
         if (judged.verdict !== 'bestätigt') into.caught++
         if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
         else if (judged.verdict === 'bestätigt') into.misses.push(`${cite} ${unitLabel(id)} — Absätze ${(absatzSequence(faulted) ?? []).join(', ')}`)
@@ -1445,12 +1511,12 @@ async function injectIntoResults(
           const faulted = withoutUnit(node, standingUnits.style, gap)
           const faultedBeforeNode = both ? withoutUnit(beforeNode, standingUnits.style, gap) : beforeNode
           into.tried++
-          const judged = oracleVerdict(id, plainText(faultedBeforeNode), plainText(faulted), paraRows, absatzSequence(faulted), absatzSequence(faultedBeforeNode) ?? null, standingUnitsOf(faultedBeforeNode))
+          const judged = judgedVerdict(id, plainText(faultedBeforeNode), plainText(faulted), paraRows, absatzSequence(faulted), absatzSequence(faultedBeforeNode) ?? null, standingUnitsOf(faultedBeforeNode))
           if (judged.verdict !== 'bestätigt') into.caught++
           if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
           // The same fault without the reading: a miss it shares was a miss
           // before the reading existed, and is not the reading's.
-          const without = oracleVerdict(id, plainText(faultedBeforeNode), plainText(faulted), paraRows, absatzSequence(faulted), absatzSequence(faultedBeforeNode) ?? null).verdict
+          const without = judgedVerdict(id, plainText(faultedBeforeNode), plainText(faulted), paraRows, absatzSequence(faulted), absatzSequence(faultedBeforeNode) ?? null).verdict
           if (judged.verdict === 'bestätigt') into.misses.push(`${cite} ${unitLabel(id)} — ohne ${standingUnits.style === 'abs' ? `(${gap})` : `${gap}.`} von ${gaps.join(', ')}; ohne die Lesart: ${without}`)
         }
       }
@@ -1458,7 +1524,7 @@ async function injectIntoResults(
       // every argument the request path passes, the standing units included.
       const standingSeq = beforeNode ? (absatzSequence(beforeNode) ?? null) : null
       const judgeWord = (into: OracleTally, faultedGot: string, faultedNode: LawNode, shows: string, stretch: string | null, kind?: string): void => {
-        const judged: OracleReport = oracleVerdict(id, before, faultedGot, paraRows, absatzSequence(faultedNode), standingSeq, standingUnits)
+        const judged: OracleReport = judgedVerdict(id, before, faultedGot, paraRows, absatzSequence(faultedNode), standingSeq, standingUnits)
         into.tried++
         if (kind) into.kinds.set(kind, (into.kinds.get(kind) ?? [0, 0]).map((n, k) => n + (k === 0 ? 1 : judged.verdict !== 'bestätigt' ? 1 : 0)) as [number, number])
         if (judged.verdict !== 'bestätigt') {
@@ -1467,7 +1533,7 @@ async function injectIntoResults(
           into.byCheck.set(check, (into.byCheck.get(check) ?? 0) + 1)
           return
         }
-        into.misses.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''}${kind ? ` (${kind})` : ''} — ${shows.slice(0, 220)}`)
+        into.misses.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''}${kind ? ` (${kind})` : ''} — ${shows.slice(0, 220)}${judged.note?.startsWith('Zeuge') ? ` — ${judged.note.slice(0, 300)}` : ''}`)
         if (argFlag('alarme')) {
           if (stretch) into.misses.push(`        Beilage, geänderte Zeile: ${stretch.slice(0, 500)}`)
           else into.misses.push(...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => `        vorgeschlagen (${r.change}): ${r.proposed.slice(0, 300)}`))
@@ -1491,7 +1557,7 @@ async function injectIntoResults(
       if (argAssigned('zeige') === id) {
         for (const [label, faulted] of [['Überschrift', reheaded ? plainText(reheaded.node) : null], ['Ziffer-Reihe', swapped ? plainText(swapped.node) : null], ...Object.entries(printedFaults).map(([k, f]) => [k, f.got] as const), ...Object.entries(unprintedFaults).map(([k, f]) => [`ungedruckt-${k}`, f.got] as const)] as const) {
           if (!faulted) continue
-          const judged = oracleVerdict(id, before, faulted, paraRows, absatzSequence(node), standingSeq, standingUnits)
+          const judged = judgedVerdict(id, before, faulted, paraRows, absatzSequence(node), standingSeq, standingUnits)
           const at = [...faulted].findIndex((ch, i) => ch !== got[i])
           console.log(`     ${label}: ${judged.verdict}${judged.note ? ` — ${judged.note}` : ''}\n        …${faulted.slice(Math.max(0, at - 80), at + 80)}…`)
         }
@@ -1500,7 +1566,7 @@ async function injectIntoResults(
       const dated = dateFault(got, paraRows)
       if (dated) {
         oracleFaults.Datum.tried++
-        const judged = oracleVerdict(id, before, dated, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
+        const judged = judgedVerdict(id, before, dated, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
         if (judged.verdict !== 'bestätigt') oracleFaults.Datum.caught++
         else {
           oracleFaults.Datum.misses.push(`${cite} ${unitLabel(id)}`)
@@ -1520,11 +1586,11 @@ async function injectIntoResults(
       for (const [replaced, into] of [[false, oracleFaults.E], [true, oracleFaults.Ersatz]] as const) {
         const fault = withKeptRemoval(before, got, replaced)
         if (!fault) continue
-        if (oracleVerdict(id, before, fault.control, paraRows).verdict !== 'bestätigt') {
+        if (judgedVerdict(id, before, fault.control, paraRows).verdict !== 'bestätigt') {
           results.controlMoved++
           continue
         }
-        const judged = oracleVerdict(id, before, fault.faulted, paraRows)
+        const judged = judgedVerdict(id, before, fault.faulted, paraRows)
         into.tried++
         if (judged.verdict !== 'bestätigt') into.caught++
         if (judged.note?.startsWith(KEPT_DELETION_NOTE)) into.byKept++
@@ -1538,6 +1604,134 @@ async function injectIntoResults(
       }
     }
   }
+}
+
+// --- The second witness's faults (20.11.2026) ---------------------------------
+
+/** What a reader can do wrong to a payload: a word lost, a figure misread, two words swapped, the text cut at a line's end. */
+const PAYLOAD_KINDS = ['weg', 'zahl', 'tausch', 'schnitt'] as const
+type PayloadKind = (typeof PAYLOAD_KINDS)[number]
+
+/** An instruction as the page hands it to the witness (`kons/consolidate.ts`). */
+function witnessInstruction(ins: Instruction): WitnessInstruction {
+  return { op: ins.op, line: ins.line, payload: ins.payload.map((p) => plainText(p)) }
+}
+
+/** The draft's PDF as pages, through the harness cache like every other fetch. */
+async function renditionOf(url: string | null): Promise<DraftRendition | null> {
+  if (!url) return null
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': scriptUserAgent(SCRIPT) } })
+    if (!res.ok) return null
+    const { extractText, getDocumentProxy } = await import('unpdf')
+    const doc = await getDocumentProxy(new Uint8Array(await res.arrayBuffer()), { verbosity: 0 })
+    try {
+      const { text } = await extractText(doc, { mergePages: false })
+      return renditionOfPages(Array.isArray(text) ? text : [text])
+    } finally {
+      await doc.loadingTask.destroy()
+    }
+  } catch {
+    return null
+  }
+}
+
+const WORD_AT = (w: string): RegExp => new RegExp(`(?<![\\p{L}\\p{N}])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'u')
+
+/** One reader's fault in `text` at the word `w` — null where the kind finds no hold there. */
+function misread(text: string, w: string, kind: Exclude<PayloadKind, 'schnitt'>): string | null {
+  const m = WORD_AT(w).exec(text)
+  if (!m) return null
+  const at = m.index
+  if (kind === 'weg') return `${text.slice(0, at)}${text.slice(at + w.length)}`.replace(/\s{2,}/g, ' ')
+  if (kind === 'tausch') {
+    const next = /^(\s+)([\p{L}\p{N}][^\s]*)/u.exec(text.slice(at + w.length))
+    if (!next) return null
+    return `${text.slice(0, at)}${next[2]}${next[1]}${w}${text.slice(at + w.length + next[0].length)}`
+  }
+  // A figure near the word: its last digit raised by one.
+  const window = text.slice(Math.max(0, at - 60), at + w.length + 60)
+  const num = /\d+/.exec(window)
+  if (!num) return null
+  const pos = Math.max(0, at - 60) + num.index + num[0].length - 1
+  return `${text.slice(0, pos)}${(Number(text[pos]) + 1) % 10}${text.slice(pos + 1)}`
+}
+
+/** The words our side of a place has that the annex's has not; else all of ours. */
+function placeWords(place: WitnessPlace): string[] {
+  const mine = place.draft.split(/\s+/).map((t) => t.replace(/^[„"'([]+|["'),.;:\]]+$/g, '')).filter((t) => /[\p{L}\p{N}]/u.test(t))
+  const theirs = new Set(place.annex.split(/\s+/).map((t) => t.replace(/^[„"'([]+|["'),.;:\]]+$/g, '')))
+  const own = mine.filter((t) => !theirs.has(t))
+  return own.length ? own : mine
+}
+
+/**
+ * The draft's instructions with one payload misread at a place the witness
+ * settled — the new text the engine applies, never the PDF (the danger the
+ * witness has to answer: our reader takes the new text wrongly, the engine
+ * applies it faithfully). Null where the kind finds no hold.
+ */
+function mutatedPayload(instructions: readonly Instruction[], touching: readonly WitnessInstruction[], places: readonly WitnessPlace[], kind: PayloadKind): { instructions: Instruction[]; shows: string } | null {
+  const lines = new Set(touching.map((t) => t.line))
+  for (const place of places) {
+    for (const w of placeWords(place)) {
+      for (const [i, ins] of instructions.entries()) {
+        if (!lines.has(ins.line)) continue
+        const op = ins.op
+        if (kind !== 'schnitt' && (op.kind === 'replacePhrase' || op.kind === 'insertPhrase')) {
+          const text = op.kind === 'replacePhrase' ? op.to : op.text
+          const changed = misread(text, w, kind)
+          if (changed === null || changed === text) continue
+          const copy = [...instructions]
+          copy[i] = { ...ins, op: op.kind === 'replacePhrase' ? { ...op, to: changed } : { ...op, text: changed } }
+          return { instructions: copy, shows: `${place.draft} → „${changed.slice(0, 160)}"` }
+        }
+        if (ins.payload.length === 0 || !ins.payload.some((p) => WORD_AT(w).test(plainText(p)))) continue
+        const payload = structuredClone(ins.payload)
+        let done: string | null = null
+        if (kind === 'schnitt') {
+          // Cut at a line's end: the last block of the new text lost.
+          if (payload.length > 1) done = `ohne den letzten Block: ${plainText(payload.pop()!).slice(0, 120)}`
+          else {
+            const host = (function deepest(n: LawNode): LawNode | null { if (n.children.length > 1) return n; for (const c of n.children) { const d = deepest(c); if (d) return d } return null })(payload[0]!)
+            if (host) done = `ohne die letzte Einheit: ${plainText(host.children.pop()!).slice(0, 120)}`
+            else {
+              const node = payload[0]!
+              const cut = node.text.search(/[.;:]\s+\S[^.;:]*[.;:]?\s*$/)
+              if (cut > 0) { done = `abgeschnitten nach: …${node.text.slice(Math.max(0, cut - 60), cut + 1)}`; node.text = node.text.slice(0, cut + 1) }
+            }
+          }
+        } else {
+          const visit = (n: LawNode): boolean => {
+            for (const field of ['heading', 'text'] as const) {
+              const value = n[field]
+              if (typeof value !== 'string') continue
+              const changed = misread(value, w, kind)
+              if (changed !== null && changed !== value) { n[field] = changed; done = `${place.draft} → „${changed.slice(0, 160)}"`; return true }
+            }
+            return n.children.some(visit)
+          }
+          payload.some(visit)
+        }
+        if (done === null) continue
+        const copy = [...instructions]
+        copy[i] = { ...ins, payload }
+        return { instructions: copy, shows: done }
+      }
+    }
+  }
+  return null
+}
+
+/** A figure in a changed row's proposed column raised by one: the annex's fault, not ours. */
+function numberInAnnex(rows: readonly ComparisonRow[]): ComparisonRow[] | null {
+  const at = rows.findIndex((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged' && /\d{2,}/.test(r.proposed))
+  if (at < 0) return null
+  const row = rows[at]!
+  const m = /\d{2,}/.exec(row.proposed)!
+  const pos = m.index + m[0].length - 1
+  const proposed = `${row.proposed.slice(0, pos)}${(Number(row.proposed[pos]) + 1) % 10}${row.proposed.slice(pos + 1)}`
+  return rows.map((r, i) => (i === at ? { ...r, proposed } : r))
 }
 
 // --- CLI ----------------------------------------------------------------------
@@ -1557,7 +1751,7 @@ const faults = {
   U: tally('U     fremder Satz beidspaltig gleich'),
 }
 /** The engine's result as the oracle judged it, without any fault. */
-const results = { verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[], dupAbs: [] as string[], rowOrder: [] as string[], placeAlarms: [] as string[] }
+const results = { witnessed: 0, verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[], dupAbs: [] as string[], rowOrder: [] as string[], placeAlarms: [] as string[] }
 const oracleFaults = {
   E: oracleTally('E     eine Einheit zu viel'),
   Ersatz: oracleTally('E-neben alter Text neben dem neuen'),
@@ -1579,6 +1773,8 @@ const oracleFaults = {
   UngedrucktZahl: oracleTally('Ungedruckt-Zahl Zahl geändert'),
   Zurueck: oracleTally('Zurück Absatz samt Nummern zurück'),
   ZurueckGleich: oracleTally('Zurück-gleich … gleicher Anfang'),
+  Payload: oracleTally('Payload neuer Text falsch gelesen'),
+  BeilageZahl: oracleTally('Beilage-Zahl Zahl in der Beilage'),
 }
 /** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
 const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich]
@@ -1696,6 +1892,14 @@ for (const fault of wordClasses) {
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})   ${by('P1')} ${by('P2')} ${by('P2r')} ${by('P3')} ${by('P3o')} ${by('P4')} ${by('P5')}`)
   for (const [kind, [tried, caught]] of fault.kinds) console.log(`      ${kind.padEnd(22)} ${String(tried).padStart(4)}   ${String(caught).padStart(6)} (${pct(caught, tried)})`)
 }
+// The second witness (20.11.2026): §§ the oracle contradicts and the draft's
+// PDF settles, and what a misread payload does there.
+console.log(`\n  Zweiter Zeuge (Gesetzestext im PDF des Entwurfs): ${results.witnessed} widersprochene Paragraphen gezeigt`)
+for (const fault of [oracleFaults.Payload, oracleFaults.BeilageZahl]) {
+  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})`)
+  for (const [kind, [tried, caught]] of fault.kinds) console.log(`      ${kind.padEnd(22)} ${String(tried).padStart(4)}   ${String(caught).padStart(6)} (${pct(caught, tried)})`)
+  for (const line of fault.misses) console.log(`      durchgelassen: ${line}`)
+}
 // An Absatz number held twice: in RIS's own text, or made by the engine —
 // the latter a § the page would show with two Absätze of one number.
 console.log(`\n  Ergebnisse mit einer Absatznummer zweimal: ${results.dupAbs.length}`)
@@ -1723,7 +1927,7 @@ if (jsonPath) {
     path: xmlMode ? 'table' : 'pdf',
     drafts,
     annex: [faults.L, faults.Rold, faults.Rnew, faults.U].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.shipped })),
-    result: [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f) })),
+    result: [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses, oracleFaults.Payload].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f) })),
   }
   writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonPath}`)

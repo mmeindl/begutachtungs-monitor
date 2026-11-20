@@ -691,6 +691,16 @@ const REPEALED_RE = /(?<!\p{L})(?:Aufgehoben|\((?:aufgehoben|entfällt)\))(?!\p{
 // --- Measured surface: the harness asks `unaccountedStretch` in this form. ---
 export const containmentKey = key
 
+/**
+ * The comparison form before `key` closes it up: `sameText` and the marker
+ * rule over the whole text, spaces kept. The second witness
+ * (`kons/draftWitness.ts`) cuts it into tokens and needs the very reading the
+ * checks use, or a word they compare would be a different word there.
+ */
+export function comparisonText(t: string): string {
+  return stripMarkers(sameText(t))
+}
+
 /** Words without punctuation — "36," and "36" are the same word. */
 function words(t: string, reading: (t: string) => string = (t) => t): string[] {
   return punctuationTokens(reading(stripMarkers(sameText(t))))

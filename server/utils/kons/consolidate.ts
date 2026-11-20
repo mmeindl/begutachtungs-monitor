@@ -43,6 +43,7 @@ import { addressesWholeText, createdParagraphs, createdUnits, opAddress } from '
 import { mapWithConcurrency } from '../pool'
 import type { ComparisonRow } from '../annex/comparisonRows'
 import { absatzSequence, standingUnitsOf, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
+import { witnessVerdict, type DraftRendition } from './draftWitness'
 
 /**
  * A ceiling, not a budget: the value the neighbour that reads the same
@@ -98,6 +99,13 @@ export interface KonsSources {
    * their text emptied.
    */
   annexRows(articles: readonly DraftArticle[]): Promise<readonly ComparisonRow[] | null>
+  /**
+   * The draft's second rendition, its PDF (`kons/draftRendition.ts`) — asked
+   * only once a § is about to be withheld for a contradiction, and at most
+   * once a run. Null, or not handed in, and no § is shown on it
+   * (`kons/draftWitness.ts`).
+   */
+  draftRendition?(): Promise<DraftRendition | null>
 }
 
 /**
@@ -331,6 +339,9 @@ export async function consolidate(
   // (144/ME XXVIII, 26.10.2026).
   const rows = await sources.annexRows(draftArticles(blocks))
   const byParagraph = rows ? rowsByParagraph(rows) : null
+  /** The second rendition, read once and only where a § needs it (`KonsSources.draftRendition`). */
+  let rendition: Promise<DraftRendition | null> | null = null
+  const draftRendition = (): Promise<DraftRendition | null> => (rendition ??= sources.draftRendition?.() ?? Promise.resolve(null))
 
   // Without an annex nothing confirms anything, and then every RIS call is
   // wasted: half the drafts have none, and for those this function fetched
@@ -621,7 +632,14 @@ export async function consolidate(
           plausible: guard.plausible,
           oracle: report.verdict,
         })
-        if (!gate.show) {
+        // A § the annex contradicts may still be shown where the draft's own
+        // Gesetzestext, read a second time from its PDF, settles every place
+        // where the two part (`kons/draftWitness.ts`, 20.11.2026). It then
+        // carries those places, and is never counted as confirmed.
+        const witness = gate.cause === 'anhang-widerspricht' && sources.draftRendition
+          ? witnessVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), await draftRendition(), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null)
+          : null
+        if (!gate.show && !witness?.released) {
           hold(id, gate.cause!)
           continue
         }
@@ -656,6 +674,7 @@ export async function consolidate(
           annexLaw: annexLawOf(w),
           // A renumbered § was composed from the one it came from.
           ...laterOf(origin !== null && labelOf.has(origin) ? origin : id),
+          ...(witness?.released ? { draftWitness: witness.places } : {}),
         })
       }
       shownBy.set(w, found)

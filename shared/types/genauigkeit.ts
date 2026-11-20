@@ -67,6 +67,8 @@ export interface GenauigkeitRecord {
       changed: number
       shown: number
       causes: Partial<Record<ConsolidatedWithheldCause, number>>
+      /** Of `shown`, those shown on the draft's own text where the annex did not confirm them (`draftWitness`); absent in rounds before 20.11.2026. */
+      witnessed?: number
     }
     /** The same for the drafts that stand in RIS only (`accounting.ts --ris`). */
     risOnly: { drafts: number; changed: number; shown: number }
