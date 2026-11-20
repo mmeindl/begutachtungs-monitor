@@ -381,4 +381,10 @@ describe('a clause name ends where the amendment history begins (15.11.2026)', (
     const clause = 'Das Bundesgesetz vom 12. Juni 1981 über die Presse und andere publizistische Medien (Mediengesetz - MedienG), zuletzt geändert durch das Bundesgesetz, mit dem ein Politische-Werbung-Gesetz erlassen wird sowie das KommAustria-Gesetz und das Mediengesetz geändert werden, BGBl. I Nr. 21/2026, wird wie folgt geändert:'
     expect(clauseNameOf(clause)).toEqual({ name: 'Mediengesetz', abbreviation: 'MedienG' })
   })
+
+  it('names a law whose name runs straight into the amendment history, with no Gesetzblatt between (4/ME XXVIII, 20.11.2026)', () => {
+    const clause = 'Das Bundesgesetz über die Revision von Erwerbs- und Wirtschaftsgenossenschaften (GenRevG 1997), zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 133/2024, wird wie folgt geändert:'
+    expect(clauseNameOf(clause)).toEqual({ name: 'GenRevG 1997', abbreviation: null })
+    expect(clauseNameOf('Das Testgesetz geändert durch BGBl. I Nr. 1/2020, wird wie folgt geändert:')).toEqual({ name: 'Testgesetz', abbreviation: null })
+  })
 })
