@@ -3,6 +3,8 @@ import type { ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithh
 import { annexUnitId } from '#shared/utils/explanationKey'
 import { annexParas, groupAnnexRows, placeAtParagraphs } from '../app/utils/annexGroups'
 import {
+  laterAmendmentLine,
+  laterAmendmentText,
   lesefassungLine,
   lesefassungNotRunText,
   mergesIntoNotice,
@@ -200,5 +202,31 @@ describe('the sentences', () => {
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-fremd' }, 'standing')).toBe(true)
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-fremd' }, 'alreadyStanding')).toBe(false)
     expect(mergesIntoNotice({ kind: 'withheld', cause: 'anhang-widerspricht' }, 'standing')).toBe(false)
+  })
+})
+
+describe('laterAmendmentText — a § RIS files for the day in the version of a later BGBl (20.11.2026)', () => {
+  const later = { cite: 'BGBl. I Nr. 111/2025', issued: '2025-12-29', asOf: '2025-07-14' }
+
+  it('names the starting text, the BGBl and its issue date; on a shown § that the later text is not in it', () => {
+    expect(laterAmendmentText(later, true)).toBe(
+      'Ausgangstext ist die Fassung vom Beginn der Begutachtung (14.07.2025). Für diesen Tag führt das RIS diesen Paragraphen heute in einer Fassung, die erst das BGBl. I Nr. 111/2025 vom 29.12.2025 gebracht hat; sie ist hier nicht eingearbeitet.',
+    )
+    expect(laterAmendmentText(later, false, '§ 12a.')).toBe(
+      'Ausgangstext ist die Fassung vom Beginn der Begutachtung (14.07.2025). Für diesen Tag führt das RIS § 12a heute in einer Fassung, die erst das BGBl. I Nr. 111/2025 vom 29.12.2025 gebracht hat.',
+    )
+  })
+
+  it('leaves out an issue date RIS does not tell', () => {
+    expect(laterAmendmentText({ ...later, issued: null }, true)).toContain('die erst das BGBl. I Nr. 111/2025 gebracht hat;')
+  })
+
+  it('reaches a withheld § through the outcome index, and says nothing where none was replaced', () => {
+    const index = outcomeIndex(response([shown('3')], [{ ...held('5', 'anhang-widerspricht'), laterAmendment: later }, held('6', 'verweigert')]))!
+    const at5 = index.at(null, '§ 5.')!.lesefassung
+    expect(laterAmendmentLine(at5)).toBe(laterAmendmentText(later, false))
+    expect(lesefassungLine(at5)).toContain('nicht gezeigt')
+    expect(laterAmendmentLine(index.at(null, '§ 6.')!.lesefassung)).toBeNull()
+    expect(laterAmendmentLine(index.at(null, '§ 3.')!.lesefassung)).toBeNull()
   })
 })

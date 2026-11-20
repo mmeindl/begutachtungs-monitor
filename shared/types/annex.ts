@@ -55,6 +55,7 @@ export interface ConsolidatedWithheld {
   id: string
   annexLaw: string | null
   cause: ConsolidatedWithheldCause
+  laterAmendment?: ConsolidatedLaterAmendment
 }
 
 /** A Paragraph as it would read after the draft's Novellierungsanordnungen. */
@@ -91,6 +92,20 @@ export interface ConsolidatedParagraph {
    * comes from.
    */
   annexLaw: string | null
+  laterAmendment?: ConsolidatedLaterAmendment
+}
+
+/**
+ * The § was composed from the text that stood on `asOf`, and RIS today
+ * returns another for that day: the Bundesgesetzblatt `cite`, issued on
+ * `issued` (null where RIS does not tell), brought RIS's version
+ * (`standingOnDay` in `server/utils/ris/konsLaw.ts`, 20.11.2026). On a shown
+ * and on a withheld § alike; absent where nothing was replaced.
+ */
+export interface ConsolidatedLaterAmendment {
+  cite: string
+  issued: string | null
+  asOf: string
 }
 
 /**

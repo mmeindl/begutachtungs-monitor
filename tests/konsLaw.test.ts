@@ -213,6 +213,36 @@ describe('standingOnDay — a version promulgated after the reference date did n
     expect((await standingOnDay(lawOf(retro), '2026-06-12', { ...sources(null), lawOn: other })).paragraphs['§ 3']?.nor).toBe('RETRO')
   })
 
+  it('names the § it replaced, with the later BGBl and its issue date, so the page can say it (117/ME XXVIII, FLAG § 3)', async () => {
+    const out = await standingOnDay(lawOf(retro, ref('S4', '§ 4', '2025-01-01', null, 'BGBl. I Nr. 12/2026')), '2026-06-12', sources(flag))
+    expect(out.superseded).toEqual({ '§ 3': { cite: 'BGBl. I Nr. 84/2026', issued: '2026-10-16' } })
+  })
+
+  it('asks the issue date of a BGBl of a later year, which the replacement itself never needs (23/ME XXVIII)', async () => {
+    const late = ref('LATE', '§ 3', '2025-11-01', null, 'BGBl. I Nr. 84/2026')
+    const before = ref('BEFORE', '§ 3', '2022-03-12', '2025-10-31', 'BGBl. I Nr. 135/2022')
+    const asked: string[] = []
+    const out = await standingOnDay(lawOf(late), '2025-12-01', { issued: async (c) => (asked.push(c), issued[c] ?? null), history: async () => [version(before), version(late)] })
+    expect(out.paragraphs['§ 3']?.nor).toBe('BEFORE')
+    expect(out.superseded).toEqual({ '§ 3': { cite: 'BGBl. I Nr. 84/2026', issued: '2026-10-16' } })
+    expect(asked).toEqual(['BGBl. I Nr. 84/2026'])
+  })
+
+  it('keeps the replacement where the issue date cannot be read, and names the BGBl without it', async () => {
+    const late = ref('LATE', '§ 3', '2025-11-01', null, 'BGBl. I Nr. 84/2026')
+    const before = ref('BEFORE', '§ 3', '2022-03-12', '2025-10-31', 'BGBl. I Nr. 135/2022')
+    const out = await standingOnDay(lawOf(late), '2025-12-01', { issued: async () => { throw new Error('RIS down') }, history: async () => [version(before), version(late)] })
+    expect(out.paragraphs['§ 3']?.nor).toBe('BEFORE')
+    expect(out.superseded).toEqual({ '§ 3': { cite: 'BGBl. I Nr. 84/2026', issued: null } })
+  })
+
+  it('names nothing where it kept RIS\'s answer', async () => {
+    expect((await standingOnDay(lawOf(retro), '2026-06-12', sources(null))).superseded).toBeUndefined()
+    const gap = [version(ref('GAP', '§ 3', '2025-11-01', '2026-05-30', 'BGBl. I Nr. 64/2025')), version(retro)]
+    expect((await standingOnDay(lawOf(retro), '2026-06-12', sources(gap))).superseded).toBeUndefined()
+    expect((await standingOnDay(lawOf(retro), '2026-10-20', sources(flag))).superseded).toBeUndefined()
+  })
+
   it('never takes a repeal, nor a predecessor promulgated after the day itself', async () => {
     const repealed = ref('REP', '§ 3', '2025-11-01', '2026-06-11', null)
     repealed.kundmachungsorgan = 'BGBl. Nr. 376/1967 aufgehoben durch BGBl. I Nr. 64/2025'

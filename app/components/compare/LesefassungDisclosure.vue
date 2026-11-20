@@ -17,6 +17,7 @@
  */
 import type { ConsolidatedParagraph } from '#shared/types'
 import { absaetze } from '~/utils/absaetze'
+import { laterAmendmentText } from '~/utils/lesefassung'
 
 defineProps<{ paragraph: ConsolidatedParagraph }>()
 </script>
@@ -50,6 +51,13 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
         </TermNote>
         <ExternalLink v-if="paragraph.risUrl" :href="paragraph.risUrl" class="link-muted">Geltender Text im RIS</ExternalLink>
       </div>
+      <!-- Under the row that names the text it starts from, because the RIS
+           link there shows the later one: for the first day of the
+           Begutachtung RIS files a version a Bundesgesetzblatt issued after
+           it brought (`standingOnDay`, 20.11.2026). In the line's own
+           register, not a `GapNote`: nothing is missing, the sentence says
+           which text this is. -->
+      <p v-if="paragraph.laterAmendment" class="mt-1 text-xs text-ink-muted">{{ laterAmendmentText(paragraph.laterAmendment, true) }}</p>
       <p v-if="paragraph.headingSegments" class="mt-2 text-sm font-semibold text-ink">
         <DiffText :segments="paragraph.headingSegments" removed-normal-weight />
       </p>

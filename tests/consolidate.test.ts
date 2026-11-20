@@ -319,3 +319,31 @@ describe('consolidate — no ceiling on laws (19.11.2026)', () => {
     expect(r.paragraphs).toHaveLength(41)
   })
 })
+
+describe('consolidate — a § RIS files for the day in the version of a later BGBl (20.11.2026)', () => {
+  // 36/ME XXVIII, ABGB § 1159: composed from the text of 07.2025, which
+  // BGBl. I Nr. 111/2025, issued 29.12.2025, changed with effect from
+  // 01.07.2025 (`standingOnDay`). The page says so at the §.
+  const T = 'Änderung des Testgesetzes'
+  const later = { cite: 'BGBl. I Nr. 111/2025', issued: '2025-12-29' }
+  const retroactive: KonsLawAtDate = { ...LAW, superseded: { '§ 5': later } }
+  const amends = draft(artikel('1', T, '<absatz typ="novao1">1. Dem &sect; 5 wird folgender Abs. 3 angef&uuml;gt:</absatz><absatz typ="abs">&bdquo;(3) Drei gilt.&ldquo;</absatz>'))
+  const confirms = [pair(T, '§ 5. (1) bis (2) …', '§ 5. (1) bis (2) …', '§ 5.', true), pair(T, '', '(3) Drei gilt.', null)]
+
+  it('carries the BGBl, its issue date and the day the law was read at on a shown §', async () => {
+    const r = await consolidate(who, amends, '2025-07-14', { ...sources(confirms), resolveLaw: async () => retroactive })
+    expect(r.paragraphs.map((p) => [p.id, p.laterAmendment])).toEqual([['5', { ...later, asOf: '2025-07-14' }]])
+  })
+
+  it('and on a withheld one whose standing text was read', async () => {
+    const repeals = draft(artikel('1', T, '<absatz typ="novao1">1. &sect; 5 entf&auml;llt.</absatz>'))
+    const r = await consolidate(who, repeals, '2025-07-14', { ...sources([pair(T, '§ 5. (1) Eins gilt.', '§ 5. (1) Eins gilt anders.', '§ 5.'), pair(T, '(2) Zwei gilt.', '(2) Zwei gilt.', null, true)]), resolveLaw: async () => retroactive })
+    expect(r.withheld).toEqual([{ id: '5', annexLaw: T, cause: 'anhang-widerspricht', laterAmendment: { ...later, asOf: '2025-07-14' } }])
+  })
+
+  it('says nothing where no § was replaced', async () => {
+    const r = await consolidate(who, amends, '2025-07-14', sources(confirms))
+    expect(r.paragraphs).toHaveLength(1)
+    expect('laterAmendment' in r.paragraphs[0]!).toBe(false)
+  })
+})

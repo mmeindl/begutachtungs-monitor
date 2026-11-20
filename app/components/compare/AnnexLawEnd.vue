@@ -14,7 +14,7 @@
  * from the server.
  */
 import type { ConsolidatedParagraph } from '#shared/types'
-import { unitList, unplacedText, type LawEnd } from '~/utils/lesefassung'
+import { laterAmendmentLine, unitList, unplacedText, type LawEnd } from '~/utils/lesefassung'
 
 const props = defineProps<{
   end: LawEnd
@@ -39,6 +39,8 @@ const withheldIds = computed(() => props.end.outcomes.filter((o) => o.lesefassun
 const shown = computed(() =>
   props.end.outcomes.flatMap((o): { id: string; paragraph: ConsolidatedParagraph }[] => (o.lesefassung.kind === 'shown' ? [{ id: o.id, paragraph: o.lesefassung.paragraph }] : [])),
 )
+/** A withheld § here for whose day RIS files a later BGBl's version, named, as at a block (`laterAmendmentLine`). */
+const laterLines = computed(() => props.end.outcomes.flatMap((o) => laterAmendmentLine(o.lesefassung, unitList([o.id])) ?? []))
 /** The §§ the passages explain, as law prints them, for the disclosure's summary. */
 const explained = computed(() => unitList([...new Set(props.end.explanations.map((e) => e.para))]))
 </script>
@@ -57,6 +59,7 @@ const explained = computed(() => unitList([...new Set(props.end.explanations.map
       </p>
     </template>
     <p v-if="withheldIds.length" class="text-sm text-ink-secondary">{{ unplacedText(withheldIds) }}</p>
+    <p v-for="line in laterLines" :key="line" class="text-xs text-ink-muted">{{ line }}</p>
     <div v-for="s in shown" :key="s.id">
       <p class="text-sm font-medium text-ink">{{ unitList([s.id]) }}</p>
       <LesefassungDisclosure :paragraph="s.paragraph" class="mt-1" />
