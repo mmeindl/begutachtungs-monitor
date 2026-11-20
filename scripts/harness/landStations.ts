@@ -81,6 +81,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LandLawDiffResponse, LandTextStation, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
+import { harnessStamp } from '../lib/harnessRecord'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
@@ -368,7 +369,8 @@ writeFileSync(join(outDir, 'summary.md'), out.join('\n'))
 /* The figures above as a record (19.11.2026), for
    `scripts/harness/genauigkeit.ts`, which writes what `/genauigkeit` shows. */
 writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
-  at: new Date().toISOString(),
+  // `at` and `commit`: the builder of /genauigkeit takes only records of one clean commit (`scripts/lib/genauigkeitRound.ts`).
+  ...harnessStamp(),
   pairs: lines.length,
   compared: lines.filter((l) => l.state === 'verglichen').length,
   lands: perLand,
