@@ -13,7 +13,7 @@
 import { parseParliamentHtml } from './parliamentHtml'
 import { normalizeText, stripQuotes } from './normalize'
 import { parseRisXml } from './risXml'
-import { articleNames, draftArticles, promulgationByArticle } from './draftArticles'
+import { isQualifierLine, promulgationByArticle } from './draftArticles'
 import type { BgblCitation } from './bgblCitation'
 
 export type BlockKind =
@@ -40,12 +40,6 @@ export interface TextBlock {
 export interface LawUnit {
   /** Article title if the package has Artikel, else the law title, else null */
   article: string | null
-  /**
-   * The name to print for the Artikel where `article`, the key, is a
-   * qualifier and no name — „(Verfassungsbestimmung)" above „Änderung des
-   * Bundes-Verfassungsgesetzes" (`articleNames`). Absent otherwise.
-   */
-  articleName?: string
   /** "Artikel 3" when the package has Artikel, else null */
   articleNumber: string | null
   /** "§5", "Art.3" or "Z4" (Novellierungsanordnung number) */
@@ -274,6 +268,10 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
   const byKey = new Map<string, LawUnit>()
   let articleNumber: string | null = null
   let articleTitle: string | null = null
+  /** The block just read was the qualifier that opens an Artikel: its name may stand directly below. */
+  let underQualifier = false
+  /** A first line stood under the Artikel's number, a qualifier or its name: no later heading names it. */
+  let articleOpened = false
   let pendingHeading: string | null = null
   /** Was the block just read a § heading too? Only then does the next one continue it. */
   let headingRun = false
@@ -343,11 +341,14 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
     const continuesAnlage = anlageRun
     anlageRun = false
     const inPayload = quoted || guillemets > 0
+    const namesArticle = underQualifier
+    underQualifier = false
 
     switch (b.kind) {
       case 'article':
         articleNumber = b.text
         articleTitle = null
+        articleOpened = false
         novelleMode = false
         current = null
         pendingHeading = null
@@ -411,12 +412,23 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         // window, because the annex's rows are keyed from there and the two
         // keys have to be one string. The two copies are one rule and neither
         // may move without the other.
-        if (articleNumber && articleTitle === null && !novelleMode) articleTitle = b.text
+        //
+        // **Never a qualifier** (20.11.2026, `DraftArticle.key`).
+        // „(Verfassungsbestimmung)" above the law's name is passed over and
+        // the line directly below it names the Artikel; where nothing else is
+        // printed, the Artikel answers to its number. As the key, the
+        // qualifier put two or three laws of one text into one group.
+        if (articleNumber && !novelleMode) {
+          const qualifier = isQualifierLine(b.text)
+          if (!articleOpened) underQualifier = qualifier
+          if (articleTitle === null && !qualifier && (!articleOpened || namesArticle)) articleTitle = b.text
+          articleOpened = true
+        }
         continue
       case 'title':
         // Same window: the late title blocks are what a Verordnung prints
         // inside the instruction that re-issues a law in full.
-        if (articleNumber === null && !novelleMode) articleTitle = b.text
+        if (articleNumber === null && !novelleMode && !isQualifierLine(b.text)) articleTitle = b.text
         continue
       case 'toc':
         continue
@@ -559,12 +571,9 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
 
   // Keyed as the units are (`articleTitle ?? articleNumber`), by contract.
   const clauses = promulgationByArticle(blocks)
-  const names = articleNames(draftArticles(blocks))
   for (const u of units) {
     u.text = u.blocks.map((x) => x.text).join(' ')
     u.stammnorm = clauses.get(u.article) ?? null
-    const name = u.article === null ? undefined : names.get(u.article)
-    if (name !== undefined) u.articleName = name
   }
   return units
 }

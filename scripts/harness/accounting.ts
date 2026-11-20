@@ -65,7 +65,6 @@
 import { writeFileSync } from 'node:fs'
 import type { ConsolidatedTextResponse, DraftsResponse, ExplanationsResponse, RisConsultationsResponse, TextComparisonResponse } from '../../shared/types'
 import { annexUnitId, articleUnitLaws } from '../../shared/utils/explanationKey'
-import { lawNameOf } from '../../shared/utils/lawName'
 import { KONS_MAX_PARAGRAPHS, annexKeepsUnit, consolidationBalance } from '../../server/utils/kons/consolidate'
 import { showsInstructedChange, type Lesefassung } from '../../app/utils/lesefassung'
 import { annexParas, groupAnnexRows, placeAtParagraphs, type ParaPlacement } from '../../app/utils/annexGroups'
@@ -158,11 +157,11 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
   // The section's own pass (`placeAtParagraphs`), over the whole annex.
   const placement = placeAtParagraphs(annex.rows, kons, erl?.paragraphs ?? [])
   const ran = kons.notRun === null
-  for (const o of placement.lost) report.failures.push(`verloren: ein Ergebnis des Servers steht an keinem Block und an keinem Gesetzesende — ${o.law ? `${lawNameOf(annex.lawNames, o.law)}: ` : ''}${o.id}`)
+  for (const o of placement.lost) report.failures.push(`verloren: ein Ergebnis des Servers steht an keinem Block und an keinem Gesetzesende — ${o.law ? `${o.law}: ` : ''}${o.id}`)
   const ends = [...placement.ends.byGroup.entries(), ...placement.ends.rest.map((r) => [r.law ?? '', r] as const)]
   for (const [law, end] of ends) {
     for (const o of end.outcomes) {
-      const label = `${law && !law.startsWith('#') ? `${lawNameOf(annex.lawNames, law)}: ` : ''}${o.id}`
+      const label = `${law && !law.startsWith('#') ? `${law}: ` : ''}${o.id}`
       if (o.lesefassung.kind === 'shown') report.failures.push(`ortlos: bestätigter § ohne Block — ${label}`)
       else report.unplaced.push(`${label} (${o.lesefassung.cause})`)
     }

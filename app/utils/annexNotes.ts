@@ -15,6 +15,7 @@
  */
 import { gapDe } from '#shared/utils/gaps'
 import type { AnnexWithheldCause, TextComparisonResponse } from '#shared/types'
+import { UNIT_WORD_DE, type UnitKind, type UnitWordDe } from '#shared/utils/unitWord'
 
 type ReadFrom = TextComparisonResponse['readFrom']
 
@@ -58,16 +59,18 @@ export function annexUncheckedNote(reasons: readonly string[]): string | null {
  * a neighbour's. Handing the ministry the blame for our own reading would be
  * both wrong and against the framing of this project.
  *
- * These tables are the only place the causes are worded client-side.
+ * These tables are the only place the causes are worded client-side. Each
+ * sentence takes the word of the unit it stands at (`unitWord.ts`): „diesen
+ * Artikel" in a law whose units are Artikel.
  */
-const WITHHELD_FINDING: Record<AnnexWithheldCause, string> = {
-  standing: 'der geltende Text dieser Stelle steht so nicht im RIS.',
-  alreadyStanding: 'die vorgeschlagene Fassung zeigt Text als neu, der im RIS schon gilt.',
-  notInDraft: 'die vorgeschlagene Fassung enthält Text, den der Entwurf für diesen Paragraphen nicht anordnet.',
+const WITHHELD_FINDING: Record<AnnexWithheldCause, (u: UnitWordDe) => string> = {
+  standing: () => 'der geltende Text dieser Stelle steht so nicht im RIS.',
+  alreadyStanding: () => 'die vorgeschlagene Fassung zeigt Text als neu, der im RIS schon gilt.',
+  notInDraft: (u) => `die vorgeschlagene Fassung enthält Text, den der Entwurf für diesen ${u.oblique} nicht anordnet.`,
   // Not „der Entwurf hebt ihn nicht auf": that the grammar found no such
   // instruction is no proof that none is there (19.11.2026).
-  repealUnproven: 'die vorgeschlagene Fassung zeigt von diesem Paragraphen nichts, und eine Anordnung des Entwurfs, die ihn aufhebt, ließ sich nicht finden.',
-  repeated: 'die Beilage druckt diesen Paragraphen mehrmals, und welche ihrer Stellen einander gegenüberstehen, ließ sich nicht entscheiden.',
+  repealUnproven: (u) => `die vorgeschlagene Fassung zeigt von diesem ${u.oblique} nichts, und eine Anordnung des Entwurfs, die ihn aufhebt, ließ sich nicht finden.`,
+  repeated: (u) => `die Beilage druckt diesen ${u.oblique} mehrmals, und welche ihrer Stellen einander gegenüberstehen, ließ sich nicht entscheiden.`,
 }
 /* SHORT SINCE 30.09.2026 — one clause of attribution, not the list of
  * causes. The PDF variants ran to two or three „Das kann daran liegen,
@@ -90,11 +93,12 @@ const WITHHELD_FROM_PDF = 'Das kann an unserer Lesung des PDF liegen.'
  * §§ 6, 21c and 40 were withheld as „steht so nicht im RIS" because we filed
  * §§ 8, 35, 37, 39 and 45 under them (`typedDesignation` in
  * `annex/comparisonRows.ts`). */
-const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, string | null> = {
-  standing: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
-  alreadyStanding: 'Das kann auch daran liegen, dass derselbe Wortlaut an anderer Stelle des Paragraphen steht; unsere Prüfung unterscheidet die Absätze nicht.',
-  notInDraft: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
-  repealUnproven: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
+const OUR_ASSIGNMENT = (u: UnitWordDe): string => `Das kann auch an unserer Zuordnung zum ${u.oblique} liegen.`
+const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, ((u: UnitWordDe) => string) | null> = {
+  standing: OUR_ASSIGNMENT,
+  alreadyStanding: (u) => `Das kann auch daran liegen, dass derselbe Wortlaut an anderer Stelle des ${u.genitive} steht; unsere Prüfung unterscheidet die Absätze nicht.`,
+  notInDraft: OUR_ASSIGNMENT,
+  repealUnproven: OUR_ASSIGNMENT,
   // Only the PDF reader marks a print as ambiguous; the table has rows.
   repeated: null,
 }
@@ -113,14 +117,22 @@ export function annexWithheldLead(count: number): string {
   return `${count} ${count === 1 ? 'Änderung' : 'Änderungen'} hier nicht gezeigt:`
 }
 
-export function annexWithheldText(cause: AnnexWithheldCause | null): string {
+export function annexWithheldText(cause: AnnexWithheldCause | null, unit: UnitKind = 'paragraph'): string {
   // No cause recorded is the state every withholding had before 2026-09-10.
-  return WITHHELD_FINDING[cause ?? 'standing']
+  return WITHHELD_FINDING[cause ?? 'standing'](UNIT_WORD_DE[unit])
 }
 
-export function annexWithheldBlame(cause: AnnexWithheldCause | null, readFrom: ReadFrom): string | null {
+export function annexWithheldBlame(cause: AnnexWithheldCause | null, readFrom: ReadFrom, unit: UnitKind = 'paragraph'): string | null {
   const key = cause ?? 'standing'
-  return readFrom === 'pdf' ? WITHHELD_FROM_PDF : WITHHELD_FROM_TABLE[key]
+  return readFrom === 'pdf' ? WITHHELD_FROM_PDF : (WITHHELD_FROM_TABLE[key]?.(UNIT_WORD_DE[unit]) ?? null)
+}
+
+/**
+ * The line over a row whose two columns differ only in how far the annex's
+ * own elision reaches (`TextComparisonRow.elisionRange`).
+ */
+export function annexElisionLead(unit: UnitKind = 'paragraph'): string {
+  return `Nicht der ${UNIT_WORD_DE[unit].nominative} ändert sich, sondern der Bereich, den die Beilage auslässt.`
 }
 
 /**
@@ -162,24 +174,26 @@ export function annexDroppedPagesNote(n: number): string | null {
  * Said only where the columns differ in that text: where they say the same,
  * nothing is lost.
  */
-const FRONT_MATTER = 'vor dem ersten Paragraphen druckt – etwa Titel oder Promulgationsklausel –, vergleicht der Monitor nicht'
+const frontMatter = (unit: UnitKind): string => `vor dem ersten ${UNIT_WORD_DE[unit].oblique} druckt – etwa Titel oder Promulgationsklausel –, vergleicht der Monitor nicht`
 
-/** …inside the law's own group, where it needs no name (as `annexDoubtfulGroupNote`). */
-export function annexFrontMatterGroupNote(): string {
-  return gapDe('outOfScope', `Text, den die Beilage zu diesem Gesetz ${FRONT_MATTER}; die beiden Spalten unterscheiden sich darin.`)
+/** …inside the law's own group, where it needs no name (as `annexDoubtfulGroupNote`). `unit`: what that law counts in. */
+export function annexFrontMatterGroupNote(unit: UnitKind = 'paragraph'): string {
+  return gapDe('outOfScope', `Text, den die Beilage zu diesem Gesetz ${frontMatter(unit)}; die beiden Spalten unterscheiden sich darin.`)
 }
 
 /**
  * …above the comparison: for an annex not divided into laws (`null`) and
- * for named laws no group carries — at most one sentence each.
+ * for named laws no group carries — at most one sentence each. `unit`: what
+ * the undivided annex counts in; a law without a group has no rows that
+ * could say, and is spoken of in Paragraphen.
  */
-export function annexFrontMatterNotes(laws: readonly (string | null)[]): string[] {
+export function annexFrontMatterNotes(laws: readonly (string | null)[], unit: UnitKind = 'paragraph'): string[] {
   const out: string[] = []
-  if (laws.includes(null)) out.push(gapDe('outOfScope', `Text, den die Beilage ${FRONT_MATTER}; die beiden Spalten unterscheiden sich darin.`))
+  if (laws.includes(null)) out.push(gapDe('outOfScope', `Text, den die Beilage ${frontMatter(unit)}; die beiden Spalten unterscheiden sich darin.`))
   const named = laws.filter((l): l is string => l !== null)
   const quoted = named.map((l) => `„${l}“`)
   const list = quoted.length > 1 ? `${quoted.slice(0, -1).join(', ')} und ${quoted.at(-1)}` : quoted[0]
-  if (list) out.push(gapDe('outOfScope', `Text, den die Beilage zu einem Gesetz ${FRONT_MATTER}; bei ${list} unterscheiden sich die beiden Spalten darin.`))
+  if (list) out.push(gapDe('outOfScope', `Text, den die Beilage zu einem Gesetz ${frontMatter('paragraph')}; bei ${list} unterscheiden sich die beiden Spalten darin.`))
   return out
 }
 

@@ -17,15 +17,17 @@
  */
 import type { ConsolidatedParagraph } from '#shared/types'
 import { absaetze } from '~/utils/absaetze'
+import type { UnitKind } from '#shared/utils/unitWord'
 // Imported, not auto-imported: a helper used only in the template is not resolved at runtime.
-import { laterAmendmentText, witnessText } from '~/utils/lesefassung'
+import { laterAmendmentText, lesefassungSummary, witnessText } from '~/utils/lesefassung'
 
-defineProps<{ paragraph: ConsolidatedParagraph }>()
+/** `unit`: what the law counts in, where that is not Paragraphen („Ganzer Artikel …", the B-VG). */
+defineProps<{ paragraph: ConsolidatedParagraph; unit?: UnitKind }>()
 </script>
 
 <template>
   <Disclosure size="xs" tone="ink">
-    <template #summary>Ganzer Paragraph in der vorgeschlagenen Fassung (nicht amtlich)</template>
+    <template #summary>{{ lesefassungSummary(unit) }}</template>
     <div class="mt-1 pl-6">
       <!-- „nicht amtlich" stands IN the summary since 30.09.2026, so it is
            read before the disclosure opens, not after; inside, only how
@@ -58,7 +60,7 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
            it brought (`standingOnDay`, 20.11.2026). In the line's own
            register, not a `GapNote`: nothing is missing, the sentence says
            which text this is. -->
-      <p v-if="paragraph.laterAmendment" class="mt-1 text-xs text-ink-muted">{{ laterAmendmentText(paragraph.laterAmendment, true) }}</p>
+      <p v-if="paragraph.laterAmendment" class="mt-1 text-xs text-ink-muted">{{ laterAmendmentText(paragraph.laterAmendment, true, null, unit) }}</p>
       <!-- Shown on the draft's own text where the annex reads otherwise
            (20.11.2026): both wordings, before the text they concern. -->
       <p v-if="witnessText(paragraph)" class="mt-2 text-xs text-ink-muted">{{ witnessText(paragraph) }}</p>

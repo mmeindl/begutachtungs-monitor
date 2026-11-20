@@ -99,6 +99,17 @@ function isTaggedClause(text: string): boolean {
 /** A qualifier printed where the law's name would be, and not a name. */
 const QUALIFIER_RE = /^\((?:Verfassungs|Grundsatz)bestimmung(?:en)?\)$/i
 
+/**
+ * „(Verfassungsbestimmung)", „(Grundsatzbestimmungen)" on a line of their
+ * own: the rank of what follows, printed where a law's name would stand.
+ * Never a name and never a key (`DraftArticle.key`). One test for the three
+ * readers that meet the line: this one, `segmentUnits` and the annex's
+ * (`candidateLines` in `annex/annexPdf.ts`).
+ */
+export function isQualifierLine(text: string): boolean {
+  return QUALIFIER_RE.test(text.trim())
+}
+
 /** The numeral of an Artikel heading: "3", "III", "X1". */
 const ARTICLE_NUMERAL_RE = /^Artikel\s+([Xx]?\d+[a-z]?|[IVXL]+)\b/
 
@@ -123,10 +134,21 @@ export interface DraftArticle {
   title: string | null
   /**
    * The key `segmentUnits` and `promulgationByArticle` use (`articleTitle ??
-   * articleNumber`), qualifier and all, so a row joins onto the diff units
-   * without a second convention. Null only where both are — a draft that
-   * neither numbers its Artikel nor names itself. A join value, never a
-   * label: where it is the qualifier, a reader is shown `articleNames`.
+   * articleNumber`), so a row joins onto the diff units without a second
+   * convention. Null only where both are — a draft that neither numbers its
+   * Artikel nor names itself.
+   *
+   * **The first line under the Artikel's number, and never a qualifier**
+   * (20.11.2026). „(Verfassungsbestimmung)" above „Änderung des
+   * Bundes-Verfassungsgesetzes" was the key until then, and two or three
+   * laws of one text shared it: BGBl. I Nr. 41/2026 held the B-VG's units
+   * and the Heimopferrentengesetz's in one group, „Z1" of the one beside
+   * „Z1#dup" of the other. The qualifier is passed over and the line
+   * directly below it is the key; where nothing but the qualifier is
+   * printed, the key is the Artikel's number, which is unique in its text.
+   * Only the line directly below: a heading further down is the law's own
+   * („2. Abschnitt"), and taken as a name it would rename the law half way.
+   * `segmentUnits` carries the same rule (`lawUnits.ts`).
    */
   key: string | null
   /**
@@ -215,6 +237,10 @@ export function clauseNameOf(text: string): ClauseName | null {
 export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   const out: DraftArticle[] = []
   let seenNovao = false
+  /** The block just read was the qualifier that opens an Artikel: its name may stand directly below (`DraftArticle.key`). */
+  let underQualifier = false
+  /** A first line stood under the Artikel's number, a qualifier or the key: no later heading is the key. */
+  let opened = false
   let current: DraftArticle = { index: 0, number: null, numeral: null, title: null, key: null, amends: false, bgbl: null, clause: null }
   /** An implicit leading article is only real once it carries something. */
   const filled = (a: DraftArticle): boolean => a.number !== null || a.key !== null || a.amends
@@ -231,25 +257,33 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   }
 
   for (const b of blocks) {
+    const namesArticle = underQualifier
+    underQualifier = false
     if (b.kind === 'article') {
       close()
       current = { index: out.length, number: b.text, numeral: ARTICLE_NUMERAL_RE.exec(b.text)?.[1]?.replace(/^x(?=\d)/, 'X') ?? null, title: null, key: null, amends: false, bgbl: null, clause: null }
       seenNovao = false
+      opened = false
       continue
     }
     if (b.kind === 'section') {
       if (current.number === null || seenNovao) continue
-      if (current.key === null) current.key = b.text
-      if (current.title === null && !QUALIFIER_RE.test(b.text.trim())) current.title = b.text
+      const qualifier = isQualifierLine(b.text)
+      // The key: the first line, or the one directly below a qualifier that
+      // stood first (`DraftArticle.key`).
+      if (!opened) underQualifier = qualifier
+      if (current.key === null && !qualifier && (!opened || namesArticle)) current.key = b.text
+      opened = true
+      if (current.title === null && !qualifier) current.title = b.text
       continue
     }
     if (b.kind === 'title') {
       // The law's own title, for a draft without Artikel. The last one before
       // the first instruction wins, as it did before: a draft that prints
       // Lang- and Kurztitel names itself in the shorter one.
-      if (current.number !== null || seenNovao) continue
+      if (current.number !== null || seenNovao || isQualifierLine(b.text)) continue
       current.key = b.text
-      if (!QUALIFIER_RE.test(b.text.trim())) current.title = b.text
+      current.title = b.text
       continue
     }
     if (b.kind === 'novao') {
@@ -275,33 +309,6 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   }
   close()
   return out
-}
-
-/**
- * Key → the name to print, for every Artikel whose key is a qualifier and no
- * name: „(Verfassungsbestimmung)" → „Änderung des Bundes-Verfassungsgesetzes".
- *
- * The key is the join value and stays (`DraftArticle.key`); this is what a
- * reader is shown in its place (`lawNameOf` in `shared/utils/lawName.ts`).
- * The Artikel's title, or its number where it prints nothing but the
- * qualifier under it („Artikel 5"). Other keys are their own name and have
- * no entry.
- *
- * Two Artikel of one text can carry the qualifier, and then share the key
- * (4 of the 17 cached texts with such a key, 20.11.2026): the group the page
- * builds under it holds the units of both, so its name is both names, in
- * printed order.
- */
-export function articleNames(articles: readonly DraftArticle[]): Map<string, string> {
-  const names = new Map<string, string[]>()
-  for (const a of articles) {
-    if (a.key === null || !QUALIFIER_RE.test(a.key.trim())) continue
-    const name = a.title ?? a.number
-    if (name === null) continue
-    const seen = names.get(a.key) ?? []
-    if (!seen.includes(name)) names.set(a.key, [...seen, name])
-  }
-  return new Map([...names].map(([key, list]) => [key, list.join(' / ')]))
 }
 
 /**

@@ -14,7 +14,7 @@
  * from the server.
  */
 import type { ConsolidatedParagraph } from '#shared/types'
-import { laterAmendmentLine, unitList, unplacedText, type LawEnd } from '~/utils/lesefassung'
+import { laterAmendmentLine, undividedText, unitList, unplacedText, type LawEnd } from '~/utils/lesefassung'
 
 const props = defineProps<{
   end: LawEnd
@@ -40,8 +40,12 @@ const shown = computed(() =>
   props.end.outcomes.flatMap((o): { id: string; paragraph: ConsolidatedParagraph }[] => (o.lesefassung.kind === 'shown' ? [{ id: o.id, paragraph: o.lesefassung.paragraph }] : [])),
 )
 /** A withheld § here for whose day RIS files a later BGBl's version, named, as at a block (`laterAmendmentLine`). */
-const laterLines = computed(() => props.end.outcomes.flatMap((o) => laterAmendmentLine(o.lesefassung, unitList([o.id])) ?? []))
-/** The §§ the passages explain, as law prints them, for the disclosure's summary. */
+const laterLines = computed(() => props.end.outcomes.flatMap((o) => laterAmendmentLine(o.lesefassung, unitList([o.id], props.end.unit), props.end.unit) ?? []))
+/**
+ * The §§ the passages explain, as law prints them, for the disclosure's
+ * summary. Always §§: the Erläuterungen's passages are keyed by Paragraph
+ * alone (`explanationParaId`), in a law of Artikel too.
+ */
 const explained = computed(() => unitList([...new Set(props.end.explanations.map((e) => e.para))]))
 </script>
 
@@ -52,17 +56,17 @@ const explained = computed(() => unitList([...new Set(props.end.explanations.map
         Dieses Gesetz erlässt der Entwurf neu. Eine bisherige Fassung, der man es gegenüberstellen könnte, gibt es nicht; den ganzen Text enthält der Entwurf selbst.
       </p>
       <p v-else-if="undivided" class="text-sm text-ink-secondary">
-        Die Paragraphen der Gegenüberstellung ließen sich keinem einzelnen Gesetz zuordnen.<template v-if="end.explanations.length"> Was das Ministerium zu diesem Gesetz schreibt, steht deshalb hier und nicht am Paragraphen.</template>
+        {{ undividedText(end.explanations.length > 0, end.unit) }}
       </p>
       <p v-else class="text-sm text-ink-secondary">
         Zu diesem Gesetz enthält die Gegenüberstellung des Ministeriums keinen Teil.
       </p>
     </template>
-    <p v-if="withheldIds.length" class="text-sm text-ink-secondary">{{ unplacedText(withheldIds) }}</p>
+    <p v-if="withheldIds.length" class="text-sm text-ink-secondary">{{ unplacedText(withheldIds, end.unit) }}</p>
     <p v-for="line in laterLines" :key="line" class="text-xs text-ink-muted">{{ line }}</p>
     <div v-for="s in shown" :key="s.id">
-      <p class="text-sm font-medium text-ink">{{ unitList([s.id]) }}</p>
-      <LesefassungDisclosure :paragraph="s.paragraph" class="mt-1" />
+      <p class="text-sm font-medium text-ink">{{ unitList([s.id], end.unit) }}</p>
+      <LesefassungDisclosure :paragraph="s.paragraph" :unit="end.unit" class="mt-1" />
     </div>
     <!-- The Ressort's reasoning for §§ without a block, in the shape it has
          at a § (`TextComparisonSection`): closed, in ink, the passages

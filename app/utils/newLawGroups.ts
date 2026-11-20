@@ -57,7 +57,7 @@ export function newLawGroups(
     if (options.query && matching.length === 0) return []
     const key = `neu#${law.law}`
     const limit = options.limitFor(key)
-    const leftover: LawEnd = { outcomes: end.outcomes, explanations: end.explanations.filter((e) => !placed.has(e)) }
+    const leftover: LawEnd = { outcomes: end.outcomes, explanations: end.explanations.filter((e) => !placed.has(e)), ...(end.unit ? { unit: end.unit } : {}) }
     return [{
       key,
       law: law.law,

@@ -12,6 +12,7 @@
  */
 import type { AnnexWithheldCause, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
 import { annexUnitId, articleUnitLaws, explanationKey, explanationParaId, numberedUnitId } from '#shared/utils/explanationKey'
+import { unitKindOf, type UnitKind } from '#shared/utils/unitWord'
 import { type DiffBadge, paragraphBadge } from './diffBadges'
 import { readsSideBySide, splitSegments } from './diffSides'
 import { outcomeIndex, showsInstructedChange, type LawEnd, type Lesefassung, type Outcome } from './lesefassung'
@@ -285,6 +286,11 @@ export interface AnnexPara {
    * the § shows no change an instruction would make.
    */
   lesefassungen: PlacedLesefassung[]
+  /**
+   * What the block's law counts in — Paragraphen, or Artikel (the B-VG):
+   * the word every sentence at this block takes (`ParaPlacement.unit`).
+   */
+  unit: UnitKind
   /** Whether a row of this § already carries the „nicht geprüft" pill. */
   uncheckedMarked: boolean
 }
@@ -299,6 +305,12 @@ export interface PlacedLesefassung {
 export interface ParaPlacement {
   explanations: ParagraphExplanationView[]
   lesefassungen: PlacedLesefassung[]
+  /**
+   * What the block's law counts in, where that is not Paragraphen — the
+   * oracle's own decision (`articleUnitLaws`), handed down so no sentence
+   * reads it off a designation. Absent for a law of §§.
+   */
+  unit?: UnitKind
   /**
    * The block's unit has an outcome, and it stands at another block of the
    * same unit (one outcome, one block) — why this one says nothing about the
@@ -483,6 +495,7 @@ export function annexParas(g: AnnexGroup, { limit, folding, placed }: AnnexParaO
       blocks: [],
       explanations: at?.explanations ?? [],
       lesefassungen: at?.lesefassungen ?? [],
+      unit: at?.unit ?? 'paragraph',
       uncheckedMarked: false,
     }
     paras.push(current)
@@ -573,7 +586,16 @@ export function placeAtParagraphs(
   rows: readonly TextComparisonRow[],
   consolidated: ConsolidatedTextResponse | null,
   explanations: readonly ParagraphExplanationView[],
-): { byRow: Map<TextComparisonRow, ParaPlacement>; groupKeys: string[]; ends: { byGroup: Map<string, LawEnd>; rest: (LawEnd & { law: string | null })[] }; lost: { id: string; law: string | null }[] } {
+): {
+  byRow: Map<TextComparisonRow, ParaPlacement>
+  groupKeys: string[]
+  ends: { byGroup: Map<string, LawEnd>; rest: (LawEnd & { law: string | null })[] }
+  lost: { id: string; law: string | null }[]
+  /** What a law of the annex counts in, by its group's key or by the law as an outcome names it (null for none). */
+  unitOf: (law: string | null) => UnitKind
+  /** The kinds of unit the annex's laws count in, for a sentence about the whole draft (`unitsPluralDe`). */
+  unitKinds: Set<UnitKind>
+} {
   const { groups } = groupAnnexRows(rows, { matches: null, hidden: [] })
   const groupKeys = groups.map((g) => g.key)
   // The schedules the annex prints per law, by the unit each block stands
@@ -590,6 +612,16 @@ export function placeAtParagraphs(
   // The laws whose units are Artikel, decided as the oracle decides it: a
   // block „Artikel 53." of the B-VG is the unit the oracle confirmed.
   const articleLaws = articleUnitLaws(rows)
+  const lawsWithRows = new Set(rows.map((r) => r.law ?? ''))
+  // A law the annex has no rows for, in an annex that divides none: its
+  // units are found among the undivided rows (`outcomeIndex`, lookup 4), and
+  // are what those rows are.
+  // A group of rows without a law is keyed „#0" (`groupAnnexRows`).
+  const unitOf = (key: string | null): UnitKind => {
+    const law = key?.startsWith('#') ? null : key
+    return unitKindOf(articleLaws.has(law ?? '') || (law !== null && !lawsWithRows.has(law) && articleLaws.has('')))
+  }
+  const unitKinds = new Set<UnitKind>()
   const outcomes = outcomeIndex(consolidated, { soleSchedule: (law) => schedulesOf.get(law)?.size === 1, articleLaws })
 
   // The passages under the key the section looks them up by: the law the
@@ -619,6 +651,7 @@ export function placeAtParagraphs(
     for (const [i, run] of runs.entries()) {
       const first = run.rows[0]!
       const numberOf: UnitNumber = (designation) => numberedUnitId(designation, articleLaws.has(first.law ?? ''))
+      if (numberOf(first.para) !== null) unitKinds.add(unitOf(first.law))
       const ps = addressed[i] ?? []
       const matched = ps.flatMap((p) => lookUp(first.law, p, numberOf, passagesAt, (xs) => xs.length > 0) ?? [])
       for (const e of matched) placedPassages.add(e)
@@ -699,7 +732,8 @@ export function placeAtParagraphs(
     if (outcomes && b.found.length === 0 && b.standsAfter !== null && annexUnitId(b.standsAfter, articleLaws.has(b.rows[0]!.law ?? '')) && showsInstructedChange(b.rows)) {
       lesefassungen.push({ designation: b.standsAfter, lesefassung: { kind: 'withheld', cause: 'nicht-gefunden' } })
     }
-    const placement: ParaPlacement = { explanations: distinctPassages(b.matched), lesefassungen, outcomeElsewhere: elsewhere }
+    const unit = unitOf(b.rows[0]!.law)
+    const placement: ParaPlacement = { explanations: distinctPassages(b.matched), lesefassungen, ...(unit === 'paragraph' ? {} : { unit }), outcomeElsewhere: elsewhere }
     for (const row of b.rows) byRow.set(row, placement)
   }
 
@@ -710,7 +744,7 @@ export function placeAtParagraphs(
   const leftovers = new Map<string | null, LawEnd>()
   const endOf = (law: string | null): LawEnd => {
     let end = leftovers.get(law)
-    if (!end) leftovers.set(law, (end = { outcomes: [], explanations: [] }))
+    if (!end) leftovers.set(law, (end = { outcomes: [], explanations: [], ...(unitOf(law) === 'paragraph' ? {} : { unit: unitOf(law) }) }))
     return end
   }
   // A § of a law the draft enacts anew stands for a block of the annex by
@@ -745,7 +779,10 @@ export function placeAtParagraphs(
     // was gone from the page — 90EAC582's §§ 4b and 4c, overwritten by two
     // Begründung passages filed under the law (19.11.2026).
     const met = byGroup.get(key)
-    byGroup.set(key, met ? { outcomes: [...met.outcomes, ...end.outcomes], explanations: [...met.explanations, ...end.explanations] } : end)
+    // The group's own unit: what is filed under no law is listed among its rows.
+    const unit = unitOf(key)
+    const joined: LawEnd = met ? { outcomes: [...met.outcomes, ...end.outcomes], explanations: [...met.explanations, ...end.explanations] } : { outcomes: end.outcomes, explanations: end.explanations }
+    byGroup.set(key, unit === 'paragraph' ? joined : { ...joined, unit })
   }
   // Every outcome the server sent stands at a block or at its law's end
   // (19.11.2026, `scripts/harness/accounting.ts`, „verloren"): one a block
@@ -754,5 +791,5 @@ export function placeAtParagraphs(
   // say (above).
   const shownAt = new Set(home.keys())
   const lost = [...tookAs].filter(([o, as]) => !shownAt.has(as) && !vacated.has(o)).map(([o]) => ({ id: o.id, law: o.law }))
-  return { byRow, groupKeys, ends: { byGroup, rest }, lost }
+  return { byRow, groupKeys, ends: { byGroup, rest }, lost, unitOf, unitKinds }
 }

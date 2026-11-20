@@ -40,7 +40,6 @@ import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, offers
 import { checkAnnexRows } from './gateRows'
 import { getAnnexVerification } from './annexGuardService'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
-import { articleNames } from '../lawtext/draftArticles'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { getRisConsultation } from '../ris/risOnly'
 import type { RisDocumentUrls } from '../ris/risRecord'
@@ -98,7 +97,6 @@ export async function readAndCheck(
   // check nothing, which the page needs to be able to say.
   const verification = await getAnnexVerification(cacheKey, asOf, rows, draft.articles, draft.blocks)
   const checked = checkAnnexRows(rows, verification)
-  const lawNames = Object.fromEntries(articleNames(draft.articles))
   return {
     ...who,
     available: true,
@@ -113,7 +111,6 @@ export async function readAndCheck(
     // so it goes out as a „Nicht lesbar" gap. Set here, not in the parser,
     // whose wording the annex baseline pins.
     boundaryNote: refusal ? gapDe('unreadable', refusal) : null,
-    ...(Object.keys(lawNames).length ? { lawNames } : {}),
     // Counted over the rows as sent, so the numbers on the page and the
     // rows on the page cannot disagree.
     stats: checked.stats,
