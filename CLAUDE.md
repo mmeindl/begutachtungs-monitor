@@ -177,8 +177,6 @@ the maintainer:
 2. Persistence and history (snapshots of deadlines and statement counts).
 3. Base rates across hundreds of procedures.
 4. Synthesis of statement texts (clustering, summaries).
-5. A second verification signal for the consolidated reading, beyond the
-   ministry's own Textgegenüberstellung.
 
 "Upcoming" consultations have no verified data source. That is an open
 research question, not a build item.
