@@ -27,6 +27,16 @@
  * alternative; extraction noise of a Land's PDF is answered where it arises,
  * in the Land's reader, not by loosening the rule.
  *
+ * THE BAG IS THE SECOND RULE SINCE 20.11.2026. Whether the words occur among
+ * the draft's words for the § cannot see a wrongly read word, a changed
+ * number or a lost sentence (0 of 476, 0 of 551 and 0 of 338 injected
+ * faults). So every § is first held word for word, in order, against the
+ * wording the draft quotes for it (`landTguStrict.ts`, `TguGuard.strict`),
+ * and `undrafted` says which rule withholds it. The bag rule goes on
+ * deciding where the strict one cannot be run, and is the only one that
+ * holds a § against text of ANOTHER § where the draft's wording for this
+ * one could not be read.
+ *
  * KÄRNTEN IS NOT GUARDED: its right column is not the law as it would read
  * but the Novelle's own amending instructions, reprinted beside the place
  * they amend, and the page composes a § only from a payload that prints it
@@ -41,6 +51,7 @@ import { designationKey } from '../annex/annexText'
 import { draftBags, draftReference, draftWordBag, rightColumnCheck, type DraftBags, type RightColumnCheck, type WordBag } from '../annex/rightColumn'
 import { draftUnits } from '../annex/annexDraft'
 import { bareLawName } from './landTgu'
+import { draftWording, strictCheck, type LawWording, type StrictCheck } from './landTguStrict'
 
 /** „§5" → „§ 5"; an article or annex id as it stands („Art. 46a", „Anlage 2"). */
 const designationOf = (id: string): string => id.replace(/^§\s*/, '§ ')
@@ -189,6 +200,21 @@ export function landDraftBags(blocks: readonly TextBlock[]): DraftBags {
   return bags
 }
 
+/**
+ * Which §§ the comparison withholds for the draft's sake, and why: the
+ * strict check's finding where it could be run (`draftDiffers`), else the
+ * bag rule's (`notInDraft`). A § the strict check could not hold keeps the
+ * bag rule's verdict — it is never passed for having been asked.
+ */
+export function undrafted(guard: TguGuard): Map<number, 'notInDraft' | 'draftDiffers'> {
+  const out = new Map<number, 'notInDraft' | 'draftDiffers'>()
+  for (const [i, check] of guard.checks) {
+    if (guard.strict.get(i)?.state === 'differs') out.set(i, 'draftDiffers')
+    else if (check.notInDraft) out.set(i, 'notInDraft')
+  }
+  return out
+}
+
 /** A law key no draft carries: `draftReference` answers it with the whole draft. */
 const WHOLE_DRAFT = '\u0000whole-draft'
 
@@ -213,6 +239,17 @@ export function guardRow(unit: LawDiffUnit): ComparisonRow | null {
   }
 }
 
+/** One § against the draft's wording for it, under its own number and, renumbered, its old one. */
+function strictOf(u: LawDiffUnit, para: string, lawKey: string | null | undefined, wording: Map<string | null, LawWording>, mixed: Map<string | null, Set<string>>, shown: ReadonlySet<string>): StrictCheck {
+  if (lawKey === undefined) return { state: 'unchecked', reason: 'das Gesetz ist im Entwurf nicht sicher benannt', notInDraft: [], notShown: [], newWords: 0, draftWords: 0 }
+  const keys = [para, ...(u.fromId && u.fromId !== u.id ? [designationOf(u.fromId)] : [])].map((p) => designationKey(p)).filter((k): k is string => k !== null)
+  if (keys.some((k) => mixed.get(lawKey)?.has(k))) return { state: 'unchecked', reason: 'zwei Anordnungen unter einer Ziffer', notInDraft: [], notShown: [], newWords: 0, draftWords: 0 }
+  const law = wording.get(lawKey)
+  // What the draft writes for §§ the document prints no block of its own for (`draftReference`).
+  const elsewhere = [...(law?.generalText ?? []), ...[...(law?.byKey ?? [])].filter(([k]) => !shown.has(k)).flatMap(([, w]) => [...w.wordings.map((x) => x.tokens), ...w.text])]
+  return strictCheck(u, [...new Set(keys)].map((k) => law?.byKey.get(k)), { general: law?.general ?? [], elsewhere })
+}
+
 export interface TguGuard {
   /** Index into the units → what the rule made of that § (only the §§ shown as changed or new). */
   checks: Map<number, RightColumnCheck>
@@ -223,15 +260,18 @@ export interface TguGuard {
   /** Instructions read, and how many named a § (`DraftBags`). */
   units: number
   addressed: number
+  /** Index into the units → the same § held word for word against the draft's wording for it (`landTguStrict.ts`). */
+  strict: Map<number, StrictCheck>
 }
 
 /**
  * Hold every § a Land's comparison shows as changed or new against the
  * draft's own Gesetzestext (`blocks`, `lawBlocksFromPdfPages`); null blocks:
  * the draft could not be read, and the rule is disarmed — never a failure of
- * every §.
+ * every §. `only`: ask the rules of that one § alone, the others still
+ * saying what the document shows (the fault injection's repeated question).
  */
-export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly TextBlock[] | null): TguGuard {
+export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly TextBlock[] | null, only?: number): TguGuard {
   const bags: DraftBags | null = blocks?.length ? landDraftBags(blocks) : null
   const checks = new Map<number, RightColumnCheck>()
   if (!bags) {
@@ -240,7 +280,7 @@ export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly Te
       const row = guardRow(u)
       if (row) checks.set(i, rightColumnCheck([row], { text: '', heading: '' }, unread))
     })
-    return { checks, read: false, wholeDraft: new Set(), units: 0, addressed: 0 }
+    return { checks, read: false, wholeDraft: new Set(), units: 0, addressed: 0, strict: new Map() }
   }
   const keys = [...new Set([...bags.byLaw.keys(), ...bags.general.keys()])]
   const clauses = articleClauses(blocks!)
@@ -255,13 +295,24 @@ export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly Te
     }
     shown.set(u.article, into)
   }
+  const wording = draftWording(blocks!, (unit) => (repeatsItsNumber(unit) ? [] : installedDesignations(unit.text)))
+  // Two instructions under one number: which words are whose is not read (`landDraftBags`).
+  const mixed = new Map<string | null, Set<string>>()
+  for (const unit of draftUnits(blocks!).filter(repeatsItsNumber)) {
+    const into = mixed.get(unit.law) ?? new Set<string>()
+    for (const p of unit.paras) into.add(designationKey(p) ?? '')
+    mixed.set(unit.law, into)
+  }
+  const strict = new Map<number, StrictCheck>()
   const references = new Map<string | null, (para: string) => WordBag>()
   const wholeDraft = new Set<number>()
   const unnamed = new Set<string | null>()
+  const lawKeys = new Map<string | null, string | null | undefined>()
   const referenceOf = (law: string | null) => {
     let ref = references.get(law)
     if (!ref) {
       const key = draftLawKey(law, keys, clauses)
+      lawKeys.set(law, key)
       if (key === undefined) unnamed.add(law)
       ref = draftReference(bags, key === undefined ? WHOLE_DRAFT : key, shown.get(law) ?? new Set())
       references.set(law, ref)
@@ -269,6 +320,7 @@ export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly Te
     return ref
   }
   units.forEach((u, i) => {
+    if (only !== undefined && i !== only) return
     const row = guardRow(u)
     if (!row) return
     const ref = referenceOf(u.article)
@@ -282,6 +334,7 @@ export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly Te
       carries: carried.length ? (t) => carried.some((b) => b.carries!(t)) : undefined,
     }
     checks.set(i, rightColumnCheck([row], { text: '', heading: u.heading ?? '' }, bag))
+    strict.set(i, strictOf(u, row.para!, lawKeys.get(u.article), wording, mixed, shown.get(u.article) ?? new Set()))
   })
-  return { checks, read: true, wholeDraft, units: bags.units, addressed: bags.addressed }
+  return { checks, read: true, wholeDraft, units: bags.units, addressed: bags.addressed, strict }
 }

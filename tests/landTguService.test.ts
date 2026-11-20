@@ -483,7 +483,8 @@ describe('compareTgu — the right column held against the draft\'s own text (12
     expect(r.complete).toBe(true)
     expect(r.value.available).toBe(true)
     expect(r.value.units.map((u) => u.id)).toEqual(['§5'])
-    expect(r.value.withheld).toEqual([{ law: SBG_LAW, id: '§6', reason: 'notInDraft' }])
+    // Since 20.11.2026 the § is held word for word first (`landTguStrict.ts`): the payload is there, and it is another.
+    expect(r.value.withheld).toEqual([{ law: SBG_LAW, id: '§6', reason: 'draftDiffers' }])
     expect(r.value.stats).toMatchObject({ total: 1, changed: 1 })
   })
 
@@ -492,6 +493,24 @@ describe('compareTgu — the right column held against the draft\'s own text (12
     draft('1. § 6 Abs. 1 lautet:', '„(1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen.“')
     const r = (await compareTgu('sbg', sbg())).value
     expect(r.available).toBe(false)
+    expect(r.withheld).toEqual([{ law: SBG_LAW, id: '§6', reason: 'draftDiffers' }])
+  })
+
+  it('withholds a § for one number the draft writes otherwise, which the bag rule passed (20.11.2026)', async () => {
+    draft('1. Im § 5 Abs. 1 wird nach dem Wort „stehen“ die Wortfolge „und gelten“ eingefügt.', '2. § 6 Abs. 1 lautet:', `„${PAYLOAD_6.replace('vierzehn', '14')}“`)
+    rows(
+      row('§ 5.', `Begriffe § 5. ${TEXT_5.slice('Begriffe '.length)}`, 'Begriffe § 5. (1) Begriffe sind in diesem Gesetz so zu verstehen, wie sie hier stehen und gelten.'),
+      row('§ 6.', `Pflichten § 6. ${TEXT_6.slice('Pflichten '.length)}`, NEW_6.replace('vierzehn', '21')),
+    )
+    const r = (await compareTgu('sbg', sbg())).value
+    expect(r.units.map((u) => u.id)).toEqual(['§5'])
+    expect(r.withheld).toEqual([{ law: SBG_LAW, id: '§6', reason: 'draftDiffers' }])
+  })
+
+  it('keeps „nicht im Entwurf" where the draft\'s wording for the § cannot be held word for word (20.11.2026)', async () => {
+    // The instruction leaves the wording to the reader's grammar: not held strictly, and the bag rule finds the new words nowhere.
+    draft('1. Im § 5 Abs. 1 wird nach dem Wort „stehen“ die Wortfolge „und gelten“ eingefügt.', '2. Im § 6 wird das Wort „Pflicht“ in der jeweiligen grammatikalischen Form durch das Wort „Aufgabe“ ersetzt.')
+    const r = (await compareTgu('sbg', sbg())).value
     expect(r.withheld).toEqual([{ law: SBG_LAW, id: '§6', reason: 'notInDraft' }])
   })
 

@@ -44,7 +44,7 @@ import { parseAnnexPdf, type AnnexLayout, type AnnexPage } from '../annex/annexP
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from '../annex/tableCells'
 import { ktnTguReading } from './landTguKaernten'
 import { tirolTguPages, tirolTguReading } from './landTguTirol'
-import { guardTguUnits } from './landTguGuard'
+import { guardTguUnits, undrafted } from './landTguGuard'
 import type { Gathered } from '../cache/gathered'
 
 /** RIS documents fetched at once while checking the §§ */
@@ -494,7 +494,7 @@ const whole = (value: LandLawDiffResponse): Gathered<LandLawDiffResponse> => ({ 
  * date: the comparison hands in the cached read (`texts/pdfPagesService.ts`);
  * the Textgegenüberstellung itself is read from its bytes, for its geometry.
  */
-export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftPagesOf?: PagesReader, bytesOf: BytesReader = landPdfBytes): Promise<Gathered<LandLawDiffResponse>> {
+export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftPagesOf?: PagesReader, bytesOf: BytesReader = landPdfBytes, beforeDraftCheck?: (units: readonly LawDiffUnit[]) => void): Promise<Gathered<LandLawDiffResponse>> {
   const read = READ_TGU[land]
   if (!read) return whole(unavailable(gapDe('outOfScope', 'Textgegenüberstellungen in der Form dieses Landes. Die des Entwurfs steht unter den Dokumenten.')))
   const got = await read(detail, draftPagesOf, bytesOf)
@@ -744,7 +744,9 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
   if (!kept.length) return { value: unavailable(NONE_SHOWN, { fromDocument, toDocument, withheld, ...beside }), complete }
 
   const { from, to } = tguUnits(kept)
-  const guard = await withoutUndrafted(land, detail, withHeadings(diffLawUnits(from, to), kept), draftPagesOf, bytesOf)
+  const compared = withHeadings(diffLawUnits(from, to), kept)
+  beforeDraftCheck?.(compared)
+  const guard = await withoutUndrafted(land, detail, compared, draftPagesOf, bytesOf)
   if (!guard.complete) complete = false
   const units = guard.units
   const listed = once([...withheld, ...guard.withheld])
@@ -806,8 +808,14 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
  * it was wired: 550 judgeable §§ of OÖ, Salzburg, Tirol and Wien, every one
  * found in its draft once our draft reader's „lit." bug was fixed.
  *
- * A § the rule cannot judge (under `MIN_NEW_WORDS` new words) stays as it
- * is, with no word of the check. Kärnten is not asked: its right column is
+ * Since 20.11.2026 the § is first held word for word, numbers included,
+ * against the wording the draft quotes for it (`landTguStrict.ts`); where
+ * the two differ it is withheld as `draftDiffers`. Where that check cannot
+ * be run — no instruction names the §, or one could not be read as wording
+ * — the bag rule decides as before (`undrafted`).
+ *
+ * A § neither rule can judge (the strict check not run, and under
+ * `MIN_NEW_WORDS` new words) stays as it is, with no word of the check. Kärnten is not asked: its right column is
  * the Novelle's own instructions, reprinted (`landTguGuard.ts`). Where the
  * draft could not be read the rule is disarmed and the answer not stored
  * (`gathered.ts`): a failed read is no verdict, neither way. The draft's
@@ -821,12 +829,11 @@ async function withoutUndrafted(land: LandCode, detail: LandDraftDetail, units: 
   } catch {
     return { units, withheld: [], complete: false }
   }
-  const { checks } = guardTguUnits(units, blocks)
-  const off = new Set([...checks].flatMap(([i, c]) => (c.notInDraft ? [i] : [])))
+  const off = undrafted(guardTguUnits(units, blocks))
   if (!off.size) return { units, withheld: [], complete: true }
   return {
     units: units.filter((_, i) => !off.has(i)),
-    withheld: units.flatMap((u, i) => (off.has(i) ? [{ law: u.article, id: u.id, ...(u.fromId && u.fromId !== u.id ? { fromId: u.fromId } : {}), reason: 'notInDraft' as const }] : [])),
+    withheld: units.flatMap((u, i) => (off.has(i) ? [{ law: u.article, id: u.id, ...(u.fromId && u.fromId !== u.id ? { fromId: u.fromId } : {}), reason: off.get(i)! }] : [])),
     complete: true,
   }
 }
