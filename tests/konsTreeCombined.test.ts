@@ -30,3 +30,40 @@ describe('a Ziffer and its first Litera in one symbol', () => {
     expect(plainText(node)).toContain('jene Person, bei der Änderung des Gesellschafterbestandes')
   })
 })
+
+describe('an Absatz that opens into its first Ziffer and Litera in its own line', () => {
+  // GrEStG 1987 § 7 Abs. 1.
+  const xml = `<risdok><nutzdaten><abschnitt>
+    <absatz typ="abs" ct="text"><gldsym>§\u00a07.</gldsym>\u00a0(1)\u00a01.\u00a0a) Ein Erwerb gilt als</absatz>
+    <liste><aufzaehlung ebene="3"><listelem ct="text"><symbol>–</symbol>unentgeltlich,</listelem><listelem ct="text"><symbol>–</symbol>entgeltlich</listelem></aufzaehlung>
+    <schlussteil ebene="2" ct="text">des Grundstückswertes beträgt.</schlussteil>
+    <aufzaehlung ebene="2"><listelem ct="text"><symbol>b)</symbol>Ein Erwerb gilt als unentgeltlich.</listelem></aufzaehlung>
+    <aufzaehlung ebene="2"><listelem ct="text"><symbol>2.\u00a0a)</symbol>Die Steuer beträgt</listelem></aufzaehlung></liste>
+    <absatz typ="abs" ct="text">(2) Zweiter Absatz.</absatz>
+  </abschnitt></nutzdaten></risdok>`
+
+  it('opens Abs. 1, Z 1 and lit. a, and files the dashes, the closing part and lit. b where RIS puts them', () => {
+    const node = parseKonsParagraph(xml)!
+    expect(shape(node)).toEqual(['abs:1', '  z:1', '    lit:a', '      lit:-', '      lit:-', '      schluss:schluss', '    lit:b', '  z:2', '    lit:a', 'abs:2'])
+    expect(bodyText(node).split('\n')[0]).toBe('(1) 1. a) Ein Erwerb gilt als')
+  })
+
+  it('never reads a date as a Ziffer: the list has to go on with the next designation', () => {
+    const date = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="abs" ct="text"><gldsym>§ 5.</gldsym> (2) 1. Jänner 2020 ist der Stichtag.</absatz>
+      <absatz typ="abs" ct="text">(3) Dritter Absatz.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(date)!
+    expect(shape(node)).toEqual(['abs:2', 'abs:3'])
+    expect(node.children[0]!.text).toBe('1. Jänner 2020 ist der Stichtag.')
+  })
+
+  it('reads „(3) 1. Text" with the Ziffer 2 below as Abs. 3 Z 1 (ZDG § 37c)', () => {
+    const z = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="abs" ct="text"><gldsym>§ 37c.</gldsym> (3) 1. Der Rechtsträger hat insbesondere</absatz>
+      <liste><aufzaehlung ebene="2"><listelem ct="text"><symbol>a)</symbol>Informationen zu erteilen,</listelem></aufzaehlung>
+      <aufzaehlung ebene="1"><listelem ct="text"><symbol>2.</symbol>Zweitens.</listelem></aufzaehlung></liste>
+    </abschnitt></nutzdaten></risdok>`
+    expect(shape(parseKonsParagraph(z)!)).toEqual(['abs:3', '  z:1', '    lit:a', '  z:2'])
+  })
+})
