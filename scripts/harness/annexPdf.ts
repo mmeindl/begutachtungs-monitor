@@ -26,12 +26,21 @@
  * offline run, or two worktrees over the same drafts — and the first line of
  * the run says when that list was fetched and how far it reaches.
  *
+ * **And what the page marks on top of the gate** (21.11.2026): the draft
+ * check and our Lesefassung, run once per draft through the page's own
+ * sources (`lesefassungOf`), and the table of `annex/annexMark.ts` over every
+ * shown § — „nicht bestätigt", the table's „nicht geprüft" by reason, both
+ * values of its one open cell, and the oracle's word by the draft check's
+ * state. The gate's own figures stay the gate's, so the drift baseline does
+ * not move with the table; `--zeilen` carries the rows as the page gets them
+ * and every shown § as the table saw it (`paragraphs`).
+ *
  * Usage:  npx vite-node -c vitest.config.ts scripts/harness/annexPdf.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--liste-aus-cache]
  */
 import { annexParagraphKey, designationKey } from '../../server/utils/annex/annexText'
 import { MIN_PROSE_TOKENS, coverageOf, displayedChangeRows, isDisplayedChange } from '../../server/utils/annex/coverage'
 import { checkAnnexRows, notRunReason } from '../../server/utils/annex/gateRows'
-import { draftBags } from '../../server/utils/annex/rightColumn'
+import { draftBags, insertedStretches } from '../../server/utils/annex/rightColumn'
 import {
   verifyAnnex,
   type AnnexDraft,
@@ -50,12 +59,18 @@ import { annexSection, parseTextComparison, type ComparisonParse, type Compariso
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { installFetchCache, isBegutSearch } from '../lib/harnessCache'
 import { windowLine, windowOf, type AnnexReport } from '../lib/annexReport'
-import type { TextComparisonRow } from '../../shared/types'
+import type { ConsolidatedTextResponse, TextComparisonRow } from '../../shared/types'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickBundledTextComparisons, pickOlderTextComparisons, pickTextComparisons } from '../lib/ris'
 import { holdsAsAnnex } from '../../server/utils/annex/olderAnnex'
-import { annexSources } from '../lib/productionSources'
+import { annexSources, draftRenditionOf, fetchParagraphXml, resolveKonsLaw } from '../lib/productionSources'
+import { annexStrictChecks } from '../../server/utils/annex/annexStrict'
+import { MARK_DELETIONS, MARK_DRAFT_UNREAD, MARK_LONG, MARK_UNASSIGNED, MARK_WORDING, OBJECTION_OVER_CONFIRMATION, annexMarks, type AnnexMark } from '../../server/utils/annex/annexMark'
+import { REASON_NOTHING_TO_COMPARE } from '../../server/utils/annex/verdict'
+import { consolidate } from '../../server/utils/kons/consolidate'
+import { oracleConfirmedRows } from '../../shared/utils/annexOutcomes'
+import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { corpusReach, harnessStamp } from '../lib/harnessRecord'
 
 const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
@@ -212,7 +227,34 @@ interface GateResult {
   verdicts: Record<string, ParagraphVerdict>
   /** The rows as the response carries them, for `--zeilen=`. */
   rows: readonly TextComparisonRow[]
+  /** Every shown § as the table saw it (`annexMark.ts`). */
+  paragraphs: MarkedParagraph[]
+  /**
+   * What the page shows on top of the gate (`annexMark.ts`, 21.11.2026): the
+   * §§ shown, and of those the ones „nicht bestätigt" and the ones the table
+   * marks „nicht geprüft" by its reason (the gate's own stay in
+   * `markedParas`); each also under the other value of
+   * `OBJECTION_OVER_CONFIRMATION`, which moves „nicht bestätigt" only.
+   */
+  marks: MarkRecord
 }
+
+/** The table's figures for one draft (`GateResult.marks`, the record's `marks`). */
+interface MarkRecord {
+  shownParas: number
+  unconfirmedParas: number
+  unconfirmedParasOther: number
+  /** „nicht geprüft" from the table, by reason: deletions, unassigned, wording, long, draftUnread. */
+  markedWord: Record<MarkReasonKey, number>
+  /** The gate's marked §§ the oracle confirms — kept marked; counted for a later rule. */
+  gateMarkedConfirmed: number
+  /** The §§ the table decides (shown, not marked by the gate): the oracle's word by the draft check's state. */
+  table: Record<'confirmed' | 'notConfirmed' | 'noLesefassung', Record<StrictCell, number>>
+}
+type MarkReasonKey = 'deletions' | 'unassigned' | 'wording' | 'long' | 'draftUnread'
+const MARK_REASON_KEY: Record<string, MarkReasonKey> = { [MARK_DELETIONS]: 'deletions', [MARK_UNASSIGNED]: 'unassigned', [MARK_WORDING]: 'wording', [MARK_LONG]: 'long', [MARK_DRAFT_UNREAD]: 'draftUnread' }
+const noCells = (): Record<StrictCell, number> => ({ holds: 0, 'holds-empty': 0, differs: 0, unchecked: 0, 'no-new-text': 0 })
+const noMarks = (): MarkRecord => ({ shownParas: 0, unconfirmedParas: 0, unconfirmedParasOther: 0, markedWord: { deletions: 0, unassigned: 0, wording: 0, long: 0, draftUnread: 0 }, gateMarkedConfirmed: 0, table: { confirmed: noCells(), notConfirmed: noCells(), noLesefassung: noCells() } })
 
 /**
  * `--zeilen=<path>`: every draft's rows as the response would carry them,
@@ -231,6 +273,7 @@ function dumpRows(id: string, cite: string, parsed: ComparisonParse, gate: GateR
       cause: r.withheldCause ?? null, reason: r.uncheckedReason ?? null, owes: r.owesCheck, elided: r.elided, elisionRange: r.elisionRange, editorial: r.editorial,
       current: r.current, proposed: r.proposed,
     })),
+    paragraphs: gate.paragraphs,
   }
 }
 
@@ -288,7 +331,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const id = String(meta?.Technisch?.ID ?? cite)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, withheldRepealUnproven: 0, withheldRepeated: 0, uncheckedParas: 0, markedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [] }
+  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, withheldRepealUnproven: 0, withheldRepeated: 0, uncheckedParas: 0, markedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [], paragraphs: [], marks: noMarks() }
   const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, lostLines: 0, lostDiffering: 0, lostApart: 0, frontMatterLaws: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
@@ -366,7 +409,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   if (parsed.refusal) {
     // The request path runs the gate over a refused package all the same;
     // the figures above leave it out, the row dump does not.
-    if (rowsPath) dumpRows(id, cite, parsed, await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks }))
+    if (rowsPath) dumpRows(id, cite, parsed, await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks }, await lesefassungOf(id, draftBlocks, beginn, parsed.rows, urlOf(main, 'Pdf'))))
     return { ...blank(`verweigert: ${parsed.refusal.slice(0, 52)}`, amending.length), droppedPages }
   }
 
@@ -476,7 +519,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   // `attributed`, `checked` and `unrepresentable`, whose published numbers say
   // something else. Nothing here decides anything; the verdicts below still
   // come from `verifyAnnex`.
-  const gate = await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks })
+  const gate = await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks }, await lesefassungOf(id, draftBlocks, beginn, parsed.rows, urlOf(main, 'Pdf')))
   if (rowsPath) dumpRows(id, cite, parsed, gate)
   let unchangedRows = 0
   let unchangedParas = 0
@@ -544,9 +587,99 @@ async function verify(doc: any): Promise<DraftResult | null> {
  *  - no withheld § without a recorded cause — otherwise the split the page
  *    prints would not sum to the total beside it (2026-09-10).
  */
-async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promise<GateResult> {
+/**
+ * Our Lesefassung of the draft, run as the page runs it (`kons/konsService.ts`):
+ * `consolidate` over the page's own sources — the cached § resolution and §
+ * documents, the draft's PDF for the second witness — with the annex rows
+ * this run parsed, which is the document the page's source choice reads.
+ * Once per draft. Timed, for what the annex section now waits for (`lesefassungMs`).
+ */
+const lesefassungMs: { id: string; ms: number; touched: number }[] = []
+async function lesefassungOf(id: string, blocks: readonly TextBlock[], asOf: string, rows: readonly ComparisonRow[], draftPdf: string | null): Promise<ConsolidatedTextResponse> {
+  const t0 = performance.now()
+  const out = await consolidate({ gp, inr: null, risId: id }, blocks, asOf, {
+    resolveLaw: resolveKonsLaw,
+    paragraphXml: (ref) => fetchParagraphXml(ref.nor, ref.xmlUrl!),
+    annexRows: async () => rows,
+    draftRendition: () => draftRenditionOf(draftPdf),
+  })
+  lesefassungMs.push({ id, ms: performance.now() - t0, touched: out.touched })
+  return out
+}
+
+/** The draft check's state as the table reads it (`markOf`): its four outcomes and the held § with no new word apart. */
+type StrictCell = 'holds' | 'holds-empty' | 'differs' | 'unchecked' | 'no-new-text'
+const strictCellOf = (state: string | undefined, newWords: number, showsNewText: boolean): StrictCell =>
+  !showsNewText ? 'no-new-text' : state === 'holds' ? (newWords > 0 ? 'holds' : 'holds-empty') : state === 'differs' ? 'differs' : 'unchecked'
+
+/** One shown § as the table saw it (`--zeilen`, and the record's tables). */
+interface MarkedParagraph {
+  key: string
+  /** 'verified' | 'unmarked' (unchecked, nothing owed or no change shown) | 'marked' (the gate's „nicht geprüft") */
+  population: 'verified' | 'unmarked' | 'marked'
+  gateReason: string | null
+  showsChange: boolean
+  strict: StrictCell
+  strictReason: string | null
+  notInDraft: string[]
+  notShown: string[]
+  oracle: boolean | null
+  mark: AnnexMark
+  /** The same § under the other value of `OBJECTION_OVER_CONFIRMATION`. */
+  markOther: AnnexMark
+}
+
+async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft, lesefassung: ConsolidatedTextResponse): Promise<GateResult> {
   const check = await verifyAnnex(rows, draft, gateSources, ceiling === null ? {} : { maxParagraphs: ceiling })
+  const strict = annexStrictChecks(rows, draft)
+  const confirmed = oracleConfirmedRows(rows, lesefassung)
+  const marks = annexMarks(rows, check, strict, confirmed)
+  const other = annexMarks(rows, check, strict, confirmed, OBJECTION_OVER_CONFIRMATION === 'clean' ? 'unconfirmed' : 'clean')
+  const paragraphs: MarkedParagraph[] = []
+  {
+    const groups = new Map<string, ComparisonRow[]>()
+    for (const row of rows) {
+      const para = row.kind === 'pair' ? (row.gld ?? row.para) : null
+      if (para !== null) groups.set(annexParagraphKey(row.law, para), [...(groups.get(annexParagraphKey(row.law, para)) ?? []), row])
+    }
+    for (const [key, group] of groups) {
+      const verdict = check.verdicts[key] ?? 'unchecked'
+      if (verdict === 'withheld') continue
+      const reason = check.uncheckedReasons[key] ?? null
+      const showsNewText = insertedStretches(group).length > 0
+      const showsChange = showsNewText || group.some(isDisplayedChange)
+      const s = strict.get(key)
+      const printed = group.filter((r) => !r.elided)
+      paragraphs.push({
+        key,
+        population: verdict === 'verified' ? 'verified' : reason !== REASON_NOTHING_TO_COMPARE && showsChange ? 'marked' : 'unmarked',
+        gateReason: verdict === 'unchecked' ? reason : null,
+        showsChange,
+        strict: strictCellOf(s?.state, s?.newWords ?? 0, showsNewText),
+        strictReason: s?.reason ?? null,
+        notInDraft: s?.notInDraft ?? [],
+        notShown: s?.notShown ?? [],
+        oracle: confirmed === null ? null : printed.length > 0 && printed.every((r) => confirmed.has(r)),
+        mark: marks.get(key)!,
+        markOther: other.get(key)!,
+      })
+    }
+  }
   const checked = checkAnnexRows(rows, check)
+  // The rows as the page gets them, the table's marks applied (`readAndCheck`); the gate's figures below stay the gate's.
+  const page = checkAnnexRows(rows, check, marks)
+  const markRecord = noMarks()
+  for (const q of paragraphs) {
+    markRecord.shownParas++
+    if (q.mark.kind === 'unconfirmed') markRecord.unconfirmedParas++
+    if (q.markOther.kind === 'unconfirmed') markRecord.unconfirmedParasOther++
+    if (q.mark.kind === 'unchecked') markRecord.markedWord[MARK_REASON_KEY[q.mark.reason]!]++
+    if (q.population === 'marked') {
+      if (q.oracle) markRecord.gateMarkedConfirmed++
+      continue
+    }
+    markRecord.table[q.oracle === null ? 'noLesefassung' : q.oracle ? 'confirmed' : 'notConfirmed'][q.strict]++
+  }
 
   let rowsNoPara = 0
   let changeRowsNoPara = 0
@@ -592,7 +725,9 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promi
     withheldWithText: checked.rows.filter((r) => r.check === 'withheld' && (r.current !== '' || r.proposed !== '' || r.segments !== null)).length,
     withheldWithoutCause: Object.entries(check.verdicts).filter(([key, v]) => v === 'withheld' && check.withheldCauses[key] === undefined).length,
     verdicts: check.verdicts,
-    rows: rowsPath ? checked.rows : [],
+    rows: rowsPath ? page.rows : [],
+    paragraphs,
+    marks: markRecord,
   }
 }
 
@@ -739,6 +874,24 @@ console.log(`      davon ohne Paragraph zu Recht (Inhaltsverzeichnis, Titel, Abs
 // its whole word diff, not just the unchanged line.
 console.log(`    Unveränderte Zeilen, nie gegen das RIS gehalten: ${dsum((r) => r.unchangedRows)} in ${dsum((r) => r.unchangedParas)} Paragraphen`)
 console.log(`      davon Paragraphen mit ≥ ${MIN_PROSE_TOKENS} vergleichbaren Wörtern: ${dsum((r) => r.unchangedProse)}, unter der Schwelle: ${dsum((r) => r.unchangedBelow)} (davon heute bestätigt: ${dsum((r) => r.unchangedBelowVerified)})`)
+// The table on top of the gate (`annexMark.ts`, 21.11.2026): what the page marks beyond the gate's „nicht geprüft".
+{
+  const msum = (pick: (m: MarkRecord) => number) => gated.reduce((n, r) => n + pick(r.gate.marks), 0)
+  const shown = msum((m) => m.shownParas)
+  const word = msum((m) => Object.values(m.markedWord).reduce((a, b) => a + b, 0))
+  const gateMarked = gsum((g) => g.markedParas)
+  const pct = (n: number) => (shown ? `${((n / shown) * 100).toFixed(1)} %` : '—')
+  console.log(`    Wort für Wort (die Tabelle über dem Tor): gezeigte Paragraphen ${shown}`)
+  console.log(`      „nicht bestätigt“: ${msum((m) => m.unconfirmedParas)} (andere Variante, der Einwand gilt immer: ${msum((m) => m.unconfirmedParasOther)})`)
+  console.log(`      „nicht geprüft“ aus der Tabelle: ${word} — nur Streichungen ${msum((m) => m.markedWord.deletions)}, keiner Anordnung zugeordnet ${msum((m) => m.markedWord.unassigned)}, Anordnung nicht lesbar ${msum((m) => m.markedWord.wording)}, zu lang ${msum((m) => m.markedWord.long)}, Entwurf ungelesen ${msum((m) => m.markedWord.draftUnread)}`)
+  console.log(`      markiert insgesamt (Tor + Tabelle): ${gateMarked + word + msum((m) => m.unconfirmedParas)} (${pct(gateMarked + word + msum((m) => m.unconfirmedParas))}); andere Variante ${gateMarked + word + msum((m) => m.unconfirmedParasOther)}`)
+  console.log(`      vom Tor markiert und von der Lesefassung bestätigt (bleibt markiert): ${msum((m) => m.gateMarkedConfirmed)}`)
+  const cells: StrictCell[] = ['holds', 'holds-empty', 'differs', 'unchecked', 'no-new-text']
+  console.log(`      Lesefassung \\ Entwurfsprüfung   ${cells.map((c) => c.padStart(12)).join('')}`)
+  for (const [key, label] of [['confirmed', 'bestätigt'], ['notConfirmed', 'nicht bestätigt'], ['noLesefassung', 'keine Lesefassung']] as const) {
+    console.log(`        ${label.padEnd(26)}${cells.map((c) => String(msum((m) => m.table[key][c])).padStart(12)).join('')}`)
+  }
+}
 console.log(`    Zusicherungen (müssen 0 sein): ohne Urteil ${gsum((g) => g.verdictless)}, zu Unrecht geprüft ${gsum((g) => g.wronglyVerified)}, einbehalten mit Text ${gsum((g) => g.withheldWithText)}, einbehalten ohne Grund ${gsum((g) => g.withheldWithoutCause)}`)
 for (const [reason, n] of [...gated.filter((r) => !r.gate.ran).reduce((m, r) => m.set(r.gate.notRunReason ?? '—', (m.get(r.gate.notRunReason ?? '—') ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])) {
   console.log(`      ${String(n).padStart(3)}× ${reason}`)
@@ -824,6 +977,13 @@ if (jsonPath) {
       withheldRepeated: r.gate.withheldRepeated,
       uncheckedParas: r.gate.uncheckedParas,
       markedParas: r.gate.markedParas,
+      shownParas: r.gate.marks.shownParas,
+      unconfirmedParas: r.gate.marks.unconfirmedParas,
+      unconfirmedParasOther: r.gate.marks.unconfirmedParasOther,
+      markedWordParas: Object.values(r.gate.marks.markedWord).reduce((a, b) => a + b, 0),
+      markedWord: r.gate.marks.markedWord,
+      gateMarkedConfirmed: r.gate.marks.gateMarkedConfirmed,
+      markTable: r.gate.marks.table,
       rowsNoPara: r.gate.rowsNoPara,
       changeRowsNoPara: r.gate.changeRowsNoPara,
       verdictless: r.gate.verdictless,
@@ -834,6 +994,10 @@ if (jsonPath) {
   }
   writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`)
   console.log(`\nBericht geschrieben: ${jsonPath} (${report.drafts.length} Entwürfe)`)
+}
+{
+  const slow = [...lesefassungMs].sort((a, b) => b.touched - a.touched).slice(0, 5)
+  console.log(`\n  Lesefassung je Entwurf (consolidate, wie die Seite): ${lesefassungMs.length} Läufe, zusammen ${(lesefassungMs.reduce((n, l) => n + l.ms, 0) / 1000).toFixed(1)} s; die fünf mit den meisten Paragraphen: ${slow.map((l) => `${l.id} ${l.touched} §§ ${(l.ms / 1000).toFixed(2)} s`).join(', ')}`)
 }
 if (rowsPath) {
   const { writeFileSync } = await import('node:fs')

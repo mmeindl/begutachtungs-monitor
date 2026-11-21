@@ -143,6 +143,22 @@ export interface AnnexDraftReport {
    * in older reports.
    */
   markedParas?: number
+  /**
+   * The table on top of the gate (`server/utils/annex/annexMark.ts`,
+   * 21.11.2026), absent in older reports: §§ shown (not withheld), of them
+   * „nicht bestätigt" — under the approved rule and under the other value of
+   * `OBJECTION_OVER_CONFIRMATION` —, „nicht geprüft" from the table (beside
+   * the gate's `markedParas`) and by reason, the gate's marked §§ the oracle
+   * confirms, and over the §§ the table decides the oracle's word
+   * (confirmed, not confirmed, no Lesefassung) by the draft check's state.
+   */
+  shownParas?: number
+  unconfirmedParas?: number
+  unconfirmedParasOther?: number
+  markedWordParas?: number
+  markedWord?: Record<'deletions' | 'unassigned' | 'wording' | 'long' | 'draftUnread', number>
+  gateMarkedConfirmed?: number
+  markTable?: Record<'confirmed' | 'notConfirmed' | 'noLesefassung', Record<'holds' | 'holds-empty' | 'differs' | 'unchecked' | 'no-new-text', number>>
   rowsNoPara: number
   /** …of those, shown as a change — class B, see the header */
   changeRowsNoPara: number
@@ -366,6 +382,8 @@ const BASELINE_FIELDS = {
   withheldRepealUnproven: 'einbehalten (als aufgehoben gezeigt, Aufhebung nicht angeordnet)',
   withheldRepeated: 'einbehalten (mehrfach gedruckt, nicht zuzuordnen)',
   uncheckedParas: 'ungeprüft',
+  unconfirmedParas: 'nicht bestätigt (Wort für Wort)',
+  markedWordParas: 'nicht geprüft (Wort für Wort)',
   rowsNoPara: 'Zeilen ohne Paragraphenangabe',
   changeRowsNoPara: 'davon als Änderung gezeigt',
 } as const satisfies Partial<Record<keyof AnnexDraftReport, string>>

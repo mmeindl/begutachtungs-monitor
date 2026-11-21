@@ -30,3 +30,7 @@ export const resolveKonsLaw = kons.resolveKonsLaw
 
 /** The annex check's sources as the page builds them, uncached. */
 export const annexSources: AnnexSources = annexSourcesOf({ resolveLaw: kons.resolveKonsLaw, history: kons.readParagraphHistory, paragraphXml: kons.fetchParagraphXml })
+
+/** The page's sources of the Lesefassung beside the § resolution (`kons/konsService.ts`), for a harness that runs `consolidate` as the page does. */
+export const fetchParagraphXml = kons.fetchParagraphXml
+export const { draftRenditionOf } = await import('../../server/utils/kons/draftRendition')
