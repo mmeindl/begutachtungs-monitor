@@ -189,7 +189,15 @@ export async function readLandExplanations(
     if (!draftFailed) pages.set(draftUrl, draftPages)
     draftRead = ofDraft(draftPages)
   }
-  if (!parse) return done(unavailable(gapDe('unreadable', 'In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.'), publisher, document), draftFailed)
+  // Where the record lists the Vorlage's Erläuterungen and none of the
+  // draft's own (`draftExplanationsDocument`), the draft's PDF was read and
+  // held none: said of the draft and of the list (21.11.2026) — „in den
+  // Dokumenten des Landes" was loose beside readable ones of the Vorlage's.
+  const vorlageOnly = !own && docs.some((d) => /^Regierungsvorlage, Erläuterungen$/.test(d.title))
+  const unreadable = vorlageOnly
+    ? 'Im Entwurf fand der Monitor keine Erläuterungen, die er lesen kann. Unter den Dokumenten zu diesem Entwurf stehen Erläuterungen nur zur Regierungsvorlage.'
+    : 'In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.'
+  if (!parse) return done(unavailable(gapDe('unreadable', unreadable), publisher, document), draftFailed)
   const ofText = draftRead && !(candidates.length === 1 && notADraft(draftRead)) ? draftRead : null
 
   const particular = explainedParagraphs(parse, ofText?.units ?? null, detail.draft.title, ofText?.text ?? null)

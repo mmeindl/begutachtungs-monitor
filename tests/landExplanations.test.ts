@@ -211,5 +211,14 @@ describe('the draft\'s own Erläuterungen, never the Vorlage\'s (20.11.2026)', (
     const read = await readLandExplanations('ktn', { draft: { title: 'Kärntner Beispielgesetz', documents: [doc('Entwurf', 'entwurf'), ...vorlageDocs] } }, async () => new Uint8Array(), pagesOf)
     expect(pagesRead).not.toContain('https://www.ktn.gv.at/DE/repos/files/rv-erl.pdf')
     expect(read.response.document?.url).toBe('https://www.ktn.gv.at/DE/repos/files/entwurf.pdf')
+    // „In den Dokumenten des Landes fand der Monitor keine Erläuterungen" until
+    // 21.11.2026: true, and loose — the record lists readable ones, the
+    // Vorlage's. Said of the draft, and of the list, which proves no absence elsewhere.
+    expect(read.response.unavailableReason).toBe('Nicht lesbar: Im Entwurf fand der Monitor keine Erläuterungen, die er lesen kann. Unter den Dokumenten zu diesem Entwurf stehen Erläuterungen nur zur Regierungsvorlage.')
+  })
+
+  it('keeps the sentence of the Land\'s documents where no Vorlage\'s are listed', async () => {
+    const read = await readLandExplanations('ktn', { draft: { title: 'Kärntner Beispielgesetz', documents: [doc('Entwurf', 'entwurf')] } }, async () => new Uint8Array(), async () => ['Gesetz vom …, mit dem das Kärntner Beispielgesetz geändert wird', '1. § 1 lautet:'])
+    expect(read.response.unavailableReason).toBe('Nicht lesbar: In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.')
   })
 })
