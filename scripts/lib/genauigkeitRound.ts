@@ -220,7 +220,11 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
     /* By name, so two rounds' files differ only where a count moved. */
     const sorted = Object.fromEntries(Object.entries(causes).sort(([a], [b]) => a.localeCompare(b))) as typeof causes
     const witnessed = record.reports.reduce((n, r) => n + (r.witnessed ?? 0), 0)
-    return { drafts: record.reports.length, changed, shown: shownCount, causes: sorted, witnessed }
+    // Nothing to compose: a § the draft repeals has no new text, a § of a law enacted anew no old one.
+    const outsideOf = (r: AccountingRecord['reports'][number]): number => (r.causes.entfaellt ?? 0) + (r.causes['neu-erlassen'] ?? 0)
+    const outside = record.reports.reduce((n, r) => n + outsideOf(r), 0)
+    const composing = record.reports.filter((r) => r.touched - outsideOf(r) > 0).length
+    return { drafts: record.reports.length, changed, shown: shownCount, causes: sorted, witnessed, outside, composing }
   }
   const accounted = funnel('acc.json', acc)
   const risOnly = funnel('acc-ris.json', accRis)
@@ -262,8 +266,8 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
         ...(kons.witness ? { witnessed: { shown: tallied(kons.witness, (p) => p[0] === 'gezeigt'), identical: tallied(kons.witness, (p) => p[0] === 'gezeigt' && p[1] === 'identisch') } } : {}),
       },
       faults: { pdf: classes(faults.pdf.result), table: classes(faults.table.result) },
-      funnel: accounted,
-      risOnly: { drafts: risOnly.drafts, changed: risOnly.changed, shown: risOnly.shown },
+      funnel: { drafts: accounted.drafts, changed: accounted.changed, shown: accounted.shown, causes: accounted.causes, witnessed: accounted.witnessed },
+      risOnly: { drafts: risOnly.drafts, changed: risOnly.changed, shown: risOnly.shown, outside: risOnly.outside, composing: risOnly.composing },
     },
     annex: {
       drafts: gated.length,

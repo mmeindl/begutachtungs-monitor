@@ -90,8 +90,13 @@ export interface GenauigkeitRecord {
       /** Of `shown`, those shown on the draft's own text where the annex did not confirm them (`draftWitness`); absent in rounds before 20.11.2026. */
       witnessed?: number
     }
-    /** The same for the drafts that stand in RIS only (`accounting.ts --ris`). */
-    risOnly: { drafts: number; changed: number; shown: number }
+    /**
+     * The same for the drafts that stand in RIS only (`accounting.ts --ris`).
+     * `outside`: of `changed`, the §§ with nothing to compose (repealed, or of
+     * a law enacted anew); `composing`: the drafts with at least one § that
+     * can be composed. Both absent in rounds before 21.11.2026.
+     */
+    risOnly: { drafts: number; changed: number; shown: number; outside?: number; composing?: number }
   }
 
   /** „Was ändert der Entwurf?": the ministry's Textgegenüberstellung, checked against RIS and the draft. */

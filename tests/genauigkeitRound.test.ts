@@ -256,6 +256,18 @@ describe('what the figures count', () => {
     expect(faults.table).toEqual([{ key: 'U', tried: 50, caught: 0 }])
   })
 
+  it('counts of the RIS-only drafts what can be composed at all: not a repealed §, not a § of a law enacted anew, not a draft with neither', () => {
+    const records = round()
+    records['acc-ris.json'].reports = [
+      { citation: 'A', touched: 5, shown: 2, causes: { verweigert: 1, entfaellt: 2 }, failures: [] },
+      { citation: 'B', touched: 3, shown: 0, causes: { 'neu-erlassen': 3 }, failures: [] },
+      { citation: 'C', touched: 0, shown: 0, causes: {}, failures: [] },
+    ]
+    records['acc-ris.json'].requested = 3
+    records['acc-ris.json'].reached = 3
+    expect(build(records).lesefassung.risOnly).toEqual({ drafts: 3, changed: 8, shown: 2, outside: 5, composing: 1 })
+  })
+
   it('carries the changes injected into the station comparison, caught where the page shows a change', () => {
     const record = build(round())
     expect(record.stations.faults).toEqual([{ key: 'ziffer', tried: 40, caught: 40 }, { key: 'minus', tried: 30, caught: 28 }])

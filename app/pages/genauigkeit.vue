@@ -137,12 +137,21 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
             neuen Text, oder er schreibt sie mit einem neuen Gesetz neu,
             dann gibt es keinen alten, den der Monitor ändern könnte.
           </p>
+          <!-- The same whole as above (21.11.2026): §§ with something to
+               compose, and the drafts that have any. Until then the line
+               counted repealed §§ in, and drafts that only enact new
+               ordinances. -->
           <p>
             Entwürfe, die nur im RIS stehen und nicht beim Parlament, sind
             meist Verordnungen. Dort zeigt der Monitor
             {{ formatNumberDe(risOnly.shown) }} von
-            {{ formatNumberDe(risOnly.changed) }} geänderten Paragraphen
-            ganz, in {{ formatNumberDe(risOnly.drafts) }} Entwürfen.
+            {{ formatNumberDe(risOnly.changed - (risOnly.outside ?? 0)) }}
+            geänderten Paragraphen ganz, in
+            {{ formatNumberDe(risOnly.composing ?? risOnly.drafts) }}
+            Entwürfen.<template v-if="risOnly.composing !== undefined && risOnly.drafts > risOnly.composing">
+              {{ formatNumberDe(risOnly.drafts - risOnly.composing) }}
+              weitere Entwürfe erlassen nur Neues oder ändern nichts, was
+              sich zusammensetzen ließe.</template>
           </p>
         </div>
       </Disclosure>
