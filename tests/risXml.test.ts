@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
+import { printedQuotes } from '../server/utils/lawtext/lawUnits'
 
 describe('the closing clause of an enumeration, under both RIS spellings', () => {
   // RIS writes the clause that closes a list under two names, depending on
@@ -81,7 +82,7 @@ describe('an image in the RIS XML is named, not spelt out (19.11.2026)', () => {
   })
 })
 
-describe('the quotation marks as RIS prints them (`TextBlock.quoted`, 21.11.2026)', () => {
+describe('the quotation marks as RIS prints them (`TextBlock.quoteMarks`, 21.11.2026)', () => {
   it('keeps which mark opens a quotation beside the folded text, and only where folding changed it', () => {
     const xml = `<risdok><nutzdaten><abschnitt>
       <absatz typ="novao1">3. In § 6 Abs. 1 wird die Zahl &#8222;14&#8220; durch die Zahl „21“ ersetzt.</absatz>
@@ -89,7 +90,14 @@ describe('the quotation marks as RIS prints them (`TextBlock.quoted`, 21.11.2026
       </abschnitt></nutzdaten></risdok>`
     const blocks = parseRisXml(xml)
     expect(blocks[0]!.text).toBe('3. In § 6 Abs. 1 wird die Zahl "14" durch die Zahl "21" ersetzt.')
-    expect(blocks[0]!.quoted).toBe('3. In § 6 Abs. 1 wird die Zahl „14“ durch die Zahl „21“ ersetzt.')
-    expect(blocks[1]).not.toHaveProperty('quoted')
+    expect(blocks[0]!.quoteMarks).toBe('„“„“')
+    expect(printedQuotes(blocks[0]!)).toBe('3. In § 6 Abs. 1 wird die Zahl „14“ durch die Zahl „21“ ersetzt.')
+    expect(blocks[1]).not.toHaveProperty('quoteMarks')
+    expect(printedQuotes(blocks[1]!)).toBe('4. § 7 Abs. 2 entfällt.')
+  })
+
+  it('puts no mark back where the text was rewritten after the parse', () => {
+    expect(printedQuotes({ text: 'die Zahl "14" entfällt', quoteMarks: '„“„“' })).toBe('die Zahl "14" entfällt')
+    expect(printedQuotes({ text: 'die Zahl "14" entfällt', quoteMarks: '„“' })).toBe('die Zahl „14“ entfällt')
   })
 })

@@ -39,7 +39,7 @@
 import type { LawDiffSegment, LawDiffUnit } from '../../../shared/types'
 import { annexParagraphKey, designationKey } from './annexText'
 import type { ComparisonRow } from './comparisonRows'
-import { segmentUnits, type TextBlock } from '../lawtext/lawUnits'
+import { printedQuotes, segmentUnits, type TextBlock } from '../lawtext/lawUnits'
 import { draftUnits } from './annexDraft'
 import { REASON_CUT, REASON_UNREADABLE_DESIGNATION, type AnnexDraft } from './verdict'
 import { refusedAddress } from '../laender/landTguGuard'
@@ -300,9 +300,9 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
     for (const key of groups.keys()) out.set(key, unchecked(DRAFT_UNREAD))
     return out
   }
-  // The quotation marks as RIS prints them (`TextBlock.quoted`): which one opens a quotation is what `quoteRoles` reads.
+  // The quotation marks as RIS prints them (`printedQuotes`): which one opens a quotation is what `quoteRoles` reads.
   // Not in a heading, whose text names the law (`DraftUnit.law`) as the rows and the Artikel name it.
-  const blocks = draft.blocks.map((b) => (b.quoted === undefined || HEADING_KINDS.has(b.kind) ? b : { ...b, text: b.quoted }))
+  const blocks = draft.blocks.map((b) => (b.quoteMarks === undefined || HEADING_KINDS.has(b.kind) ? b : { ...b, text: printedQuotes(b) }))
   // An instruction whose address the engine's grammar refuses still names its § where it opens with it
   // (`refusedAddress`). Not the Länder's other two readings: a RIS draft prints the Gliederungssymbol of every §
   // a payload installs, which `draftUnits` reads, and numbers each instruction as a block of its own. Read on the

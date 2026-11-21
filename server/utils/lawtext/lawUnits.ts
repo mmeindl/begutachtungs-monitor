@@ -41,13 +41,30 @@ export interface TextBlock {
    */
   table?: true
   /**
-   * The text with its double quotation marks as RIS prints them („…“), set
-   * only where they differ from `text`, which folds them into one straight
-   * mark (`normalizeText`) — so which mark opens a quotation is lost there.
-   * Read by the strict check of the Bund's annex alone (`annex/annexStrict.ts`):
-   * the quotation grammar it shares with the Länder needs to know (21.11.2026).
+   * The double quotation marks of `text` as RIS prints them, one character
+   * per mark in their order („“”), set only where one was folded: `text`
+   * folds them into one straight mark (`normalizeText`), so which mark opens
+   * a quotation is lost there, and `printedQuotes` puts them back. Read by
+   * the strict check of the Bund's annex alone (`annex/annexStrict.ts`): the
+   * quotation grammar it shares with the Länder needs to know (21.11.2026).
+   * The marks and not a second text, because a draft's blocks are cached
+   * whole (`getDraftArticles`).
    */
-  quoted?: string
+  quoteMarks?: string
+}
+
+/**
+ * A block's text with its double quotation marks as RIS prints them
+ * (`TextBlock.quoteMarks`). Where the text no longer carries as many marks as
+ * were kept — something rewrote it after the parse — the text as it is: a
+ * mark put back at the wrong place would open a quotation where none is.
+ */
+export function printedQuotes(block: Pick<TextBlock, 'text' | 'quoteMarks'>): string {
+  const marks = block.quoteMarks
+  if (marks === undefined) return block.text
+  let at = 0
+  const printed = block.text.replace(/"/g, (mark) => marks[at++] ?? mark)
+  return at === marks.length ? printed : block.text
 }
 
 /** One comparable unit: a § (with all its Absätze and Ziffern) or one Novellierungsanordnung. */

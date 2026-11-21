@@ -168,9 +168,10 @@ export function parseRisXml(xml: string): TextBlock[] {
         ? `${boldMatch[1]} ${inner.slice(boldMatch[0].length)}`
         : inner
     const text = risText(own)
-    // The quotation marks as RIS prints them, where folding changed them (`TextBlock.quoted`).
+    // The quotation marks as RIS prints them, where folding changed one (`TextBlock.quoteMarks`): folding
+    // replaces a mark by a mark, so the two texts differ at the marks' places and nowhere else.
     const printed = risText(own, true)
-    const quoted = printed !== text ? { quoted: printed } : {}
+    const quoted = printed !== text && printed.length === text.length ? { quoteMarks: [...text].flatMap((c, i) => (c === '"' ? [printed[i]!] : [])).join('') } : {}
     if (!text && !gld) continue
     const split = tag === 'ueberschrift' && !gld && !inTable(m.index!) ? articleNameSplit(typ, inner) : null
     if (split) {
