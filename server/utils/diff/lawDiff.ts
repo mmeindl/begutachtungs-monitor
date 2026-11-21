@@ -771,10 +771,18 @@ export function diffLawPackage(
   if (map.size === 0) return { units: diffAtSamePlace(from, to, words), lawsOnlyInTo: [], lawsOnlyInFrom: [], addedLaws: [], droppedLaws: [], unpaired: from.length > 0 && to.length > 0 }
   const pairedFrom = new Set(map.keys())
   const pairedTo = new Set(map.values())
-  const keepFrom = (u: LawUnit) => keepDroppedLaws || u.article === null || pairedFrom.has(u.article)
-  const keepTo = (u: LawUnit) => keepAddedLaws || u.article === null || pairedTo.has(u.article)
   const onlyInTo = lawsOf(to, (a) => pairedTo.has(a))
   const onlyInFrom = lawsOf(from, (a) => pairedFrom.has(a))
+  // A commencement Artikel only one side carries is named in no list
+  // (`lawsOf`). It may go unshown only where the page says that only what
+  // both texts carry is compared — the sentence on the laws only the later
+  // text carries, which stands only where `lawsOnlyInTo` names one. Elsewhere
+  // it is shown, new or removed (21.11.2026): 150/ME XXVII's „Inkrafttreten",
+  // „neu" from draft to Vorlage, stood nowhere from draft to Plenum.
+  const noSentence = keepAddedLaws || onlyInTo.length === 0
+  const shownCommencement = (u: LawUnit) => noSentence && u.article !== null && isCommencementArticle(u.article)
+  const keepFrom = (u: LawUnit) => keepDroppedLaws || u.article === null || pairedFrom.has(u.article) || shownCommencement(u)
+  const keepTo = (u: LawUnit) => keepAddedLaws || u.article === null || pairedTo.has(u.article) || shownCommencement(u)
   return {
     units: pairSameInstruction(diffAtSamePlace(from.filter(keepFrom), to.filter(keepTo), words), words),
     lawsOnlyInTo: keepAddedLaws ? [] : onlyInTo,

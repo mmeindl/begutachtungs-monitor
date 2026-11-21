@@ -858,6 +858,24 @@ describe('the Artikel number counts only with the §§ behind it (27.09.2026)', 
     const rv = [...art('Änderung des Mietrechtsgesetzes', 1, [5]), u('Inkrafttreten des Art. 119', 'Z1', 'Dieses Bundesgesetz tritt mit 1. Jänner in Kraft.', 'Artikel 2')]
     expect(diffLawPackage(me, rv).lawsOnlyInTo).toEqual([])
   })
+
+  // 150/ME XXVII, draft → Plenum: only the later text carries „Inkrafttreten",
+  // no other law is one-sided, so no sentence says that only both texts are
+  // compared — the Artikel shows as new, and as removed the other way round.
+  it('shows a commencement Artikel only one side carries where no law is named as only the later text\'s', () => {
+    const me = art('Änderung des Mietrechtsgesetzes', 1, [5])
+    const rv = [...art('Änderung des Mietrechtsgesetzes', 1, [5]), u('Inkrafttreten', 'Z1', 'Dieses Bundesgesetz tritt mit 1. Jänner in Kraft.', 'Artikel 2')]
+    expect(diffLawPackage(me, rv).units.map((x) => [x.change, x.article])).toEqual([['unchanged', 'Änderung des Mietrechtsgesetzes'], ['inserted', 'Inkrafttreten']])
+    expect(diffLawPackage(rv, me).units.map((x) => [x.change, x.article])).toEqual([['unchanged', 'Änderung des Mietrechtsgesetzes'], ['removed', 'Inkrafttreten']])
+  })
+
+  it('leaves it to the sentence on the laws only the later text carries where one is named', () => {
+    const me = art('Änderung des Mietrechtsgesetzes', 1, [5])
+    const rv = [...art('Änderung des Mietrechtsgesetzes', 1, [5]), ...art('Änderung des Wohnungseigentumsgesetzes 2002', 2, [7]), u('Inkrafttreten', 'Z1', 'Dieses Bundesgesetz tritt mit 1. Jänner in Kraft.', 'Artikel 3')]
+    const d = diffLawPackage(me, rv)
+    expect(d.lawsOnlyInTo.map((l) => l.article)).toEqual(['Änderung des Wohnungseigentumsgesetzes 2002'])
+    expect(d.units.map((x) => x.change)).toEqual(['unchanged'])
+  })
 })
 
 describe('a nameless Artikel title pairs by its number (XXVII 85/ME, 28.09.2026)', () => {

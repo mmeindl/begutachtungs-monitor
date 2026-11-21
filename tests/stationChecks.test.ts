@@ -51,8 +51,11 @@ describe('the checks the station harness runs (`scripts/lib/stationChecks.ts`)',
     const other = { title: '&Auml;nderung des Datenschutzgesetzes', ziffer: '1. &sect;&nbsp;4 lautet: &bdquo;x&ldquo;' }
     const withIt = parseLawUnits(pkg([law, commencement]))
     const alone = parseLawUnits(pkg([law]))
-    const silent = diffLawPackage(withIt, alone)
-    expect(silent.lawsOnlyInTo).toEqual([])
+    const shown = diffLawPackage(withIt, alone)
+    expect(shown.lawsOnlyInTo).toEqual([])
+    expect(completeness(withIt, alone, shown, isCommencementArticle).breaches).toEqual([])
+    // The comparison shows it as removed since 21.11.2026; one that left it out unsaid is caught.
+    const silent = { ...shown, units: shown.units.filter((u) => u.article !== 'Inkrafttreten') }
     expect(completeness(withIt, alone, silent, isCommencementArticle).breaches.map((b) => b.unit)).toEqual(['Inkrafttreten'])
     const grown = parseLawUnits(pkg([law, other]))
     const said = diffLawPackage(withIt, grown)
