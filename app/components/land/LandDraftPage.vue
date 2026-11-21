@@ -298,7 +298,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
             <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" :cite-as="citeAs" />
             <PageSubsection v-else-if="amends" id="gegenueberstellung" heading="Was ändert der Entwurf?">
               <GapNote v-if="tguListed" kind="outOfScope" text="Textgegenüberstellungen in der Form dieses Landes. Die des Entwurfs steht unter den Dokumenten." class="text-sm text-ink-secondary" />
-              <GapNote v-else kind="notPublished" text="Eine Textgegenüberstellung zu diesem Entwurf hat das Land nicht veröffentlicht." class="text-sm text-ink-secondary" />
+              <GapNote v-else kind="outOfScope" text="Textgegenüberstellungen, die nicht als eigenes Dokument beim Entwurf stehen. Unter den Dokumenten dieses Entwurfs heißt keines Textgegenüberstellung." class="text-sm text-ink-secondary" />
             </PageSubsection>
             <!-- The Land's reasons, after what the draft changes — the order of
                  the Ministerialentwurf's page. -->

@@ -299,7 +299,7 @@ async function readWien(detail: LandDraftRecord, _draftPagesOf?: PagesReader, by
   const all = await pagesOf(bytes)
   const pages = all.map((p) => ({ ...p, items: p.items.filter((i) => !WIEN_HEAD_RE.test(i.text.trim())) }))
   const start = wienTguStart(pages)
-  if (start < 0) return NO_TGU
+  if (start < 0) return NO_TGU_IN_DRAFT
   const laws = amendedLawsOf(detail.draft.title)
   // The draft's own text stands in front of the Textgegenüberstellung, in the same PDF.
   const draftText = pages.slice(0, start).flatMap((p) => p.items.map((i) => i.text)).join(' ')
@@ -471,7 +471,13 @@ const readKaernten = readOwn({ publisher: 'Land Kärnten', load: pagesOf, parse:
 // Tirol marks its changes by colour and rule, as Oberösterreich does: its pages need their drawing, not only their text (`tirolTguPages`).
 const readTirol = readOwn({ publisher: 'Land Tirol', load: tirolTguPages, parse: tirolTguReading, dated: tirolDated, guardDeletes: false })
 
-const NO_TGU = gapDe('notPublished', 'Eine Textgegenüberstellung zu diesem Entwurf hat das Land nicht veröffentlicht.')
+/* No document of the draft titled so (21.11.2026): a list without an entry
+   proves no absence — the Land may print it inside another document, or
+   title it otherwise. So the sentence names what was searched, not that the
+   Land published none. */
+const NO_TGU = gapDe('outOfScope', 'Textgegenüberstellungen, die nicht als eigenes Dokument beim Entwurf stehen. Unter den Dokumenten dieses Entwurfs heißt keines Textgegenüberstellung.')
+/** Wien's, searched in the draft's own PDF (`wienTguStart`). */
+const NO_TGU_IN_DRAFT = gapDe('outOfScope', 'Textgegenüberstellungen außerhalb des Entwurfs selbst. Im Entwurf fand der Monitor keine.')
 
 /** Where §§ were read and none can be shown. The page names every one under it, with why (`LandWithheldNotes`). */
 const NONE_SHOWN = 'Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen. Welche Paragraphen die Novelle ändert und warum sie hier fehlen, steht darunter; die Textgegenüberstellung selbst steht unter den Dokumenten.'

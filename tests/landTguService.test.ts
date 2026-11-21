@@ -571,3 +571,18 @@ describe('compareTgu — the right column held against the draft\'s own text (12
     expect(Object.keys(r.withheld[0]!).sort()).toEqual(['id', 'law', 'reason'])
   })
 })
+
+describe('compareTgu — no Textgegenüberstellung found is no proof the Land published none (21.11.2026)', () => {
+  it('says what it searched — the titles of the draft\'s documents — not that the Land did not publish one', async () => {
+    const untitled = { ...detail(), draft: { ...detail().draft, documents: [{ title: 'Entwurf', url: 'https://www.ktn.gv.at/e.pdf' }] } } as unknown as LandDraftDetail
+    const r = (await compareTgu('ktn', untitled)).value
+    expect(r.available).toBe(false)
+    expect(r.unavailableReason).toBe('Nicht im Monitor: Textgegenüberstellungen, die nicht als eigenes Dokument beim Entwurf stehen. Unter den Dokumenten dieses Entwurfs heißt keines Textgegenüberstellung.')
+  })
+
+  it('says for Wien that it read the draft itself and found none there', async () => {
+    const wien = { ...detail(), draft: { ...detail().draft, id: 'w-2026003', land: 'w', documents: [{ title: 'Entwurf', url: 'https://www.wien.gv.at/a.pdf' }] } } as unknown as LandDraftDetail
+    const r = (await compareTgu('w', wien)).value
+    expect(r.unavailableReason).toBe('Nicht im Monitor: Textgegenüberstellungen außerhalb des Entwurfs selbst. Im Entwurf fand der Monitor keine.')
+  })
+})
