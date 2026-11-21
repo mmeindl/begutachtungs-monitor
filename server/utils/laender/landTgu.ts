@@ -400,7 +400,8 @@ function opened(line: TguLine, law: string | null, prev: string): { old: TguPara
     const p = unit(`Art. ${article[1]!}`)
     return { old: p, neu: p }
   }
-  const annex = ended ? ANNEX_RE.exec(line.raw) : null
+  // „AnlageAnlage 2": the draft renames Anlage 2 „Anlage", the old designation struck beside the new (2026-16111; 21.11.2026) — named as in force.
+  const annex = ended ? ANNEX_RE.exec(line.raw) ?? (line.marked ? ANNEX_RE.exec(line.old) ?? ANNEX_RE.exec(line.neu) : null) : null
   if (annex) {
     const p = unit(annex[1]!.replace(/\s+/g, ' '), { unread: true, because: 'annex' })
     return { old: p, neu: p }

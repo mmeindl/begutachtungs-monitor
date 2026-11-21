@@ -228,6 +228,11 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
     ])
   })
 
+  it('names an Anlage the draft renames, „AnlageAnlage 2" — its old designation struck beside the new one — by the designation in force (2026-16111; 21.11.2026)', () => {
+    const paras = tguParagraphs([law, line('§ 88'), line('(1) Schluss.'), { raw: 'AnlageAnlage 2', old: 'Anlage 2', neu: 'Anlage', marked: true }, line('I. Einbauzeichen:')])
+    expect(paras.map((p) => [p.number, p.unread ?? false, p.because ?? null])).toEqual([['88', false, null], ['Anlage 2', true, 'annex']])
+  })
+
   it('opens no § where a sentence the column wrapped cites it on a line of its own (2025-16103, § 25, 19.11.2026)', () => {
     const paras = tguParagraphs([law, line('§ 25'), line('Wiederkehrende Überprüfung'), line('(1) Feuerungsanlagen sind auf die Einhaltung der Umweltschutzvorschriften gemäß'), line('§ 18'),
       line('zu überprüfen.'), { raw: '(1a) Gasanlagen sind alle zwölffünfzehn Jahre zu überprüfen.', old: '(1a) Gasanlagen sind alle zwölf Jahre zu überprüfen.', neu: '(1a) Gasanlagen sind alle fünfzehn Jahre zu überprüfen.', marked: true }])

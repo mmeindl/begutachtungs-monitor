@@ -512,6 +512,8 @@ export function tirolParagraphs(pages: readonly TirolTguPage[], laws: readonly s
 /** `tirolParagraphs`, and how many pages had no gutter and so were not read (26.10.2026). */
 function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): TguReading {
   const done: Open[] = []
+  /** The Anlagen the draft changes, each once (`because: 'annex'`) */
+  const annexes: TguParagraph[] = []
   let law: string | null = laws.length === 1 ? laws[0]! : null
   let open: Open | null = null
   /** After „Artikel II": its title lines, until the first § */
@@ -611,6 +613,12 @@ function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): 
         if (ELIDED_RE.test(raw) || (centred && ANNEX_RE.test(raw))) {
           close()
           division = null
+          // An Anlage the draft rewrites or repeals is named, as withheld —
+          // the monitor does not read Anlagen (`because: 'annex'`, as
+          // Oberösterreich's). Dropped until 21.11.2026: 730/2026's Anlagen
+          // 1 and 9 stood on the page neither shown nor withheld.
+          const label = centred && line.marked ? /^Anlage(?:\s+\d+[a-z]?)?/.exec(raw)![0] : null
+          if (label && !annexes.some((a) => a.law === law && a.number === label)) annexes.push({ law, number: label, old: [], neu: [], changed: true, unread: true, because: 'annex' })
           continue
         }
         if (centred && ARTICLE_RE.test(raw)) {
@@ -638,7 +646,7 @@ function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): 
     }
   })
   close()
-  return { paragraphs: pairTwins(done), ...(dropped ? { droppedPages: dropped } : {}) }
+  return { paragraphs: [...pairTwins(done), ...annexes], ...(dropped ? { droppedPages: dropped } : {}) }
 }
 
 /**

@@ -141,6 +141,24 @@ describe('tirolTguParagraphs', () => {
     ])
   })
 
+  it('names an Anlage the draft rewrites or repeals as withheld, once, and leaves one it prints unchanged out (730/2026; 21.11.2026)', () => {
+    const p = page(
+      line(235, 500, '§ 50'),
+      line(LEFT + 20, 480, '(1) Ein Absatz, der bleibt.'),
+      line(260, 460, del('Anlage 1 (§§ 39 Abs. 1 und 41)')),
+      line(LEFT + 20, 440, del('Die alte Einreihung.')),
+      line(RIGHT + 175, 500, ins('Anlage 1 (§§ 39 Abs. 1 und 41)')),
+      line(RIGHT + 20, 480, ins('Die neue Einreihung.')),
+      line(RIGHT + 175, 460, del('Anlage 9 (§ 44 Abs. 4 lit. e)')),
+      line(RIGHT + 20, 440, del('Das Höchstausmaß der Studiendauer.')),
+      line(RIGHT + 175, 420, 'Anlage 10'),
+      line(RIGHT + 20, 400, 'Bleibt, wie es ist.'),
+    )
+    expect(tirolTguParagraphs([p], laws).map((x) => [x.number, x.unread ?? false, x.because ?? null])).toEqual([
+      ['50', false, null], ['Anlage 1', true, 'annex'], ['Anlage 9', true, 'annex'],
+    ])
+  })
+
   it('names a § with an unsure line as withheld for that reason, whatever RIS knows of its number', () => {
     const p = page(line(235, 500, '§ 5'), line(LEFT + 20, 480, 'Text ', { s: 'blau', mark: 'plain' }))
     p.runs[2]!.coloured = [true, true, true, true]

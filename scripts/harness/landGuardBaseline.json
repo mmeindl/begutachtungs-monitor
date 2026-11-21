@@ -1,5 +1,5 @@
 {
- "at": "2026-11-21T09:05:03.040Z",
+ "at": "2026-11-21T09:08:58.431Z",
  "documents": {
   "ktn-104907-2025-32": {
    "land": "ktn",
@@ -1040,7 +1040,8 @@
    "available": true,
    "shown": 13,
    "withheld": [
-    "annex · Oö. Bautechnikgesetz 2013 · Anlage 1"
+    "annex · Oö. Bautechnikgesetz 2013 · Anlage 1",
+    "annex · Oö. Bautechnikgesetz 2013 · Anlage 2"
    ]
   },
   "ooe-2026-16112": {
@@ -2741,7 +2742,10 @@
    "state": "beantwortet",
    "available": true,
    "shown": 21,
-   "withheld": []
+   "withheld": [
+    "annex · Gemeinde-Vertragsbedienstetengesetz 2012 · Anlage 1",
+    "annex · Gemeinde-Vertragsbedienstetengesetz 2012 · Anlage 9"
+   ]
   },
   "t-2026-734": {
    "land": "t",
