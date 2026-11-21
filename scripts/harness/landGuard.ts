@@ -58,6 +58,16 @@
  * `cutShort`. The control asks `cutShort` of the uncut texts, as if each
  * were printed unchanged: what the rule costs on sound §§.
  *
+ * And a misreading in the LEFT column of a § shown as changed (21.11.2026,
+ * `left-faults.jsonl`, `summary.json` `leftColumn`): one number, one word,
+ * one citation, at a token that stands once in a stretch both columns
+ * share — in both columns where one text feeds both (Oberösterreich's
+ * strike marks, Tirol), on the left alone in two columns. RIS passes a § at
+ * 98 % of its words and takes no citation's number, and the cuts above ask
+ * only §§ printed unchanged. Measured, not held by the floor: on 21.11.2026
+ * a one-column misreading was shown without the mark in 411 of 649 numbers,
+ * 583 of 766 words and 400 of 465 citations.
+ *
  * `--mindestens=<pct>` (20.11.2026): exit 1 when a fault class — the five
  * of the right column and the cuts of the left — tried at least
  * `MIN_TRIES` times is caught below `pct`; a class tried fewer times is
@@ -110,6 +120,7 @@ import { designationKey, comparableTokens } from '../../server/utils/annex/annex
 import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { MIN_NEW_WORDS, draftBags, draftWordBag } from '../../server/utils/annex/rightColumn'
 import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
+import { diffTokens } from '../../server/utils/diff/wordDiff'
 import { lastSentenceGone, raisedNumber, swappedWord } from '../lib/rightColumnFaults'
 
 const LANDS: LandCode[] = ['ooe', 'sbg', 't', 'w']
@@ -648,8 +659,105 @@ for (const answer of answers) {
   }
 }
 
+// --- Faults in the LEFT column of a changed § -----------------------------
+/**
+ * A reader's misreading in the text in force of a § shown as changed
+ * (21.11.2026): one number, one word, one citation („§ 5" for „§ 6"). The
+ * RIS check passes a § at 98 % of its words (`STANDS_IN_RIS`), takes no
+ * citation's number (`comparableWords`), and its cut classes above ask only
+ * §§ printed unchanged. Each fault goes into a stretch the word diff shows
+ * alike in both columns, at a token that stands there once: in a
+ * one-column layout (Oberösterreich's strike marks, Tirol's marks) the
+ * reader takes both columns from that one text, so the fault stands in
+ * both; in two columns it stands on the left alone and the word diff paints
+ * the true word as new. Then the product's checks are asked again: RIS
+ * (`standsInRis`, as `compareTgu` asks a changed §), and the draft rules on
+ * the § re-diffed as the reader would diff it. The outcomes are the right
+ * column's three; `by` says which check withheld it.
+ */
+type LeftFault = 'Zahl links' | 'Wort links' | 'Verweis links'
+const LEFT_FAULTS: LeftFault[] = ['Zahl links', 'Wort links', 'Verweis links']
+const ONE_COLUMN: readonly Layout[] = ['OÖ Striche', 'Tirol']
+interface LeftFaultRecord { fault: LeftFault; land: LandCode; layout: Layout; columns: 'eine' | 'zwei'; draft: string; law: string | null; id: string; markedBefore: boolean; outcome: MarkOutcome; by: 'RIS' | 'Entwurf' | null; edit: string }
+const leftFaults: LeftFaultRecord[] = []
+/** The changed §§ shown, and of those the ones RIS confirmed as printed (the sites). */
+const leftPopulation = { changed: 0, noRis: 0, risRefusesUnfaulted: 0, sites: 0 }
+const escaped = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/** A token as a whole: no letter or digit on either side. */
+const whole = (token: string) => new RegExp(`(?<![\\p{L}\\p{N}])${escaped(token)}(?![\\p{L}\\p{N}])`, 'gu')
+const countOf = (text: string, token: string) => [...text.matchAll(whole(token))].length
+/**
+ * The first token of `candidates` that stands once in the left column, once
+ * in the right where one text feeds both, and in a stretch both columns
+ * share — with the text(s) edited. Null where none does.
+ */
+function leftEdited(candidates: readonly string[], by: (token: string) => string | null, from: string, to: string, equal: string, mirrored: boolean): { from: string; to: string; edit: string } | null {
+  for (const token of candidates) {
+    if (countOf(from, token) !== 1 || countOf(equal, token) < 1 || (mirrored && countOf(to, token) !== 1)) continue
+    const into = by(token)
+    if (into === null || into === token) continue
+    return { from: from.replace(whole(token), into), to: mirrored ? to.replace(whole(token), into) : to, edit: `${token} → ${into}` }
+  }
+  return null
+}
+/** The candidates of each class in a text: a number outside a citation, the longest words first, a citation's „§ N". */
+function leftCandidates(fault: LeftFault, text: string): string[] {
+  if (fault === 'Zahl links') return [...text.matchAll(/(?<![\p{L}\p{N}])\d+(?![\p{L}\p{N}])/gu)].filter((m) => !text.slice(Math.max(0, m.index! - 25), m.index!).includes('§')).map((m) => m[0])
+  if (fault === 'Wort links') return [...new Set(text.split(/\s+/).filter((w) => /^\p{L}{6,}$/u.test(w)))].sort((a, b) => b.length - a.length)
+  return [...text.matchAll(/§\s*\d+[a-z]?(?![\p{L}\p{N}])/gu)].map((m) => m[0])
+}
+const leftEdit: Record<LeftFault, (token: string) => string | null> = {
+  'Zahl links': raisedNumber,
+  'Wort links': swappedWord,
+  // „§ 6" → „§ 5"; „§ 1" → „§ 2".
+  'Verweis links': (t) => t.replace(/\d+/, (d) => String(Number(d) > 1 ? Number(d) - 1 : 2)),
+}
+const answerOf = new Map(answers.map((a) => [a.draft, a]))
+const lawMemo = new Map<string, Promise<Map<string, string> | null>>()
+for (const { record, unit, blocks, all } of sites) {
+  if (unit.change !== 'changed' || !unit.fromText || !unit.toText || !unit.segments || !/^§/.test(unit.id) || !unit.article) continue
+  leftPopulation.changed++
+  const answer = answerOf.get(record.draft)
+  const lawKey = `${record.land}|${unit.article}|${answer?.date}`
+  if (answer?.date && !lawMemo.has(lawKey)) lawMemo.set(lawKey, lawInForce(record.land, unit.article, answer.date).catch(() => null))
+  const url = answer?.date ? (await lawMemo.get(lawKey))?.get((unit.fromId ?? unit.id).replace(/^§/, '')) : undefined
+  const ris = url ? await paragraphText(url).catch(() => null) : null
+  if (!ris) {
+    leftPopulation.noRis++
+    continue
+  }
+  const bare = record.land === 'sbg'
+  // Only §§ whose printed text in force RIS confirms: the fault is the misreading, nothing else.
+  if (!standsInRis(unit.fromText, ris, bare)) {
+    leftPopulation.risRefusesUnfaulted++
+    continue
+  }
+  leftPopulation.sites++
+  const at = all.indexOf(unit)
+  const mirrored = ONE_COLUMN.includes(record.layout)
+  const equal = unit.segments.filter((s) => s.type === 'equal').map((s) => s.text).join(' | ')
+  for (const fault of LEFT_FAULTS) {
+    const edited = leftEdited(leftCandidates(fault, unit.fromText), leftEdit[fault], unit.fromText, unit.toText, equal, mirrored)
+    if (!edited) continue
+    const base = { fault, land: record.land, layout: record.layout, columns: mirrored ? ('eine' as const) : ('zwei' as const), draft: record.draft, law: unit.article, id: unit.id, markedBefore: record.marked, edit: edited.edit }
+    if (!standsInRis(edited.from, ris, bare)) {
+      leftFaults.push({ ...base, outcome: 'withheld', by: 'RIS' })
+      continue
+    }
+    const faulted: LawDiffUnit = { ...unit, fromText: edited.from, toText: edited.to, segments: diffTokens(edited.from, edited.to).segments }
+    const guard = guardTguUnits(all.map((x) => (x === unit ? faulted : x)), blocks, at)
+    const outcome: MarkOutcome = undrafted(guard).has(at) ? 'withheld' : notHeld(guard).has(at) ? 'marked' : 'unmarked'
+    leftFaults.push({ ...base, outcome, by: outcome === 'withheld' ? 'Entwurf' : null })
+  }
+}
+/** Per class: the three outcomes (`markTallies`), and of the withheld how many RIS refused; once over every layout and once per number of columns. */
+const leftTally = (list: readonly LeftFaultRecord[]) => markTallies(list.map((x) => ({ key: x.fault, markedBefore: x.markedBefore, outcome: x.outcome })), LEFT_FAULTS).map((t) => ({ ...t, byRis: list.filter((x) => x.fault === t.key && x.by === 'RIS').length }))
+const leftTable = leftTally(leftFaults)
+const leftByColumns = { eine: leftTally(leftFaults.filter((x) => x.columns === 'eine')), zwei: leftTally(leftFaults.filter((x) => x.columns === 'zwei')) }
+
 // --- Output --------------------------------------------------------------
 writeFileSync(join(outDir, 'units.jsonl'), units.map((u) => JSON.stringify(u)).join('\n') + '\n')
+writeFileSync(join(outDir, 'left-faults.jsonl'), leftFaults.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'faults.jsonl'), faults.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'corpus.jsonl'), corpus.map((c) => JSON.stringify(c)).join('\n') + '\n')
 writeFileSync(join(outDir, 'drafts.jsonl'), drafts.map((d) => JSON.stringify(d)).join('\n') + '\n')
@@ -750,6 +858,16 @@ for (const t of markTable) {
   lines.push(`| ${t.key} | ${t.tried} | ${t.withheld} | ${t.marked} | ${t.unmarked} | ${b.tried} | ${b.withheld} | ${b.marked} | ${b.unmarked} | ${pct(b.tried - b.unmarked, b.tried)} |`)
 }
 for (const x of applied.filter((f) => !f.markedBefore && f.outcome === 'unmarked')) lines.push(`- ohne Marke durchgegangen (${x.fault}): ${x.draft} ${x.id} — ${x.lacks.slice(0, 200)}`)
+lines.push('')
+lines.push(`## Linke Spalte eines geänderten § verlesen (an ${leftPopulation.sites} von ${leftPopulation.changed} gezeigten geänderten §§, deren Text in Kraft RIS bestätigt; ohne RIS-Text ${leftPopulation.noRis}, ungestört schon abgelehnt ${leftPopulation.risRefusesUnfaulted})`)
+lines.push('')
+lines.push('Eine Spalte: der Fehler steht links und rechts (Oberösterreichs Striche, Tirol). Zwei Spalten: nur links, das Wortdiff zeigt das richtige Wort als neu. Gemessen, nicht am Boden gehalten.')
+lines.push('')
+lines.push('| Fehler | Spalten | angewandt | zurückgehalten | davon RIS | mit Marke | ohne Marke | ohne Marke vorher: angewandt | ohne Marke |')
+lines.push('|---|---|---|---|---|---|---|---|---|')
+for (const [columns, table] of [['alle', leftTable], ['eine', leftByColumns.eine], ['zwei', leftByColumns.zwei]] as const) {
+  for (const t of table) lines.push(`| ${t.key} | ${columns} | ${t.tried} | ${t.withheld} | ${t.byRis} | ${t.marked} | ${t.unmarked} | ${t.beforeUnmarked.tried} | ${t.beforeUnmarked.unmarked} |`)
+}
 lines.push('')
 lines.push('## Beide Spalten gekürzt (linke Spalte gegen RIS)')
 lines.push('')
@@ -907,6 +1025,10 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   // Where each fault ended (20.11.2026): withheld, shown with „nicht geprüft", shown without it — over every § shown and over
   // those without a mark before the fault (`beforeUnmarked`, what the floor holds); `population`: the §§ faults went into.
   mark: { population, faults: markTable },
+  // The left column of a changed § misread (21.11.2026): a number, a word, a citation, in a stretch both columns share.
+  // `faults[]` as `mark.faults[]`, plus `byRis` (withheld because RIS refused the left column); `byColumns`: the same
+  // for one-column layouts (the fault in both columns) and two-column ones (left alone). Measured, not held by the floor.
+  leftColumn: { population: leftPopulation, faults: leftTable, byColumns: leftByColumns },
   // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten". The five right-column
   // classes since 20.11.2026 over the §§ without a mark, caught = not shown without it (`mark.faults[].beforeUnmarked`).
   floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },
