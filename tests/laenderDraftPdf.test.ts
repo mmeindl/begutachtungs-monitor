@@ -518,6 +518,19 @@ describe('the draft is never read from another station\'s document', () => {
   })
 })
 
+// Tirol 575/2026 and 722/2026 (21.11.2026): the address of an instruction
+// set in a misread font beside a quote set in a sound one.
+describe('repairMacRoman — a „§" read as „ß"', () => {
+  it('turns „ß" before a number back into „§" in a line the repair leaves alone for a real „§" beside it', () => {
+    expect(repairMacRoman(['15. Im ß 16b Abs. 1 wird das Zitat „§ 2 Abs. 2a,“ aufgehoben.'])).toEqual(['15. Im § 16b Abs. 1 wird das Zitat „§ 2 Abs. 2a,“ aufgehoben.'])
+    expect(repairMacRoman(['13. Im ß 22 Abs. 3 lit. b wird das Wort „ordnungsgemäßen“ durch das Wort „bestimmungsgemäßen“'])[0]).toBe('13. Im § 22 Abs. 3 lit. b wird das Wort „ordnungsgemäßen“ durch das Wort „bestimmungsgemäßen“')
+  })
+
+  it('leaves a „ß" inside a word alone, also before a number', () => {
+    expect(repairMacRoman(['Das Maß 3 gilt; die Straße 12 ist gesperrt.'])).toEqual(['Das Maß 3 gilt; die Straße 12 ist gesperrt.'])
+  })
+})
+
 // sbg-31605, Salzburg's Glücksspielgesetz (19.11.2026): both the PDFs and
 // the Landesgesetzblatt's RIS XML lost the „§" of § 36, and § 38's title
 // runs over two lines. Every one read as a change of the § before.

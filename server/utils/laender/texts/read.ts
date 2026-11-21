@@ -148,6 +148,14 @@ function isRaised(run: TextRun, before: TextRun): boolean {
  * found. Decided for the document, as there; a „ß" the reading turned into
  * „ﬂ" is lost to the normalisation here („Strafle") — what is restored is
  * every „§" and every umlaut.
+ *
+ * And in every document, a „ß" standing alone before a number: no German
+ * word is „ß", so it is a „§" set in the misread font — in a line the repair
+ * leaves alone for a real „§" or umlaut beside it (21.11.2026). Tirol's
+ * 575/2026 and 722/2026 set an instruction's address in the one font and
+ * its quotes in the other, „15. Im ß 16b Abs. 1 wird das Zitat „§ 2 Abs.
+ * 2a,“ aufgehoben.", and no instruction named § 16b. Over the 731 cached
+ * Land PDFs, four carried such a „ß" after the repair, every one a „§".
  */
 export function repairMacRoman(pages: string[]): string[] {
   const text = pages.join('')
@@ -162,9 +170,12 @@ export function repairMacRoman(pages: string[]): string[] {
   // draft, one page, 9 misread and not one umlaut or „§" (20.11.2026). Of
   // the 855 cached Land PDFs no other has misread signs and no right one.
   const noneRight = real === 0 && misread >= 5
-  if (!byParas && !noneRight && (misread < 20 || misread < 20 * real)) return pages
-  return pages.map((page) => page.split('\n').map(fromMacRoman).join('\n'))
+  const repaired = !byParas && !noneRight && (misread < 20 || misread < 20 * real) ? pages : pages.map((page) => page.split('\n').map(fromMacRoman).join('\n'))
+  return repaired.map((page) => page.replace(LOST_PARAGRAPH_SIGN_RE, '§'))
 }
+
+/** „ß" alone before a number (`repairMacRoman`). */
+const LOST_PARAGRAPH_SIGN_RE = /(?<![\p{L}])ß(?=\s*\d)/gu
 
 /** `pdfPages`, with the weight of each line (`styledPages`) — for the headings of the Erläuterungen. */
 export async function pdfStyledPages(url: string): Promise<StyledPages> {
