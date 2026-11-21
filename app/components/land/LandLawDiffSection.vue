@@ -11,6 +11,8 @@ import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } fro
 import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
 import { landReasoningGapNote } from '~/utils/reasoningNotes'
+import { comparisonLaws, landReasonsAt, unplacedLandReasons } from '~/utils/landReasons'
+import { unitList } from '~/utils/lesefassung'
 import { citeLineDe, dividedText, landTextCiteDe, lawUnitCiteDe } from '#shared/utils/citations'
 import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
@@ -91,16 +93,15 @@ const explanations: Ref<LandExplanationsResponse | null | undefined> = props.fro
     { key: () => landExplanationsKey(props.land, props.number), lazy: true, server: false, dedupe: 'defer' },
   ).data
   : shallowRef(null)
-/* „Oö. Krankenanstaltengesetz 1997" and „Krankenanstaltengesetz 1997" name one law. */
-const lawKey = (law: string | null) => (law ?? '').replace(/^(?:Oö\.|Salzburger|Wiener)\s+/, '').toLowerCase()
+/* The laws the comparison holds: beside more than one, a passage stands only at its own law's § (`landReasonsAt`). */
+const comparisonLawList = computed(() => (data.value?.available ? comparisonLaws(data.value) : []))
 function reasonsFor(u: LawDiffUnit) {
   if (props.from !== 'geltend') return []
-  const n = /^§(\S+)$/.exec(u.id)?.[1]
-  if (!n) return []
-  // A renamed law's group carries RIS's name, its passages the name the draft
-  // prints (`printedAs`): either name finds them.
-  return (explanations.value?.particular ?? []).filter((e) => e.paras.includes(n) && (!e.law || !u.article || lawKey(e.law) === lawKey(u.article) || lawKey(e.law) === lawKey(printedAs.value.get(u.article) ?? null)))
+  return landReasonsAt(explanations.value?.particular ?? [], u, printedAs.value, comparisonLawList.value)
 }
+/* A package's passages filed under no law: at the end of the list, under the §§ they name (`unplacedLandReasons`). */
+const unplacedReasons = computed(() => (props.from === 'geltend' ? unplacedLandReasons(explanations.value?.particular ?? [], comparisonLawList.value) : []))
+const unplacedParas = computed(() => unitList([...new Set(unplacedReasons.value.flatMap((e) => e.paras))]))
 
 /* The Land's reasoning, draft against Vorlage, at each change after the
    Begutachtung — the Ministerialentwurf's Begründungsvergleich, by the same
@@ -531,6 +532,22 @@ const hasUnits = computed(() => units.value.length > 0)
             </div>
           </template>
         </DiffGroup>
+        <!-- The Land's passages on §§ of a package the reader could not file
+             under one of its laws: at no law's § of that number, and not
+             lost either — at the list's end, in the shape the Bund's annex
+             gives a passage without a § block (`AnnexLawEnd`). -->
+        <section v-if="unplacedReasons.length" class="border-b border-hairline px-4 py-3 last-of-type:border-b-0">
+          <p class="text-sm font-semibold text-ink">{{ UNFILED }}</p>
+          <Disclosure size="xs" tone="ink" class="mt-1">
+            <template #summary>Begründung des Landes zu {{ unplacedParas }}</template>
+            <div class="mt-1 pl-6">
+              <div v-for="(e, ei) in unplacedReasons" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
+                <p class="text-xs text-ink-muted">{{ e.heading }}</p>
+                <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
+              </div>
+            </div>
+          </Disclosure>
+        </section>
         <NoMatches v-if="hasUnits" :found="visible.length > 0" />
       </ListBox>
       <!-- Whose texts and whose reading: the Land's and the Landtag's PDFs,

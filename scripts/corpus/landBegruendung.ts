@@ -6,7 +6,7 @@
  * Erläuterungen, and what the Begründungsvergleich Entwurf → Regierungsvorlage
  * makes of the changes beside it.
  *
- *   npx vite-node -c vitest.config.ts scripts/corpus/landBegruendung.ts -- --out <dir> [--land sbg] [--show sbg-34234] [--against <dir>]
+ *   npx vite-node -c vitest.config.ts scripts/corpus/landBegruendung.ts -- --out <dir> [--land sbg] [--show sbg-34234] [--against <dir>] [--tgu <tgu.jsonl>]
  *
  * THE PIPELINE IS THE PRODUCT'S: `readLandExplanations` reads each draft's
  * Erläuterungen as its page does, `compareLandReasoning` is the route's
@@ -21,9 +21,17 @@
  * PDF in none of them is not fetched: the draft is counted as missing. Any
  * other request throws.
  *
+ * `--tgu <file>`: the Textgegenüberstellungen as a run of the land guard
+ * recorded them (its `tgu.jsonl`, `scripts/harness/landGuard.ts`) — every
+ * changed § of each, with the entries the page sets at it (`landReasonsAt`).
+ * Without the record's renamed laws: an entry under a law RIS has renamed
+ * since counts as not at its §.
+ *
  * Output: `<dir>/explanations.jsonl` (per draft every entry: heading, law,
  * §§), `<dir>/reasoning.jsonl` (per draft with a Vorlage: every change of
- * the comparison, its entry and its gap line), `<dir>/summary.md`.
+ * the comparison, its entry and its gap line), with `--tgu`
+ * `<dir>/attachments.jsonl` (per changed § the entries at it),
+ * `<dir>/summary.md`.
  * `--against <dir>` prints, draft by draft, every entry and every change
  * whose attachment moved since that run — read each one.
  *
@@ -37,11 +45,13 @@ import { argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { diffUnitKey } from '../../shared/utils/diffKey'
+import { landReasonsAt, unplacedLandReasons } from '../../app/utils/landReasons'
 
 const outDir = argPair('out')
 const onlyLand = argPair('land') as LandCode | null
 const show = argPair('show')
 const against = argPair('against')
+const tguFile = argPair('tgu')
 if (!outDir) {
   console.error('Usage: npx vite-node -c vitest.config.ts scripts/corpus/landBegruendung.ts -- --out <dir> [--land <code>] [--show <id>] [--against <dir>]')
   process.exit(1)
@@ -151,8 +161,31 @@ for (const item of items) {
 }
 process.stderr.write('\n')
 
+// --- At the Textgegenüberstellung's §§ (`--tgu`) -------------------------
+interface AttachmentLine { land: LandCode; draft: string; laws: number; units: { unit: string; entries: number[] }[]; unplaced?: number[] }
+const attachments: AttachmentLine[] = []
+if (tguFile) {
+  const byDraft = new Map(explanations.map((l) => [l.draft, l]))
+  for (const line of readFileSync(tguFile, 'utf8').split('\n').filter(Boolean)) {
+    const t = JSON.parse(line) as { land: LandCode; draft: string; available: boolean; units: { law: string | null; id: string; change: string }[]; withheld?: { law: string | null }[] }
+    const e = byDraft.get(t.draft)
+    if (!t.available || !e) continue
+    const particular = e.entries.map((x) => ({ ...x, text: [] as string[] }))
+    // The record holds no enacted laws (`comparisonLaws` counts them too): a package of one amended and one enacted law reads as one law here.
+    const laws = [...t.units.map((u) => u.law), ...(t.withheld ?? []).map((w) => w.law)]
+    attachments.push({
+      land: t.land,
+      draft: t.draft,
+      laws: new Set(laws.filter(Boolean)).size,
+      units: t.units.filter((u) => u.change !== 'unchanged').map((u) => ({ unit: `${u.law ?? '-'}|${u.id}`, entries: landReasonsAt(particular, { id: u.id, article: u.law }, new Map(), laws).map((x) => particular.indexOf(x)) })),
+      unplaced: unplacedLandReasons(particular, laws).map((x) => particular.indexOf(x)),
+    })
+  }
+}
+
 // --- Output --------------------------------------------------------------
 writeFileSync(join(outDir, 'explanations.jsonl'), explanations.map((l) => JSON.stringify(l)).join('\n') + '\n')
+if (tguFile) writeFileSync(join(outDir, 'attachments.jsonl'), attachments.map((l) => JSON.stringify(l)).join('\n') + '\n')
 writeFileSync(join(outDir, 'reasoning.jsonl'), reasoning.map((l) => JSON.stringify(l)).join('\n') + '\n')
 const out: string[] = []
 out.push(`# Begründungen der Länder: wo sie stehen — ${new Date().toISOString().slice(0, 16)}`)
@@ -186,6 +219,13 @@ out.push(`- beidseits, ohne Eintrag: ${paired.filter(({ c }) => !c.entry).length
 const stateOf = (l: { state: string; reason: string | null }) => (l.state === 'fehlt' || !l.reason ? l.state : `${l.state} — ${l.reason}`)
 const rStates = [...reasoning.reduce((m, l) => m.set(stateOf(l), (m.get(stateOf(l)) ?? 0) + 1), new Map<string, number>())]
 for (const [s, n] of rStates) out.push(`- ${n}× ${s}`)
+if (tguFile) {
+  const at = attachments.flatMap((a) => a.units.map((u) => ({ a, u })))
+  out.push('')
+  out.push('## An den Paragraphen der Textgegenüberstellung (landReasonsAt)')
+  out.push('')
+  out.push(`Entwürfe: ${attachments.length}, davon Pakete: ${attachments.filter((a) => a.laws > 1).length}; geänderte §§: ${at.length}, mit Begründung: ${at.filter(({ u }) => u.entries.length).length}, Zuordnungen: ${at.reduce((n, { u }) => n + u.entries.length, 0)}; am Ende der Liste, ohne Gesetz: ${attachments.reduce((n, a) => n + (a.unplaced?.length ?? 0), 0)}`)
+}
 writeFileSync(join(outDir, 'summary.md'), out.join('\n') + '\n')
 console.log(out.join('\n'))
 
@@ -216,6 +256,22 @@ if (against) {
       const o = oldChanges.get(c.key)
       const said = (x: ChangeLine | undefined) => (x ? `${x.entry ?? '–'} ${x.verdict ?? ''} ${x.gap ?? ''}`.trim() : '(fehlt)')
       if (said(o) !== said(c)) moved.push(`${l.draft} ${c.key}: ${said(o)} → ${said(c)}`)
+    }
+  }
+  if (tguFile && existsSync(join(against, 'attachments.jsonl'))) {
+    const beforeA = new Map(read<AttachmentLine>('attachments.jsonl').map((l) => [l.draft, l]))
+    const entriesOf = new Map(explanations.map((l) => [l.draft, l.entries]))
+    for (const l of attachments) {
+      const old = new Map((beforeA.get(l.draft)?.units ?? []).map((u) => [u.unit, u.entries]))
+      for (const u of l.units) {
+        const was = old.get(u.unit) ?? []
+        if (was.join() === u.entries.join()) continue
+        const named = (xs: number[]) => xs.map((i) => entryText(entriesOf.get(l.draft)![i]!)).join(' ¦ ') || '–'
+        moved.push(`${l.draft} an ${u.unit}: ${named(was.filter((i) => !u.entries.includes(i)))} weg; ${named(u.entries.filter((i) => !was.includes(i)))} dazu`)
+      }
+      const wasEnd = beforeA.get(l.draft)?.unplaced ?? []
+      const isEnd = l.unplaced ?? []
+      if (wasEnd.join() !== isEnd.join()) moved.push(`${l.draft} am Ende der Liste: ${isEnd.map((i) => entryText(entriesOf.get(l.draft)![i]!)).join(' ¦ ') || '–'} (vorher ${wasEnd.length})`)
     }
   }
   console.log(`\n## Bewegt gegen ${against}: ${moved.length}\n`)
