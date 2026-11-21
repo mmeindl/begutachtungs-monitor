@@ -234,7 +234,7 @@ const VERB_RE = new RegExp(`(?<![\\p{L}])(${REMOVING}|${ADDING}|ersetzt|lautet|l
 const UNIT_WORD = '(?:Wort(?:e|es|folge|folgen|laut|lautes|gruppe)?|Wörter|Wörtern|Ausdruck(?:es|s)?|Ausdrücke|Zitat(?:es|s|e)?|Verweis(?:es|ung)?|Wendung|Zeichenfolge|Wort-\\s+und\\s+Zeichenfolge|Klammerausdruck(?:es|s)?|Klammerzitat(?:es|s)?|Betrag(?:es|s)?|Zahl|Ziffer|Datum|Satzteil(?:es|s)?|Halbsatz(?:es)?|Begriff(?:es|s)?|Bezeichnung|Abkürzung|Jahreszahl|Prozentsatz(?:es)?|Text(?:es|s)?|Passage|Überschrift)'
 /** „nach dem Wort „X"", „vor der Wortfolge „X"" — and at the line's start, „Nach der Überschrift „X"" (Oö. 2026-16124): the place, not the text. */
 const ANCHOR_RE = new RegExp(`(?<![\\p{L}])(?:[Nn]ach|[Vv]or|[Hh]inter)\\s+(?:de[mnr]\\s+|die\\s+|das\\s+)?(?:\\p{L}+\\s+)?${UNIT_WORD}\\s*$`, 'u')
-const NEW_AFTER_RE = /:\s*$|(?<![\p{L}])(?:lautet|lauten|eingefügt|angefügt|vorangestellt|\p{L}*[Bb]ezeichnung(?:en)?|folgende[rnms]?(?:\s+\p{L}+){0,3})\s*$/u
+const NEW_AFTER_RE = /:\s*$|(?<![\p{L}])(?:lautet|lauten|eingefügt|angefügt|vorangestellt|\p{L}*[Bb]ezeichn?ung(?:en)?|folgende[rnms]?(?:\s+\p{L}+){0,3})\s*$/u
 
 type Role = 'new' | 'old' | 'anchor' | null
 
@@ -249,8 +249,14 @@ const LIST_RE = new RegExp(`^\\s*(?:,|und|sowie|oder|bzw\\.?)\\s*(?:(?:die|das|d
  * Punkt am Ende durch einen Strichpunkt ersetzt" replaces the full stop.
  */
 const REPLACED_BY_SIGN_RE = new RegExp(`^\\s*(?:(?!(?:und|sowie|oder|${REMOVING}|${ADDING}|ersetzt|lautet|lauten)(?![\\p{L}]))[\\p{L}\\d.]+\\s+){0,6}durch\\s+(?:einen|ein)\\s+(?:Strichpunkt|Punkt|Beistrich|Doppelpunkt)(?![\\p{L}])`, 'u')
-/** A quotation the line gives as a designation: „erhält die Absatzbezeichnung „(4)“", „die Bezeichnungen „4.“ und „5.“" — not a name („die Bezeichnung „Lemböckgasse“"). */
-const DESIGNATION_BEFORE_RE = /bezeichnung(?:en)?\s*$/iu
+/** A quotation the line gives as a designation: „erhält die Absatzbezeichnung „(4)“", „die Bezeichnungen „4.“ und „5.“" — not a name („die Bezeichnung „Lemböckgasse“"). „Bezeichung" as two Bund drafts print it. */
+const DESIGNATION_BEFORE_RE = /bezeichn?ung(?:en)?\s*$/iu
+/** „„X“ wird in § 7a Abs. 2 durch …": the old wording, an address between the verb and „durch". */
+const OLD_BEFORE_DURCH_RE = /^\s*(?:wird|werden)\s+in\s+§[^„“]{0,60}?\s+durch(?![\p{L}])/u
+/** „tritt an die Stelle der Wortfolge „X“", „an die Stelle von „X“ tritt …": the old wording. */
+const IN_PLACE_OF_RE = new RegExp(`(?<![\\p{L}])[Aa]n\\s+die\\s+Stelle\\s+(?:von\\s+|de[srmn]\\s+)?(?:\\p{L}+\\s+){0,4}$`, 'u')
+/** …and what follows it, the new: „… jeweils das Wort „Y“", „… tritt „Y“". */
+const IN_PLACE_NEW_RE = new RegExp(`^\\s*(?:(?:tritt|treten)\\s+)?(?:jeweils\\s+)?(?:(?:der|die|das|den|dem|des)\\s+)?(?:${UNIT_WORD}(?:\\s+und\\s+(?:der|die|das|den|dem|des)\\s+${UNIT_WORD})?\\s*)?$`, 'u')
 const DESIGNATION_TEXT_RE = /^\s*(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.?|[a-z]{1,2}\)?)\s*$/u
 /** A replacement the instruction leaves to the reader's grammar: the wording is not quoted as it will stand. */
 const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jeweiligen|jeweils\s+richtigen/u
@@ -276,7 +282,9 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     const after = line.slice(end, quotes[i + 1]?.index ?? line.length)
     let role: Role = null
     // „„X“ durch …", „„X“ wird durch …" (Oö. 2026-16120), „„und“ am Ende durch einen Punkt ersetzt" (2026-16124, Tirol 575/2026): the old wording.
-    if (/^\s*(?:(?:wird|werden)\s+)?(?:jeweils\s+)?durch(?![\p{L}])/u.test(after) || REPLACED_BY_SIGN_RE.test(after)) role = 'old'
+    // So are „„X“ ersetzt durch „Y“" and „„X“ wird in § 7a Abs. 2 durch „Y“ ersetzt" (the Bund, 21.11.2026), and „an die Stelle der Wortfolge „X“".
+    if (/^\s*(?:(?:wird|werden)\s+)?(?:jeweils\s+)?(?:ersetzt\s+)?durch(?![\p{L}])/u.test(after) || OLD_BEFORE_DURCH_RE.test(after) || REPLACED_BY_SIGN_RE.test(after)) role = 'old'
+    else if (IN_PLACE_OF_RE.test(before)) role = 'old'
     else if (/(?<![\p{L}])durch\s+(?:\p{L}+[\s-]+){0,5}$/u.test(before)) role = 'new'
     else if (ANCHOR_RE.test(before)) role = 'anchor'
     else if (NEW_AFTER_RE.test(before) || /^\s*bezeichnet(?![\p{L}])/u.test(after)) role = 'new'
@@ -287,6 +295,8 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     for (let i = out.length - 2; i >= 0; i--) if (out[i]!.role === null && LIST_RE.test(out[i]!.after)) out[i]!.role = out[i + 1]!.role
     for (let i = 1; i < out.length; i++) if (out[i]!.role === null && LIST_RE.test(out[i]!.before)) out[i]!.role = out[i - 1]!.role
   }
+  // „an die Stelle der Wortfolge „X“ die Wortfolge „Y“": the quotation after the replaced one.
+  for (let i = 1; i < out.length; i++) if (out[i]!.role === null && out[i - 1]!.role === 'old' && IN_PLACE_OF_RE.test(out[i - 1]!.before) && IN_PLACE_NEW_RE.test(out[i]!.before)) out[i]!.role = 'new'
   lists()
   // „die Abs. 2 bis 4 erhalten die Absatzbezeichnungen „(1)“ bis „(3)“": the range's second end is a designation the line gives too,
   // not the old wording of an „entfällt" before it („Abs. 1 entfällt; die Abs. 2 bis 4 erhalten …"; 21.11.2026). Never one the

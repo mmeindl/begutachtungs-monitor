@@ -69,10 +69,22 @@ describe('strictTokens', () => {
 describe('quoteRoles', () => {
   const roles = (line: string) => quoteRoles(line).map((q) => q.role)
 
+  it('reads „ersetzt durch", an address before „durch" and „an die Stelle" as old and new (the Bund, 21.11.2026)', () => {
+    expect(roles('In § 11 Abs. 6 erster Satz wird die Wortfolge „zwei Wochen“ ersetzt durch die Wortfolge „zwölf Tagen“ .')).toEqual(['old', 'new'])
+    expect(roles('Die Wortfolge „fünf Jahren“ wird in § 7a Abs. 2 durch die Wortfolge „zehn Jahren“ ersetzt.')).toEqual(['old', 'new'])
+    expect(roles('In § 25 tritt in Abs. 1 bis 3 an die Stelle des Wortes „Tabaktrafiken“ jeweils das Wort „Tabakfachgeschäfte“ .')).toEqual(['old', 'new'])
+    expect(roles('In Abs. 1 tritt an die Stelle der Wortfolge und des Betrages „höchstens jedoch 13 200“ die Wortfolge und der Betrag „höchstens jedoch 14 000“ .')).toEqual(['old', 'new'])
+    expect(roles('An die Stelle von „X“ tritt „Y“.')).toEqual(['old', 'new'])
+    // A sign in the old wording's place is no wording.
+    expect(roles('In § 7 Abs. 1 tritt in Z 1 am Ende an die Stelle des Wortes „oder“ ein Beistrich.')).toEqual(['old'])
+  })
+
   it('says which new quotation the line gives as a designation, and a name it gives is none', () => {
     const designations = (line: string) => quoteRoles(line).map((q) => q.designation)
     expect(designations('§ 25 Abs. 1 entfällt und die bisherigen Abs. 2, 3 und 3a erhalten die Bezeichnung „(1)“, „(2)“ und „(3)“.')).toEqual([true, true, true])
     expect(designations('In § 7 Abs. 2 erhält die Z 3 die Ziffernbezeichnung „4.“')).toEqual([true])
+    // „Bezeichung" as two Bund drafts print it.
+    expect(designations('In § 7 Abs. 1 Z 1 entfällt die lit. b und erhalten die lit. c bis e die Bezeichung „b)“ bis „d)“ .')).toEqual([true, true])
     expect(designations('In § 4 Abs. 2 Z 7 wird die Bezeichnung „Schönbrunner Straße“ durch die Bezeichnung „Lemböckgasse“ ersetzt.')).toEqual([false, false])
     expect(designations('Im § 17 Abs. 1 wird die Zahl „19“ durch die Zahl „18“ ersetzt.')).toEqual([false, false])
   })
