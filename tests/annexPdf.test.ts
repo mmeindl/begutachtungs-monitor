@@ -500,6 +500,108 @@ describe('a division heading between two provisions', () => {
   })
 })
 
+describe('where one § ends and the next begins, as the ministries set it (21.11.2026)', () => {
+  /**
+   * The template of the Bund's annexes, measured on the three documents: body
+   * text from 89 to 417,5 on the left and from 424 to 753,3 on the right, an
+   * Absatz or a designation indented by 19 to 20 pt, headings centred. Ten
+   * body lines in each column, so the edges and margins are measured
+   * (`columnEdge`, `columnMargin`).
+   */
+  const [L0, LE, R0, RE] = [89, 417.5, 424, 753.3]
+  const at = (x: number, y: number, text: string, end: number): AnnexItem => wide(x, y, text, end - x)
+  const header = (y: number): AnnexItem[] => [at(215, y, 'Geltende Fassung', 290.7), at(537, y, 'Vorgeschlagene Fassung', 641.1)]
+  const filler = (y: number): AnnexItem[] => Array.from({ length: 10 }, (_, i) => [
+    at(L0, y - i * 12, 'die Behörde hat die Voraussetzungen von Amts wegen zu prüfen und', LE),
+    at(R0, y - i * 12, 'die Behörde hat die Voraussetzungen von Amts wegen zu prüfen und', RE),
+  ]).flat()
+  const read = (items: AnnexItem[]) => parseAnnexPdf([pageOf([...header(800), ...items])], ONE_LAW).rows
+
+  // Luftfahrtgesetz (RIS C118A7EB): the right column prints „kundzumachen"
+  // without its full stop, and it went to § 120c with the heading under it.
+  it('leaves a § the last word a line running to the edge goes on into, full stop or none', () => {
+    const rows = read([
+      at(108, 780, '§ 120a. (1) Die Regelungen sind', 260), at(444, 780, '§ 120a. (1) Die Regelungen sind', 600),
+      ...filler(766),
+      at(108, 640, '(3) Die Regelungen gemäß Abs. 1 und 2 sind in luftfahrtüblicher Weise', 417.4), at(444, 640, '(6) Die Regelungen gemäß Abs. 1 und 5 sind in luftfahrtüblicher Weise', 753.3),
+      at(L0, 628, 'kundzumachen.', 151.7), at(R0, 628, 'kundzumachen', 485),
+      at(235, 616, 'Aufsicht', 270.9), at(571, 616, 'Aufsicht', 606.9),
+      at(108, 604, '§ 120c. (1) …', 164.5), at(444, 604, '§ 120c. (1) …', 500.4),
+      at(108, 592, '(2) Der Bundesminister ist die nationale Aufsichtsbehörde.', 380), at(444, 592, '(2) Die Bundesministerin ist die nationale Aufsichtsbehörde.', 720),
+    ])
+    expect(rows.find((r) => r.gld === '§ 120a.')!.proposed.endsWith('in luftfahrtüblicher Weise kundzumachen')).toBe(true)
+    const c = rows.find((r) => r.gld === '§ 120c.')!
+    expect(c.proposed.startsWith('Aufsicht § 120c.')).toBe(true)
+    expect(c.current.startsWith('Aufsicht § 120c.')).toBe(true)
+  })
+
+  // A RIS print sets its headings flush: under a heading line handed on that
+  // starts at the margin, a line at the margin is the heading's too
+  // (Verbraucherzahlungskontogesetz, RIS F36AA3A2).
+  it('hands on a flush heading line over a flush heading line', () => {
+    const rows = read([
+      at(108, 780, '§ 22. (1) Die Bank hat das Konto zu führen.', 380), at(444, 780, '§ 22. (1) Die Bank hat das Konto zu führen.', 716),
+      ...filler(766),
+      at(L0, 640, 'Verbraucherzahlungskonten, den Wechsel von Verbraucherzahlungskonten', 413.0), at(R0, 640, 'Verbraucherzahlungskonten, den Wechsel von Verbraucherzahlungskonten', 751.0),
+      at(L0, 628, 'und den Zugang zu Verbraucherzahlungskonten', 300), at(R0, 628, 'und den Zugang zu Verbraucherzahlungskonten', 636),
+      at(L0, 616, 'Funktionen (Verbraucherzahlungskontogesetz – VZKG)', 330), at(R0, 616, 'Funktionen (Verbraucherzahlungskontogesetz – VZKG)', 666),
+      at(108, 604, '§ 23. (1) bis (6) ...', 180.8), at(444, 604, '§ 23. (1) bis (6) ...', 516.8),
+      at(108, 592, '(7) Die Bestimmungen berühren nicht die Pflichten.', 380), at(444, 592, '(7) Die Bestimmungen berühren nicht die Pflichten des Instituts.', 720),
+    ])
+    expect(rows.find((r) => r.gld === '§ 23.')!.current.startsWith('und den Zugang zu Verbraucherzahlungskonten Funktionen')).toBe(true)
+  })
+
+  // Bankwesengesetz (RIS 70112EBB): „IV. Abschnitt: …", a division with a
+  // colon, stayed at the end of § 19g as text the draft adds to it.
+  it('hands a division designated with a colon to the § below it', () => {
+    const rows = read([
+      at(444, 780, '§ 19g. (1) Die FMA hat mit den zuständigen Behörden zusammenzuarbeiten.', 753.3),
+      ...filler(766),
+      at(444, 640, '(5) Die FMA hat in ihrer Rolle als federführende zuständige Behörde gemäß', 753.0),
+      at(R0, 628, 'Abs. 3 eine angemessene Koordinierung und Zusammenarbeit mit den', 753.1),
+      at(R0, 616, 'einschlägigen Aufsichtsbehörden von Drittländern sicherzustellen.', 691.1),
+      at(146, 604, 'Eigentümerbestimmungen und Bewilligungen', 360.4), at(443, 604, 'IV. Abschnitt: Eigentümerbestimmungen, prudenziell relevante', 735.0),
+      at(491, 592, 'Transaktionen und sonstige Bewilligungen', 687.1),
+      at(482, 580, '1. Unterabschnitt: Eigentümerbestimmungen', 695.5),
+      at(189, 568, 'Verfahren für die Beurteilung', 317.2), at(525, 568, 'Verfahren für die Beurteilung', 653.1),
+      at(108, 556, '§ 20a. (1) Die FMA hat dem interessierten Erwerber umgehend zu antworten.', 417.1), at(444, 556, '§ 20a. (1) Die FMA hat dem interessierten Erwerber umgehend zu antworten.', 753.0),
+    ])
+    expect(rows.find((r) => r.gld === '§ 19g.')!.proposed.endsWith('von Drittländern sicherzustellen.')).toBe(true)
+    expect(rows.find((r) => r.gld === '§ 20a.')!.proposed).toBe('IV. Abschnitt: Eigentümerbestimmungen, prudenziell relevante Transaktionen und sonstige Bewilligungen 1. Unterabschnitt: Eigentümerbestimmungen Verfahren für die Beurteilung § 20a. (1) Die FMA hat dem interessierten Erwerber umgehend zu antworten.')
+  })
+
+  // Zentrale Gegenparteien-Vollzugsgesetz (RIS 048969A7): „§ 11a Dieses
+  // Bundesgesetz dient …", the new § printed without the full stop after its
+  // number, ran on as the end of § 11, heading and all.
+  it('opens a § printed without its full stop under a centred heading', () => {
+    const rows = read([
+      at(108, 780, '§ 11. (1) …', 160), at(444, 780, '§ 11. (1) …', 496),
+      ...filler(766),
+      at(108, 640, '(2) Soweit in diesem Bundesgesetz auf die Verordnung (EU) Nr. 648/2012', 417.5), at(444, 640, '(2) Soweit in diesem Bundesgesetz auf die Verordnung (EU) Nr. 648/2012', 753.5),
+      at(L0, 628, 'verwiesen wird, ist sie anzuwenden.', 300), at(425, 628, 'verwiesen wird, ist sie anzuwenden.', 636),
+      at(108, 616, '(3) ...', 130.1), at(444, 616, '(3) ...', 466.1),
+      at(547, 604, 'Umsetzungshinweis', 630.8),
+      at(425, 592, '§ 11a Dieses Bundesgesetz dient dem Wirksamwerden der', 753.3),
+      at(425, 580, 'Verordnung (EU) 2024/2987 des Europäischen Parlaments und des Rates vom', 753.3),
+      at(425, 568, 'Nr. L 2024/2987 vom 04.12.2024.', 560.0),
+    ])
+    expect(rows.find((r) => r.gld === '§ 11.')!.proposed.endsWith('(3) ...')).toBe(true)
+    expect(rows.find((r) => r.gld === '§ 11a')).toMatchObject({ change: 'inserted', proposed: 'Umsetzungshinweis § 11a Dieses Bundesgesetz dient dem Wirksamwerden der Verordnung (EU) 2024/2987 des Europäischen Parlaments und des Rates vom Nr. L 2024/2987 vom 04.12.2024.' })
+  })
+
+  // The same shape anywhere else is a citation that wrapped to a line's head
+  // (BWG, „gemäß" / „§ 46 BaSAG bestellte …"): no § of its own.
+  it('reads a § without its full stop under running text as the citation it is', () => {
+    const rows = read([
+      at(444, 780, '§ 30. (1) Die Bestimmung ist auch anzuwenden, wenn es sich bei den', 753.3),
+      ...filler(766),
+      at(R0, 640, 'betroffenen Personen um von der FMA gemäß', 640),
+      at(R0, 628, '§ 46 BaSAG bestellte vorläufige Verwalter handelt.', 700),
+    ])
+    expect(rows.map((r) => r.gld)).toEqual(['§ 30.'])
+  })
+})
+
 describe('what looks like a provision but is not', () => {
   // Annexes reprint the law's Inhaltsverzeichnis: "§ 1. Unmittelbare
   // Bundesvollziehung", one line each. Such a line opens a § and ends without
@@ -946,8 +1048,12 @@ describe('each column measured against its own edge', () => {
     ...Array.from({ length: 10 }, (_, i) => body(i + 2, 720 - i * 20)).flat(),
     wide(LEFT_X, 500, heading, 350),
     wide(RIGHT_X, 500, heading, 350),
+    // The short second line centred, as the annexes set a heading: one that
+    // starts at the margin under a line run to the edge is that line's end
+    // (21.11.2026).
+    wide(LEFT_X + 120, 480, 'in besonderen Fällen', 100),
+    wide(RIGHT_X + 120, 480, 'in besonderen Fällen', 100),
     ...page([
-      { y: 480, left: 'in besonderen Fällen', right: 'in besonderen Fällen' },
       { y: 460, left: '§ 5. (1) Der Antrag ist schriftlich zu stellen.', right: '§ 5. (1) Der Antrag ist schriftlich zu stellen.' },
     ]).items,
   ])
@@ -1013,8 +1119,9 @@ describe('a layout that centres its headings over the designation (Salzburg, 26.
     const [seven, eight] = [rows(pages).find((r) => r.gld === '§ 7.')!, rows(pages).find((r) => r.gld === '§ 8.')!]
     expect(seven.proposed.endsWith('und die Beurteilung ihrer Person zu erhalten')).toBe(true)
     expect(eight.proposed.startsWith('Ausschreibung § 8.')).toBe(true)
-    // Read without the layout, the line heads § 8.
-    expect(rows(pages, {}).find((r) => r.gld === '§ 8.')!.proposed.startsWith('und die Beurteilung')).toBe(true)
+    // Read without the layout, the line stays with § 7 too since 21.11.2026:
+    // it starts at the margin under a line that ran to the edge.
+    expect(rows(pages, {}).find((r) => r.gld === '§ 8.')!.proposed.startsWith('Ausschreibung § 8.')).toBe(true)
   })
 
   // 22320, § 6 of the Gehaltsgesetz: as wide as the column, the last line

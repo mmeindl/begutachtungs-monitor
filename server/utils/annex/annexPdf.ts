@@ -1038,8 +1038,16 @@ const SENTENCE_MARK = /[.;:!?…]/
  * „3. Hauptstück", „1. Abschnitt", „6. Teil Raumordnungs-Aufsicht",
  * „Abschnitt 2". A name on the same line opens with a capital and a small
  * letter, so a list item „1. Teil A" is not read as one.
+ *
+ * A colon may follow the designation: „IV. Abschnitt: Eigentümerbestimmungen,
+ * prudenziell relevante", „2. Unterabschnitt: Prudenziell relevante
+ * Transaktionen" — how the Bankwesengesetz and the Fremdenpolizeigesetz head
+ * their divisions. Unread, the BWG package's (RIS 70112EBB) new IV. Abschnitt
+ * stood at the end of § 19g, as text the draft adds to it (21.11.2026). Only
+ * after the numeral-first form: „Teil 2: Schläuche, …" is the part of an EN
+ * standard a table of norms lists (RIS A9CF1633).
  */
-const DIVISION_LINE_RE = /^(?:(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Abschnitt|Hauptstück|Unterabschnitt)|(?:Teil|Abschnitt|Hauptstück|Unterabschnitt)\s+(?:\d+[a-z]?|[IVXL]+))(?:\s+\p{Lu}\p{Ll}[^.;:!?]*)?$/u
+const DIVISION_LINE_RE = /^(?:(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Abschnitt|Hauptstück|Unterabschnitt):?|(?:Teil|Abschnitt|Hauptstück|Unterabschnitt)\s+(?:\d+[a-z]?|[IVXL]+))(?:\s+\p{Lu}\p{Ll}[^.;:!?]*)?$/u
 
 /**
  * Where a division heading starts in the lines a unit ends with, or null.
@@ -1220,6 +1228,30 @@ function markerOf(text: string): RegExpExecArray | null {
   // The letter a designation may end in („§ 6.01a") is the number's, not the tail's.
   const tail = text.slice(marker[0].length).replace(paragraph ? /^[a-z]+(?=\s|$)/ : /^(?!)/, '')
   return CITATION_TAIL_RE.test(tail) ? null : marker
+}
+
+/**
+ * „§ 11a Dieses Bundesgesetz dient …": a § the ministry printed without the
+ * full stop after its number. Anywhere else that shape is a citation that
+ * wrapped to the head of a line („gemäß" / „§ 46 BaSAG bestellte …") or an
+ * entry of a table of contents („§ 47a Offenlegung der Anlagestrategie"), so
+ * `markerOf` does not read it (295 such lines in the GP XXVIII PDF annexes,
+ * 21.11.2026). It opens a § only where nothing else can: the line starts at
+ * the column's body margin, its tail opens with a capitalised word, the line
+ * above is a centred heading that ends no sentence, and the line above that
+ * ends one — the § before is finished and its heading stands between. The
+ * Zentrale Gegenparteien-Vollzugsgesetz's new § 11a (RIS 048969A7) under
+ * „Umsetzungshinweis" was read as the end of § 11, heading and all.
+ */
+const UNDOTTED_PARAGRAPH_RE = /^(§\s*\d+[a-z]*)(?=\s+\p{Lu}\p{Ll})/u
+
+function undottedParagraph(line: ColumnLine, parts: readonly ColumnLine[]): RegExpExecArray | null {
+  const heading = parts.at(-1)
+  const before = parts.at(-2)
+  if (line.flush !== true || !heading?.centred || heading.wrapped || SENTENCE_END.test(heading.text.trim())) return null
+  if (!before || !SENTENCE_END.test(before.text.trim())) return null
+  const marker = UNDOTTED_PARAGRAPH_RE.exec(line.text)
+  return marker && !CITATION_TAIL_RE.test(line.text.slice(marker[0].length)) ? marker : null
 }
 
 /**
@@ -1492,7 +1524,7 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
       current = { gld: null, context: null, parts: [], opener: null }
       continue
     }
-    const marker = markerOf(line.text)
+    const marker = markerOf(line.text) ?? undottedParagraph(line, current.parts)
     // „… eines ausländischen Kreditinstituts gemäß" over „§ 19b.", „… die
     // in" over „Anlage C festgelegten …": a citation the line above runs on
     // into, wrapped to the head of a line. Read as a marker it opened a
@@ -1543,6 +1575,26 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
       const shaped = centredLayout ? onAxis(last, line) && !REPEALED_RE.test(last.text.trim()) : !(last.wrapped && !last.centred)
       if ((!shaped && !continued) || SENTENCE_END.test(last.text) || BODY_LINE_RE.test(last.text)) break
       if (current.parts.at(-2) === current.opener && NAMES_ITS_PARAGRAPHS_RE.test(last.text)) break
+      // A line at the body margin under a line that ran to the edge —
+      // neither centred, the upper one ending no sentence — is where that
+      // sentence goes on, however short, even without its full stop.
+      // „kundzumachen" under „(6) Die Regelungen gemäß Abs. 1 und 5 sind in
+      // luftfahrtüblicher Weise" went to § 120c of the Luftfahrtgesetz with
+      // its heading „Aufsicht" (RIS C118A7EB, 21.11.2026); so did the last
+      // words of nine more §§ of GP XXVIII's PDF annexes, and the rest of 13
+      // laws' Langtitel headed their first §. A centred line stays a heading: a heading's first line may
+      // run as wide as the column („… und Einstellung der Einziehung bei" /
+      // „Forderungen des Bundes", BHG 2013 § 73), and under a heading line
+      // already handed on that starts at the margin too, the column sets its
+      // headings flush, as a RIS print does („… und den Zugang zu
+      // Verbraucherzahlungskonten mit grundlegenden" / „Funktionen
+      // (Verbraucherzahlungskontogesetz – VZKG)", RIS F36AA3A2). What this
+      // cannot tell is a flush heading with nothing handed on yet: the last
+      // line of E-ControlG § 25b's three-line heading now stays with § 25a,
+      // where its first two already stood (RIS EA7560E7). Where headings are
+      // centred over the designation, the axis decides (`onAxis`).
+      const runsInto = current.parts.at(-2)
+      if (!centredLayout && !continued && !carried[0]?.flush && last.flush === true && !last.centred && runsInto?.wrapped && !runsInto.centred && !SENTENCE_END.test(runsInto.text)) break
       carried.unshift(current.parts.pop()!)
     }
     // A line the line above runs on into is that line's end, on the middle
