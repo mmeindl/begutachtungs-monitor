@@ -35,7 +35,7 @@ import type { ComparisonRow } from './comparisonRows'
 import type { TextBlock } from '../lawtext/lawUnits'
 import { REASON_CUT, REASON_UNREADABLE_DESIGNATION, type AnnexDraft } from './verdict'
 import { refusedAddress } from '../laender/landTguGuard'
-import { STRICT_UNCHECKED, draftWording, strictCheck, type StrictCheck } from '../laender/landTguStrict'
+import { STRICT_UNCHECKED, draftWording, strictCheck, type DraftWording, type StrictCheck } from '../laender/landTguStrict'
 
 /** Why a § was not held, beside `STRICT_UNCHECKED`: the draft's Gesetzestext could not be read at all. */
 export const DRAFT_UNREAD = 'der Gesetzestext des Entwurfs ließ sich nicht lesen'
@@ -64,6 +64,67 @@ export function bgblPlaceholders(tokens: readonly string[]): boolean[] {
     if (nr < 0) return false
     return tokens[nr - 1] === 'bgbl' || (PART_RE.test(tokens[nr - 1] ?? '') && tokens[nr - 2] === 'bgbl')
   })
+}
+
+/** A division's designator as `strictTokens` reads it: „3. Hauptstück", „IIIa. Abschnitt", „ABSCHNITT II", „2.Teil". */
+const DIVISION_WORD = new Set(['teil', 'hauptstück', 'abschnitt', 'unterabschnitt', 'kapitel'])
+const DIVISION_NUMBER_RE = /^(?:\d+[a-z]?|[ivxl]+[a-z]?)$/
+
+/**
+ * What a payload prints for the § from its designation on: the heading above
+ * the designation (`Wording.optional`, „Liquiditätsmanagement" over „§ 55a.
+ * (1) …"), and the first words of its text below it. Null where no payload
+ * for the § prints its designation.
+ */
+function payloadHead(wordings: readonly (DraftWording | undefined)[], own: string): { heading: string[]; body: string[] } | null {
+  const number = own.replace(/^§\s*/, '').toLowerCase()
+  for (const w of wordings.flatMap((x) => x?.wordings ?? [])) {
+    if (w.repeats) continue
+    const at = w.tokens.findIndex((t, i) => t === '§' && w.tokens[i + 1] === number)
+    if (at >= 0 && w.optional.slice(0, at + 2).every(Boolean)) return { heading: w.tokens.slice(0, at), body: w.tokens.slice(at + 2).filter((_, k) => !w.optional[at + 2 + k]).slice(0, 3) }
+  }
+  return null
+}
+
+const opensDivision = (words: readonly string[]): boolean =>
+  (DIVISION_NUMBER_RE.test(words[0] ?? '') && DIVISION_WORD.has(words[1] ?? '')) || (DIVISION_WORD.has(words[0] ?? '') && DIVISION_NUMBER_RE.test(words[1] ?? ''))
+
+/**
+ * The division headings the annex prints over a § before its own heading —
+ * „3. Hauptstück OGAW 2. Abschnitt Bewilligung des OGAW und allgemeine
+ * Bestimmungen" over „Liquiditätsmanagement § 55a. (1) …" (21.11.2026). No
+ * instruction for the § writes them: they head the §§ of a division, and the
+ * draft's payload prints the § from its own heading on. Read only where the
+ * column opens with a division's designator („3. Hauptstück", „ABSCHNITT
+ * II"), and only up to where the § itself begins: the heading the draft's
+ * payload prints for it, followed by its designation or, where the column
+ * prints none (a table's row), by the payload's first words; or, where no
+ * payload prints a heading, the heading the column shows unchanged before
+ * the designation. The heading and everything after it are held as before.
+ *
+ * Measured on GP XXVIII: of the 209 §§ the oracle confirms and the strict
+ * check objected to, 32 differed in such a stack.
+ */
+export function divisionStack(words: readonly string[], marked: readonly boolean[], own: string, head: { heading: string[]; body: string[] } | null): boolean[] {
+  const out = words.map(() => false)
+  if (!opensDivision(words)) return out
+  const number = own.replace(/^§\s*/, '').toLowerCase()
+  const at = (i: number, seq: readonly string[]) => seq.length > 0 && seq.every((w, k) => words[i + k] === w)
+  let start = -1
+  if (head && head.heading.length) {
+    for (let i = 1; i < words.length && start < 0; i++) {
+      const after = i + head.heading.length
+      if (at(i, head.heading) && (at(after, ['§', number]) || at(after, head.body))) start = i
+    }
+  } else {
+    // The § heading unchanged, the stack above it new: „[1. Unterabschnitt Regelpublizität Zwischenberichte] Berichtsinhalt in Sonderfällen § 127."
+    const designation = words.findIndex((w, i) => w === '§' && words[i + 1] === number)
+    let k = 0
+    while (k < designation && marked[k]) k++
+    if (k > 0 && k < designation && marked.slice(k, designation).every((m) => !m)) start = k
+  }
+  for (let i = 0; i < start; i++) out[i] = true
+  return out
 }
 
 /** Blocks whose text keys a law (`segmentUnits`): read as folded, as the rows' law is. */
@@ -196,7 +257,10 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
     const law = wording.get(lawKey)
     const printed = shown.get(group.law) ?? new Set<string>()
     const elsewhere = [...(law?.generalText ?? []), ...[...(law?.byKey ?? [])].filter(([k]) => !printed.has(k)).flatMap(([, w]) => [...w.wordings.map((x) => x.tokens), ...w.text])]
-    out.set(groupKey, strictCheck(unit, keys.map((k) => law?.byKey.get(k)), { general: law?.general ?? [], elsewhere, placeholders: bgblPlaceholders }))
+    const wordings = keys.map((k) => law?.byKey.get(k))
+    const head = payloadHead(wordings, own)
+    const aboveParagraph = (words: readonly string[], marked: readonly boolean[]) => divisionStack(words, marked, own, head)
+    out.set(groupKey, strictCheck(unit, wordings, { general: law?.general ?? [], elsewhere, placeholders: bgblPlaceholders, aboveParagraph }))
   }
   return out
 }

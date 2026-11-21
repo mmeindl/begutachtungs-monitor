@@ -702,7 +702,13 @@ function placesOf(hay: readonly string[], needle: readonly string[]): number[] {
  * Hold one § of the comparison against the draft's wording for it
  * (`draftWording`, under the §'s own number and, renumbered, its old one).
  */
-export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording | undefined)[], law: { general: readonly Wording[]; elsewhere: readonly string[][]; placeholders?: (tokens: readonly string[]) => boolean[] } = { general: [], elsewhere: [] }): StrictCheck {
+export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording | undefined)[], law: {
+  general: readonly Wording[]
+  elsewhere: readonly string[][]
+  placeholders?: (tokens: readonly string[]) => boolean[]
+  /** The words of the right column (as aligned, with whether each is marked new) that stand above the §, not in it — a division heading the Bund's annex prints over a § (`annex/annexStrict.ts`). The Länder pass none. */
+  aboveParagraph?: (words: readonly string[], marked: readonly boolean[]) => boolean[]
+} = { general: [], elsewhere: [] }): StrictCheck {
   const shown = shownTokens(unit)
   if (!shown) return unchecked(unit.change === 'changed' ? STRICT_UNCHECKED.undiffed : STRICT_UNCHECKED.nothingNew)
   const found = wording.filter((w): w is DraftWording => w !== undefined)
@@ -718,8 +724,10 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   // The §'s own designation is no text of it: the page prints it above, and a payload or a column may print it once more.
   const own = new Set([unit.id, unit.fromId ?? unit.id].map((id) => id.replace(/^§\s*/, '').toLowerCase()))
   const ownAt = (list: readonly string[], i: number) => (list[i] === '§' && own.has(list[i + 1] ?? '')) || (list[i - 1] === '§' && own.has(list[i] ?? ''))
+  // What the caller reads as printed above the §, not as its text (`aboveParagraph`): never new text of it.
+  const above = law.aboveParagraph?.(words, shown.map((t) => t.marked))
   shown.forEach((t, i) => {
-    if (ownAt(words, i)) t.marked = false
+    if (ownAt(words, i) || above?.[i]) t.marked = false
   })
   // „(2) entfallen": how a column prints a repealed Absatz — the instruction's verb, not text of the law.
   const repeals = found.some((f) => f.text.some((t) => t.some((w) => REPEALING.has(w))))

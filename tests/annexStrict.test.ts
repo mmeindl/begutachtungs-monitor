@@ -114,4 +114,16 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     const absatz = [...DRAFT.slice(0, 3), novao('1. Dem § 9 wird folgender Abs. xx angefügt:'), abs('"(xx) Die Frist beträgt drei Wochen."')]
     expect(annexStrictChecks(shown('(4) Die Frist beträgt drei Wochen.'), { ...draft, blocks: absatz }).get(`${LAW}#§ 9.`)).toMatchObject({ state: 'differs', notInDraft: ['4'], notShown: ['xx'] })
   })
+
+  it('reads the division headings the annex prints over a new § as standing above it, not as its text', () => {
+    // The payload prints the § from its heading on (`draftWording`): „Meldepflicht § 9. (1) …".
+    const shown = (proposed: string) => annexStrictChecks([row({ law: LAW, gld: '§ 9.', para: '§ 9.', change: 'inserted', current: '', proposed })], draft).get(`${LAW}#§ 9.`)!
+    const body = 'Meldepflicht § 9. (1) Wer eine Anlage betreibt, hat sie der Behörde zu melden.'
+    expect(shown(`3. Hauptstück Anlagen 2. Abschnitt Pflichten der Betreiber ${body}`).state).toBe('holds')
+    expect(shown(`ABSCHNITT II Pflichten der Betreiber ${body}`).state).toBe('holds')
+    // Not a division's designator: text before the § that no instruction writes.
+    expect(shown(`Pflichten der Betreiber ${body}`)).toMatchObject({ state: 'differs', notInDraft: ['pflichten', 'der', 'betreiber'] })
+    // The § heading under the stack is held as before.
+    expect(shown('2. Abschnitt Pflichten der Betreiber Meldepflichten § 9. (1) Wer eine Anlage betreibt, hat sie der Behörde zu melden.').state).toBe('differs')
+  })
 })
