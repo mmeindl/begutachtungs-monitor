@@ -168,10 +168,31 @@ async function standingParagraphs(queue: readonly KonsParagraphRef[], sources: K
 }
 
 /** The annex rows an Artikel is checked against, and the law they are asked under (`paragraphRows`). */
-interface AnnexOf {
+export interface AnnexOf {
   rows: ReadonlyMap<string, ComparisonRow[]>
   /** The Artikel's key; `undefined` asks by the bare number. */
   law: string | null | undefined
+}
+
+/**
+ * Where an Artikel's rows are looked up (`AnnexOf`): under its own key in a
+ * package, and also in a single Novelle where the annex files rows under
+ * that key — it does where the draft enacts a law beside it. Otherwise by
+ * the bare number, as ever, but never in the rows the annex files under
+ * ANOTHER Artikel of the draft: the one Novelle of 144/ME XXVIII has no
+ * rows of its own, and its § 1 and § 26 were held against the § 1 and
+ * § 26 of the law the draft enacts anew (`anhang-fremd`, 26.10.2026).
+ * Exported so the fault injection asks the annex as the page asks it
+ * (21.11.2026); it scoped by its own rule until then.
+ */
+export function annexScope(byParagraph: ReadonlyMap<string, ComparisonRow[]>, articleKey: string | null, isPackage: boolean, articleKeys: ReadonlySet<string>): AnnexOf {
+  const filed = new Set([...byParagraph.keys()].map((key) => key.slice(0, key.lastIndexOf('#'))))
+  if (isPackage || (articleKey !== null && filed.has(articleKey))) return { rows: byParagraph, law: articleKey }
+  const foreign = (key: string): boolean => {
+    const law = key.slice(0, key.lastIndexOf('#'))
+    return law !== '' && law !== articleKey && articleKeys.has(law)
+  }
+  return { rows: [...byParagraph.keys()].some(foreign) ? someDrawers(byParagraph, (key) => !foreign(key)) : byParagraph, law: undefined }
 }
 
 /** One Artikel of the draft, read purely: what it instructs and which §§ it addresses. */
@@ -363,27 +384,14 @@ export async function consolidate(
   // such a package can be confirmed — said as what it is, not as the annex
   // being silent about each § (`boundaryNote` says the same above the rows).
   const undivided = isPackage && [...byParagraph.keys()].every((key) => key.startsWith('#'))
-  // Where an Artikel's rows are looked up (`AnnexOf`): under its own key in a
-  // package, and also in a single Novelle where the annex files rows under
-  // that key — it does where the draft enacts a law beside it. Otherwise by
-  // the bare number, as ever, but never in the rows the annex files under
-  // ANOTHER Artikel of the draft: the one Novelle of 144/ME XXVIII has no
-  // rows of its own, and its § 1 and § 26 were held against the § 1 and
-  // § 26 of the law the draft enacts anew (`anhang-fremd`, 26.10.2026).
+  // Where an Artikel's rows are looked up: `annexScope`.
   filedLaws = new Set([...byParagraph.keys()].map((key) => key.slice(0, key.lastIndexOf('#'))))
   const articleKeys = new Set(draftArticles(blocks).flatMap((a) => (a.key === null ? [] : [a.key])))
   const annexes = new Map<DraftArticle, AnnexOf>()
   const annexOf = (article: DraftArticle): AnnexOf => {
     let found = annexes.get(article)
     if (found) return found
-    if (isPackage || (article.key !== null && filedLaws.has(article.key))) found = { rows: byParagraph, law: article.key }
-    else {
-      const foreign = (key: string): boolean => {
-        const law = key.slice(0, key.lastIndexOf('#'))
-        return law !== '' && law !== article.key && articleKeys.has(law)
-      }
-      found = { rows: [...byParagraph.keys()].some(foreign) ? someDrawers(byParagraph, (key) => !foreign(key)) : byParagraph, law: undefined }
-    }
+    found = annexScope(byParagraph, article.key, isPackage, articleKeys)
     annexes.set(article, found)
     return found
   }

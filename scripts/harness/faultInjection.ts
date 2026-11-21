@@ -342,6 +342,7 @@ import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { applyNovelle, instructionsFromUnits, renamedOrigins, type Instruction, type StandingLaw } from '../../server/utils/kons/lawApply'
+import { annexScope } from '../../server/utils/kons/consolidate'
 import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, PLACE_NOTE, ROW_ORDER_NOTE, absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
 import { printedStretches } from '../../server/utils/annex/elision'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
@@ -1369,6 +1370,7 @@ async function injectIntoResults(
   renditionLoader: () => Promise<DraftRendition | null> = async () => null,
 ): Promise<void> {
   const byParagraph = rowsByParagraph(rows)
+  const articleKeys = new Set(draftArticles(draftBlocks).flatMap((a) => (a.key === null ? [] : [a.key])))
   const rendition = await renditionLoader()
   for (const { blocks, article } of articleBlocks(draftBlocks).filter((p) => p.article.amends)) {
     const units = segmentUnits(blocks).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
@@ -1407,7 +1409,12 @@ async function injectIntoResults(
     // Paired as the page pairs them (`kons/consolidate.ts`): a renumbered §
     // against the standing § it came from.
     const originOf = renamedOrigins(renamed)
-    const lawKey = amendingCount > 1 ? article.key : undefined
+    // The annex asked as the page asks it (`annexScope`, 21.11.2026). This
+    // script keyed packages only, so a single Novelle whose annex files rows
+    // under its key, and one beside a law the draft enacts, were asked by the
+    // bare number here and by the key on the page.
+    const annex = annexScope(byParagraph, article.key, amendingCount > 1, articleKeys)
+    const lawKey = annex.law ?? undefined
     // Held under the unit key, as the page holds them (`unitsByKey`).
     const afterById = unitsByKey(after.paragraphs)
     const beforeById = unitsByKey(law.paragraphs)
@@ -1418,7 +1425,7 @@ async function injectIntoResults(
       const beforeNode = origin === null ? null : (beforeById.get(origin) ?? null)
       const before = beforeNode ? plainText(beforeNode) : null
       const got = plainText(node)
-      const paraRows = paragraphRows(byParagraph, id, lawKey, origin)
+      const paraRows = paragraphRows(annex.rows, id, annex.law, origin)
       const standingUnits = beforeNode ? standingUnitsOf(beforeNode) : null
       const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
@@ -1435,6 +1442,18 @@ async function injectIntoResults(
         const witnessed = witnessVerdict(pid, b, g, r, touching, rendition, ra, sa, su)
         return witnessed.released ? { ...judged, verdict: 'bestätigt', note: `Zeuge: ${witnessed.places.map((pl) => `„${pl.annex}" / „${pl.draft}"`).join('; ')}` } : judged
       }
+      /**
+       * Every fault class is judged through this one call (21.11.2026), with
+       * what the page's gate passes (`kons/consolidate.ts`): the faulted
+       * result's Absätze, the standing § as the fault left it — its text,
+       * its Absätze, its units — and the witness. Until then Reihe, Fehlt and
+       * Datum were judged without the standing units, E and E-neben without
+       * either Absatz sequence as well, so check 5 and the reading of a
+       * silent omission were off for them. E's faulted result is a text with
+       * no tree of its own: the Absätze read are the unfaulted result's.
+       */
+      const judgeAsPage = (faultedGot: string, faultedNode: LawNode, faultedBefore: LawNode | null = beforeNode): OracleReport =>
+        judgedVerdict(id, faultedBefore ? plainText(faultedBefore) : null, faultedGot, paraRows, absatzSequence(faultedNode), faultedBefore ? (absatzSequence(faultedBefore) ?? null) : null, faultedBefore ? standingUnitsOf(faultedBefore) : null)
       if (report.verdict === 'widersprochen' && rendition) {
         const witnessed = witnessVerdict(id, before, got, paraRows, touching, rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
         if (witnessed.released) {
@@ -1581,8 +1600,7 @@ async function injectIntoResults(
         // Artikel was to insert it — so no word was removed, and only the
         // annex's chain names it.
         const dropped = kind === 'Fehlt' ? absOf(node).find((a) => !absOf(faulted).includes(a)) ?? null : null
-        const faultedBefore = dropped && beforeNode ? plainText(withoutAbsatz(beforeNode, dropped)) : before
-        const judged = judgedVerdict(id, faultedBefore, plainText(faulted), paraRows, absatzSequence(faulted), beforeNode ? (absatzSequence(dropped ? withoutAbsatz(beforeNode, dropped) : beforeNode) ?? null) : null)
+        const judged = judgeAsPage(plainText(faulted), faulted, dropped && beforeNode ? withoutAbsatz(beforeNode, dropped) : beforeNode)
         if (judged.verdict !== 'bestätigt') into.caught++
         if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
         else if (judged.verdict === 'bestätigt') {
@@ -1598,7 +1616,7 @@ async function injectIntoResults(
           const faulted = withoutUnit(node, standingUnits.style, gap)
           const faultedBeforeNode = both ? withoutUnit(beforeNode, standingUnits.style, gap) : beforeNode
           into.tried++
-          const judged = judgedVerdict(id, plainText(faultedBeforeNode), plainText(faulted), paraRows, absatzSequence(faulted), absatzSequence(faultedBeforeNode) ?? null, standingUnitsOf(faultedBeforeNode))
+          const judged = judgeAsPage(plainText(faulted), faulted, faultedBeforeNode)
           if (judged.verdict !== 'bestätigt') into.caught++
           if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
           // The same fault without the reading: a miss it shares was a miss
@@ -1607,11 +1625,9 @@ async function injectIntoResults(
           if (judged.verdict === 'bestätigt') into.misses.push(`${cite} ${unitLabel(id)} — ohne ${standingUnits.style === 'abs' ? `(${gap})` : `${gap}.`} von ${gaps.join(', ')}; ohne die Lesart: ${without}`)
         }
       }
-      // The word classes, judged as production judges (`kons/consolidate.ts`):
-      // every argument the request path passes, the standing units included.
-      const standingSeq = beforeNode ? (absatzSequence(beforeNode) ?? null) : null
+      // The word classes, judged as production judges (`judgeAsPage`).
       const judgeWord = (into: OracleTally, faultedGot: string, faultedNode: LawNode, shows: string, stretch: string | null, kind?: string): void => {
-        const judged: OracleReport = judgedVerdict(id, before, faultedGot, paraRows, absatzSequence(faultedNode), standingSeq, standingUnits)
+        const judged: OracleReport = judgeAsPage(faultedGot, faultedNode)
         into.tried++
         if (kind) into.kinds.set(kind, (into.kinds.get(kind) ?? [0, 0]).map((n, k) => n + (k === 0 ? 1 : judged.verdict !== 'bestätigt' ? 1 : 0)) as [number, number])
         if (judged.verdict !== 'bestätigt') {
@@ -1644,7 +1660,7 @@ async function injectIntoResults(
       if (argAssigned('zeige') === id) {
         for (const [label, faulted] of [['Überschrift', reheaded ? plainText(reheaded.node) : null], ['Ziffer-Reihe', swapped ? plainText(swapped.node) : null], ...Object.entries(printedFaults).map(([k, f]) => [k, f.got] as const), ...Object.entries(unprintedFaults).map(([k, f]) => [`ungedruckt-${k}`, f.got] as const)] as const) {
           if (!faulted) continue
-          const judged = judgedVerdict(id, before, faulted, paraRows, absatzSequence(node), standingSeq, standingUnits)
+          const judged = judgeAsPage(faulted, node)
           const at = [...faulted].findIndex((ch, i) => ch !== got[i])
           console.log(`     ${label}: ${judged.verdict}${judged.note ? ` — ${judged.note}` : ''}\n        …${faulted.slice(Math.max(0, at - 80), at + 80)}…`)
         }
@@ -1653,7 +1669,7 @@ async function injectIntoResults(
       const dated = dateFault(got, paraRows)
       if (dated) {
         oracleFaults.Datum.tried++
-        const judged = judgedVerdict(id, before, dated, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
+        const judged = judgeAsPage(dated, node)
         if (judged.verdict !== 'bestätigt') oracleFaults.Datum.caught++
         else {
           oracleFaults.Datum.misses.push(`${cite} ${unitLabel(id)}`)
@@ -1673,11 +1689,11 @@ async function injectIntoResults(
       for (const [replaced, into] of [[false, oracleFaults.E], [true, oracleFaults.Ersatz]] as const) {
         const fault = withKeptRemoval(before, got, replaced)
         if (!fault) continue
-        if (judgedVerdict(id, before, fault.control, paraRows).verdict !== 'bestätigt') {
+        if (judgeAsPage(fault.control, node).verdict !== 'bestätigt') {
           results.controlMoved++
           continue
         }
-        const judged = judgedVerdict(id, before, fault.faulted, paraRows)
+        const judged = judgeAsPage(fault.faulted, node)
         into.tried++
         if (judged.verdict !== 'bestätigt') into.caught++
         if (judged.note?.startsWith(KEPT_DELETION_NOTE)) into.byKept++
