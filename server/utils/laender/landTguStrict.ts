@@ -393,8 +393,9 @@ function payloadPieces(blocks: readonly TextBlock[]): Piece[] {
       last = null
       push(designation[0], true)
       const after = text.slice(designation[0].length)
-      // „§ 20a Verweisungen" — the heading on the designation's line.
-      push(after, isHeadingBlock(after) && !/[.;:]/.test(after))
+      // „§ 20a Verweisungen" — the heading on the designation's line; not the lead-in of a list that follows
+      // („§ 19. Die Organe … haben … mitzuwirken durch" / „1. Vorbeugungsmaßnahmen …", VersSichG § 19).
+      push(after, isHeadingBlock(after) && !/[.;:]/.test(after) && !/^[„"»\s]*\d+[a-z]?\.\s/u.test(next))
       // …or on the line below it.
       if (!after.trim() && next && isHeadingBlock(next) && !DESIGNATION_BLOCK_RE.test(next)) {
         push(next, true)
@@ -458,6 +459,9 @@ const PAYLOAD_OPENS_RE = new RegExp(`((?<![\\p{L}])(?:lautet|lauten|eingefügt|a
 /** An instruction numbered below a payload's closing quote in the same block: „… Hygieneartikel," 3.1.3. Die Z 4 lautet:". */
 const SUB_INSIDE_RE = /(?<=[“”"])\s+(?=\d+(?:\.\d+)+\.?\s+\p{Lu})/u
 
+/** How many quotations a payload's blocks leave open. */
+const quoteDepth = (blocks: readonly TextBlock[]): number => [...withoutResidue(blocks.map((b) => b.text).join(' '))].reduce((n, ch) => n + (OPEN.includes(ch) ? 1 : CLOSE.includes(ch) ? -1 : 0), 0)
+
 /**
  * A line runs on into the next block where it ends neither on a colon nor
  * on a full stop nor on a closing quote, or leaves a quotation open: the
@@ -479,7 +483,10 @@ function runsOf(unit: LawUnit): Run[] {
   for (const block of blocks) {
     const text = `${block.gld ?? ''} ${block.text}`.replace(FOOTER_RE, ' ').trim()
     const run = runs.at(-1)!
-    if (block.kind === 'novao' || SUB_INSTRUCTION_RE.test(block.text)) {
+    // A payload's last line that RIS sets in the instruction's class, unnumbered and closing the quotation the payload
+    // opened („Zu diesem Zweck dürfen … betreten werden.“", VersSichG § 19): the payload's, not a new instruction.
+    const closesPayload = block.kind === 'novao' && run.payload.length > 0 && !/^\s*\d+[a-z]?\.\s/u.test(block.text) && /[“”"]\s*$/u.test(block.text) && quoteDepth(run.payload) > 0
+    if (!closesPayload && (block.kind === 'novao' || SUB_INSTRUCTION_RE.test(block.text))) {
       // „4. § 9 lautet „Ablehnung und Einschränkung der Grundversorgung": the payload opens on the instruction's line and runs on below.
       const opens = PAYLOAD_OPENS_RE.exec(withoutResidue(text))
       if (opens) runs.push({ line: text.slice(0, opens.index + opens[1]!.length), payload: [{ ...block, kind: 'ziff', gld: null, text: text.slice(opens.index + opens[1]!.length) }] })

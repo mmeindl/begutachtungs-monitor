@@ -209,6 +209,23 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     expect(annexStrictChecks([row({ law: LAW, gld: '§ 5.', para: '§ 5.', current: STANDING_5, proposed: `${SHOWN_5} ${tail}` })], { ...draft, blocks: glued }).get(`${LAW}#§ 5.`)!.state).toBe('holds')
   })
 
+  it('holds a § the draft restates with a lead-in and a closing line RIS sets as an instruction', () => {
+    // VersSichG § 19: „Die Organe … mitzuwirken durch" is the lead-in of a list, no heading; the closing sentence carries the instruction's class.
+    const blocks: TextBlock[] = [
+      ...DRAFT.slice(0, 3),
+      novao('1. § 19 lautet:'),
+      abs('„ Die Organe der Behörde haben an der Vollziehung des § 18 mitzuwirken durch', '§ 19.'),
+      { kind: 'ziff', cls: 'absatz/ziffer', text: '1. Vorbeugungsmaßnahmen und', gld: null },
+      { kind: 'ziff', cls: 'absatz/ziffer', text: '2. Anwendung angemessenen Zwangs.', gld: null },
+      novao('Zu diesem Zweck dürfen Betriebsräume betreten werden.“'),
+    ]
+    const full = 'Die Organe der Behörde haben an der Vollziehung des § 18 mitzuwirken durch 1. Vorbeugungsmaßnahmen und 2. Anwendung angemessenen Zwangs. Zu diesem Zweck dürfen Betriebsräume betreten werden.'
+    const check = (proposed: string) => annexStrictChecks([row({ law: LAW, gld: '§ 19.', para: '§ 19.', change: 'inserted', current: '', proposed: `§ 19. ${proposed}` })], { ...draft, blocks }).get(`${LAW}#§ 19.`)!
+    expect(check(full).state).toBe('holds')
+    expect(check(full.replace(' Zu diesem Zweck dürfen Betriebsräume betreten werden.', ''))).toMatchObject({ state: 'differs', notShown: ['zu', 'diesem', 'zweck', 'dürfen', 'betriebsräume', 'betreten', 'werden'] })
+    expect(check(full.replace('Die Organe der Behörde haben an der Vollziehung des § 18 mitzuwirken durch ', '')).state).toBe('differs')
+  })
+
   it('reads the annex\'s elision as it says: its designations are no text, and what it leaves out is not missing', () => {
     // „§ 9 Abs. 3 lautet:" restates the whole Absatz; the annex leaves its unchanged first sentence out.
     const blocks = [...DRAFT.slice(0, 3), novao('1. § 9 Abs. 3 lautet:'), abs('"(3) Die Behörde hat den Antrag zu prüfen. Sie entscheidet binnen 14 Tagen."')]
