@@ -56,29 +56,6 @@ function reasonsByParagraph(entries: readonly LandReasoningEntry[]): Map<string,
 }
 
 /**
- * One text's entries as the passages of the join by a new law's own §
- * (`joinOwnParagraph`, the Bund's since 01.10.2026), read the Land's way
- * (21.11.2026). The Bund's rules hold: a § present on both sides takes the
- * passages titled by its own designation on each, compared only where both
- * sides' passages cover the same §§, and in a package only under its own
- * Artikel. Three readings are the Land's:
- *
- *  - The Artikel is the entry's own or the one of the „Zu Art I (…)" heading
- *    above it (`ParticularExplanation.article`), keyed as the units key
- *    theirs („I" → „1"), never the title's list of laws: a law the draft
- *    enacts has no place there (`explainedParagraphs`).
- *  - A „Zu Z 1 („Drittstaat mit hohem Risiko“):" is an instruction's passage
- *    only under an Artikel whose units on this side include instructions. In
- *    a law enacted anew it is a numbered item of the § above it — Salzburg's
- *    31605 explains § 3's definitions so —, and read as an instruction's, it
- *    was left out of that §'s Begründung, which then compared its first lines
- *    alone.
- *  - In a package (the side's units carry two Artikel or more) an entry
- *    under no Artikel joins nothing, whatever its § (the Bund takes one whose
- *    number no other law of the draft carries): its law is not certain, and
- *    one law's Begründung at another law's § is worse than none.
- */
-/**
  * A heading titled by a § that runs on into prose behind its colon — „Zu § 2:
  * Zur Eingabe der Fraktion … ist festzuhalten …" — is none of the join's.
  * Measured over the 110 cached drafts with a Vorlage (21.11.2026): 58 such
@@ -104,6 +81,29 @@ function repliesUnder(heading: string): boolean {
   return at >= 0 && /[A-Za-zÄÖÜäöüß]/.test(flat.slice(at + 1))
 }
 
+/**
+ * One text's entries as the passages of the join by a new law's own §
+ * (`joinOwnParagraph`, the Bund's since 01.10.2026), read the Land's way
+ * (21.11.2026). The Bund's rules hold: a § present on both sides takes the
+ * passages titled by its own designation on each, compared only where both
+ * sides' passages cover the same §§, and in a package only under its own
+ * Artikel. Three readings are the Land's:
+ *
+ *  - The Artikel is the entry's own or the one of the „Zu Art I (…)" heading
+ *    above it (`ParticularExplanation.article`), keyed as the units key
+ *    theirs („I" → „1"), never the title's list of laws: a law the draft
+ *    enacts has no place there (`explainedParagraphs`).
+ *  - A „Zu Z 1 („Drittstaat mit hohem Risiko“):" is an instruction's passage
+ *    only under an Artikel whose units on this side include instructions. In
+ *    a law enacted anew it is a numbered item of the § above it — Salzburg's
+ *    31605 explains § 3's definitions so —, and read as an instruction's, it
+ *    was left out of that §'s Begründung, which then compared its first lines
+ *    alone.
+ *  - In a package (the side's units carry two Artikel or more) an entry
+ *    under no Artikel joins nothing, whatever its § (the Bund takes one whose
+ *    number no other law of the draft carries): its law is not certain, and
+ *    one law's Begründung at another law's § is worse than none.
+ */
 function ownPassages(entries: readonly LandReasoningEntry[], units: readonly LawDiffUnit[], side: 'before' | 'after'): HtmlExplanations {
   const present = units.filter((u) => (side === 'after' ? u.change !== 'removed' : u.change !== 'inserted'))
   const articleOf = (u: LawDiffUnit) => (side === 'after' ? u.articleKey : u.fromArticleKey)
@@ -192,8 +192,13 @@ export async function compareLandReasoning(
   }
 }
 
-/** Held a day in the derived layer, like the comparison it reads. */
+/**
+ * Held a day in the derived layer, like the comparison it reads. The name
+ * counts up with what the answer holds (2: the § of a new law joined by its
+ * own designation, 21.11.2026), so an answer cached before is not served
+ * for a day after a deploy.
+ */
 export const cachedLandReasoning = defineCachedFunction(
   (land: LandCode, number: string, detail: LandDraftDetail): Promise<LandReasoningResponse> => compareLandReasoning(land, number, detail),
-  { name: 'land-reasoning', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+  { name: 'land-reasoning-2', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
