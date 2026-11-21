@@ -36,8 +36,10 @@ import { isParlDionAnnex, parlDionTwoColumns } from '../annex/parlDionAnnex'
 import { mapDocuments } from './detailJson'
 import { getGegenstand } from './drafts'
 import { stripHtmlToText } from './htmlText'
-import type { VorlageRoot } from './vorlageDetail'
-import { explanationsGroup } from './vorlageDetailAssembly'
+import { explanationsGroup, type VorlageDetailInputs } from './vorlageDetailAssembly'
+
+/** `vorlageDetail.ts`'s VorlageRoot, by the pure module: importing that one pulls Nitro's auto-imports into the tools' typecheck. */
+type VorlageRoot = VorlageDetailInputs['root']
 
 /**
  * The item's Textgegenüberstellung, with the same checks as a draft's
