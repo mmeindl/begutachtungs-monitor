@@ -1014,6 +1014,8 @@ interface ColumnUnit {
   repeated?: true
   /** …more than once as a provision, and the prints could not be joined (`ComparisonRow.ambiguous`). */
   ambiguous?: true
+  /** Nothing but the repeal words the column prints beside a § the other column opens (`ColumnLine.repealOf`). */
+  repealed?: true
 }
 
 /**
@@ -1191,6 +1193,8 @@ interface ColumnLine {
   gap?: boolean
   /** A bare designation set across the gutter, this column's as much as the other's (`AnnexLayout.designationsAcross`). */
   across?: boolean
+  /** A repeal word alone, beside the line where the other column opens a § this column does not print: that §'s designation (`repealedBeside`). */
+  repealOf?: string
 }
 
 /**
@@ -1477,7 +1481,7 @@ function contentsInBoth(left: readonly ColumnLine[], right: readonly ColumnLine[
  * full stop or a citation began a line (41/ME § 49, 96/ME „§ 105.").
  */
 function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, layout: AnnexLayout = {}, options: { join: boolean } = { join: true }): { units: ColumnUnit[]; contents: number } {
-  type Unit = { gld: string | null; context: string | null; parts: ColumnLine[]; opener: ColumnLine | null; cut?: true }
+  type Unit = { gld: string | null; context: string | null; parts: ColumnLine[]; opener: ColumnLine | null; cut?: true; repealed?: true }
   const units: Unit[] = []
   let current: Unit = { gld: null, context: null, parts: [], opener: null }
   /** The heading printed across both columns over a table of contents, for the first unit below it. */
@@ -1532,8 +1536,12 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
     // an Anlage C of a sentence of § 1 (AEV Verbrennungsgas, 45BB5DFC;
     // 19.11.2026). No provision opens after a line that ends on „gemäß",
     // „in" or „und" (`CONTINUED_RE`).
+    // A § the column repeals without printing its designation: the repeal
+    // words beside the other column's § are that §'s, not the § above
+    // (`repealedBeside`).
+    const repealOf = marker ? null : (line.repealOf ?? null)
     const above = current.parts.at(-1)?.text.trim()
-    if (!marker || (above !== undefined && !SENTENCE_END.test(above) && CONTINUED_RE.test(above))) {
+    if ((!marker && !repealOf) || (above !== undefined && !SENTENCE_END.test(above) && CONTINUED_RE.test(above))) {
       current.parts.push(line)
       continue
     }
@@ -1559,6 +1567,9 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
       // and 126 of the worst-scoring rows in the corpus were that one bug
       // (2026-09-09).
       if (last === current.opener) break
+      // A repeal word alone is the cell of a § the column repeals, never a
+      // heading of a § it prints (`repealedBeside`).
+      if (marker && REPEALED_RE.test(last.text.trim())) break
       // A word broken over two lines is one text: the line whose word the
       // carried line goes on with („Einzel-" over „handelsnutzungen …") goes
       // too, though it ran to the edge — the heading of § 39 of Salzburg's
@@ -1606,7 +1617,7 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
     // short line is: „Netzen" under „… von Gigabit-" (35452, § 14b).
     while (centredLayout && carried.length > 0 && (carried[0]!.inset ?? 0) < HEADING_INSET && runsOn(current.parts.at(-1))) current.parts.push(carried.shift()!)
     if (current.gld !== null || current.parts.length > 0) units.push(current)
-    current = { gld: normalizeText(marker[1] ?? marker[0]), context: line.context ?? overContents, parts: [...carried, line], opener: line }
+    current = { gld: marker ? normalizeText(marker[1] ?? marker[0]) : repealOf, context: line.context ?? overContents, parts: [...carried, line], opener: line, ...(marker ? {} : { repealed: true as const }) }
     overContents = null
   }
   if (current.gld !== null || current.parts.length > 0) units.push(current)
@@ -1618,7 +1629,7 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
   // (2026-09-09).
   const built = units.map((u) => {
     const gld = u.gld === null ? null : (rangeEnd(u) ?? u.gld)
-    return { id: gld ? idOfMarker(gld) : null, gld, context: u.context, text: joinLines(u.parts, layout.hyphensByWord), ...(u.cut ? { cut: true as const } : {}) }
+    return { id: gld ? idOfMarker(gld) : null, gld, context: u.context, text: joinLines(u.parts, layout.hyphensByWord), ...(u.cut ? { cut: true as const } : {}), ...(u.repealed ? { repealed: true as const } : {}) }
   })
 
   // A designation may occur twice in one column, because many annexes reprint
@@ -1954,6 +1965,25 @@ function lawNameKey(name: string): string {
 /** „entfällt", „(3) entfallen": what a column prints for a § or an Absatz the draft repeals. */
 const REPEALED_RE = /^(?:\(\d+[a-z]*\)\s*)?(?:entf(?:ällt|allen)|aufgehoben)\.?$/i
 
+/**
+ * The § a proposed column repeals without printing its designation: a line
+ * that is nothing but a repeal word, beside the line where the current
+ * column opens that §. RIS CF28D2C0 sets „Aufgehoben" beside the heading
+ * and beside each Absatz of ASVG § 248c, GSVG § 143 and BSVG § 134, and no
+ * „§ 248c." on the right: the column's walk saw no boundary there, so the
+ * first ones ran on as the end of the § above (ASVG § 79c) and the last ones
+ * went to the heading of the § below (§ 823) — „Aufgehoben Aufgehoben" new
+ * in six §§ the draft writes otherwise (21.11.2026). Of the 16 lines of a
+ * repeal word alone in GP XXVIII's PDF annexes, these 12 are the only ones
+ * beside another § than their column's; the others stand inside their own §
+ * („§ 808. (1) und (2) …" / „(3) Aufgehoben.") or end a sentence.
+ */
+function repealedBeside(current: string, proposed: string): string | null {
+  if (!REPEALED_RE.test(proposed.trim())) return null
+  const marker = markerOf(current)
+  return marker ? normalizeText(marker[1] ?? marker[0]) : null
+}
+
 /** „§ 25." alone on its line — the designation Salzburg centres its heading over. */
 const BARE_DESIGNATION_RE = /^[„"“]?\s*§\s*\d+[a-z]*\.?$/
 /** How far a heading's middle may lie from its designation's or its column's, in points: 17,8 for 18159's of § 20; a line that ends a § stands 60 and more off. */
@@ -2247,7 +2277,10 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       axis: margin.start === null || margin.end === null ? null : (margin.start + margin.end) / 2,
     })
     const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}) }))
-    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}) }))
+    const rightLines = section.lines.map((l) => {
+      const repealOf = repealedBeside(l.left, l.right)
+      return { text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(repealOf ? { repealOf } : {}) }
+    })
     const toc = contentsInBoth(leftLines, rightLines)
     // Two prints of a § are joined only where they are one law's (`unitsOfColumn`).
     const join = { join: law !== null || resolution.refusal === null }
@@ -2285,7 +2318,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
         continue
       }
       if (mate?.id) used.add(mate.id)
-      const row = rowOf(law, unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.text, unit.context ?? mate?.context ?? null)
+      // Repeal words in place of a § say what a § only on the left says: it goes.
+      const row = rowOf(law, unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.repealed ? '' : unit.text, unit.context ?? mate?.context ?? null)
       if (row) rows.push({ ...row, ...(unit.cut || mate?.cut ? { cut: true as const } : {}), ...(law === null && (unit.repeated || mate?.repeated) ? { repeated: true as const } : {}), ...(unit.ambiguous || mate?.ambiguous ? { ambiguous: true as const } : {}) })
     }
     // A § the draft repeals appears only on the left. Printed in the proposed

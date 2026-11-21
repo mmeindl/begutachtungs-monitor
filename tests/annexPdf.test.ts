@@ -600,6 +600,32 @@ describe('where one § ends and the next begins, as the ministries set it (21.11
     ])
     expect(rows.map((r) => r.gld)).toEqual(['§ 30.'])
   })
+
+  // ASVG, GSVG and BSVG (RIS CF28D2C0): a § the draft repeals, whose right
+  // cell prints „Aufgehoben" beside its heading and beside each Absatz, but
+  // not its designation. The first two went to the end of § 79c, the last
+  // two to the heading of § 823.
+  it('files a repeal word beside a § only the left column opens under that §, not under its neighbours', () => {
+    const rows = read([
+      at(444, 780, '§ 79c. (1) Der Dachverband ist verpflichtet, einmal jährlich den Anteil', 753.2),
+      ...filler(766),
+      at(444, 640, '(5) Das Bundesministerium hat die Quote jährlich zu evaluieren. Der', 753.1),
+      at(R0, 628, 'Evaluierungsbericht ist dem Nationalrat zuzuleiten.', 516.1),
+      at(104, 616, 'Besondere Höherversicherung für erwerbstätige PensionsbezieherInnen', 401.9), at(564, 616, 'Aufgehoben', 614.2),
+      at(108, 604, '§ 248c. (1) Wird neben dem Bezug einer Alterspension', 417.1), at(444, 604, 'Aufgehoben', 492.1),
+      at(L0, 592, 'Regelpensionsalters eine Erwerbstätigkeit ausgeübt, so gebührt ein', 417.2),
+      at(L0, 580, 'besonderer Höherversicherungsbetrag.', 251.8),
+      at(108, 568, '(2) Für die Bemessung des besonderen Höherversicherungsbetrages sind die', 417.2), at(444, 568, 'Aufgehoben', 492.1),
+      at(L0, 556, 'Beiträge mit einem Faktor zu vervielfachen.', 191.8),
+      at(437, 544, 'Schlussbestimmungen zu Art. 1 des Bundesgesetzes BGBl. I Nr. xxx/2026', 740.6),
+      at(444, 532, '§ 823. (1) § 79c samt Überschrift in der Fassung des Bundesgesetzes', 753.1),
+      at(R0, 520, 'BGBl. I Nr. xxx/2026 tritt mit dem der Kundmachung folgenden Tag in Kraft.', 734.0),
+    ])
+    expect(rows.find((r) => r.gld === '§ 79c.')!.proposed.endsWith('dem Nationalrat zuzuleiten.')).toBe(true)
+    expect(rows.find((r) => r.gld === '§ 823.')!.proposed.startsWith('Schlussbestimmungen zu Art. 1 des Bundesgesetzes')).toBe(true)
+    expect(rows.find((r) => r.gld === '§ 248c.')).toMatchObject({ change: 'removed', proposed: '' })
+    expect(rows.filter((r) => r.proposed.includes('Aufgehoben'))).toEqual([])
+  })
 })
 
 describe('what looks like a provision but is not', () => {
