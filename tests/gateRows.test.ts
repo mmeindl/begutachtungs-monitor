@@ -3,6 +3,7 @@ import { annexParagraphKey } from '../server/utils/annex/annexText'
 import { checkAnnexRows, notRunReason } from '../server/utils/annex/gateRows'
 import { REASON_NO_ARTICLES, REASON_NOTHING_TO_COMPARE, REASON_NO_SUCH_PARAGRAPH, REASON_TOO_SHORT, REASON_UNREADABLE_DESIGNATION, REASON_UNRESOLVED, type AnnexVerification } from '../server/utils/annex/verdict'
 import { comparisonRow as row } from './helpers/builders'
+import { MARK_DELETIONS, type AnnexMark } from '../server/utils/annex/annexMark'
 import { groupAnnexRows } from '../app/utils/annexGroups'
 
 // ---------------------------------------------------------------------------
@@ -19,6 +20,51 @@ const verification = (over: Partial<AnnexVerification> = {}): AnnexVerification 
   judged: 0,
   verified: 0,
   ...over,
+})
+
+describe('checkAnnexRows with the table\'s marks (annexMark.ts)', () => {
+  const rows = [
+    row({ gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu', segments: [{ type: 'removed', text: 'alt' }, { type: 'inserted', text: 'neu' }] }),
+    row({ gld: '§ 2.', para: '§ 2.', current: 'weg', proposed: '', change: 'removed' }),
+    row({ gld: '§ 3.', para: '§ 3.', current: '', proposed: 'ganz neu', change: 'inserted' }),
+    row({ gld: '§ 4.', para: '§ 4.', current: 'alt', proposed: 'neu' }),
+  ]
+  const v = verification({
+    verdicts: { '#§ 1.': 'verified', '#§ 2.': 'verified', '#§ 3.': 'unchecked', '#§ 4.': 'withheld' },
+    uncheckedReasons: { '#§ 3.': REASON_NOTHING_TO_COMPARE },
+    withheldCauses: { '#§ 4.': 'notInDraft' },
+  })
+  const marks = new Map<string, AnnexMark>([
+    ['#§ 1.', { kind: 'unconfirmed' }],
+    ['#§ 2.', { kind: 'unchecked', reason: MARK_DELETIONS }],
+    ['#§ 3.', { kind: 'unconfirmed' }],
+    ['#§ 4.', { kind: 'unconfirmed' }],
+  ])
+
+  it('carries „nicht bestätigt" as a state of its own, with the § text kept', () => {
+    const out = checkAnnexRows(rows, v, marks)
+    expect(out.rows[0]).toMatchObject({ check: 'unconfirmed', owesCheck: true, proposed: 'neu', current: 'alt' })
+    expect(out.rows[0]!.uncheckedReason).toBeUndefined()
+    // A § the gate owed nothing for (new text rule 2 held) owes a check once the table marks it.
+    expect(out.rows[2]).toMatchObject({ check: 'unconfirmed', owesCheck: true, proposed: 'ganz neu' })
+  })
+
+  it('marks „nicht geprüft" with the table\'s reason on a § the gate verified', () => {
+    expect(checkAnnexRows(rows, v, marks).rows[1]).toMatchObject({ check: 'unchecked', owesCheck: true, uncheckedReason: MARK_DELETIONS })
+  })
+
+  it('never lets a mark bring back a withheld § or its text', () => {
+    expect(checkAnnexRows(rows, v, marks).rows[3]).toMatchObject({ check: 'withheld', proposed: '', withheldCause: 'notInDraft' })
+  })
+
+  it('counts each mark per draft, a § in one count at most', () => {
+    const out = checkAnnexRows(rows, v, marks)
+    expect(out.unconfirmedParagraphs).toBe(2)
+    expect(out.uncheckedParagraphs).toBe(1)
+    const alone = checkAnnexRows(rows, v)
+    expect([alone.unconfirmedParagraphs, alone.uncheckedParagraphs]).toEqual([0, 0])
+    expect(alone.rows.map((r) => r.check)).toEqual(['verified', 'verified', 'unchecked', 'withheld'])
+  })
 })
 
 describe('checkAnnexRows', () => {

@@ -11,6 +11,7 @@ import { annexParagraphKey } from './annexText'
 import { isDisplayedChange } from './coverage'
 import { insertedStretches } from './rightColumn'
 import { REASON_NOTHING_TO_COMPARE, REASON_UNREADABLE_DESIGNATION, type AnnexVerification } from './verdict'
+import type { AnnexMark } from './annexMark'
 
 /**
  * Why the check produced no verdict at all, draft-wide — null when it
@@ -56,6 +57,12 @@ export interface CheckedComparison {
    */
   uncheckedParagraphs: number
   /**
+   * §§ shown „nicht bestätigt" (`check: 'unconfirmed'`, `annexMark.ts`):
+   * their new text was held word for word and did not agree. Never also in
+   * `uncheckedParagraphs`.
+   */
+  unconfirmedParagraphs: number
+  /**
    * Rows the page shows as a change that carry no § designation at all, so no
    * § verdict can address them. Shown as `unchecked`.
    *
@@ -91,8 +98,18 @@ export interface CheckedComparison {
  * § loses its text before the response leaves the server, because a wrong
  * comparison must not be renderable by any client.
  */
-export function checkAnnexRows(rows: readonly ComparisonRow[], verification: AnnexVerification): CheckedComparison {
+export function checkAnnexRows(rows: readonly ComparisonRow[], verification: AnnexVerification, marks: ReadonlyMap<string, AnnexMark> = new Map()): CheckedComparison {
   let rowsWithoutParagraph = 0
+  /**
+   * The table's word on a § the gate let through (`annexMark.ts`, 21.11.2026):
+   * „nicht geprüft" with a reason of its own, or „nicht bestätigt". Absent,
+   * or `gate`, where the gate's own answer stands — the default, so a caller
+   * that hands no marks gets the gate alone (the gate's tests and golden).
+   */
+  const markOf = (key: string): AnnexMark | undefined => {
+    const mark = marks.get(key)
+    return mark && mark.kind !== 'gate' && verification.verdicts[key] !== 'withheld' ? mark : undefined
+  }
   /**
    * A § whose displayed changes carry no comparable word of text in force —
    * every change an insertion, or the left column elision alone („§ 20. (1)
@@ -101,7 +118,7 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
    * force to hold it against, and the draft held the rest
    * (`REASON_NOTHING_TO_COMPARE`).
    */
-  const nothingOwed = (key: string) => verification.uncheckedReasons[key] === REASON_NOTHING_TO_COMPARE
+  const nothingOwed = (key: string) => verification.uncheckedReasons[key] === REASON_NOTHING_TO_COMPARE && markOf(key) === undefined
   /**
    * A row the page shows as a change: of text in force, or new text
    * (20.11.2026). New text is the claim „the draft writes this", and a check
@@ -128,6 +145,10 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
     const key = annexParagraphKey(row.law, para)
     const verdict = verification.verdicts[key] ?? 'unchecked'
     const owesCheck = shownChange(row) && !nothingOwed(key)
+    // The table's mark replaces what the gate let through; the § keeps its text.
+    const mark = markOf(key)
+    if (mark?.kind === 'unconfirmed') return { ...row, check: 'unconfirmed' as const, owesCheck }
+    if (mark?.kind === 'unchecked') return { ...row, check: 'unchecked' as const, owesCheck, uncheckedReason: mark.reason }
     // The reason travels with the row for the same cause as the withheld
     // one below: the page says it per law, and only the rows know their law.
     if (verdict === 'unchecked') return { ...row, check: verdict, owesCheck, uncheckedReason: verification.uncheckedReasons[key] ?? null }
@@ -145,7 +166,8 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
     stats: summarizeComparison(out.filter((r) => r.check !== 'withheld')),
     withheldParagraphs: Object.values(verification.verdicts).filter((v) => v === 'withheld').length,
     withheldByCause,
-    uncheckedParagraphs: [...showsChange].filter((key) => (verification.verdicts[key] ?? 'unchecked') === 'unchecked').length,
+    uncheckedParagraphs: [...showsChange].filter((key) => markOf(key)?.kind === 'unchecked' || (markOf(key) === undefined && (verification.verdicts[key] ?? 'unchecked') === 'unchecked')).length,
+    unconfirmedParagraphs: [...showsChange].filter((key) => markOf(key)?.kind === 'unconfirmed').length,
     rowsWithoutParagraph,
   }
 }

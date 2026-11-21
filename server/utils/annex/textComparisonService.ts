@@ -126,6 +126,7 @@ export async function readAndCheck(
       withheldByCause: checked.withheldByCause,
       doubtfulLaws: verification.doubtfulLaws.map((l) => l.law).filter((l): l is string => l !== null),
       uncheckedParagraphs: checked.uncheckedParagraphs,
+      unconfirmedParagraphs: checked.unconfirmedParagraphs,
       rowsWithoutParagraph: checked.rowsWithoutParagraph,
     },
     rows: checked.rows,

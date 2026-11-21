@@ -245,8 +245,19 @@ export interface TextComparisonRow {
    * - `withheld` — one of the three checks refused the § (`withheldCause`).
    *   `current`, `proposed` and `segments` are emptied before the response
    *   leaves the server: a wrong comparison must not be renderable at all.
+   * - `unconfirmed` — „nicht bestätigt" (21.11.2026): the word-for-word check
+   *   of its new text ran, and the new text does not agree with the draft's
+   *   own law text, nor did our Lesefassung confirm the §
+   *   (`server/utils/annex/annexMark.ts`). Shown with its text all the same:
+   *   the annex is the ministry's document, and the check has false alarms.
+   *   A state of its own, never derived from a reason string.
+   *
+   * Since 21.11.2026 a § the gate verified, or left unchecked owing nothing,
+   * is `unchecked` also where the word-for-word check could not be carried
+   * out and the Lesefassung did not confirm it — with its reason in
+   * `uncheckedReason`, and `owesCheck` set on the rows that show a change.
    */
-  check: 'verified' | 'unchecked' | 'withheld'
+  check: 'verified' | 'unchecked' | 'withheld' | 'unconfirmed'
   /**
    * Whether the row owes a check at all: a displayed change to text in force
    * (`isDisplayedChange`), or new text (20.11.2026), in a § the check did not
@@ -435,6 +446,13 @@ export interface TextComparisonResponse {
      * read as an alarm about the Ressort's annex.
      */
     uncheckedParagraphs: number
+    /**
+     * §§ shown „nicht bestätigt" (`TextComparisonRow.check` `unconfirmed`):
+     * the word-for-word check of their new text ran and did not agree, and
+     * our Lesefassung did not confirm them. Counted apart from
+     * `uncheckedParagraphs`; a § is in one of the two at most.
+     */
+    unconfirmedParagraphs: number
     /**
      * Rows shown as a change that carry no § designation at all, so no §
      * verdict can address them — counted apart from `uncheckedParagraphs`,
