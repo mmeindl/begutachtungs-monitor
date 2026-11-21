@@ -231,6 +231,18 @@ function restoreLostSigns(lines: string[]): string[] {
   })
 }
 
+/**
+ * A line that opens like a paragraph of its own and is the sentence's next
+ * word where the line above runs on (`RUNS_ON_RE`, 21.11.2026): a cited §
+ * („… § 27 Abs. 7 Z 1," / „§ 29 Abs. 4, … ersetzt.", Oö. 2026-16118; „…
+ * aus einem der im" / „§ 3 Abs. 1 genannten Gründe“ ersetzt.", 2026-16120)
+ * or a date („… bis zum" / „31. August des aktuellen Jahres“ …", Tirol
+ * 2026-730). Opened, each cut its instruction in two, and the § it named
+ * was named by no instruction. Not a numbered item of a list, which opens
+ * after „und", „oder" or a comma as well.
+ */
+const WRAPPED_OPENER_RE = /^(?:§{1,2}\s*\d|\d{1,2}\.\s+(?:Jänner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\b)/
+
 /** A line this long fills the measure: text that wraps, not a title set on its own line. */
 const TEXT_MEASURE = 85
 
@@ -536,7 +548,8 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
         continue
       }
     }
-    if (para === null || OPENS_RE.test(line) || /[:]$/.test(para)) {
+    const wrapped = para !== null && lastLineAt === i - 1 && lastLine !== null && RUNS_ON_RE.test(lastLine) && WRAPPED_OPENER_RE.test(line)
+    if (para === null || (OPENS_RE.test(line) && !wrapped) || /[:]$/.test(para)) {
       flush()
       para = line
       lastLine = line

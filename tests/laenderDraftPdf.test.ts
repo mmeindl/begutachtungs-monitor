@@ -51,6 +51,24 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
     expect(ids(pages)).toEqual(['Artikel I Z1', 'Artikel I Z2', 'Artikel I Z3'])
   })
 
+  it('keeps an instruction wrapped where its next line opens with a cited § or a date: the line above runs on (16118, 16120, Tirol 730; 21.11.2026)', () => {
+    const blocks = lawBlocksFromPdfPages([page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Das Oö. X-Gesetz wird wie folgt geändert:',
+      '1. Im § 2 Abs. 1, § 27 Abs. 3 Z 5, Abs. 4 und Abs. 7 Z 1,', '§ 29 Abs. 4 und § 31 Abs. 1 wird jeweils das Wort „Beeinträchtigungen“ durch das Wort „Behinderungen“ ersetzt.',
+      '2. Im § 8 wird die Wortfolge „auf Grund des Geschlechts“ durch die Wortfolge „aus einem der im', '§ 3 Abs. 1 genannten Gründe“ ersetzt.',
+      '3. Im § 42a Abs. 1 wird die Wortfolge „für den Zeitraum vom 1. September des Vorjahres bis zum', '31. August des aktuellen Jahres“ durch die Wortfolge „für das laufende Kalenderjahr“ ersetzt.',
+      '4. § 5 lautet:', '„§ 5', '(1) Die Behörde entscheidet nach', '§ 3 Abs. 2.“')])!
+    expect(blocks.filter((b) => b.kind !== 'article').map((b) => `${b.kind} ${b.text.slice(0, 12)}`)).toEqual([
+      'ziff Der Oö. Land', 'ziff Das Oö. X-Ge', 'novao 1. Im § 2 Ab', 'novao 2. Im § 8 wi', 'novao 3. Im § 42a ', 'novao 4. § 5 laute', 'ziff „§ 5', 'ziff (1) Die Behö',
+    ])
+    expect(blocks.find((b) => b.text.startsWith('3.'))!.text).toContain('bis zum 31. August des aktuellen Jahres“ durch')
+  })
+
+  it('still opens a numbered item after a line ending in „und" or a comma: a list goes on', () => {
+    const blocks = lawBlocksFromPdfPages([page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Das Oö. X-Gesetz wird wie folgt geändert:',
+      '1. § 3 lautet:', '„§ 3', '(1) Zu bestellen sind', '1. die Leiterin,', '2. die Stellvertreterin und', '3. der Kassier.“')])!
+    expect(blocks.filter((b) => /^\d\. d/.test(b.text)).map((b) => b.text)).toEqual(['1. die Leiterin,', '2. die Stellvertreterin und', '3. der Kassier.“'])
+  })
+
   it('takes a single unnumbered instruction under the clause as the first (16039)', () => {
     const pages = [page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Das Oö. Feuerwehrgesetz 2015 wird wie folgt geändert:',
       '§ 6 Abs. 1 letzter Satz lautet:', '„Die Kosten trägt die Gemeinde.“', 'Artikel II', 'Inkrafttreten', 'Dieses Landesgesetz tritt in Kraft.')]
