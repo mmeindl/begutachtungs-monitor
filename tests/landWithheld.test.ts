@@ -168,3 +168,11 @@ describe('the announced text a station pair did not read (19.11.2026)', () => {
     expect(unreadAnnouncedNote(['Z1', 'Z4', 'Z7'])).toMatch(/^Nicht lesbar: Z 1, Z 4 und Z 7\. Den Text, den diese Anweisungen ankündigen/)
   })
 })
+
+describe('the leads of a Landesgesetz’s withheld §§ (21.11.2026)', () => {
+  it('open with the withheld list’s own lead, as every other cause does', () => {
+    for (const reason of ['uninstructed', 'unpaired', 'lawUnmatched', 'enactedUnread'] as const) {
+      expect(withheldNotes([{ law: 'L', id: '§1', reason }])[0]!.lead).toBe('Nicht gezeigt:')
+    }
+  })
+})

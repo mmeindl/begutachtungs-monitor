@@ -10,9 +10,14 @@
  * not join. So the copy read is the settled one, and the credit line says
  * „freies Werk", never CC BY (`publisher: 'parlament'`).
  *
- * Not for an Antrag: its annex is Parliament's working copy in another
- * template (it parses to no rows), and its Begründung stands inside the
- * Initiativantrag document — both open experiments, not approximated.
+ * An Antrag gets the Textgegenüberstellung only: Parliament's own working
+ * copy, turned into two columns (`parlDionAnnex.ts`, since 12.11.2026). Its
+ * Begründung stands inside the Initiativantrag document and is not cut out
+ * (the Erläuterungen route answers 404 for an Antrag).
+ *
+ * A document Parliament's list does not hold is one the monitor did not
+ * find, never one Parliament did not publish: a list proves no absence
+ * (21.11.2026; until then both sections said „nicht veröffentlicht").
  */
 import { gapDe } from '#shared/utils/gaps'
 import type { ExplanationsResponse, TextComparisonResponse, TraceLink } from '#shared/types'
@@ -49,8 +54,8 @@ export const getVorlageTextComparison = defineCachedFunction(
       return emptyComparison(
         who,
         annex.pdf
-          ? `Die Textgegenüberstellung ${what} hat das Parlament nur als PDF veröffentlicht, nicht in lesbarer Form.`
-          : `Eine Textgegenüberstellung ${what} hat das Parlament nicht in lesbarer Form veröffentlicht.`,
+          ? gapDe('unreadable', `Die Textgegenüberstellung ${what} liegt beim Parlament nur als PDF vor; ein PDF des Parlaments liest der Monitor nicht aus.`)
+          : gapDe('unreadable', `Unter den Dokumenten des Parlaments ${what} fand der Monitor keine Textgegenüberstellung.`),
         null,
         annex.pdf,
       )
@@ -119,7 +124,9 @@ export const getVorlageExplanations = defineCachedFunction(
     const document = html || pdf ? { label: EXPLANATIONS_LABEL, url: (html ?? pdf)! } : null
     if (!html) {
       return emptyExplanations(
-        pdf ? 'Die Erläuterungen dieser Regierungsvorlage liegen nur als PDF vor.' : 'Zu dieser Regierungsvorlage sind keine Erläuterungen veröffentlicht.',
+        pdf
+          ? gapDe('unreadable', 'Die Erläuterungen dieser Regierungsvorlage liegen beim Parlament nur als PDF vor; ein PDF des Parlaments liest der Monitor nicht aus.')
+          : gapDe('unreadable', 'Unter den Dokumenten des Parlaments zu dieser Regierungsvorlage fand der Monitor keine Erläuterungen.'),
         document,
       )
     }
@@ -130,7 +137,7 @@ export const getVorlageExplanations = defineCachedFunction(
     const doc = explanationsDocumentOfHtml(parseExplanationsHtml(text, { generalAsHeaded: true }), labelled)
     if (!doc.general) {
       return emptyExplanations(
-        'Die Erläuterungen dieser Regierungsvorlage heben keinen Allgemeinen Teil hervor. Was das Ministerium schreibt, steht im Dokument selbst.',
+        gapDe('unreadable', 'Die Erläuterungen dieser Regierungsvorlage heben keinen Allgemeinen Teil hervor. Was das Ministerium schreibt, steht im Dokument selbst.'),
         document,
       )
     }

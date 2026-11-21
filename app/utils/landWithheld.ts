@@ -127,20 +127,21 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     many: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht',
   },
   // A Landesgesetz's page (12.11.2026): what RIS and the Landesgesetzblatt do not agree on is not compared.
+  // „Nicht gezeigt:" as every cause of the list (21.11.2026): „Nicht verglichen:" was a lead of its own, outside the rule.
   uninstructed: {
-    lead: 'Nicht verglichen:',
+    lead: 'Nicht gezeigt:',
     one: 'Das RIS ordnet seine Fassung diesem Landesgesetzblatt zu, aber keine Anweisung des Landesgesetzblatts nennt ihn',
     many: 'Das RIS ordnet ihre Fassung diesem Landesgesetzblatt zu, aber keine Anweisung des Landesgesetzblatts nennt sie',
   },
   // „Seine Fassungen", not „seine Fassung davor und danach" (20.11.2026): a § the Landesgesetzblatt repeals has none after it.
   unpaired: {
-    lead: 'Nicht verglichen:',
+    lead: 'Nicht gezeigt:',
     one: 'Eine Anweisung des Landesgesetzblatts nennt ihn; seine Fassungen im RIS fand der Monitor nicht so, dass er sie eindeutig gegenüberstellen kann',
     many: 'Anweisungen des Landesgesetzblatts nennen sie; ihre Fassungen im RIS fand der Monitor nicht so, dass er sie eindeutig gegenüberstellen kann',
   },
   // No instruction's law matched to the §'s law, or no instruction read at all (20.11.2026): nothing is said of an instruction naming it.
   lawUnmatched: {
-    lead: 'Nicht verglichen:',
+    lead: 'Nicht gezeigt:',
     one: 'Das RIS ordnet seine Fassung diesem Landesgesetzblatt zu, aber welche Anweisungen des Landesgesetzblatts sein Gesetz betreffen, konnte der Monitor nicht sicher feststellen',
     many: 'Das RIS ordnet ihre Fassung diesem Landesgesetzblatt zu, aber welche Anweisungen des Landesgesetzblatts ihr Gesetz betreffen, konnte der Monitor nicht sicher feststellen',
   },
