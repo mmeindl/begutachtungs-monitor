@@ -4,6 +4,7 @@
  *
  * Usage:  npx vite-node -c vitest.config.ts scripts/harness/kons.ts BGBLA_2022_I_187 [Kurztitel]
  *         npx vite-node -c vitest.config.ts scripts/harness/kons.ts --discover=60 --sammel --cache --oracle
+ *         npx vite-node -c vitest.config.ts scripts/harness/kons.ts --discover=40 --verordnungen --cache
  *
  * The vitest config carries the `#shared` alias the annex reader needs
  * (`--oracle`); without `--oracle` the script runs without it too.
@@ -256,6 +257,20 @@ const risJson = (params: Record<string, string>): Promise<any> => risQuery(param
  * amended, which is what the harness needs, and the old capture swallowed
  * both names into one unusable title (2026-09-09).
  */
+/**
+ * `--verordnungen` (21.11.2026): the amending Verordnungen of BGBl. II
+ * instead, through the same bench. The page shows the whole §§ of
+ * Verordnungsentwürfe (risOnly) with no enacted text ever held against
+ * them, and the bench took Bundesgesetze only. It scores the engine here,
+ * not the gate: a Verordnung has no Regierungsvorlage, so the oracle's join
+ * from the Bundesgesetzblatt to its draft (`loadOracle`: RIS history „NR: GP
+ * … RV" → Parliament's Ministerialentwurf → Begut record) has no exact key,
+ * and the record says „Verordnungen" so it is never read as the Bundes-
+ * gesetze's.
+ */
+const AMENDING_REGULATION_TITLE = /^Verordnung\b[\s\S]*\bgeändert\b/
+const verordnungen = argFlag('verordnungen')
+
 const SINGLE_LAW_TITLE = /^Bundesgesetz, mit dem (?:(?:das|die|der) \S[^,]*? erlassen und )?(?:das|die|der) ([^,]+?) geändert wird$/
 const AMENDING_TITLE = /^Bundesgesetz\b[\s\S]*\bgeändert\b/
 
@@ -294,6 +309,10 @@ async function discoverAmendments(count: number, sammel: boolean): Promise<{ id:
       const id = ref?.Data?.Metadaten?.Technisch?.ID
       const titel = String(ref?.Data?.Metadaten?.Bundesrecht?.Titel ?? '').replace(/<br\/>[\s\S]*/, '').trim()
       if (!id || out.length >= count) continue
+      if (verordnungen) {
+        if (/_II_/.test(id) && AMENDING_REGULATION_TITLE.test(titel)) out.push({ id })
+        continue
+      }
       const single = SINGLE_LAW_TITLE.exec(titel)
       if (single) out.push({ id, law: single[1]! })
       else if (sammel && AMENDING_TITLE.test(titel)) out.push({ id })
@@ -1196,7 +1215,7 @@ const packages = [...perBgbl.values()].filter((n) => n > 1).length
 // The corpus the run was *asked* for, beside the one it reached. A report over
 // a tenth of the intended corpus reads exactly like a report over all of it,
 // which is how the `--discover` bug above stayed invisible for a day.
-const corpus = wanted === null ? `${cases.length} explizit genannt` : `--discover=${wanted}${withSammel ? ' --sammel' : ''} → ${cases.length} geladen`
+const corpus = wanted === null ? `${cases.length} explizit genannt` : `--discover=${wanted}${withSammel ? ' --sammel' : ''}${verordnungen ? ' --verordnungen' : ''} → ${cases.length} geladen`
 console.log(`Prüfstand über ${scored.length} Gesetze aus ${bgblCount} Bundesgesetzblättern [Korpus: ${corpus}]${packages > 0 ? `, davon ${packages} Sammelnovellen` : ''}${verdicts.length > scored.length ? ` (${verdicts.length - scored.length} nicht auswertbar)` : ''}`)
 const pct = (n: number, of: number) => (of === 0 ? '—' : `${((n / of) * 100).toFixed(1)} %`)
 console.log(`  Anweisungen           : ${sum((v) => v.instructions)}`)
@@ -1328,6 +1347,8 @@ if (jsonFile) {
     checked: sum((v) => v.checked),
     identical: sum((v) => v.identical),
     unrefused: { checked: sum((v) => v.cleanTotal), identical: sum((v) => v.cleanIdentical), divergent: sum((v) => v.cleanDivergent) },
+    /** What the bench read: amending Bundesgesetze, or with `--verordnungen` amending Verordnungen of BGBl. II (21.11.2026; the engine only, no oracle). */
+    population: verordnungen ? 'Verordnungen' : 'Bundesgesetze',
     gateKey: 'plausibel|orakel|ergebnis|verweigerung|weg',
     gate: Object.fromEntries([...gateTally].sort(([a], [b]) => a.localeCompare(b))),
     /** The second witness: `Ausgang|Ergebnis` over the plausible §§ the oracle contradicts (20.11.2026). */
