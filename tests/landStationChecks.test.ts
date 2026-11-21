@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { landPairChecks, numbersOnly, pairsPerLand, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
+import { landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPerLand, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
+import { summarizeDiff } from '../server/utils/diff/lawDiff'
 import { comparedText, diffLandDraft, landDraftUnits } from '../server/utils/laender/landLawDiff'
 import type { LawUnit } from '../server/utils/lawtext/lawUnits'
 
@@ -148,5 +149,27 @@ describe('pairsPerLand — per Land, what was requested and what was reached (20
       stmk: { drafts: 2, uncached: 1, withPairs: 0, requested: 0, compared: 0, unavailable: 0, missing: 0, errored: 0 },
       t: { drafts: 1, uncached: 0, withPairs: 1, requested: 2, compared: 0, unavailable: 0, missing: 2, errored: 0 },
     })
+  })
+})
+
+// G080 of the audit of 20.11.2026: a draft held against the next amendment of
+// the same law pairs its Ziffern by place, one reads „geändert", and the
+// comparison's only refusal (no unit unchanged or changed) never fires.
+describe('lgblNoneUnchanged — the pairs to the Landesgesetzblatt with no unit unchanged, for reading by hand', () => {
+  const draft = landDraftUnits([page('Der Salzburger Landtag hat beschlossen:', 'Das X-Gesetz, LGBl Nr 1/2020, wird geändert wie folgt:',
+    '1. Im § 2 wird das Wort „Hauptverband" durch das Wort „Dachverband" ersetzt.', '2. § 4 entfällt.')])!
+  const nextAmendment = landDraftUnits([page('Der Salzburger Landtag hat beschlossen:', 'Das X-Gesetz, LGBl Nr 1/2020, wird geändert wie folgt:',
+    '1. Im § 2 wird das Wort „Gemeinde" durch das Wort „Stadt" ersetzt.', '2. § 9 lautet: „§ 9 Neu.“', '3. § 11 entfällt.')])!
+  const line = (pair: string, stats: { unchanged: number } | null, state: 'verglichen' | 'fehlt' = 'verglichen') => ({ draft: 'sbg-1', pair, state, stats })
+
+  it('lists a draft against another amendment of its law, which the comparison does not refuse', () => {
+    const stats = summarizeDiff(diffLandDraft(draft, nextAmendment))
+    expect(stats.unchanged).toBe(0)
+    expect(stats.changed).toBeGreaterThan(0)
+    expect(lgblNoneUnchanged([line('entwurf→lgbl', stats)]).map((l) => l.pair)).toEqual(['entwurf→lgbl'])
+  })
+
+  it('leaves out pairs with a unit unchanged, pairs to another station and pairs not compared', () => {
+    expect(lgblNoneUnchanged([line('rv→lgbl', { unchanged: 1 }), line('entwurf→rv', { unchanged: 0 }), line('rv→lgbl', null, 'fehlt')])).toEqual([])
   })
 })

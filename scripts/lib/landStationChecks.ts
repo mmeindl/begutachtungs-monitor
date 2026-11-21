@@ -187,3 +187,18 @@ export function pairsPerLand(drafts: readonly { land: string; cached: boolean; p
   }
   return out
 }
+
+/**
+ * The pairs to the Landesgesetzblatt in which no unit stands unchanged
+ * (21.11.2026), listed for reading by hand, not asserted. A draft held
+ * against the next amendment of the same law pairs its Ziffern by place,
+ * one reads „geändert", and the comparison's only refusal — no unit
+ * unchanged or changed (`NOTHING_PAIRS`, `landLawDiffService.ts`) — never
+ * fires; the defence is upstream, in a certain Kundmachung. No floor on the
+ * unchanged share can take its place: of the 240 cached pairs to the
+ * Landesgesetzblatt 12 have no unit unchanged, and each is the draft's own
+ * Kundmachung — a placeholder filled in, an amount brought up to date.
+ */
+export function lgblNoneUnchanged<T extends { pair: string; state: PairState; stats: { unchanged: number } | null }>(lines: readonly T[]): T[] {
+  return lines.filter((l) => l.pair.endsWith('→lgbl') && l.state === 'verglichen' && l.stats?.unchanged === 0)
+}

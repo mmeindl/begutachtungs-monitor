@@ -67,8 +67,10 @@
  * Counted beside them, not asserted: the instructions a pair withholds or
  * names as unread because one side or both did not read what they announce
  * (`announcedText.ts`, 19.11.2026), per pair in `comparisons.jsonl` and
- * `--against`; and the pages inside a PDF without text (`textlessPages`,
- * 20.11.2026), which the page says.
+ * `--against`; the pages inside a PDF without text (`textlessPages`,
+ * 20.11.2026), which the page says; and the pairs to the
+ * Landesgesetzblatt with no unit unchanged (`lgblNoneUnchanged`,
+ * 21.11.2026), to be read by hand: a wrong Kundmachung passes there.
  *
  * Output: `<dir>/comparisons.jsonl` (one line per pair: state, stats, every
  * unit with its non-equal segments), `<dir>/summary.md`. `--against <dir>`
@@ -86,7 +88,7 @@ import { harnessStamp } from '../lib/harnessRecord'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
-import { landPairChecks, numbersOnly, pairsPerLand, recurringRuns, type PairState } from '../lib/landStationChecks'
+import { landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPerLand, recurringRuns, type PairState } from '../lib/landStationChecks'
 import type { Breach } from '../lib/stationChecks'
 import { comparedText, diffLandDraft } from '../../server/utils/laender/landLawDiff'
 
@@ -318,6 +320,8 @@ const unreadUnits = lines.flatMap((l) => l.unread)
 out.push('')
 const droppedLines = lines.filter((l) => l.droppedPages)
 out.push(`Seiten ohne Text im Dokument (textlessPages): ${droppedLines.reduce((n, l) => n + l.droppedPages!, 0)} in ${droppedLines.length} Vergleichen${droppedLines.length ? ` — ${droppedLines.map((l) => `${l.draft} ${l.pair}`).join(', ')}` : ''}`)
+const noneUnchanged = lgblNoneUnchanged(lines)
+out.push(`Gegen das Landesgesetzblatt ohne unveränderte Einheit (lgblNoneUnchanged, von Hand lesen): ${noneUnchanged.length} von ${lines.filter((l) => l.pair.endsWith('→lgbl') && l.state === 'verglichen').length} Vergleichen${noneUnchanged.length ? ` — ${noneUnchanged.map((l) => `${l.draft} ${l.pair}`).join(', ')}` : ''}`)
 out.push(`Angekündigter Text nicht gelesen (announcedText.ts): ${withheldUnits.length} Anweisungen zurückgehalten in ${lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length} Vergleichen, ${unreadUnits.length} gezeigt und als „nicht lesbar" genannt in ${lines.filter((l) => l.unread.length).length} Vergleichen`)
 const breachLines = lines.flatMap((l) => l.breaches.map((b) => ({ l, b })))
 const symmetryLines = lines.flatMap((l) => l.symmetry.map((b) => ({ l, b })))
