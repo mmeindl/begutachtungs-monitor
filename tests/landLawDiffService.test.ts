@@ -18,6 +18,7 @@ vi.mock('../server/utils/laender/texts/stations', () => ({ textSources: vi.fn() 
 
 const { compareTgu } = vi.mocked(await import('../server/utils/laender/landTguService'))
 const { textSources } = vi.mocked(await import('../server/utils/laender/texts/stations'))
+const { draftsSharingKundmachung } = vi.mocked(await import('../server/utils/laender/sources'))
 const { cachedLandComparison, compareLandTexts, compareReadTexts } = await import('../server/utils/laender/landLawDiffService')
 
 const detail = { draft: { id: 'ktn-1-2025-1' }, comparisons: [['geltend', 'entwurf']] } as unknown as LandDraftDetail
@@ -63,6 +64,24 @@ describe('compareLandTexts — what the Land filed as the draft and is none (26.
     const ofDraft = { ...detail, comparisons: [['entwurf', 'lgbl']] } as unknown as LandDraftDetail
     const got = await compareLandTexts('sbg', ofDraft, 'entwurf', 'lgbl')
     expect(got.value).toMatchObject({ available: false, unavailableReason: 'Nicht veröffentlicht: Als Entwurf hat das Land ein anderes Dokument veröffentlicht; der Monitor liest es nicht als Entwurf.' })
+  })
+})
+
+describe('compareLandTexts — the drafts sharing the Kundmachung, unread (21.11.2026)', () => {
+  // Until then a failed read of the Land's register answered „none", and the page said nothing.
+  it('says the warning could not be checked, and keeps nothing', async () => {
+    const text = (id: string) => ({ units: [{ article: 'G', articleNumber: null, id, heading: null, quotedHeadings: [], text: 'Text.', blocks: [{ kind: 'abs', cls: 'pdf', text: 'Text.', gld: null }] }], text: 'Text.' }) as never
+    textSources.mockReturnValueOnce({
+      entwurf: { document: { label: 'Entwurf', url: 'https://example.org/e', publisher: 'Land Kärnten' }, read: async () => text('§1') },
+      lgbl: { document: { label: 'LGBl. Nr. 1/2026', url: null, publisher: 'RIS (CC BY 4.0)' }, read: async () => text('§1') },
+    })
+    draftsSharingKundmachung.mockRejectedValueOnce(new Error('register timed out'))
+    const ofDraft = { draft: { id: 'ktn-1-2025-1', stage: { kind: 'kundgemacht', detail: 'LGBl. Nr. 1/2026' } }, comparisons: [['entwurf', 'lgbl']] } as unknown as LandDraftDetail
+    const got = await compareLandTexts('ktn', ofDraft, 'entwurf', 'lgbl')
+    expect(got.value.available).toBe(true)
+    expect(got.value.sharedWith).toEqual([])
+    expect(got.value.sharedUnknown).toMatch(/^Gerade nicht abrufbar: /)
+    expect(got.complete).toBe(false)
   })
 })
 

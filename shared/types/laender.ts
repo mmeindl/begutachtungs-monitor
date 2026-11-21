@@ -333,6 +333,8 @@ export interface LandLawDiffResponse {
    * Only where the later text is the Kundmachung.
    */
   sharedWith: { title: string; path: string; deadline: string | null; startedAt: string | null }[]
+  /** Where the Land's record of those drafts could not be read: the sentence that says so (21.11.2026; until then the warning just was not there). */
+  sharedUnknown?: string
   /**
    * Paragraphen the Land's Textgegenüberstellung shows and this comparison
    * does not (`geltend → entwurf` only; empty elsewhere). Each under the law

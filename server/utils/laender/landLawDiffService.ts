@@ -63,6 +63,8 @@ function unavailable(from: LandTextStation, to: LandTextStation, reason: string,
   }
 }
 
+const SHARED_UNKNOWN = gapDe('unavailable', 'ob dieselbe Kundmachung auch andere Entwürfe des Landes umsetzt. Was hier als neu erscheint, kann aus einem solchen Entwurf stammen.')
+
 const whole = (value: LandLawDiffResponse): Gathered<LandLawDiffResponse> => ({ value, complete: true })
 
 export async function compareLandTexts(
@@ -86,8 +88,9 @@ export async function compareLandTexts(
   if (!compared.available) return whole(compared)
   const stage = detail.draft.stage
   // The other drafts in the same Kundmachung are a warning above the list:
-  // where the Land's record could not be read, the answer goes out without
-  // it and is not kept — else the warning is gone for a day.
+  // where the Land's record could not be read, the answer says so in the
+  // warning's place and is not kept — else the warning is gone for a day.
+  // Until 21.11.2026 it went out with nothing in that place.
   let complete = true
   const shared = to === 'lgbl' && stage && stage !== 'unknown' && stage.detail
     ? await draftsSharingKundmachung(land, stage.detail, detail.draft.id).catch(() => {
@@ -95,8 +98,9 @@ export async function compareLandTexts(
         return []
       })
     : []
+  const sharedWith = shared.map((d) => ({ title: d.title, path: landDraftPath(d.land, d.id), deadline: d.deadline, startedAt: d.startedAt }))
   return {
-    value: { ...compared, sharedWith: shared.map((d) => ({ title: d.title, path: landDraftPath(d.land, d.id), deadline: d.deadline, startedAt: d.startedAt })) },
+    value: complete ? { ...compared, sharedWith } : { ...compared, sharedWith, sharedUnknown: SHARED_UNKNOWN },
     complete,
   }
 }

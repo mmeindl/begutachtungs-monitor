@@ -395,7 +395,7 @@ const hasUnits = computed(() => units.value.length > 0)
            Begutachtung (2023-16039 and 2024-16064, LGBl. Nr. 95/2024). The
            one sentence that stays above, in the Bund's form for a warning
            that what follows may be misread. -->
-      <ComparisonCaveats v-if="data.sharedWith.length || droppedNote || renumberNote || reasoningGap" :notes="[droppedNote, renumberNote, reasoningGap]" class="mb-4">
+      <ComparisonCaveats v-if="data.sharedWith.length || data.sharedUnknown || droppedNote || renumberNote || reasoningGap" :notes="[data.sharedUnknown, droppedNote, renumberNote, reasoningGap]" class="mb-4">
         <p v-if="data.sharedWith.length">
           Dieselbe Kundmachung setzt auch
           <template v-for="(other, i) in data.sharedWith" :key="other.path"><template v-if="i > 0">{{ i === data.sharedWith.length - 1 ? ' und ' : ', ' }}</template>den Entwurf
