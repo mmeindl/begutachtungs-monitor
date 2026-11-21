@@ -18,895 +18,1044 @@
      "x": 727.06,
      "y": 554.16,
      "width": 30.06,
-     "text": "1 von 3"
+     "text": "1 von 3",
+     "size": 9.96
     },
     {
      "x": 367.49,
      "y": 497.38,
      "width": 107.02,
-     "text": "Textgegenüberstellung"
+     "text": "Textgegenüberstellung",
+     "size": 11.04
     },
     {
      "x": 215.06,
      "y": 474.46,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 474.46,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 200.3,
      "y": 459.46,
      "width": 105.12,
-     "text": "Mündliche Verhandlung"
+     "text": "Mündliche Verhandlung",
+     "size": 9.96
     },
     {
      "x": 536.23,
      "y": 459.46,
      "width": 105.12,
-     "text": "Mündliche Verhandlung"
+     "text": "Mündliche Verhandlung",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 444.46,
      "width": 20.13,
-     "text": "§ 41."
+     "text": "§ 41.",
+     "size": 9.96
     },
     {
      "x": 134.9,
      "y": 444.46,
      "width": 11.58,
-     "text": "(1)"
+     "text": "(1)",
+     "size": 9.96
     },
     {
      "x": 152.99,
      "y": 444.46,
      "width": 14.38,
-     "text": "Die"
+     "text": "Die",
+     "size": 9.96
     },
     {
      "x": 173.85,
      "y": 444.46,
      "width": 57.02,
-     "text": "Anberaumung"
+     "text": "Anberaumung",
+     "size": 9.96
     },
     {
      "x": 237.29,
      "y": 444.46,
      "width": 19.97,
-     "text": "einer"
+     "text": "einer",
+     "size": 9.96
     },
     {
      "x": 263.66,
      "y": 444.46,
      "width": 47.16,
-     "text": "mündlichen"
+     "text": "mündlichen",
+     "size": 9.96
     },
     {
      "x": 317.37,
      "y": 444.46,
      "width": 51.98,
-     "text": "Verhandlung"
+     "text": "Verhandlung",
+     "size": 9.96
     },
     {
      "x": 375.75,
      "y": 444.46,
      "width": 12.22,
-     "text": "hat"
+     "text": "hat",
+     "size": 9.96
     },
     {
      "x": 394.45,
      "y": 444.46,
      "width": 22.7,
-     "text": "durch"
+     "text": "durch",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 433.42,
      "width": 276.8,
-     "text": "persönliche Verständigung der bekannten Beteiligten zu erfolgen."
+     "text": "persönliche Verständigung der bekannten Beteiligten zu erfolgen.",
+     "size": 9.96
     },
     {
      "x": 370.61,
      "y": 433.42,
      "width": 46.93,
-     "text": "Wenn noch"
+     "text": "Wenn noch",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 422.38,
      "width": 328.55,
-     "text": "andere Personen als Beteiligte in Betracht kommen, ist die Verhandlung überdies"
+     "text": "andere Personen als Beteiligte in Betracht kommen, ist die Verhandlung überdies",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 411.46,
      "width": 10.01,
-     "text": "an"
+     "text": "an",
+     "size": 9.96
     },
     {
      "x": 104.88,
      "y": 411.46,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 124.42,
      "y": 411.46,
      "width": 37.66,
-     "text": "Amtstafel"
+     "text": "Amtstafel",
+     "size": 9.96
     },
     {
      "x": 168.31,
      "y": 411.46,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 187.86,
      "y": 411.46,
      "width": 42.89,
-     "text": "Gemeinde,"
+     "text": "Gemeinde,",
+     "size": 9.96
     },
     {
      "x": 237.02,
      "y": 411.46,
      "width": 23.2,
-     "text": "durch"
+     "text": "durch",
+     "size": 9.96
     },
     {
      "x": 266.52,
      "y": 411.46,
      "width": 58.98,
-     "text": "Verlautbarung"
+     "text": "Verlautbarung",
+     "size": 9.96
     },
     {
      "x": 331.66,
      "y": 411.46,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 345.68,
      "y": 411.46,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 365.22,
      "y": 411.46,
      "width": 11.66,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 383.09,
      "y": 411.46,
      "width": 34.4,
-     "text": "amtliche"
+     "text": "amtliche",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 400.39,
      "width": 328.56,
-     "text": "Kundmachungen der Behörde bestimmten Zeitung oder durch Verlautbarung im"
+     "text": "Kundmachungen der Behörde bestimmten Zeitung oder durch Verlautbarung im",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 389.35,
      "width": 215.66,
-     "text": "elektronischen Amtsblatt der Behörde kundzumachen."
+     "text": "elektronischen Amtsblatt der Behörde kundzumachen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 444.46,
      "width": 20.13,
-     "text": "§ 41."
+     "text": "§ 41.",
+     "size": 9.96
     },
     {
      "x": 470.83,
      "y": 444.46,
      "width": 11.58,
-     "text": "(1)"
+     "text": "(1)",
+     "size": 9.96
     },
     {
      "x": 488.92,
      "y": 444.46,
      "width": 14.38,
-     "text": "Die"
+     "text": "Die",
+     "size": 9.96
     },
     {
      "x": 509.78,
      "y": 444.46,
      "width": 57.02,
-     "text": "Anberaumung"
+     "text": "Anberaumung",
+     "size": 9.96
     },
     {
      "x": 573.22,
      "y": 444.46,
      "width": 19.97,
-     "text": "einer"
+     "text": "einer",
+     "size": 9.96
     },
     {
      "x": 599.59,
      "y": 444.46,
      "width": 47.16,
-     "text": "mündlichen"
+     "text": "mündlichen",
+     "size": 9.96
     },
     {
      "x": 653.3,
      "y": 444.46,
      "width": 51.98,
-     "text": "Verhandlung"
+     "text": "Verhandlung",
+     "size": 9.96
     },
     {
      "x": 711.68,
      "y": 444.46,
      "width": 12.22,
-     "text": "hat"
+     "text": "hat",
+     "size": 9.96
     },
     {
      "x": 730.38,
      "y": 444.46,
      "width": 22.7,
-     "text": "durch"
+     "text": "durch",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 433.42,
      "width": 276.99,
-     "text": "persönliche Verständigung der bekannten Beteiligten zu erfolgen."
+     "text": "persönliche Verständigung der bekannten Beteiligten zu erfolgen.",
+     "size": 9.96
     },
     {
      "x": 706.54,
      "y": 433.42,
      "width": 46.93,
-     "text": "Wenn noch"
+     "text": "Wenn noch",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 422.38,
      "width": 326.53,
-     "text": "andere Personen als Beteiligte in Betracht kommen, ist die Verhandlung überdies"
+     "text": "andere Personen als Beteiligte in Betracht kommen, ist die Verhandlung überdies",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 376.39,
      "width": 7.53,
-     "text": "1."
+     "text": "1.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 376.39,
      "width": 272.5,
-     "text": "durch Verlautbarung im Rechtsinformationssystem des Bundes oder"
+     "text": "durch Verlautbarung im Rechtsinformationssystem des Bundes oder",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 361.39,
      "width": 7.53,
-     "text": "2."
+     "text": "2.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 361.39,
      "width": 294.97,
-     "text": "durch Verlautbarung in der für amtliche Kundmachungen der Behörde"
+     "text": "durch Verlautbarung in der für amtliche Kundmachungen der Behörde",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 350.35,
      "width": 286.56,
-     "text": "bestimmten Zeitung oder im elektronischen Amtsblatt der Behörde oder"
+     "text": "bestimmten Zeitung oder im elektronischen Amtsblatt der Behörde oder",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 337.39,
      "width": 7.53,
-     "text": "3."
+     "text": "3.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 337.39,
      "width": 124.92,
-     "text": "an der Amtstafel der Gemeinde"
+     "text": "an der Amtstafel der Gemeinde",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 320.35,
      "width": 61.95,
-     "text": "kundzumachen."
+     "text": "kundzumachen.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 305.35,
      "width": 21.74,
-     "text": "(2) ..."
+     "text": "(2) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 305.35,
      "width": 21.74,
-     "text": "(2) ..."
+     "text": "(2) ...",
+     "size": 9.96
     },
     {
      "x": 220.46,
      "y": 290.35,
      "width": 64.98,
-     "text": "Großverfahren"
+     "text": "Großverfahren",
+     "size": 9.96
     },
     {
      "x": 556.39,
      "y": 290.35,
      "width": 64.98,
-     "text": "Großverfahren"
+     "text": "Großverfahren",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 275.33,
      "width": 25.03,
-     "text": "§ 44a."
+     "text": "§ 44a.",
+     "size": 9.96
     },
     {
      "x": 142.58,
      "y": 275.33,
      "width": 11.58,
-     "text": "(1)"
+     "text": "(1)",
+     "size": 9.96
     },
     {
      "x": 163.31,
      "y": 275.33,
      "width": 18.18,
-     "text": "Sind"
+     "text": "Sind",
+     "size": 9.96
     },
     {
      "x": 190.65,
      "y": 275.33,
      "width": 9.4,
-     "text": "an"
+     "text": "an",
+     "size": 9.96
     },
     {
      "x": 209.12,
      "y": 275.33,
      "width": 19.97,
-     "text": "einer"
+     "text": "einer",
+     "size": 9.96
     },
     {
      "x": 238.15,
      "y": 275.33,
      "width": 73.26,
-     "text": "Verwaltungssache"
+     "text": "Verwaltungssache",
+     "size": 9.96
     },
     {
      "x": 320.53,
      "y": 275.33,
      "width": 17.69,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 347.27,
      "y": 275.33,
      "width": 9.3,
-     "text": "an"
+     "text": "an",
+     "size": 9.96
     },
     {
      "x": 365.73,
      "y": 275.33,
      "width": 51.59,
-     "text": "verbundenen"
+     "text": "verbundenen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 264.41,
      "width": 221.71,
-     "text": "Verwaltungssachen voraussichtlich insgesamt mehr als"
+     "text": "Verwaltungssachen voraussichtlich insgesamt mehr als",
+     "size": 9.96
     },
     {
      "x": 313.37,
      "y": 264.41,
      "width": 14.93,
-     "text": "100"
+     "text": "100",
+     "size": 9.96
     },
     {
      "x": 331.13,
      "y": 264.41,
      "width": 86.38,
-     "text": "Personen beteiligt, so"
+     "text": "Personen beteiligt, so",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 253.37,
      "width": 292.74,
-     "text": "kann die Behörde den Antrag oder die Anträge durch Edikt kundmachen."
+     "text": "kann die Behörde den Antrag oder die Anträge durch Edikt kundmachen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 275.33,
      "width": 25.03,
-     "text": "§ 44a."
+     "text": "§ 44a.",
+     "size": 9.96
     },
     {
      "x": 478.51,
      "y": 275.33,
      "width": 11.58,
-     "text": "(1)"
+     "text": "(1)",
+     "size": 9.96
     },
     {
      "x": 499.24,
      "y": 275.33,
      "width": 18.18,
-     "text": "Sind"
+     "text": "Sind",
+     "size": 9.96
     },
     {
      "x": 526.58,
      "y": 275.33,
      "width": 9.4,
-     "text": "an"
+     "text": "an",
+     "size": 9.96
     },
     {
      "x": 545.05,
      "y": 275.33,
      "width": 19.97,
-     "text": "einer"
+     "text": "einer",
+     "size": 9.96
     },
     {
      "x": 574.08,
      "y": 275.33,
      "width": 73.26,
-     "text": "Verwaltungssache"
+     "text": "Verwaltungssache",
+     "size": 9.96
     },
     {
      "x": 656.46,
      "y": 275.33,
      "width": 17.69,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 683.2,
      "y": 275.33,
      "width": 9.3,
-     "text": "an"
+     "text": "an",
+     "size": 9.96
     },
     {
      "x": 701.66,
      "y": 275.33,
      "width": 51.8,
-     "text": "verbundenen"
+     "text": "verbundenen",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 264.41,
      "width": 224.22,
-     "text": "Verwaltungssachen voraussichtlich insgesamt mehr als"
+     "text": "Verwaltungssachen voraussichtlich insgesamt mehr als",
+     "size": 9.96
     },
     {
      "x": 652.42,
      "y": 264.41,
      "width": 9.9,
-     "text": "50"
+     "text": "50",
+     "size": 9.96
     },
     {
      "x": 665.74,
      "y": 264.41,
      "width": 87.71,
-     "text": "Personen beteiligt, so"
+     "text": "Personen beteiligt, so",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 253.37,
      "width": 292.74,
-     "text": "kann die Behörde den Antrag oder die Anträge durch Edikt kundmachen."
+     "text": "kann die Behörde den Antrag oder die Anträge durch Edikt kundmachen.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 238.37,
      "width": 21.74,
-     "text": "(2) ..."
+     "text": "(2) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 238.37,
      "width": 21.74,
-     "text": "(2) ..."
+     "text": "(2) ...",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 225.41,
      "width": 42.02,
-     "text": "1. bis 3. ..."
+     "text": "1. bis 3. ...",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 225.41,
      "width": 42.02,
-     "text": "1. bis 3. ..."
+     "text": "1. bis 3. ...",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 212.45,
      "width": 64.39,
-     "text": "4. den Hinweis,"
+     "text": "4. den Hinweis,",
+     "size": 9.96
     },
     {
      "x": 180.5,
      "y": 212.45,
      "width": 15.06,
-     "text": "daß"
+     "text": "daß",
+     "size": 9.96
     },
     {
      "x": 199.46,
      "y": 212.45,
      "width": 217.75,
-     "text": "die Kundmachungen und Zustellungen im Verfahren"
+     "text": "die Kundmachungen und Zustellungen im Verfahren",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 201.41,
      "width": 173.36,
-     "text": "durch Edikt vorgenommen werden können."
+     "text": "durch Edikt vorgenommen werden können.",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 212.45,
      "width": 64.02,
-     "text": "4. den Hinweis,"
+     "text": "4. den Hinweis,",
+     "size": 9.96
     },
     {
      "x": 515.71,
      "y": 212.45,
      "width": 17.78,
-     "text": "dass"
+     "text": "dass",
+     "size": 9.96
     },
     {
      "x": 536.95,
      "y": 212.45,
      "width": 216.23,
-     "text": "die Kundmachungen und Zustellungen im Verfahren"
+     "text": "die Kundmachungen und Zustellungen im Verfahren",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 201.41,
      "width": 172,
-     "text": "durch Edikt vorgenommen werden können"
+     "text": "durch Edikt vorgenommen werden können",
+     "size": 9.96
     },
     {
      "x": 633.46,
      "y": 201.41,
      "width": 119.84,
-     "text": "und der Bescheid durch Edikt"
+     "text": "und der Bescheid durch Edikt",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 190.37,
      "width": 58.48,
-     "text": "zugestellt wird"
+     "text": "zugestellt wird",
+     "size": 9.96
     },
     {
      "x": 517.03,
      "y": 190.37,
      "width": 2.49,
-     "text": "."
+     "text": ".",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 175.37,
      "width": 11.69,
-     "text": "(3)"
+     "text": "(3)",
+     "size": 9.96
     },
     {
      "x": 129.34,
      "y": 175.37,
      "width": 15.49,
-     "text": "Das"
+     "text": "Das",
+     "size": 9.96
     },
     {
      "x": 153.93,
      "y": 175.37,
      "width": 21.69,
-     "text": "Edikt"
+     "text": "Edikt",
+     "size": 9.96
     },
     {
      "x": 184.82,
      "y": 175.37,
      "width": 9.37,
-     "text": "ist"
+     "text": "ist",
+     "size": 9.96
     },
     {
      "x": 203.42,
      "y": 175.37,
      "width": 10.52,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 223.22,
      "y": 175.37,
      "width": 57.11,
-     "text": "redaktionellen"
+     "text": "redaktionellen",
+     "size": 9.96
     },
     {
      "x": 289.52,
      "y": 175.37,
      "width": 16.07,
-     "text": "Teil"
+     "text": "Teil",
+     "size": 9.96
     },
     {
      "x": 314.82,
      "y": 175.37,
      "width": 26.57,
-     "text": "zweier"
+     "text": "zweier",
+     "size": 9.96
     },
     {
      "x": 350.56,
      "y": 175.37,
      "width": 10.39,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 370.22,
      "y": 175.37,
      "width": 47.18,
-     "text": "Bundesland"
+     "text": "Bundesland",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 164.33,
      "width": 168.86,
-     "text": "weitverbreiteter Tageszeitungen und im"
+     "text": "weitverbreiteter Tageszeitungen und im",
+     "size": 9.96
     },
     {
      "x": 263.45,
      "y": 164.33,
      "width": 138.76,
-     "text": "„Amtsblatt zur Wiener Zeitung“"
+     "text": "„Amtsblatt zur Wiener Zeitung“",
+     "size": 9.96
     },
     {
      "x": 408.05,
      "y": 164.33,
      "width": 9.4,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 153.38,
      "width": 52.47,
-     "text": "verlautbaren."
+     "text": "verlautbaren.",
+     "size": 9.96
     },
     {
      "x": 147.18,
      "y": 153.38,
      "width": 9.96,
-     "text": "Ist"
+     "text": "Ist",
+     "size": 9.96
     },
     {
      "x": 163.24,
      "y": 153.38,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 177.14,
      "y": 153.38,
      "width": 14.43,
-     "text": "den"
+     "text": "den",
+     "size": 9.96
     },
     {
      "x": 197.75,
      "y": 153.38,
      "width": 99.32,
-     "text": "Verwaltungsvorschriften"
+     "text": "Verwaltungsvorschriften",
+     "size": 9.96
     },
     {
      "x": 303.22,
      "y": 153.38,
      "width": 11.69,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 321.05,
      "y": 153.38,
      "width": 12.09,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 339.27,
      "y": 153.38,
      "width": 58.91,
-     "text": "Kundmachung"
+     "text": "Kundmachung",
+     "size": 9.96
     },
     {
      "x": 404.34,
      "y": 153.38,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 142.34,
      "width": 328.9,
-     "text": "mündlichen Verhandlung eine besondere Form vorgesehen, so ist der Inhalt des"
+     "text": "mündlichen Verhandlung eine besondere Form vorgesehen, so ist der Inhalt des",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 131.3,
      "width": 328.56,
-     "text": "Edikts darüber hinaus in dieser Form kundzumachen; im übrigen kann die"
+     "text": "Edikts darüber hinaus in dieser Form kundzumachen; im übrigen kann die",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 120.38,
      "width": 230.45,
-     "text": "Behörde jede geeignete Form der Kundmachung wählen."
+     "text": "Behörde jede geeignete Form der Kundmachung wählen.",
+     "size": 9.96
     },
     {
      "x": 322.25,
      "y": 120.38,
      "width": 95.29,
-     "text": "In der Zeit vom 15. Juli"
+     "text": "In der Zeit vom 15. Juli",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 109.34,
      "width": 328.84,
-     "text": "bis 25. August und vom 24. Dezember bis 6. Jänner ist die Kundmachung durch"
+     "text": "bis 25. August und vom 24. Dezember bis 6. Jänner ist die Kundmachung durch",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 98.3,
      "width": 80.78,
-     "text": "Edikt nicht zulässig."
+     "text": "Edikt nicht zulässig.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 175.37,
      "width": 11.69,
-     "text": "(3)"
+     "text": "(3)",
+     "size": 9.96
     },
     {
      "x": 465.27,
      "y": 175.37,
      "width": 15.49,
-     "text": "Das"
+     "text": "Das",
+     "size": 9.96
     },
     {
      "x": 489.86,
      "y": 175.37,
      "width": 21.69,
-     "text": "Edikt"
+     "text": "Edikt",
+     "size": 9.96
     },
     {
      "x": 520.65,
      "y": 175.37,
      "width": 9.37,
-     "text": "ist"
+     "text": "ist",
+     "size": 9.96
     },
     {
      "x": 539.25,
      "y": 175.37,
      "width": 10.52,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 559.15,
      "y": 175.37,
      "width": 57.11,
-     "text": "redaktionellen"
+     "text": "redaktionellen",
+     "size": 9.96
     },
     {
      "x": 625.45,
      "y": 175.37,
      "width": 16.07,
-     "text": "Teil"
+     "text": "Teil",
+     "size": 9.96
     },
     {
      "x": 650.75,
      "y": 175.37,
      "width": 26.57,
-     "text": "zweier"
+     "text": "zweier",
+     "size": 9.96
     },
     {
      "x": 686.49,
      "y": 175.37,
      "width": 10.39,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 706.15,
      "y": 175.37,
      "width": 47.18,
-     "text": "Bundesland"
+     "text": "Bundesland",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 164.33,
      "width": 160.37,
-     "text": "weitverbreiteter Tageszeitungen und im"
+     "text": "weitverbreiteter Tageszeitungen und im",
+     "size": 9.96
     },
     {
      "x": 587.95,
      "y": 164.33,
      "width": 153,
-     "text": "Rechtsinformationssystem des Bundes"
+     "text": "Rechtsinformationssystem des Bundes",
+     "size": 9.96
     },
     {
      "x": 744.1,
      "y": 164.33,
      "width": 9.4,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 153.38,
      "width": 52.47,
-     "text": "verlautbaren."
+     "text": "verlautbaren.",
+     "size": 9.96
     },
     {
      "x": 483.08,
      "y": 153.38,
      "width": 9.96,
-     "text": "Ist"
+     "text": "Ist",
+     "size": 9.96
     },
     {
      "x": 499.15,
      "y": 153.38,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 513.04,
      "y": 153.38,
      "width": 14.43,
-     "text": "den"
+     "text": "den",
+     "size": 9.96
     },
     {
      "x": 533.65,
      "y": 153.38,
      "width": 99.32,
-     "text": "Verwaltungsvorschriften"
+     "text": "Verwaltungsvorschriften",
+     "size": 9.96
     },
     {
      "x": 639.13,
      "y": 153.38,
      "width": 11.69,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 656.96,
      "y": 153.38,
      "width": 12.09,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 675.17,
      "y": 153.38,
      "width": 58.91,
-     "text": "Kundmachung"
+     "text": "Kundmachung",
+     "size": 9.96
     },
     {
      "x": 740.24,
      "y": 153.38,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 142.34,
      "width": 328.49,
-     "text": "mündlichen Verhandlung eine besondere Form vorgesehen, so ist der Inhalt des"
+     "text": "mündlichen Verhandlung eine besondere Form vorgesehen, so ist der Inhalt des",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 131.3,
      "width": 328.56,
-     "text": "Edikts darüber hinaus in dieser Form kundzumachen; im übrigen kann die"
+     "text": "Edikts darüber hinaus in dieser Form kundzumachen; im übrigen kann die",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 120.38,
      "width": 228.5,
-     "text": "Behörde jede geeignete Form der Kundmachung wählen."
+     "text": "Behörde jede geeignete Form der Kundmachung wählen.",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -922,1033 +1071,1205 @@
      "x": 727.06,
      "y": 554.16,
      "width": 30.06,
-     "text": "2 von 3"
+     "text": "2 von 3",
+     "size": 9.96
     },
     {
      "x": 215.06,
      "y": 497.38,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 497.38,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 482.38,
      "width": 25.65,
-     "text": "§ 44b."
+     "text": "§ 44b.",
+     "size": 9.96
     },
     {
      "x": 138.98,
      "y": 482.38,
      "width": 278.23,
-     "text": "(1) Wurde ein Antrag durch Edikt kundgemacht, so hat dies zur"
+     "text": "(1) Wurde ein Antrag durch Edikt kundgemacht, so hat dies zur",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 471.46,
      "width": 25.25,
-     "text": "Folge,"
+     "text": "Folge,",
+     "size": 9.96
     },
     {
      "x": 116.78,
      "y": 471.46,
      "width": 14.93,
-     "text": "daß"
+     "text": "daß",
+     "size": 9.96
     },
     {
      "x": 134.66,
      "y": 471.46,
      "width": 282.6,
-     "text": "Personen ihre Stellung als Partei verlieren, soweit sie nicht rechtzeitig"
+     "text": "Personen ihre Stellung als Partei verlieren, soweit sie nicht rechtzeitig",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 460.42,
      "width": 328.93,
-     "text": "bei der Behörde schriftlich Einwendungen erheben. § 42 Abs. 3 ist sinngemäß"
+     "text": "bei der Behörde schriftlich Einwendungen erheben. § 42 Abs. 3 ist sinngemäß",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 449.38,
      "width": 52.5,
-     "text": "anzuwenden."
+     "text": "anzuwenden.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 482.38,
      "width": 25.65,
-     "text": "§ 44b."
+     "text": "§ 44b.",
+     "size": 9.96
     },
     {
      "x": 474.91,
      "y": 482.38,
      "width": 278.23,
-     "text": "(1) Wurde ein Antrag durch Edikt kundgemacht, so hat dies zur"
+     "text": "(1) Wurde ein Antrag durch Edikt kundgemacht, so hat dies zur",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 471.46,
      "width": 25.25,
-     "text": "Folge,"
+     "text": "Folge,",
+     "size": 9.96
     },
     {
      "x": 452.47,
      "y": 471.46,
      "width": 17.78,
-     "text": "dass"
+     "text": "dass",
+     "size": 9.96
     },
     {
      "x": 472.87,
      "y": 471.46,
      "width": 280.32,
-     "text": "Personen ihre Stellung als Partei verlieren, soweit sie nicht rechtzeitig"
+     "text": "Personen ihre Stellung als Partei verlieren, soweit sie nicht rechtzeitig",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 460.42,
      "width": 328.95,
-     "text": "bei der Behörde schriftlich Einwendungen erheben. § 42 Abs. 3 ist sinngemäß"
+     "text": "bei der Behörde schriftlich Einwendungen erheben. § 42 Abs. 3 ist sinngemäß",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 449.38,
      "width": 52.49,
-     "text": "anzuwenden."
+     "text": "anzuwenden.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 434.38,
      "width": 21.81,
-     "text": "(2) ..."
+     "text": "(2) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 434.38,
      "width": 21.81,
-     "text": "(2) ..."
+     "text": "(2) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 419.38,
      "width": 308.87,
-     "text": "(3) § 39 Abs. 3 ist mit der Maßgabe anzuwenden, dass der Schluss des"
+     "text": "(3) § 39 Abs. 3 ist mit der Maßgabe anzuwenden, dass der Schluss des",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 408.43,
      "width": 328.59,
-     "text": "Ermittlungsverfahrens auch für einzelne Teilbereiche der Sache erklärt werden"
+     "text": "Ermittlungsverfahrens auch für einzelne Teilbereiche der Sache erklärt werden",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 397.39,
      "width": 297.3,
-     "text": "kann. § 39 Abs. 4 erster und zweiter Satz und Abs. 5 ist nicht anzuwenden."
+     "text": "kann. § 39 Abs. 4 erster und zweiter Satz und Abs. 5 ist nicht anzuwenden.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 382.39,
      "width": 25.65,
-     "text": "§ 44d."
+     "text": "§ 44d.",
+     "size": 9.96
     },
     {
      "x": 136.58,
      "y": 382.39,
      "width": 53.24,
-     "text": "(1) und (2) ..."
+     "text": "(1) und (2) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 382.39,
      "width": 25.65,
-     "text": "§ 44d."
+     "text": "§ 44d.",
+     "size": 9.96
     },
     {
      "x": 472.51,
      "y": 382.39,
      "width": 53.24,
-     "text": "(1) und (2) ..."
+     "text": "(1) und (2) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 367.39,
      "width": 308.84,
-     "text": "(3) Die Behörde kann im Edikt eine angemessene, spätestens eine Woche vor"
+     "text": "(3) Die Behörde kann im Edikt eine angemessene, spätestens eine Woche vor",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 356.35,
      "width": 328.66,
-     "text": "dem Tag der mündlichen Verhandlung endende Frist bestimmen, innerhalb derer"
+     "text": "dem Tag der mündlichen Verhandlung endende Frist bestimmen, innerhalb derer",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 345.43,
      "width": 34.34,
-     "text": "Parteien"
+     "text": "Parteien",
+     "size": 9.96
     },
     {
      "x": 465.38,
      "y": 345.43,
      "width": 8.82,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 480.72,
      "y": 345.43,
      "width": 21.04,
-     "text": "ihren"
+     "text": "ihren",
+     "size": 9.96
     },
     {
      "x": 508.3,
      "y": 345.43,
      "width": 59.26,
-     "text": "Einwendungen"
+     "text": "Einwendungen",
+     "size": 9.96
     },
     {
      "x": 574,
      "y": 345.43,
      "width": 26.57,
-     "text": "gemäß"
+     "text": "gemäß",
+     "size": 9.96
     },
     {
      "x": 607.1,
      "y": 345.43,
      "width": 22.65,
-     "text": "§ 44b"
+     "text": "§ 44b",
+     "size": 9.96
     },
     {
      "x": 636.16,
      "y": 345.43,
      "width": 24.96,
-     "text": "Abs. 1"
+     "text": "Abs. 1",
+     "size": 9.96
     },
     {
      "x": 667.53,
      "y": 345.43,
      "width": 33.16,
-     "text": "weiteres"
+     "text": "weiteres",
+     "size": 9.96
     },
     {
      "x": 707.14,
      "y": 345.43,
      "width": 46.07,
-     "text": "Vorbringen"
+     "text": "Vorbringen",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 334.39,
      "width": 328.75,
-     "text": "erstatten können. Nach Ablauf dieser Frist erstattetes Vorbringen ist von der"
+     "text": "erstatten können. Nach Ablauf dieser Frist erstattetes Vorbringen ist von der",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 323.35,
      "width": 326.3,
-     "text": "Behörde nicht zu berücksichtigen. Auf diese Rechtsfolge ist im Edikt hinzuweisen."
+     "text": "Behörde nicht zu berücksichtigen. Auf diese Rechtsfolge ist im Edikt hinzuweisen.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 308.35,
      "width": 24.53,
-     "text": "§ 44e."
+     "text": "§ 44e.",
+     "size": 9.96
     },
     {
      "x": 135.38,
      "y": 308.35,
      "width": 53.25,
-     "text": "(1) und (2) ..."
+     "text": "(1) und (2) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 308.35,
      "width": 24.53,
-     "text": "§ 44e."
+     "text": "§ 44e.",
+     "size": 9.96
     },
     {
      "x": 471.31,
      "y": 308.35,
      "width": 53.25,
-     "text": "(1) und (2) ..."
+     "text": "(1) und (2) ...",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 293.35,
      "width": 132.71,
-     "text": "(3) Die Verhandlungsschrift ist"
+     "text": "(3) Die Verhandlungsschrift ist",
+     "size": 9.96
     },
     {
      "x": 246.5,
      "y": 293.35,
      "width": 62.95,
-     "text": "spätestens eine"
+     "text": "spätestens eine",
+     "size": 9.96
     },
     {
      "x": 314.81,
      "y": 293.35,
      "width": 52.22,
-     "text": "Woche nach"
+     "text": "Woche nach",
+     "size": 9.96
     },
     {
      "x": 372.29,
      "y": 293.35,
      "width": 27.27,
-     "text": "Schluß"
+     "text": "Schluß",
+     "size": 9.96
     },
     {
      "x": 404.81,
      "y": 293.35,
      "width": 12.67,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 282.41,
      "width": 328.57,
-     "text": "mündlichen Verhandlung bei der Behörde und bei der Gemeinde während der"
+     "text": "mündlichen Verhandlung bei der Behörde und bei der Gemeinde während der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 271.37,
      "width": 52.69,
-     "text": "Amtsstunden"
+     "text": "Amtsstunden",
+     "size": 9.96
     },
     {
      "x": 147.33,
      "y": 271.37,
      "width": 66.41,
-     "text": "mindestens drei"
+     "text": "mindestens drei",
+     "size": 9.96
     },
     {
      "x": 219.73,
      "y": 271.37,
      "width": 33.27,
-     "text": "Wochen"
+     "text": "Wochen",
+     "size": 9.96
     },
     {
      "x": 259.05,
      "y": 271.37,
      "width": 12.79,
-     "text": "zur"
+     "text": "zur",
+     "size": 9.96
     },
     {
      "x": 277.85,
      "y": 271.37,
      "width": 86.9,
-     "text": "öffentlichen Einsicht"
+     "text": "öffentlichen Einsicht",
+     "size": 9.96
     },
     {
      "x": 370.74,
      "y": 271.37,
      "width": 46.48,
-     "text": "aufzulegen."
+     "text": "aufzulegen.",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 260.33,
      "width": 328.83,
-     "text": "Wurde eine Aufzeichnung oder ein Stenogramm in Vollschrift übertragen, so"
+     "text": "Wurde eine Aufzeichnung oder ein Stenogramm in Vollschrift übertragen, so",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 249.41,
      "width": 328.58,
-     "text": "können die Beteiligten während der Einsichtsfrist bei der Behörde Einwendungen"
+     "text": "können die Beteiligten während der Einsichtsfrist bei der Behörde Einwendungen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 238.37,
      "width": 26.08,
-     "text": "wegen"
+     "text": "wegen",
+     "size": 9.96
     },
     {
      "x": 123.12,
      "y": 238.37,
      "width": 46.58,
-     "text": "behaupteter"
+     "text": "behaupteter",
+     "size": 9.96
     },
     {
      "x": 178.02,
      "y": 238.37,
      "width": 71.57,
-     "text": "Unvollständigkeit"
+     "text": "Unvollständigkeit",
+     "size": 9.96
     },
     {
      "x": 257.98,
      "y": 238.37,
      "width": 17.69,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 284.11,
      "y": 238.37,
      "width": 53.13,
-     "text": "Unrichtigkeit"
+     "text": "Unrichtigkeit",
+     "size": 9.96
     },
     {
      "x": 345.61,
      "y": 238.37,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 366.82,
      "y": 238.37,
      "width": 50.41,
-     "text": "Übertragung"
+     "text": "Übertragung",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 227.33,
      "width": 329,
-     "text": "erheben. Die Beteiligten können sich von der Verhandlungsschrift Abschriften"
+     "text": "erheben. Die Beteiligten können sich von der Verhandlungsschrift Abschriften",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 216.41,
      "width": 328.56,
-     "text": "selbst anfertigen oder auf ihre Kosten Kopien oder Ausdrucke erstellen lassen."
+     "text": "selbst anfertigen oder auf ihre Kosten Kopien oder Ausdrucke erstellen lassen.",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 205.37,
      "width": 328.72,
-     "text": "Erforderlichenfalls hat die Behörde der Gemeinde eine ausreichende Anzahl von"
+     "text": "Erforderlichenfalls hat die Behörde der Gemeinde eine ausreichende Anzahl von",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 194.33,
      "width": 29.43,
-     "text": "Kopien"
+     "text": "Kopien",
+     "size": 9.96
     },
     {
      "x": 125.63,
      "y": 194.33,
      "width": 17.8,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 151.02,
      "y": 194.33,
      "width": 48.15,
-     "text": "Ausdrucken"
+     "text": "Ausdrucken",
+     "size": 9.96
     },
     {
      "x": 206.77,
      "y": 194.33,
      "width": 12.67,
-     "text": "zur"
+     "text": "zur",
+     "size": 9.96
     },
     {
      "x": 227.02,
      "y": 194.33,
      "width": 43.33,
-     "text": "Verfügung"
+     "text": "Verfügung",
+     "size": 9.96
     },
     {
      "x": 277.94,
      "y": 194.33,
      "width": 9.3,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 294.85,
      "y": 194.33,
      "width": 28.53,
-     "text": "stellen."
+     "text": "stellen.",
+     "size": 9.96
     },
     {
      "x": 330.94,
      "y": 194.33,
      "width": 21.05,
-     "text": "Nach"
+     "text": "Nach",
+     "size": 9.96
     },
     {
      "x": 359.59,
      "y": 194.33,
      "width": 37.26,
-     "text": "Maßgabe"
+     "text": "Maßgabe",
+     "size": 9.96
     },
     {
      "x": 404.42,
      "y": 194.33,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 183.41,
      "width": 328.69,
-     "text": "vorhandenen technischen Möglichkeiten hat die Behörde die Verhandlungsschrift"
+     "text": "vorhandenen technischen Möglichkeiten hat die Behörde die Verhandlungsschrift",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 172.37,
      "width": 107.39,
-     "text": "im Internet bereitzustellen."
+     "text": "im Internet bereitzustellen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 293.35,
      "width": 132.35,
-     "text": "(3) Die Verhandlungsschrift ist"
+     "text": "(3) Die Verhandlungsschrift ist",
+     "size": 9.96
     },
     {
      "x": 581.95,
      "y": 293.35,
      "width": 92.34,
-     "text": "tunlichst binnen einer"
+     "text": "tunlichst binnen einer",
+     "size": 9.96
     },
     {
      "x": 679.42,
      "y": 293.35,
      "width": 52.36,
-     "text": "Woche nach"
+     "text": "Woche nach",
+     "size": 9.96
     },
     {
      "x": 736.9,
      "y": 293.35,
      "width": 16.64,
-     "text": "dem"
+     "text": "dem",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 282.41,
      "width": 30.01,
-     "text": "Schluss"
+     "text": "Schluss",
+     "size": 9.96
     },
     {
      "x": 459.19,
      "y": 282.41,
      "width": 294.01,
-     "text": "der mündlichen Verhandlung bei der Behörde und bei der Gemeinde"
+     "text": "der mündlichen Verhandlung bei der Behörde und bei der Gemeinde",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 271.37,
      "width": 328.78,
-     "text": "während der Amtsstunden mindestens drei Wochen zur öffentlichen Einsicht"
+     "text": "während der Amtsstunden mindestens drei Wochen zur öffentlichen Einsicht",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 260.33,
      "width": 46.37,
-     "text": "aufzulegen."
+     "text": "aufzulegen.",
+     "size": 9.96
     },
     {
      "x": 477.12,
      "y": 260.33,
      "width": 27.19,
-     "text": "Wurde"
+     "text": "Wurde",
+     "size": 9.96
     },
     {
      "x": 510.55,
      "y": 260.33,
      "width": 16.65,
-     "text": "eine"
+     "text": "eine",
+     "size": 9.96
     },
     {
      "x": 533.45,
      "y": 260.33,
      "width": 56.53,
-     "text": "Aufzeichnung"
+     "text": "Aufzeichnung",
+     "size": 9.96
     },
     {
      "x": 596.27,
      "y": 260.33,
      "width": 17.69,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 620.24,
      "y": 260.33,
      "width": 12.17,
-     "text": "ein"
+     "text": "ein",
+     "size": 9.96
     },
     {
      "x": 638.71,
      "y": 260.33,
      "width": 50.92,
-     "text": "Stenogramm"
+     "text": "Stenogramm",
+     "size": 9.96
     },
     {
      "x": 695.9,
      "y": 260.33,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 709.92,
      "y": 260.33,
      "width": 43.29,
-     "text": "Vollschrift"
+     "text": "Vollschrift",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 249.41,
      "width": 328.33,
-     "text": "übertragen, so können die Beteiligten während der Einsichtsfrist bei der Behörde"
+     "text": "übertragen, so können die Beteiligten während der Einsichtsfrist bei der Behörde",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 238.37,
      "width": 59.98,
-     "text": "Einwendungen"
+     "text": "Einwendungen",
+     "size": 9.96
     },
     {
      "x": 491.26,
      "y": 238.37,
      "width": 26.08,
-     "text": "wegen"
+     "text": "wegen",
+     "size": 9.96
     },
     {
      "x": 524.13,
      "y": 238.37,
      "width": 46.58,
-     "text": "behaupteter"
+     "text": "behaupteter",
+     "size": 9.96
     },
     {
      "x": 577.6,
      "y": 238.37,
      "width": 71.58,
-     "text": "Unvollständigkeit"
+     "text": "Unvollständigkeit",
+     "size": 9.96
     },
     {
      "x": 655.89,
      "y": 238.37,
      "width": 17.69,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 680.46,
      "y": 238.37,
      "width": 53.24,
-     "text": "Unrichtigkeit"
+     "text": "Unrichtigkeit",
+     "size": 9.96
     },
     {
      "x": 740.74,
      "y": 238.37,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 227.33,
      "width": 328.58,
-     "text": "Übertragung erheben. Die Beteiligten können sich von der Verhandlungsschrift"
+     "text": "Übertragung erheben. Die Beteiligten können sich von der Verhandlungsschrift",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 216.41,
      "width": 47.17,
-     "text": "Abschriften"
+     "text": "Abschriften",
+     "size": 9.96
     },
     {
      "x": 477.71,
      "y": 216.41,
      "width": 22.69,
-     "text": "selbst"
+     "text": "selbst",
+     "size": 9.96
     },
     {
      "x": 506.38,
      "y": 216.41,
      "width": 82.79,
-     "text": "anfertigen oder auf"
+     "text": "anfertigen oder auf",
+     "size": 9.96
     },
     {
      "x": 595.18,
      "y": 216.41,
      "width": 49.69,
-     "text": "ihre Kosten"
+     "text": "ihre Kosten",
+     "size": 9.96
     },
     {
      "x": 650.92,
      "y": 216.41,
      "width": 29.2,
-     "text": "Kopien"
+     "text": "Kopien",
+     "size": 9.96
     },
     {
      "x": 686.17,
      "y": 216.41,
      "width": 17.7,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 709.88,
      "y": 216.41,
      "width": 43.27,
-     "text": "Ausdrucke"
+     "text": "Ausdrucke",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 205.37,
      "width": 33.76,
-     "text": "erstellen"
+     "text": "erstellen",
+     "size": 9.96
     },
     {
      "x": 466.34,
      "y": 205.37,
      "width": 26.84,
-     "text": "lassen."
+     "text": "lassen.",
+     "size": 9.96
     },
     {
      "x": 501.23,
      "y": 205.37,
      "width": 75.41,
-     "text": "Erforderlichenfalls"
+     "text": "Erforderlichenfalls",
+     "size": 9.96
     },
     {
      "x": 584.64,
      "y": 205.37,
      "width": 12.22,
-     "text": "hat"
+     "text": "hat",
+     "size": 9.96
     },
     {
      "x": 604.78,
      "y": 205.37,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 625.03,
      "y": 205.37,
      "width": 33.79,
-     "text": "Behörde"
+     "text": "Behörde",
+     "size": 9.96
     },
     {
      "x": 666.64,
      "y": 205.37,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 687.48,
      "y": 205.37,
      "width": 41.01,
-     "text": "Gemeinde"
+     "text": "Gemeinde",
+     "size": 9.96
     },
     {
      "x": 736.54,
      "y": 205.37,
      "width": 16.54,
-     "text": "eine"
+     "text": "eine",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 194.33,
      "width": 328.66,
-     "text": "ausreichende Anzahl von Kopien oder Ausdrucken zur Verfügung zu stellen."
+     "text": "ausreichende Anzahl von Kopien oder Ausdrucken zur Verfügung zu stellen.",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 183.41,
      "width": 328.63,
-     "text": "Nach Maßgabe der vorhandenen technischen Möglichkeiten hat die Behörde die"
+     "text": "Nach Maßgabe der vorhandenen technischen Möglichkeiten hat die Behörde die",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 172.37,
      "width": 191.42,
-     "text": "Verhandlungsschrift im Internet bereitzustellen."
+     "text": "Verhandlungsschrift im Internet bereitzustellen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 157.34,
      "width": 23.35,
-     "text": "§ 44f."
+     "text": "§ 44f.",
+     "size": 9.96
     },
     {
      "x": 471.91,
      "y": 157.34,
      "width": 281.03,
-     "text": "Die Behörde kann nach Prüfung der sachlichen und rechnerischen"
+     "text": "Die Behörde kann nach Prüfung der sachlichen und rechnerischen",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 146.3,
      "width": 43.3,
-     "text": "Richtigkeit"
+     "text": "Richtigkeit",
+     "size": 9.96
     },
     {
      "x": 474.96,
      "y": 146.3,
      "width": 16.64,
-     "text": "dem"
+     "text": "dem",
+     "size": 9.96
     },
     {
      "x": 498.91,
      "y": 146.3,
      "width": 52.67,
-     "text": "Antragsteller"
+     "text": "Antragsteller",
+     "size": 9.96
     },
     {
      "x": 558.74,
      "y": 146.3,
      "width": 23.31,
-     "text": "durch"
+     "text": "durch",
+     "size": 9.96
     },
     {
      "x": 589.31,
      "y": 146.3,
      "width": 36.03,
-     "text": "Bescheid"
+     "text": "Bescheid",
+     "size": 9.96
     },
     {
      "x": 632.58,
      "y": 146.3,
      "width": 41.33,
-     "text": "auftragen,"
+     "text": "auftragen,",
+     "size": 9.96
     },
     {
      "x": 681.13,
      "y": 146.3,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 700.55,
      "y": 146.3,
      "width": 14.45,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 722.24,
      "y": 146.3,
      "width": 14.86,
-     "text": "ihm"
+     "text": "ihm",
+     "size": 9.96
     },
     {
      "x": 744.3,
      "y": 146.3,
      "width": 8.82,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 135.38,
      "width": 162.41,
-     "text": "tragenden Barauslagen direkt zu zahlen."
+     "text": "tragenden Barauslagen direkt zu zahlen.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 120.38,
      "width": 4.98,
-     "text": "§"
+     "text": "§",
+     "size": 9.96
     },
     {
      "x": 115.94,
      "y": 120.38,
      "width": 13.4,
-     "text": "44f"
+     "text": "44f",
+     "size": 9.96
     },
     {
      "x": 129.26,
      "y": 120.38,
      "width": 2.49,
-     "text": "."
+     "text": ".",
+     "size": 9.96
     },
     {
      "x": 134.9,
      "y": 120.38,
      "width": 282.61,
-     "text": "(1) Ist der Antrag gemäß § 44a Abs. 1 kundgemacht worden, so kann"
+     "text": "(1) Ist der Antrag gemäß § 44a Abs. 1 kundgemacht worden, so kann",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 109.34,
      "width": 329.03,
-     "text": "die Behörde Schriftstücke durch Edikt zustellen. Hiezu hat sie gemäß § 44a"
+     "text": "die Behörde Schriftstücke durch Edikt zustellen. Hiezu hat sie gemäß § 44a",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 98.3,
      "width": 94.54,
-     "text": "Abs. 3 zu verlautbaren,"
+     "text": "Abs. 3 zu verlautbaren,",
+     "size": 9.96
     },
     {
      "x": 186.5,
      "y": 98.3,
      "width": 14.93,
-     "text": "daß"
+     "text": "daß",
+     "size": 9.96
     },
     {
      "x": 204.74,
      "y": 98.3,
      "width": 212.48,
-     "text": "ein Schriftstück bestimmten Inhalts bei der Behörde"
+     "text": "ein Schriftstück bestimmten Inhalts bei der Behörde",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 87.38,
      "width": 12.79,
-     "text": "zur"
+     "text": "zur",
+     "size": 9.96
     },
     {
      "x": 108.83,
      "y": 87.38,
      "width": 48.25,
-     "text": "öffentlichen"
+     "text": "öffentlichen",
+     "size": 9.96
     },
     {
      "x": 164.56,
      "y": 87.38,
      "width": 32.74,
-     "text": "Einsicht"
+     "text": "Einsicht",
+     "size": 9.96
     },
     {
      "x": 204.72,
      "y": 87.38,
      "width": 33.51,
-     "text": "aufliegt;"
+     "text": "aufliegt;",
+     "size": 9.96
     },
     {
      "x": 245.65,
      "y": 87.38,
      "width": 12.79,
-     "text": "auf"
+     "text": "auf",
+     "size": 9.96
     },
     {
      "x": 265.9,
      "y": 87.38,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 285.56,
      "y": 87.38,
      "width": 60.48,
-     "text": "Bestimmungen"
+     "text": "Bestimmungen",
+     "size": 9.96
     },
     {
      "x": 353.54,
      "y": 87.38,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 374.27,
      "y": 87.38,
      "width": 26.28,
-     "text": "Abs. 2"
+     "text": "Abs. 2",
+     "size": 9.96
     },
     {
      "x": 408.03,
      "y": 87.38,
      "width": 9.37,
-     "text": "ist"
+     "text": "ist",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 120.38,
      "width": 4.98,
-     "text": "§"
+     "text": "§",
+     "size": 9.96
     },
     {
      "x": 451.87,
      "y": 120.38,
      "width": 15.06,
-     "text": "44g"
+     "text": "44g",
+     "size": 9.96
     },
     {
      "x": 466.87,
      "y": 120.38,
      "width": 2.49,
-     "text": "."
+     "text": ".",
+     "size": 9.96
     },
     {
      "x": 472.39,
      "y": 120.38,
      "width": 280.95,
-     "text": "(1) Ist der Antrag gemäß § 44a Abs. 1 kundgemacht worden, so kann"
+     "text": "(1) Ist der Antrag gemäß § 44a Abs. 1 kundgemacht worden, so kann",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 109.34,
      "width": 329.05,
-     "text": "die Behörde Schriftstücke durch Edikt zustellen. Hiezu hat sie gemäß § 44a"
+     "text": "die Behörde Schriftstücke durch Edikt zustellen. Hiezu hat sie gemäß § 44a",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 98.3,
      "width": 93.97,
-     "text": "Abs. 3 zu verlautbaren,"
+     "text": "Abs. 3 zu verlautbaren,",
+     "size": 9.96
     },
     {
      "x": 521.59,
      "y": 98.3,
      "width": 17.67,
-     "text": "dass"
+     "text": "dass",
+     "size": 9.96
     },
     {
      "x": 542.23,
      "y": 98.3,
      "width": 211.05,
-     "text": "ein Schriftstück bestimmten Inhalts bei der Behörde"
+     "text": "ein Schriftstück bestimmten Inhalts bei der Behörde",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 87.38,
      "width": 12.79,
-     "text": "zur"
+     "text": "zur",
+     "size": 9.96
     },
     {
      "x": 444.74,
      "y": 87.38,
      "width": 48.25,
-     "text": "öffentlichen"
+     "text": "öffentlichen",
+     "size": 9.96
     },
     {
      "x": 500.46,
      "y": 87.38,
      "width": 32.74,
-     "text": "Einsicht"
+     "text": "Einsicht",
+     "size": 9.96
     },
     {
      "x": 540.62,
      "y": 87.38,
      "width": 33.35,
-     "text": "aufliegt;"
+     "text": "aufliegt;",
+     "size": 9.96
     },
     {
      "x": 581.38,
      "y": 87.38,
      "width": 12.79,
-     "text": "auf"
+     "text": "auf",
+     "size": 9.96
     },
     {
      "x": 601.63,
      "y": 87.38,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 621.29,
      "y": 87.38,
      "width": 60.48,
-     "text": "Bestimmungen"
+     "text": "Bestimmungen",
+     "size": 9.96
     },
     {
      "x": 689.27,
      "y": 87.38,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 710,
      "y": 87.38,
      "width": 26.48,
-     "text": "Abs. 2"
+     "text": "Abs. 2",
+     "size": 9.96
     },
     {
      "x": 743.96,
      "y": 87.38,
      "width": 9.37,
-     "text": "ist"
+     "text": "ist",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -1964,397 +2285,463 @@
      "x": 727.06,
      "y": 554.16,
      "width": 30.06,
-     "text": "3 von 3"
+     "text": "3 von 3",
+     "size": 9.96
     },
     {
      "x": 215.06,
      "y": 497.38,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 497.38,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 486.46,
      "width": 328.6,
-     "text": "hinzuweisen. Mit Ablauf von zwei Wochen nach dieser Verlautbarung gilt das"
+     "text": "hinzuweisen. Mit Ablauf von zwei Wochen nach dieser Verlautbarung gilt das",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 475.42,
      "width": 105.13,
-     "text": "Schriftstück als zugestellt."
+     "text": "Schriftstück als zugestellt.",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 486.46,
      "width": 328.97,
-     "text": "hinzuweisen. Mit Ablauf von zwei Wochen nach dieser Verlautbarung gilt das"
+     "text": "hinzuweisen. Mit Ablauf von zwei Wochen nach dieser Verlautbarung gilt das",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 475.42,
      "width": 105.13,
-     "text": "Schriftstück als zugestellt."
+     "text": "Schriftstück als zugestellt.",
+     "size": 9.96
     },
     {
      "x": 532.27,
      "y": 475.42,
      "width": 157.87,
-     "text": "Bescheide sind durch Edikt zuzustellen."
+     "text": "Bescheide sind durch Edikt zuzustellen.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 460.42,
      "width": 308.65,
-     "text": "(2) Die Behörde hat das Schriftstück während der Amtsstunden mindestens"
+     "text": "(2) Die Behörde hat das Schriftstück während der Amtsstunden mindestens",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 449.38,
      "width": 17.27,
-     "text": "acht"
+     "text": "acht",
+     "size": 9.96
     },
     {
      "x": 110.06,
      "y": 449.38,
      "width": 307.34,
-     "text": "Wochen zur öffentlichen Einsicht aufzulegen. Sie hat den Beteiligten auf"
+     "text": "Wochen zur öffentlichen Einsicht aufzulegen. Sie hat den Beteiligten auf",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 438.46,
      "width": 328.78,
-     "text": "Verlangen Ausfertigungen des Schriftstückes auszufolgen und den Parteien auf"
+     "text": "Verlangen Ausfertigungen des Schriftstückes auszufolgen und den Parteien auf",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 427.42,
      "width": 41.65,
-     "text": "Verlangen"
+     "text": "Verlangen",
+     "size": 9.96
     },
     {
      "x": 140.85,
      "y": 427.42,
      "width": 52.09,
-     "text": "unverzüglich"
+     "text": "unverzüglich",
+     "size": 9.96
     },
     {
      "x": 203.54,
      "y": 427.42,
      "width": 49.13,
-     "text": "zuzusenden."
+     "text": "zuzusenden.",
+     "size": 9.96
     },
     {
      "x": 263.13,
      "y": 427.42,
      "width": 21.05,
-     "text": "Nach"
+     "text": "Nach",
+     "size": 9.96
     },
     {
      "x": 294.78,
      "y": 427.42,
      "width": 37.04,
-     "text": "Maßgabe"
+     "text": "Maßgabe",
+     "size": 9.96
     },
     {
      "x": 342.38,
      "y": 427.42,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 365.75,
      "y": 427.42,
      "width": 51.48,
-     "text": "vorhandenen"
+     "text": "vorhandenen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 416.38,
      "width": 312.76,
-     "text": "technischen Möglichkeiten hat sie das Schriftstück im Internet bereitzustellen."
+     "text": "technischen Möglichkeiten hat sie das Schriftstück im Internet bereitzustellen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 460.42,
      "width": 309.05,
-     "text": "(2) Die Behörde hat das Schriftstück während der Amtsstunden mindestens"
+     "text": "(2) Die Behörde hat das Schriftstück während der Amtsstunden mindestens",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 449.38,
      "width": 21.62,
-     "text": "sechs"
+     "text": "sechs",
+     "size": 9.96
     },
     {
      "x": 449.95,
      "y": 449.38,
      "width": 303.43,
-     "text": "Wochen zur öffentlichen Einsicht aufzulegen. Sie hat den Beteiligten auf"
+     "text": "Wochen zur öffentlichen Einsicht aufzulegen. Sie hat den Beteiligten auf",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 438.46,
      "width": 328.65,
-     "text": "Verlangen Ausfertigungen des Schriftstückes auszufolgen und den Parteien auf"
+     "text": "Verlangen Ausfertigungen des Schriftstückes auszufolgen und den Parteien auf",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 427.42,
      "width": 41.65,
-     "text": "Verlangen"
+     "text": "Verlangen",
+     "size": 9.96
     },
     {
      "x": 476.76,
      "y": 427.42,
      "width": 52.09,
-     "text": "unverzüglich"
+     "text": "unverzüglich",
+     "size": 9.96
     },
     {
      "x": 539.45,
      "y": 427.42,
      "width": 49.13,
-     "text": "zuzusenden."
+     "text": "zuzusenden.",
+     "size": 9.96
     },
     {
      "x": 599.04,
      "y": 427.42,
      "width": 21.05,
-     "text": "Nach"
+     "text": "Nach",
+     "size": 9.96
     },
     {
      "x": 630.68,
      "y": 427.42,
      "width": 37.04,
-     "text": "Maßgabe"
+     "text": "Maßgabe",
+     "size": 9.96
     },
     {
      "x": 678.29,
      "y": 427.42,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 701.66,
      "y": 427.42,
      "width": 51.48,
-     "text": "vorhandenen"
+     "text": "vorhandenen",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 416.38,
      "width": 312.89,
-     "text": "technischen Möglichkeiten hat sie das Schriftstück im Internet bereitzustellen."
+     "text": "technischen Möglichkeiten hat sie das Schriftstück im Internet bereitzustellen.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 401.35,
      "width": 25.03,
-     "text": "§ 44g."
+     "text": "§ 44g.",
+     "size": 9.96
     },
     {
      "x": 137.06,
      "y": 401.35,
      "width": 280.06,
-     "text": "Die Kosten der Verlautbarung des Edikts im „Amtsblatt zur Wiener"
+     "text": "Die Kosten der Verlautbarung des Edikts im „Amtsblatt zur Wiener",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 390.43,
      "width": 165.17,
-     "text": "Zeitung“ sind von Amts wegen zu tragen."
+     "text": "Zeitung“ sind von Amts wegen zu tragen.",
+     "size": 9.96
     },
     {
      "x": 224.66,
      "y": 375.43,
      "width": 56.68,
-     "text": "Inkrafttreten"
+     "text": "Inkrafttreten",
+     "size": 9.96
     },
     {
      "x": 560.59,
      "y": 375.43,
      "width": 56.68,
-     "text": "Inkrafttreten"
+     "text": "Inkrafttreten",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 360.43,
      "width": 20.13,
-     "text": "§ 82."
+     "text": "§ 82.",
+     "size": 9.96
     },
     {
      "x": 130.94,
      "y": 360.43,
      "width": 55.01,
-     "text": "(1) bis (26) ..."
+     "text": "(1) bis (26) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 360.43,
      "width": 20.13,
-     "text": "§ 82."
+     "text": "§ 82.",
+     "size": 9.96
     },
     {
      "x": 466.87,
      "y": 360.43,
      "width": 55.01,
-     "text": "(1) bis (26) ..."
+     "text": "(1) bis (26) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 345.43,
      "width": 309.11,
-     "text": "(27) § 41 Abs. 1, § 44a Abs. 1 bis 3, § 44b Abs. 1 und 3, § 44d Abs. 3, § 44e"
+     "text": "(27) § 41 Abs. 1, § 44a Abs. 1 bis 3, § 44b Abs. 1 und 3, § 44d Abs. 3, § 44e",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 334.39,
      "width": 328.95,
-     "text": "Abs. 3, § 44f, die Paragraphenbezeichnung des § 44g und § 44g Abs. 1 und 2 in"
+     "text": "Abs. 3, § 44f, die Paragraphenbezeichnung des § 44g und § 44g Abs. 1 und 2 in",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 323.35,
      "width": 328.99,
-     "text": "der Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025 treten mit 1. Jänner 2026"
+     "text": "der Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025 treten mit 1. Jänner 2026",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 312.43,
      "width": 328.9,
-     "text": "in Kraft; gleichzeitig tritt § 44g außer Kraft. In am 1. Jänner 2026 anhängigen"
+     "text": "in Kraft; gleichzeitig tritt § 44g außer Kraft. In am 1. Jänner 2026 anhängigen",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 301.39,
      "width": 328.95,
-     "text": "Verfahren, auf die die Voraussetzungen des § 44a Abs. 1 nicht zutreffen, kann die"
+     "text": "Verfahren, auf die die Voraussetzungen des § 44a Abs. 1 nicht zutreffen, kann die",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 290.35,
      "width": 328.92,
-     "text": "Behörde Schriftstücke an mehr als 50 Personen auch dann gemäß § 44g in der"
+     "text": "Behörde Schriftstücke an mehr als 50 Personen auch dann gemäß § 44g in der",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 279.41,
      "width": 328.84,
-     "text": "Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025 durch Edikt zustellen, wenn"
+     "text": "Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025 durch Edikt zustellen, wenn",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 268.37,
      "width": 20.52,
-     "text": "diese"
+     "text": "diese",
+     "size": 9.96
     },
     {
      "x": 452.07,
      "y": 268.37,
      "width": 42.15,
-     "text": "persönlich"
+     "text": "persönlich",
+     "size": 9.96
     },
     {
      "x": 501.34,
      "y": 268.37,
      "width": 44.97,
-     "text": "verständigt"
+     "text": "verständigt",
+     "size": 9.96
     },
     {
      "x": 553.37,
      "y": 268.37,
      "width": 29.91,
-     "text": "worden"
+     "text": "worden",
+     "size": 9.96
     },
     {
      "x": 590.42,
      "y": 268.37,
      "width": 19.15,
-     "text": "sind,"
+     "text": "sind,",
+     "size": 9.96
     },
     {
      "x": 616.67,
      "y": 268.37,
      "width": 17.67,
-     "text": "dass"
+     "text": "dass",
+     "size": 9.96
     },
     {
      "x": 641.38,
      "y": 268.37,
      "width": 36.05,
-     "text": "(weitere)"
+     "text": "(weitere)",
+     "size": 9.96
     },
     {
      "x": 684.55,
      "y": 268.37,
      "width": 51.6,
-     "text": "Zustellungen"
+     "text": "Zustellungen",
+     "size": 9.96
     },
     {
      "x": 743.29,
      "y": 268.37,
      "width": 9.96,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 257.33,
      "width": 328.57,
-     "text": "Verfahren durch Edikt vorgenommen werden können. In anhängigen Verfahren,"
+     "text": "Verfahren durch Edikt vorgenommen werden können. In anhängigen Verfahren,",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 246.41,
      "width": 328.88,
-     "text": "in denen der Antrag bereits gemäß § 44a kundgemacht worden ist, hat keine"
+     "text": "in denen der Antrag bereits gemäß § 44a kundgemacht worden ist, hat keine",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 235.37,
      "width": 328.77,
-     "text": "neuerliche Kundmachung des Antrages zu erfolgen; § 44a Abs. 3 erster Satz,"
+     "text": "neuerliche Kundmachung des Antrages zu erfolgen; § 44a Abs. 3 erster Satz,",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 224.33,
      "width": 328.77,
-     "text": "§ 44d Abs. 3 und § 44g Abs. 1 letzter Satz in der Fassung des Bundesgesetzes"
+     "text": "§ 44d Abs. 3 und § 44g Abs. 1 letzter Satz in der Fassung des Bundesgesetzes",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 213.41,
      "width": 328.87,
-     "text": "BGBl. I Nr. xxx/2025 sind nach Ablauf der gemäß § 44a Abs. 2 Z 2 gesetzten"
+     "text": "BGBl. I Nr. xxx/2025 sind nach Ablauf der gemäß § 44a Abs. 2 Z 2 gesetzten",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 202.37,
      "width": 328.85,
-     "text": "Frist mit der Maßgabe anzuwenden, dass die Parteien persönlich davon zu"
+     "text": "Frist mit der Maßgabe anzuwenden, dass die Parteien persönlich davon zu",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 191.33,
      "width": 328.56,
-     "text": "verständigen sind, dass weitere Edikte auch im Rechtsinformationssystem des"
+     "text": "verständigen sind, dass weitere Edikte auch im Rechtsinformationssystem des",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 180.41,
      "width": 328.63,
-     "text": "Bundes, jedoch nicht mehr im „Amtsblatt zur Wiener Zeitung“ verlautbart"
+     "text": "Bundes, jedoch nicht mehr im „Amtsblatt zur Wiener Zeitung“ verlautbart",
+     "size": 9.96
     },
     {
      "x": 424.49,
      "y": 169.37,
      "width": 214.09,
-     "text": "werden und der Bescheid durch Edikt zugestellt wird."
+     "text": "werden und der Bescheid durch Edikt zugestellt wird.",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -2624,7 +3011,8 @@
     "text": "Inkrafttreten § 78 Abs. 2 in der Fassung des Bundesgesetzes BGBl. Nr. 866/1992 tritt mit 1. Jänner 1993 in Kraft. § 18 Abs. 3 fünfter bis neunter Satz, § 18 Abs. 4 zweiter Satz, § 38a, § 39a Abs. 1 zweiter Satz, § 47, § 51a, § 52 Abs. 2 bis 4, § 53a Abs. 1, § 63 Abs. 5, § 64a Abs. 1, § 67c Abs. 3 sowie die Neubezeichnung der Abs. 4 und 5, § 67d Abs. 2, § 67g, § 67h samt Überschrift, § 68 Abs. 2, § 70 Abs. 3, § 71 Abs. 6, § 73 Abs. 1 und 3, § 76 Abs. 1 zweiter und dritter Satz, § 76 Abs. 5, § 76a, die Überschrift vor § 79b, die Neubezeichnung des § 79b Abs. 1 sowie die Überschrift vor § 80 in der Fassung des Bundesgesetzes BGBl. Nr. 471/1995 treten mit 1. Juli 1995 in Kraft. § 79a in der Fassung des Bundesgesetzes BGBl. Nr. 471/1995 tritt mit 1. Jänner 1996 in Kraft. Verordnungen auf Grund des § 79a in der Fassung des Bundesgesetzes BGBl. Nr. 471/1995 können bereits ab dem auf seine Kundmachung folgenden Tag erlassen werden; sie dürfen jedoch frühestens mit dem 1. Jänner 1996 in Kraft gesetzt werden. § 63 Abs. 5 in der Fassung des Bundesgesetzes BGBl. Nr. 471/1995 gilt für Bescheide, die nach dem 30. Juni 1995 erlassen werden. § 67c Abs. 3 in der Fassung des Bundesgesetzes BGBl. Nr. 471/1995 gilt für Verwaltungsakte, die nach dem 30. Juni 1995 gesetzt werden. Die §§ 3 Z 3, 10 Abs. 1, 13 samt Überschrift, 14 samt Überschrift, 18 Abs. 3 und 4, 20, 34 Abs. 2, 35, 36 Abs. 2, 37 zweiter Satz, 39 Abs. 2 und 3, 41 Abs. 1, 42, 43, 44, 44a bis 44g samt Überschrift, 51a bis 51d samt Überschrift, 53a samt Überschrift, 53b samt Überschrift, 56, 59 Abs. 1 erster und zweiter Satz, 61 Abs. 1 zweiter Satz, 61a, 63 Abs. 2, 64a, 66 Abs. 1 und 2, 67a samt Überschrift, 67b samt Überschrift, der neu bezeichnete § 67c Abs. 3, § 67d samt Überschrift, die Überschrift zu § 67e, die Überschrift zu § 67f, die §§ 67g samt Überschrift, 69 Abs. 2, 71 Abs. 1 Z 2, 71 Abs. 6 zweiter Satz, 73, 76 Abs. 1 erster Satz und 76a in der Fassung des Bundesgesetzes BGBl. I Nr. 158/1998 treten mit 1. Jänner 1999 in Kraft. Die §§ 61 Abs. 5, 67c Abs. 3 und 5, 67f Abs. 3, 67h samt Überschrift sowie die Telekopie-Verordnung, BGBl. Nr. 110/1991, treten mit Ablauf des 31. Dezember 1998 außer Kraft. Alle in Vorschriften des Bundes und der Länder enthaltenen Bestimmungen, die von den §§ 13 Abs. 3 bis 8, 14, 18 Abs. 3 und 4, 37 zweiter Satz, 39 Abs. 2 und 3, 42, 43, 44, 44a bis 44g, 59 Abs. 1 erster und zweiter Satz, 61 Abs. 1 zweiter Satz, 63 Abs. 2, 64a, 66 Abs. 1 und 2, 69 Abs. 2, 71 Abs. 1 Z 2, 73 Abs. 2 und 3 und 76 Abs. 1 erster Satz in der Fassung des Bundesgesetzes BGBl. I Nr. 158/1998 abweichen, treten mit Ablauf des 31. Dezember 1998 außer Kraft. Dies gilt nicht, wenn diese Bestimmungen nach dem 30. Juni 1998 kundgemacht worden sind. In am 1. Jänner 1999 anhängigen Verfahren gilt § 44f mit der Maßgabe, daß die Behörde ein Schriftstück an mehr als 100 Personen auch dann durch Edikt zustellen kann, wenn diese persönlich verständigt worden sind, daß die Kundmachungen und Zustellungen im Verfahren künftig durch Edikt vorgenommen werden können. § 78 Abs. 2 in der Fassung des Bundesgesetzes BGBl. I Nr. 29/2000 tritt mit 1. Juni 2000 in Kraft. § 13 Abs. 5, § 16 Abs. 2 letzter Satz, § 18 Abs. 3 letzter Satz, § 34 Abs. 2, § 35, § 51b Z 1 letzter Satz und Z 2 zweiter Satz, § 53a Abs. 2 erster und letzter Satz, § 67d, § 76 Abs. 4 und § 79a Abs. 4 Z 3 in der Fassung des Bundesgesetzes BGBl. I Nr. 137/2001 treten mit 1. Jänner 2002 in Kraft. Für den Übergang zu der durch das Verwaltungsreformgesetz 2001, BGBl. I Nr. 65/2002, geschaffenen Rechtslage gilt: § 13 Abs. 4a und 9, § 14 Abs. 8, § 17 Abs. 1 letzter Satz, § 39 Abs. 2a, § 40 Abs. 1 letzter Satz, § 58a, § 67a Abs. 1, § 73 Abs. 1 letzter Satz in der Fassung des Verwaltungsreformgesetzes 2001 treten mit 1. Jänner 2002, jedoch nicht vor dem der Kundmachung des genannten Bundesgesetzes folgenden Tag, in Kraft. Die §§ 39 Abs. 2a, 40 Abs. 1 letzter Satz, 58a und 73 Abs. 1 letzter Satz in der Fassung des Verwaltungsreformgesetzes 2001 sind auf Verfahren, die zum In-Kraft-Tretens-Zeitpunkt anhängig sind, nicht anzuwenden. § 67h in der Fassung des Verwaltungsreformgesetzes 2001 tritt mit 1. Juli 2002, jedoch nicht vor dem vierten der Kundmachung des genannten Gesetzes folgenden Monatsersten, in Kraft. Er ist auf Verfahren, die zum In-Kraft-Tretens-Zeitpunkt anhängig sind, nicht anzuwenden. § 36 Abs. 2 in der Fassung des Verwaltungsreformgesetzes 2001 tritt mit dem der Kundmachung des genannten Bundesgesetzes folgenden Monatsersten, spätestens jedoch mit 1. November 2002 in Kraft. § 78 Abs. 2 in der Fassung des Bundesgesetzes BGBl. I Nr. 117/2002 tritt mit 1. Jänner 2003 in Kraft. § 67a Abs. 1 in der Fassung des Bundesgesetzes BGBl. I Nr. 117/2002 tritt mit 1. Jänner 2003 in Kraft, ist jedoch auf in diesem Zeitpunkt beim unabhängigen Verwaltungssenat im Land anhängige Verfahren nicht anzuwenden. § 13 Abs. 1, 4 und 5, § 14 Abs. 2 Z 3 und Abs. 5 erster Satz, § 16 Abs. 1 und 2, § 17 Abs. 1 letzter Satz, § 18 samt Überschrift, § 33 Abs. 3 sowie § 42 Abs. 1 erster Satz, in der Fassung des Bundesgesetzes BGBl. I Nr. 10/2004, treten mit 1. März 2004 in Kraft. Zugleich treten § 13 Abs. 9 sowie § 14 Abs. 8, in der zu diesem Zeitpunkt geltenden Fassung, außer Kraft; § 13 Abs. 4a tritt mit Ablauf des 30. Juni 2004 außer Kraft. In der Fassung des Bundesgesetzes BGBl. I Nr. 4/2008 treten in Kraft: § 36 mit Ablauf des Tages der Kundmachung dieses Bundesgesetzes; § 67a, § 67c Abs. 1 und § 67h Abs. 1 mit 1. Juli 2008. § 2, § 7 Abs. 1, § 10 Abs. 1, § 11, § 13 Abs. 1 bis 6, § 14 Abs. 2 Z 2, Abs. 3 erster Satz, Abs. 5 und Abs. 7 erster und zweiter Satz, § 16 samt Überschrift, § 17 Abs. 1, § 18 samt Überschrift, § 19 Abs. 3, § 33 Abs. 3, der 7. Abschnitt des I. Teiles, § 39a Abs. 1 erster Satz, § 42 Abs. 1 erster Satz, § 44b Abs. 2, § 44e Abs. 3 dritter Satz, § 48 Z 3, § 49 Abs. 1, § 67h Abs. 2, § 74 Abs. 2, § 77 Abs. 2 und 3, § 78 Abs. 3 und 5, § 78a, § 80a samt Überschrift und § 82a in der Fassung des Bundesgesetzes BGBl. I Nr. 5/2008 treten mit 1. Jänner 2008 in Kraft. Mit Ablauf des 31. Dezember 2007 treten außer Kraft: § 14 Abs. 2 Z 3; das AVG-Übergangsrecht 1991, Anlage 2 zur Kundmachung BGBl. Nr. 51/1991; § 2 Abs. 3 der Bundesverwaltungsabgabenverordnung 1983, BGBl. Nr. 24. § 13 Abs. 5 letzter Satz tritt mit Ablauf des 31. Dezember 2010 außer Kraft. § 10 Abs. 4 sowie § 36a Abs. 1 Z 4 bis 6 und Abs. 3 in der Fassung des Bundesgesetzes BGBl. I Nr. 135/2009 treten mit 1. Jänner 2010 in Kraft. § 44a Abs. 3 in der Fassung des Budgetbegleitgesetzes 2011, BGBl. I Nr. 111/2010, tritt mit 1. Jänner 2011 in Kraft. § 3 Z 2, § 10 Abs. 4, § 13 Abs. 5, § 38a Abs. 1, § 41 Abs. 1, § 61a Z 3 und 4, § 81 samt Überschrift und § 82 Abs. 6 erster Satz in der Fassung des Bundesgesetzes BGBl. I Nr. 100/2011 treten mit 1. Jänner 2012 in Kraft. In der Fassung des Bundesgesetzes BGBl. I Nr. 33/2013 treten in Kraft: § 33 Abs. 1 und 2, § 38 zweiter Satz, § 41 Abs. 1 zweiter Satz, § 42 Abs. 1a und § 69 Abs. 1 Z 3 in der Fassung der Z 28 mit Ablauf des Monats der Kundmachung dieses Bundesgesetzes; gleichzeitig treten § 42 Abs. 1 letzter Satz, § 44a Abs. 3 dritter Satz und § 82a außer Kraft; § 2, § 17 Abs. 4, § 19 Abs. 4, § 44e Abs. 2, § 53 Abs. 2, § 53a Abs. 2 erster Satz und Abs. 3, § 53b letzter Satz, § 61 Abs. 1 und 4, § 63 Abs. 1 und 2, § 64, die Abschnittsbezeichnung \"2. Abschnitt:\", § 68 Abs. 2 und 3, § 69 Abs. 1 Z 3 und 4 in der Fassung der Z 29, § 69 Abs. 4, die Abschnittsbezeichnung \"3. Abschnitt:\", § 73 Abs. 2 und 3 und § 78 Abs. 4 mit 1. Jänner 2014; gleichzeitig treten § 19 Abs. 1 zweiter Satz, die §§ 51a bis 51d samt Überschrift, § 53a Abs. 4, § 61a, der 2. Abschnitt des IV. Teiles samt Überschrift, § 70 Abs. 3, § 71 Abs. 6 zweiter Satz, § 72 Abs. 4, § 76a und § 79a samt Überschrift außer Kraft. § 53a Abs. 1 und § 53b in der Fassung des Bundesgesetzes BGBl. I Nr. 161/2013 treten mit Ablauf des Monats der Kundmachung dieses Bundesgesetzes in Kraft. § 13 Abs. 8, § 36a Abs. 2 und 3, § 39 Abs. 2a bis 5, § 40 Abs. 1, § 41 Abs. 2, § 51a samt Überschrift, § 58a und § 73 Abs. 1 in der Fassung des Bundesgesetzes BGBl. I Nr. 57/2018 treten mit Ablauf des Tages der Kundmachung in Kraft. § 7 Abs. 1 Z 1, § 10 Abs. 1, § 11 und § 49 Abs. 1 Z 1 in der Fassung des Bundesgesetzes BGBl. I Nr. 58/2018 treten mit 1. August 2018 in Kraft. § 21, § 33 Abs. 3, § 41 Abs. 2, § 43a, § 44, § 71 Abs. 1 Z 1 und Abs. 2 und § 78a Z 2 in der Fassung des Bundesgesetzes BGBl. I Nr. 88/2023 treten mit Ablauf des Tages der Kundmachung des genannten Bundesgesetzes in Kraft. § 55a samt Überschrift in der Fassung des Bundesgesetzes BGBl. I Nr. 157/2024 tritt mit Ablauf des Tages der Kundmachung des genannten Bundesgesetzes in Kraft. § 48 Z 3, die Überschrift zu § 53 und § 53 Abs. 3 in der Fassung des Informationsfreiheits-Anpassungsgesetzes, BGBl. I Nr. 50/2025, treten mit 1. September 2025 in Kraft.",
     "heading": "Inkrafttreten"
    }
-  }
+  },
+  "acrossGap": {}
  },
  "expected": {
   "ran": true,

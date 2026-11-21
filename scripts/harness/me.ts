@@ -3,7 +3,7 @@
  * The amendment engine on the input the *site* would give it: the
  * Novellierungsanordnungen of a Ministerialentwurf.
  *
- * Usage:  npx vite-node scripts/harness/me.ts --discover=40 [--cache] [--quiet]
+ * Usage:  npx vite-node -c vitest.config.ts scripts/harness/me.ts --discover=40 [--cache] [--quiet]
  *         npx vite-node scripts/harness/me.ts BEGUT_COO_2026_… [--oracle-debug]
  *
  * **Why a second harness.** `harness/kons.ts` measures BGBl → BrKons: the
@@ -44,8 +44,9 @@ import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { articleBlocks, draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
-import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
-import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
+import { getText, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
+import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
+import { resolveKonsLaw } from '../lib/productionSources'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
 import { addressedParagraphs, refusedLineUnits, refusedUnits, touchedKey, unitsByKey } from '../../server/utils/kons/konsGate'
 import { loadKey } from './konsJudge'
@@ -593,35 +594,21 @@ function missingRow(got: string, rows: readonly ComparisonRow[]): { stretch: str
 }
 
 /**
- * The law an amending Artikel names, as it stood when the consultation opened.
- *
- * The Stammnorm is the join, and the Artikel's own heading separates the laws
- * one BGBl created in the same breath. The Kurztitel lookup is the fallback
- * for a law whose Stammnorm is not a Bundesgesetzblatt at all — the ABGB is
- * JGS Nr. 946/1811, the ZPO RGBl. Nr. 113/1895 — and it fails for exactly
- * those laws, because RIS carries them under their abbreviation ("ZPO") while
- * the Artikel says "Änderung der Zivilprozessordnung". Measured and left
- * failing on purpose: a name the lookup cannot confirm must not become a
- * confident wrong law.
+ * The law an amending Artikel names, as it stood when the consultation
+ * opened — found as the page finds it (`resolveKonsLaw`, 21.11.2026): the
+ * Stammnorm with the draft's clause, and a clause that cites no Stammnorm
+ * looked up by its name, on the day as it stood (`standingOnDay`). Until
+ * then this bench joined by `resolveLawByBgbl` without the clause and fell
+ * back on a Kurztitel lookup the page never makes, so it scored laws the
+ * page does not find and missed ones it does. A failed lookup throws, and
+ * the draft is reported as not read, not as one without a law.
  */
 async function resolveLaw(article: DraftArticle, date: string): Promise<{ gesetzesnummer: string; kurztitel: string; paragraphs: Record<string, KonsParagraphRef> } | string> {
-  if (article.bgbl) {
-    const law = await resolveLawByBgbl(article.bgbl, date, article.title)
-    if (law) return law
-  }
-  // "Änderung des Glücksspielgesetzes" → "Glücksspielgesetz": the heading is
-  // a sentence about the Artikel, the lookup wants the law's own name.
-  const name = article.title?.replace(/^Änderungen?\s+(?:des|der|der\s+)?\s*/i, '').replace(/(?<=.{5})(?:es|s)$/, '').trim()
-  if (name) {
-    const gesetzesnummer = await resolveGesetzesnummer(name)
-    if (gesetzesnummer) {
-      const law = await fetchLawAsOf(gesetzesnummer, date)
-      const paragraphs: Record<string, KonsParagraphRef> = {}
-      for (const p of law.paragraphs) paragraphs[p.label] ??= p
-      if (Object.keys(paragraphs).length > 0) return { gesetzesnummer, kurztitel: law.kurztitel || name, paragraphs }
-    }
-  }
-  return article.bgbl ? 'Stammnorm zitiert, im BrKons nicht auflösbar' : 'Promulgationsklausel ohne BGBl-Stammnorm'
+  const law = article.bgbl
+    ? await resolveKonsLaw(article.bgbl.organ, article.bgbl.nummer, date, article.title ?? '', article.clause)
+    : article.clause ? await resolveKonsLaw('', '', date, article.title ?? '', article.clause) : null
+  if (law) return law
+  return article.bgbl ? 'Stammnorm zitiert, im BrKons nicht auflösbar' : article.clause ? 'Promulgationsklausel ohne BGBl-Stammnorm, Name im BrKons nicht auflösbar' : 'Promulgationsklausel ohne BGBl-Stammnorm'
 }
 
 // --- CLI ----------------------------------------------------------------------
@@ -645,15 +632,18 @@ const drafts: Draft[] = wanted !== null
   : (await Promise.all(ids.map(fetchDraft))).filter((d): d is Draft => d !== null)
 
 if (drafts.length === 0) {
-  console.error('Usage: npx vite-node scripts/harness/me.ts --discover=N [--cache] | <BEGUT-ID> …')
+  console.error('Usage: npx vite-node -c vitest.config.ts scripts/harness/me.ts --discover=N [--cache] | <BEGUT-ID> …')
   process.exit(1)
 }
 
 const results: LawResult[] = []
+/** Drafts whose reading threw — a failed RIS lookup among them — and are in no figure below. */
+let unreachedDrafts = 0
 for (const draft of drafts) {
   try {
     results.push(...(await verifyDraft(draft)))
   } catch (err) {
+    unreachedDrafts++
     console.log(`\n${draft.id}: ${String(err)}`)
   }
 }
@@ -665,7 +655,7 @@ const dates = drafts.map((d) => d.beginn).sort()
 console.log(`\n${'='.repeat(78)}`)
 // What the run was asked for, beside what it reached — see `wanted` above.
 const corpus = wanted === null ? `${drafts.length} explizit genannt` : `--discover=${wanted} → ${drafts.length} geladen`
-console.log(`ME-Prüfstand über ${drafts.length} Entwürfe (${dates[0]} bis ${dates[dates.length - 1]}) [Korpus: ${corpus}], ${results.length} geänderte Gesetze, ${scored.length} davon auflösbar`)
+console.log(`ME-Prüfstand über ${drafts.length} Entwürfe (${dates[0]} bis ${dates[dates.length - 1]}) [Korpus: ${corpus}${unreachedDrafts ? `, ${unreachedDrafts} nicht erreicht` : ''}], ${results.length} geänderte Gesetze, ${scored.length} davon auflösbar`)
 console.log(`  Anweisungen            : ${results.reduce((n, r) => n + r.instructions, 0)} (in den auflösbaren: ${sum((r) => r.instructions)})`)
 console.log(`  grammatikalisch gelesen: ${sum((r) => r.read)} (${pct(sum((r) => r.read), sum((r) => r.instructions))})`)
 console.log(`  angewendet             : ${sum((r) => r.applied)} (${pct(sum((r) => r.applied), sum((r) => r.instructions))})`)

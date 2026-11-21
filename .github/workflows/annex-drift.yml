@@ -119,10 +119,10 @@ jobs:
           restore-keys: harness-cache-
 
       - name: Tabellenpfad messen
-        run: npx vite-node scripts/harness/annexPdf.ts -- --gp=XXVIII --xml --limit=$LIMIT --json=annex-xml.json
+        run: npx vite-node -c vitest.config.ts scripts/harness/annexPdf.ts -- --gp=XXVIII --xml --limit=$LIMIT --json=annex-xml.json
 
       - name: PDF-Pfad messen
-        run: npx vite-node scripts/harness/annexPdf.ts -- --gp=XXVIII --limit=$LIMIT --json=annex-pdf.json
+        run: npx vite-node -c vitest.config.ts scripts/harness/annexPdf.ts -- --gp=XXVIII --limit=$LIMIT --json=annex-pdf.json
 
       # Saved straight after the measurements and with `always()`: what has
       # been fetched is fetched — even when the alarm reports a finding right

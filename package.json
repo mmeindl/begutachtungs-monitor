@@ -14,9 +14,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "harness:kons": "vite-node -c vitest.config.ts scripts/harness/kons.ts --",
-    "harness:me": "vite-node scripts/harness/me.ts --",
-    "harness:annex": "vite-node scripts/harness/annexPdf.ts --",
-    "harness:fault-injection": "vite-node scripts/harness/faultInjection.ts --",
+    "harness:me": "vite-node -c vitest.config.ts scripts/harness/me.ts --",
+    "harness:annex": "vite-node -c vitest.config.ts scripts/harness/annexPdf.ts --",
+    "harness:fault-injection": "vite-node -c vitest.config.ts scripts/harness/faultInjection.ts --",
     "harness:guard-eval": "vite-node scripts/harness/guardEval.ts --",
     "harness:segments": "vite-node scripts/harness/segments.ts --",
     "harness:land-guard": "vite-node -c vitest.config.ts scripts/harness/landGuard.ts --",
@@ -56,7 +56,7 @@
     "corpus:laender-ohne-begutachtung": "vite-node -c vitest.config.ts scripts/corpus/laenderOhneBegutachtung.ts --",
     "ci:annex-drift": "vite-node scripts/ci/annexDrift.ts --",
     "ci:ssr-smoke": "vite-node scripts/ci/ssrSmoke.ts --",
-    "ci:gate-record": "vite-node scripts/ci/gateGoldenRecord.ts --",
+    "ci:gate-record": "vite-node -c vitest.config.ts scripts/ci/gateGoldenRecord.ts --",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {

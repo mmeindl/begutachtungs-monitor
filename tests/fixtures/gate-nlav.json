@@ -18,673 +18,785 @@
      "x": 727.08,
      "y": 554.16,
      "width": 30.06,
-     "text": "1 von 7"
+     "text": "1 von 7",
+     "size": 9.96
     },
     {
      "x": 367.49,
      "y": 497.38,
      "width": 107.02,
-     "text": "Textgegenüberstellung"
+     "text": "Textgegenüberstellung",
+     "size": 11.04
     },
     {
      "x": 215.06,
      "y": 474.46,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 474.46,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 429.43,
      "width": 42.78,
-     "text": "Langtitel"
+     "text": "Langtitel",
+     "size": 11.04
     },
     {
      "x": 424.51,
      "y": 429.43,
      "width": 42.78,
-     "text": "Langtitel"
+     "text": "Langtitel",
+     "size": 11.04
     },
     {
      "x": 88.58,
      "y": 414.43,
      "width": 328.86,
-     "text": "Verordnung des Bundesministers für Land- und Forstwirtschaft, Regionen und"
+     "text": "Verordnung des Bundesministers für Land- und Forstwirtschaft, Regionen und",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 403.39,
      "width": 69.32,
-     "text": "Wasserwirtschaft"
+     "text": "Wasserwirtschaft",
+     "size": 9.96
     },
     {
      "x": 166.89,
      "y": 403.39,
      "width": 17.8,
-     "text": "über"
+     "text": "über",
+     "size": 9.96
     },
     {
      "x": 193.73,
      "y": 403.39,
      "width": 46.13,
-     "text": "nachhaltige"
+     "text": "nachhaltige",
+     "size": 9.96
     },
     {
      "x": 248.87,
      "y": 403.39,
      "width": 76.6,
-     "text": "landwirtschaftliche"
+     "text": "landwirtschaftliche",
+     "size": 9.96
     },
     {
      "x": 334.61,
      "y": 403.39,
      "width": 62.2,
-     "text": "Ausgangsstoffe"
+     "text": "Ausgangsstoffe",
+     "size": 9.96
     },
     {
      "x": 405.81,
      "y": 403.39,
      "width": 11.69,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 392.35,
      "width": 328.92,
-     "text": "Biokraftstoffe, flüssige Biobrennstoffe und Biomasse-Brennstoffe (Nachhaltige"
+     "text": "Biokraftstoffe, flüssige Biobrennstoffe und Biomasse-Brennstoffe (Nachhaltige",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 381.43,
      "width": 76.6,
-     "text": "landwirtschaftliche"
+     "text": "landwirtschaftliche",
+     "size": 9.96
     },
     {
      "x": 199.27,
      "y": 381.43,
      "width": 113.99,
-     "text": "Ausgangsstoffe-Verordnung"
+     "text": "Ausgangsstoffe-Verordnung",
+     "size": 9.96
     },
     {
      "x": 347.33,
      "y": 381.43,
      "width": 4.98,
-     "text": "–"
+     "text": "–",
+     "size": 9.96
     },
     {
      "x": 386.45,
      "y": 381.43,
      "width": 31.01,
-     "text": "NLAV)"
+     "text": "NLAV)",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 370.39,
      "width": 16.57,
-     "text": "StF:"
+     "text": "StF:",
+     "size": 9.96
     },
     {
      "x": 133.94,
      "y": 370.39,
      "width": 34.98,
-     "text": "BGBl. II"
+     "text": "BGBl. II",
+     "size": 9.96
     },
     {
      "x": 197.63,
      "y": 370.39,
      "width": 53.44,
-     "text": "Nr. 124/2018"
+     "text": "Nr. 124/2018",
+     "size": 9.96
     },
     {
      "x": 279.79,
      "y": 370.39,
      "width": 54.69,
-     "text": "[CELEX-Nr.:"
+     "text": "[CELEX-Nr.:",
+     "size": 9.96
     },
     {
      "x": 363.15,
      "y": 370.39,
      "width": 54.47,
-     "text": "32009L0028]"
+     "text": "32009L0028]",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 414.43,
      "width": 328.86,
-     "text": "Verordnung des Bundesministers für Land- und Forstwirtschaft, Regionen und"
+     "text": "Verordnung des Bundesministers für Land- und Forstwirtschaft, Regionen und",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 403.39,
      "width": 69.32,
-     "text": "Wasserwirtschaft"
+     "text": "Wasserwirtschaft",
+     "size": 9.96
     },
     {
      "x": 502.82,
      "y": 403.39,
      "width": 17.8,
-     "text": "über"
+     "text": "über",
+     "size": 9.96
     },
     {
      "x": 529.66,
      "y": 403.39,
      "width": 46.13,
-     "text": "nachhaltige"
+     "text": "nachhaltige",
+     "size": 9.96
     },
     {
      "x": 584.8,
      "y": 403.39,
      "width": 76.6,
-     "text": "landwirtschaftliche"
+     "text": "landwirtschaftliche",
+     "size": 9.96
     },
     {
      "x": 670.29,
      "y": 403.39,
      "width": 62.2,
-     "text": "Ausgangsstoffe"
+     "text": "Ausgangsstoffe",
+     "size": 9.96
     },
     {
      "x": 741.5,
      "y": 403.39,
      "width": 11.69,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 392.35,
      "width": 328.92,
-     "text": "Biokraftstoffe, flüssige Biobrennstoffe und Biomasse-Brennstoffe (Nachhaltige"
+     "text": "Biokraftstoffe, flüssige Biobrennstoffe und Biomasse-Brennstoffe (Nachhaltige",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 381.43,
      "width": 76.6,
-     "text": "landwirtschaftliche"
+     "text": "landwirtschaftliche",
+     "size": 9.96
     },
     {
      "x": 535.2,
      "y": 381.43,
      "width": 113.99,
-     "text": "Ausgangsstoffe-Verordnung"
+     "text": "Ausgangsstoffe-Verordnung",
+     "size": 9.96
     },
     {
      "x": 683.26,
      "y": 381.43,
      "width": 4.98,
-     "text": "–"
+     "text": "–",
+     "size": 9.96
     },
     {
      "x": 722.4,
      "y": 381.43,
      "width": 31.01,
-     "text": "NLAV)"
+     "text": "NLAV)",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 370.39,
      "width": 16.57,
-     "text": "StF:"
+     "text": "StF:",
+     "size": 9.96
     },
     {
      "x": 469.87,
      "y": 370.39,
      "width": 34.99,
-     "text": "BGBl. II"
+     "text": "BGBl. II",
+     "size": 9.96
     },
     {
      "x": 533.56,
      "y": 370.39,
      "width": 53.44,
-     "text": "Nr. 124/2018"
+     "text": "Nr. 124/2018",
+     "size": 9.96
     },
     {
      "x": 615.72,
      "y": 370.39,
      "width": 54.69,
-     "text": "[CELEX-Nr.:"
+     "text": "[CELEX-Nr.:",
+     "size": 9.96
     },
     {
      "x": 699.08,
      "y": 370.39,
      "width": 54.47,
-     "text": "32009L0028]"
+     "text": "32009L0028]",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 324.41,
      "width": 47.75,
-     "text": "Änderung"
+     "text": "Änderung",
+     "size": 11.04
     },
     {
      "x": 424.51,
      "y": 324.41,
      "width": 47.75,
-     "text": "Änderung"
+     "text": "Änderung",
+     "size": 11.04
     },
     {
      "x": 88.58,
      "y": 309.41,
      "width": 25.78,
-     "text": "BGBl."
+     "text": "BGBl.",
+     "size": 9.96
     },
     {
      "x": 116.9,
      "y": 309.41,
      "width": 22.24,
-     "text": "II Nr."
+     "text": "II Nr.",
+     "size": 9.96
     },
     {
      "x": 141.74,
      "y": 309.41,
      "width": 70.58,
-     "text": "88/2023 [CELEX"
+     "text": "88/2023 [CELEX",
+     "size": 9.96
     },
     {
      "x": 212.42,
      "y": 309.41,
      "width": 3.32,
-     "text": "-"
+     "text": "-",
+     "size": 9.96
     },
     {
      "x": 215.78,
      "y": 309.41,
      "width": 72.7,
-     "text": "Nr.: 32018L2001]"
+     "text": "Nr.: 32018L2001]",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 309.41,
      "width": 25.78,
-     "text": "BGBl."
+     "text": "BGBl.",
+     "size": 9.96
     },
     {
      "x": 452.83,
      "y": 309.41,
      "width": 22.24,
-     "text": "II Nr."
+     "text": "II Nr.",
+     "size": 9.96
     },
     {
      "x": 477.67,
      "y": 309.41,
      "width": 70.58,
-     "text": "88/2023 [CELEX"
+     "text": "88/2023 [CELEX",
+     "size": 9.96
     },
     {
      "x": 548.35,
      "y": 309.41,
      "width": 3.32,
-     "text": "-"
+     "text": "-",
+     "size": 9.96
     },
     {
      "x": 551.71,
      "y": 309.41,
      "width": 72.7,
-     "text": "Nr.: 32018L2001]"
+     "text": "Nr.: 32018L2001]",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 274.37,
      "width": 150.97,
-     "text": "Präambel/Promulgationsklausel"
+     "text": "Präambel/Promulgationsklausel",
+     "size": 11.04
     },
     {
      "x": 424.51,
      "y": 274.37,
      "width": 150.97,
-     "text": "Präambel/Promulgationsklausel"
+     "text": "Präambel/Promulgationsklausel",
+     "size": 11.04
     },
     {
      "x": 108.38,
      "y": 255.41,
      "width": 309.2,
-     "text": "Auf Grund der §§ 6 Abs. 5, 22, 23 und 28 des Marktordnungsgesetzes 2007"
+     "text": "Auf Grund der §§ 6 Abs. 5, 22, 23 und 28 des Marktordnungsgesetzes 2007",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 244.37,
      "width": 328.79,
-     "text": "– MOG 2007, BGBl. I Nr. 55/2007, zuletzt geändert durch das Bundesgesetz"
+     "text": "– MOG 2007, BGBl. I Nr. 55/2007, zuletzt geändert durch das Bundesgesetz",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 233.33,
      "width": 149.38,
-     "text": "BGBl. I Nr. 89/2015, wird verordnet:"
+     "text": "BGBl. I Nr. 89/2015, wird verordnet:",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 255.41,
      "width": 309.2,
-     "text": "Auf Grund der §§ 6 Abs. 5, 22, 23 und 28 des Marktordnungsgesetzes 2007"
+     "text": "Auf Grund der §§ 6 Abs. 5, 22, 23 und 28 des Marktordnungsgesetzes 2007",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 244.37,
      "width": 328.8,
-     "text": "– MOG 2007, BGBl. I Nr. 55/2007, zuletzt geändert durch das Bundesgesetz"
+     "text": "– MOG 2007, BGBl. I Nr. 55/2007, zuletzt geändert durch das Bundesgesetz",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 233.33,
      "width": 149.38,
-     "text": "BGBl. I Nr. 89/2015, wird verordnet:"
+     "text": "BGBl. I Nr. 89/2015, wird verordnet:",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 198.38,
      "width": 21.42,
-     "text": "Text"
+     "text": "Text",
+     "size": 11.04
     },
     {
      "x": 424.51,
      "y": 198.38,
      "width": 21.42,
-     "text": "Text"
+     "text": "Text",
+     "size": 11.04
     },
     {
      "x": 204.62,
      "y": 183.38,
      "width": 96.52,
-     "text": "Begriffsbestimmungen"
+     "text": "Begriffsbestimmungen",
+     "size": 9.96
     },
     {
      "x": 540.55,
      "y": 183.38,
      "width": 96.52,
-     "text": "Begriffsbestimmungen"
+     "text": "Begriffsbestimmungen",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 168.38,
      "width": 15.09,
-     "text": "§ 2."
+     "text": "§ 2.",
+     "size": 9.96
     },
     {
      "x": 126.02,
      "y": 168.38,
      "width": 248.82,
-     "text": "Für diese Verordnung gelten folgende Begriffsbestimmungen:"
+     "text": "Für diese Verordnung gelten folgende Begriffsbestimmungen:",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 168.38,
      "width": 15.09,
-     "text": "§ 2."
+     "text": "§ 2.",
+     "size": 9.96
     },
     {
      "x": 461.95,
      "y": 168.38,
      "width": 248.82,
-     "text": "Für diese Verordnung gelten folgende Begriffsbestimmungen:"
+     "text": "Für diese Verordnung gelten folgende Begriffsbestimmungen:",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 155.42,
      "width": 47.05,
-     "text": "1. bis 15. ..."
+     "text": "1. bis 15. ...",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 155.42,
      "width": 47.05,
-     "text": "1. bis 15. ..."
+     "text": "1. bis 15. ...",
+     "size": 9.96
     },
     {
      "x": 107.3,
      "y": 142.34,
      "width": 12.57,
-     "text": "16."
+     "text": "16.",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 142.34,
      "width": 294.59,
-     "text": "„Zertifizierungsstellen“ sind unabhängige natürliche oder juristische"
+     "text": "„Zertifizierungsstellen“ sind unabhängige natürliche oder juristische",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 131.3,
      "width": 294.73,
-     "text": "Personen, die im Rahmen einer Vereinbarung mit einem anerkannten"
+     "text": "Personen, die im Rahmen einer Vereinbarung mit einem anerkannten",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 120.38,
      "width": 294.74,
-     "text": "freiwilligen Zertifizierungssystem Zertifikate für Unternehmen ausstellen,"
+     "text": "freiwilligen Zertifizierungssystem Zertifikate für Unternehmen ausstellen,",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 109.34,
      "width": 294.7,
-     "text": "wenn diese die Anforderungen nach dieser Verordnung erfüllen und die"
+     "text": "wenn diese die Anforderungen nach dieser Verordnung erfüllen und die",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 98.28,
      "width": 294.46,
-     "text": "die Erfüllung der Anforderungen nach dieser Verordnung durch Betriebe"
+     "text": "die Erfüllung der Anforderungen nach dieser Verordnung durch Betriebe",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 87.36,
      "width": 129.92,
-     "text": "und Unternehmen kontrollieren;"
+     "text": "und Unternehmen kontrollieren;",
+     "size": 9.96
     },
     {
      "x": 443.23,
      "y": 142.34,
      "width": 12.57,
-     "text": "16."
+     "text": "16.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 142.34,
      "width": 95.97,
-     "text": "„Zertifizierungsstellen“"
+     "text": "„Zertifizierungsstellen“",
+     "size": 9.96
     },
     {
      "x": 584.05,
      "y": 142.34,
      "width": 26.68,
-     "text": "gemäß"
+     "text": "gemäß",
+     "size": 9.96
     },
     {
      "x": 640.29,
      "y": 142.34,
      "width": 22.87,
-     "text": "Art. 2"
+     "text": "Art. 2",
+     "size": 9.96
     },
     {
      "x": 692.61,
      "y": 142.34,
      "width": 18.06,
-     "text": "Z 14"
+     "text": "Z 14",
+     "size": 9.96
     },
     {
      "x": 740.23,
      "y": 142.34,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 131.3,
      "width": 107.73,
-     "text": "Durchführungsverordnung"
+     "text": "Durchführungsverordnung",
+     "size": 9.96
     },
     {
      "x": 572.48,
      "y": 131.3,
      "width": 19.85,
-     "text": "(EU)"
+     "text": "(EU)",
+     "size": 9.96
     },
     {
      "x": 598.61,
      "y": 131.3,
      "width": 37.7,
-     "text": "2022/996"
+     "text": "2022/996",
+     "size": 9.96
     },
     {
      "x": 642.59,
      "y": 131.3,
      "width": 18.25,
-     "text": "über"
+     "text": "über",
+     "size": 9.96
     },
     {
      "x": 667.05,
      "y": 131.3,
      "width": 49.74,
-     "text": "Vorschriften"
+     "text": "Vorschriften",
+     "size": 9.96
     },
     {
      "x": 723.07,
      "y": 131.3,
      "width": 11.66,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 740.94,
      "y": 131.3,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 120.38,
      "width": 294.48,
-     "text": "Überprüfung in Bezug auf die Nachhaltigkeitskriterien und die Kriterien"
+     "text": "Überprüfung in Bezug auf die Nachhaltigkeitskriterien und die Kriterien",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 109.34,
      "width": 11.66,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 476.46,
      "y": 109.34,
      "width": 108.8,
-     "text": "Treibhausgaseinsparungen"
+     "text": "Treibhausgaseinsparungen",
+     "size": 9.96
     },
     {
      "x": 591.67,
      "y": 109.34,
      "width": 22.67,
-     "text": "sowie"
+     "text": "sowie",
+     "size": 9.96
     },
     {
      "x": 620.69,
      "y": 109.34,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 639.26,
      "y": 109.34,
      "width": 36.53,
-     "text": "Kriterien"
+     "text": "Kriterien",
+     "size": 9.96
     },
     {
      "x": 682.21,
      "y": 109.34,
      "width": 11.66,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 700.2,
      "y": 109.34,
      "width": 12.17,
-     "text": "ein"
+     "text": "ein",
+     "size": 9.96
     },
     {
      "x": 718.78,
      "y": 109.34,
      "width": 34.42,
-     "text": "geringes"
+     "text": "geringes",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 98.28,
      "width": 24.88,
-     "text": "Risiko"
+     "text": "Risiko",
+     "size": 9.96
     },
     {
      "x": 493.72,
      "y": 98.28,
      "width": 39.36,
-     "text": "indirekter"
+     "text": "indirekter",
+     "size": 9.96
     },
     {
      "x": 543.37,
      "y": 98.28,
      "width": 106.28,
-     "text": "Landnutzungsänderungen,"
+     "text": "Landnutzungsänderungen,",
+     "size": 9.96
     },
     {
      "x": 659.98,
      "y": 98.28,
      "width": 17.47,
-     "text": "ABl."
+     "text": "ABl.",
+     "size": 9.96
     },
     {
      "x": 687.66,
      "y": 98.28,
      "width": 38.84,
-     "text": "Nr. L 168"
+     "text": "Nr. L 168",
+     "size": 9.96
     },
     {
      "x": 736.86,
      "y": 98.28,
      "width": 16.54,
-     "text": "vom"
+     "text": "vom",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 87.36,
      "width": 39.96,
-     "text": "27.6.2022"
+     "text": "27.6.2022",
+     "size": 9.96
     },
     {
      "x": 507.47,
      "y": 87.36,
      "width": 17.57,
-     "text": "S. 1,"
+     "text": "S. 1,",
+     "size": 9.96
     },
     {
      "x": 534.05,
      "y": 87.36,
      "width": 16.61,
-     "text": "sind"
+     "text": "sind",
+     "size": 9.96
     },
     {
      "x": 559.71,
      "y": 87.36,
      "width": 52.12,
-     "text": "unabhängige"
+     "text": "unabhängige",
+     "size": 9.96
     },
     {
      "x": 620.84,
      "y": 87.36,
      "width": 50.98,
-     "text": "akkreditierte"
+     "text": "akkreditierte",
+     "size": 9.96
     },
     {
      "x": 680.81,
      "y": 87.36,
      "width": 18.36,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 708.14,
      "y": 87.36,
      "width": 45.06,
-     "text": "anerkannte"
+     "text": "anerkannte",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -700,973 +812,1135 @@
      "x": 727.08,
      "y": 554.16,
      "width": 30.06,
-     "text": "2 von 7"
+     "text": "2 von 7",
+     "size": 9.96
     },
     {
      "x": 215.06,
      "y": 497.38,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 497.38,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 486.46,
      "width": 127.44,
-     "text": "Konformitätsbewertungsstellen,"
+     "text": "Konformitätsbewertungsstellen,",
+     "size": 9.96
     },
     {
      "x": 596.71,
      "y": 486.46,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 619.73,
      "y": 486.46,
      "width": 12.73,
-     "text": "mit"
+     "text": "mit",
+     "size": 9.96
     },
     {
      "x": 643.24,
      "y": 486.46,
      "width": 23.84,
-     "text": "einem"
+     "text": "einem",
+     "size": 9.96
     },
     {
      "x": 677.9,
      "y": 486.46,
      "width": 46.09,
-     "text": "freiwilligen"
+     "text": "freiwilligen",
+     "size": 9.96
     },
     {
      "x": 734.85,
      "y": 486.46,
      "width": 18.36,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 475.42,
      "width": 294.91,
-     "text": "nationalen System, das gemäß Artikel 30 Absätze 4 bis 6 der Richtlinie"
+     "text": "nationalen System, das gemäß Artikel 30 Absätze 4 bis 6 der Richtlinie",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 464.38,
      "width": 294.54,
-     "text": "(EU) 2018/2001 von der Europäischen Kommission anerkannt wurden,"
+     "text": "(EU) 2018/2001 von der Europäischen Kommission anerkannt wurden,",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 453.46,
      "width": 294.68,
-     "text": "eine Vereinbarung über die Erbringung von Zertifizierungsdiensten für"
+     "text": "eine Vereinbarung über die Erbringung von Zertifizierungsdiensten für",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 442.42,
      "width": 37.76,
-     "text": "Rohstoffe"
+     "text": "Rohstoffe",
+     "size": 9.96
     },
     {
      "x": 507.5,
      "y": 442.42,
      "width": 18.36,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 537.11,
      "y": 442.42,
      "width": 46.05,
-     "text": "Brennstoffe"
+     "text": "Brennstoffe",
+     "size": 9.96
     },
     {
      "x": 594.43,
      "y": 442.42,
      "width": 40.27,
-     "text": "schließen,"
+     "text": "schließen,",
+     "size": 9.96
     },
     {
      "x": 646,
      "y": 442.42,
      "width": 24.43,
-     "text": "indem"
+     "text": "indem",
+     "size": 9.96
     },
     {
      "x": 681.72,
      "y": 442.42,
      "width": 11.04,
-     "text": "sie"
+     "text": "sie",
+     "size": 9.96
     },
     {
      "x": 704.03,
      "y": 442.42,
      "width": 25.58,
-     "text": "Audits"
+     "text": "Audits",
+     "size": 9.96
     },
     {
      "x": 740.84,
      "y": 442.42,
      "width": 12.22,
-     "text": "bei"
+     "text": "bei",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 431.35,
      "width": 93.15,
-     "text": "Wirtschaftsteilnehmern"
+     "text": "Wirtschaftsteilnehmern",
+     "size": 9.96
     },
     {
      "x": 558.97,
      "y": 431.35,
      "width": 49.44,
-     "text": "durchführen"
+     "text": "durchführen",
+     "size": 9.96
     },
     {
      "x": 615.79,
      "y": 431.35,
      "width": 14.93,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 638.08,
      "y": 431.35,
      "width": 41.5,
-     "text": "Zertifikate"
+     "text": "Zertifikate",
+     "size": 9.96
     },
     {
      "x": 686.9,
      "y": 431.35,
      "width": 9.96,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 704.17,
      "y": 431.35,
      "width": 28.23,
-     "text": "Namen"
+     "text": "Namen",
+     "size": 9.96
     },
     {
      "x": 739.79,
      "y": 431.35,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 420.43,
      "width": 45.99,
-     "text": "freiwilligen"
+     "text": "freiwilligen",
+     "size": 9.96
     },
     {
      "x": 516.28,
      "y": 420.43,
      "width": 18.36,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 546.37,
      "y": 420.43,
      "width": 42.71,
-     "text": "nationalen"
+     "text": "nationalen",
+     "size": 9.96
     },
     {
      "x": 600.9,
      "y": 420.43,
      "width": 32.13,
-     "text": "Systeme"
+     "text": "Systeme",
+     "size": 9.96
     },
     {
      "x": 644.8,
      "y": 420.43,
      "width": 21.13,
-     "text": "unter"
+     "text": "unter",
+     "size": 9.96
     },
     {
      "x": 677.65,
      "y": 420.43,
      "width": 50.53,
-     "text": "Verwendung"
+     "text": "Verwendung",
+     "size": 9.96
     },
     {
      "x": 739.98,
      "y": 420.43,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 409.39,
      "width": 89.26,
-     "text": "Zertifizierungssystems"
+     "text": "Zertifizierungssystems",
+     "size": 9.96
     },
     {
      "x": 558.39,
      "y": 409.39,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 582.47,
      "y": 409.39,
      "width": 45.99,
-     "text": "freiwilligen"
+     "text": "freiwilligen",
+     "size": 9.96
     },
     {
      "x": 639.19,
      "y": 409.39,
      "width": 18.36,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 668.21,
      "y": 409.39,
      "width": 42.62,
-     "text": "nationalen"
+     "text": "nationalen",
+     "size": 9.96
     },
     {
      "x": 721.55,
      "y": 409.39,
      "width": 31.84,
-     "text": "Systems"
+     "text": "Systems",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 398.35,
      "width": 43.26,
-     "text": "ausstellen;"
+     "text": "ausstellen;",
+     "size": 9.96
     },
     {
      "x": 107.3,
      "y": 385.39,
      "width": 51.97,
-     "text": "17. bis 20. ..."
+     "text": "17. bis 20. ...",
+     "size": 9.96
     },
     {
      "x": 443.23,
      "y": 385.39,
      "width": 51.97,
-     "text": "17. bis 20. ..."
+     "text": "17. bis 20. ...",
+     "size": 9.96
     },
     {
      "x": 154.94,
      "y": 370.39,
      "width": 195.93,
-     "text": "Anerkanntes nationales Zertifizierungssystem"
+     "text": "Anerkanntes nationales Zertifizierungssystem",
+     "size": 9.96
     },
     {
      "x": 490.87,
      "y": 370.39,
      "width": 195.93,
-     "text": "Anerkanntes nationales Zertifizierungssystem"
+     "text": "Anerkanntes nationales Zertifizierungssystem",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 355.39,
      "width": 15.09,
-     "text": "§ 3."
+     "text": "§ 3.",
+     "size": 9.96
     },
     {
      "x": 133.58,
      "y": 355.39,
      "width": 14.38,
-     "text": "Die"
+     "text": "Die",
+     "size": 9.96
     },
     {
      "x": 158.05,
      "y": 355.39,
      "width": 23.26,
-     "text": "AMA"
+     "text": "AMA",
+     "size": 9.96
     },
     {
      "x": 191.39,
      "y": 355.39,
      "width": 9.37,
-     "text": "ist"
+     "text": "ist",
+     "size": 9.96
     },
     {
      "x": 210.82,
      "y": 355.39,
      "width": 72.73,
-     "text": "Systembetreiberin"
+     "text": "Systembetreiberin",
+     "size": 9.96
     },
     {
      "x": 293.55,
      "y": 355.39,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 316.92,
      "y": 355.39,
      "width": 48.73,
-     "text": "anerkannten"
+     "text": "anerkannten",
+     "size": 9.96
     },
     {
      "x": 375.79,
      "y": 355.39,
      "width": 41.53,
-     "text": "nationalen"
+     "text": "nationalen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 344.35,
      "width": 91.02,
-     "text": "Zertifizierungssystems"
+     "text": "Zertifizierungssystems",
+     "size": 9.96
     },
     {
      "x": 187.37,
      "y": 344.35,
      "width": 34.35,
-     "text": "Austrian"
+     "text": "Austrian",
+     "size": 9.96
     },
     {
      "x": 229.57,
      "y": 344.35,
      "width": 48.89,
-     "text": "Agricultural"
+     "text": "Agricultural",
+     "size": 9.96
     },
     {
      "x": 286.26,
      "y": 344.35,
      "width": 50.43,
-     "text": "Certification"
+     "text": "Certification",
+     "size": 9.96
     },
     {
      "x": 344.53,
      "y": 344.35,
      "width": 31.64,
-     "text": "Scheme"
+     "text": "Scheme",
+     "size": 9.96
     },
     {
      "x": 383.98,
      "y": 344.35,
      "width": 33.19,
-     "text": "(AACS)"
+     "text": "(AACS)",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 333.43,
      "width": 328.98,
-     "text": "gemäß Art. 30 Abs. 6 der Richtlinie (EU) 2018/2001 sowie Art. 7 Abs. 6 der"
+     "text": "gemäß Art. 30 Abs. 6 der Richtlinie (EU) 2018/2001 sowie Art. 7 Abs. 6 der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 322.37,
      "width": 328.85,
-     "text": "Richtlinie 98/70/EG über die Qualität von Otto- und Dieselkraftstoffen und zur"
+     "text": "Richtlinie 98/70/EG über die Qualität von Otto- und Dieselkraftstoffen und zur",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 311.33,
      "width": 328.98,
-     "text": "Änderung der Richtlinie 93/12/EWG, ABl. Nr. L 350 vom 28.12.1998 S. 58 in"
+     "text": "Änderung der Richtlinie 93/12/EWG, ABl. Nr. L 350 vom 28.12.1998 S. 58 in",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 300.41,
      "width": 328.49,
-     "text": "Verbindung mit Durchführungsbeschluss (EU) 2022/1656 der Kommission, ABl."
+     "text": "Verbindung mit Durchführungsbeschluss (EU) 2022/1656 der Kommission, ABl.",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 289.37,
      "width": 137.65,
-     "text": "Nr. L 249 vom 27.09.2022 S.50"
+     "text": "Nr. L 249 vom 27.09.2022 S.50",
+     "size": 9.96
     },
     {
      "x": 226.46,
      "y": 289.37,
      "width": 2.49,
-     "text": "."
+     "text": ".",
+     "size": 9.96
     },
     {
      "x": 234.98,
      "y": 289.37,
      "width": 119.5,
-     "text": "Dieses Zertifizierungssystem"
+     "text": "Dieses Zertifizierungssystem",
+     "size": 9.96
     },
     {
      "x": 360.52,
      "y": 289.37,
      "width": 12.22,
-     "text": "hat"
+     "text": "hat",
+     "size": 9.96
     },
     {
      "x": 378.73,
      "y": 289.37,
      "width": 38.76,
-     "text": "jedenfalls"
+     "text": "jedenfalls",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 278.33,
      "width": 127.95,
-     "text": "folgende Bereiche zu umfassen:"
+     "text": "folgende Bereiche zu umfassen:",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 355.39,
      "width": 15.09,
-     "text": "§ 3."
+     "text": "§ 3.",
+     "size": 9.96
     },
     {
      "x": 469.51,
      "y": 355.39,
      "width": 14.38,
-     "text": "Die"
+     "text": "Die",
+     "size": 9.96
     },
     {
      "x": 493.98,
      "y": 355.39,
      "width": 23.26,
-     "text": "AMA"
+     "text": "AMA",
+     "size": 9.96
     },
     {
      "x": 527.32,
      "y": 355.39,
      "width": 9.37,
-     "text": "ist"
+     "text": "ist",
+     "size": 9.96
     },
     {
      "x": 546.75,
      "y": 355.39,
      "width": 72.73,
-     "text": "Systembetreiberin"
+     "text": "Systembetreiberin",
+     "size": 9.96
     },
     {
      "x": 629.48,
      "y": 355.39,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 652.85,
      "y": 355.39,
      "width": 48.73,
-     "text": "anerkannten"
+     "text": "anerkannten",
+     "size": 9.96
     },
     {
      "x": 711.72,
      "y": 355.39,
      "width": 41.53,
-     "text": "nationalen"
+     "text": "nationalen",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 344.35,
      "width": 91.02,
-     "text": "Zertifizierungssystems"
+     "text": "Zertifizierungssystems",
+     "size": 9.96
     },
     {
      "x": 523.29,
      "y": 344.35,
      "width": 34.35,
-     "text": "Austrian"
+     "text": "Austrian",
+     "size": 9.96
     },
     {
      "x": 565.49,
      "y": 344.35,
      "width": 48.89,
-     "text": "Agricultural"
+     "text": "Agricultural",
+     "size": 9.96
     },
     {
      "x": 622.19,
      "y": 344.35,
      "width": 50.43,
-     "text": "Certification"
+     "text": "Certification",
+     "size": 9.96
     },
     {
      "x": 680.45,
      "y": 344.35,
      "width": 31.64,
-     "text": "Scheme"
+     "text": "Scheme",
+     "size": 9.96
     },
     {
      "x": 719.9,
      "y": 344.35,
      "width": 33.19,
-     "text": "(AACS)"
+     "text": "(AACS)",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 333.43,
      "width": 329,
-     "text": "gemäß Art. 30 Abs. 6 der Richtlinie (EU) 2018/2001 sowie Art. 7 Abs. 6 der"
+     "text": "gemäß Art. 30 Abs. 6 der Richtlinie (EU) 2018/2001 sowie Art. 7 Abs. 6 der",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 322.37,
      "width": 328.85,
-     "text": "Richtlinie 98/70/EG über die Qualität von Otto- und Dieselkraftstoffen und zur"
+     "text": "Richtlinie 98/70/EG über die Qualität von Otto- und Dieselkraftstoffen und zur",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 311.33,
      "width": 329,
-     "text": "Änderung der Richtlinie 93/12/EWG, ABl. Nr. L 350 vom 28.12.1998 S. 58 in"
+     "text": "Änderung der Richtlinie 93/12/EWG, ABl. Nr. L 350 vom 28.12.1998 S. 58 in",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 300.41,
      "width": 328.49,
-     "text": "Verbindung mit Durchführungsbeschluss (EU) 2022/1656 der Kommission, ABl."
+     "text": "Verbindung mit Durchführungsbeschluss (EU) 2022/1656 der Kommission, ABl.",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 289.37,
      "width": 39.17,
-     "text": "Nr. L 249"
+     "text": "Nr. L 249",
+     "size": 9.96
     },
     {
      "x": 473.44,
      "y": 289.37,
      "width": 17.7,
-     "text": "vom"
+     "text": "vom",
+     "size": 9.96
     },
     {
      "x": 500.89,
      "y": 289.37,
      "width": 44.88,
-     "text": "27.09.2022"
+     "text": "27.09.2022",
+     "size": 9.96
     },
     {
      "x": 555.42,
      "y": 289.37,
      "width": 18.05,
-     "text": "S.50"
+     "text": "S.50",
+     "size": 9.96
     },
     {
      "x": 583.42,
      "y": 289.37,
      "width": 14.93,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 608.11,
      "y": 289.37,
      "width": 19.36,
-     "text": "kann"
+     "text": "kann",
+     "size": 9.96
     },
     {
      "x": 637.12,
      "y": 289.37,
      "width": 79.76,
-     "text": "Zertifizierungsstelle"
+     "text": "Zertifizierungsstelle",
+     "size": 9.96
     },
     {
      "x": 726.6,
      "y": 289.37,
      "width": 26.68,
-     "text": "gemäß"
+     "text": "gemäß",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 278.33,
      "width": 193.44,
-     "text": "Durchführungsverordnung (EU) 2022/996 sein."
+     "text": "Durchführungsverordnung (EU) 2022/996 sein.",
+     "size": 9.96
     },
     {
      "x": 621.34,
      "y": 278.33,
      "width": 132.11,
-     "text": "Dieses Zertifizierungssystem hat"
+     "text": "Dieses Zertifizierungssystem hat",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 267.41,
      "width": 169.28,
-     "text": "jedenfalls folgende Bereiche zu umfassen:"
+     "text": "jedenfalls folgende Bereiche zu umfassen:",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 254.45,
      "width": 42.02,
-     "text": "1. bis 5. ..."
+     "text": "1. bis 5. ...",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 254.45,
      "width": 42.02,
-     "text": "1. bis 5. ..."
+     "text": "1. bis 5. ...",
+     "size": 9.96
     },
     {
      "x": 167.66,
      "y": 239.33,
      "width": 170.4,
-     "text": "Registrierung von Zertifizierungsstellen"
+     "text": "Registrierung von Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 503.59,
      "y": 239.33,
      "width": 170.4,
-     "text": "Registrierung von Zertifizierungsstellen"
+     "text": "Registrierung von Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 224.33,
      "width": 20.13,
-     "text": "§ 3a."
+     "text": "§ 3a.",
+     "size": 9.96
     },
     {
      "x": 132.02,
      "y": 224.33,
      "width": 285.1,
-     "text": "(1) Zertifizierungsstellen, die Zertifikate für Unternehmen mit Sitz im"
+     "text": "(1) Zertifizierungsstellen, die Zertifikate für Unternehmen mit Sitz im",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 213.38,
      "width": 328.6,
-     "text": "Inland ausstellen und Unternehmen und Betriebe mit Sitz im Inland kontrollieren,"
+     "text": "Inland ausstellen und Unternehmen und Betriebe mit Sitz im Inland kontrollieren,",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 202.34,
      "width": 328.55,
-     "text": "haben sich unabhängig davon, ob sie ihren Sitz im Inland, einem anderen"
+     "text": "haben sich unabhängig davon, ob sie ihren Sitz im Inland, einem anderen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 191.3,
      "width": 328.6,
-     "text": "Mitgliedstaat der Europäischen Union oder einem Drittstaat haben, bei der"
+     "text": "Mitgliedstaat der Europäischen Union oder einem Drittstaat haben, bei der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 180.38,
      "width": 320.76,
-     "text": "zuständigen Behörde zu registrieren. Sie werden auf Antrag registriert, wenn sie"
+     "text": "zuständigen Behörde zu registrieren. Sie werden auf Antrag registriert, wenn sie",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 224.33,
      "width": 20.13,
-     "text": "§ 3a."
+     "text": "§ 3a.",
+     "size": 9.96
     },
     {
      "x": 467.95,
      "y": 224.33,
      "width": 285.1,
-     "text": "(1) Zertifizierungsstellen, die Zertifikate für Unternehmen mit Sitz im"
+     "text": "(1) Zertifizierungsstellen, die Zertifikate für Unternehmen mit Sitz im",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 213.38,
      "width": 25.59,
-     "text": "Inland"
+     "text": "Inland",
+     "size": 9.96
     },
     {
      "x": 455.23,
      "y": 213.38,
      "width": 233.37,
-     "text": "in einem anerkannten freiwilligen Zertifizierungssystem"
+     "text": "in einem anerkannten freiwilligen Zertifizierungssystem",
+     "size": 9.96
     },
     {
      "x": 693.94,
      "y": 213.38,
      "width": 59.54,
-     "text": "ausstellen und"
+     "text": "ausstellen und",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 202.34,
      "width": 54.47,
-     "text": "Unternehmen"
+     "text": "Unternehmen",
+     "size": 9.96
     },
     {
      "x": 486.37,
      "y": 202.34,
      "width": 14.93,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 508.78,
      "y": 202.34,
      "width": 33.8,
-     "text": "Betriebe"
+     "text": "Betriebe",
+     "size": 9.96
     },
     {
      "x": 549.92,
      "y": 202.34,
      "width": 13.33,
-     "text": "mit"
+     "text": "mit",
+     "size": 9.96
     },
     {
      "x": 570.65,
      "y": 202.34,
      "width": 15.46,
-     "text": "Sitz"
+     "text": "Sitz",
+     "size": 9.96
     },
     {
      "x": 593.56,
      "y": 202.34,
      "width": 10.52,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 611.54,
      "y": 202.34,
      "width": 25.48,
-     "text": "Inland"
+     "text": "Inland",
+     "size": 9.96
     },
     {
      "x": 644.39,
      "y": 202.34,
      "width": 54.14,
-     "text": "kontrollieren,"
+     "text": "kontrollieren,",
+     "size": 9.96
     },
     {
      "x": 705.86,
      "y": 202.34,
      "width": 23.9,
-     "text": "haben"
+     "text": "haben",
+     "size": 9.96
     },
     {
      "x": 737.15,
      "y": 202.34,
      "width": 16.02,
-     "text": "sich"
+     "text": "sich",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 191.3,
      "width": 328.57,
-     "text": "unabhängig davon, ob sie ihren Sitz im Inland, einem anderen Mitgliedstaat der"
+     "text": "unabhängig davon, ob sie ihren Sitz im Inland, einem anderen Mitgliedstaat der",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 180.38,
      "width": 328.58,
-     "text": "Europäischen Union oder einem Drittstaat haben, bei der zuständigen Behörde zu"
+     "text": "Europäischen Union oder einem Drittstaat haben, bei der zuständigen Behörde zu",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 169.34,
      "width": 222.2,
-     "text": "registrieren. Sie werden auf Antrag registriert, wenn sie"
+     "text": "registrieren. Sie werden auf Antrag registriert, wenn sie",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 156.38,
      "width": 26.97,
-     "text": "1. eine"
+     "text": "1. eine",
+     "size": 9.96
     },
     {
      "x": 159.12,
      "y": 156.38,
      "width": 37.15,
-     "text": "aufrechte"
+     "text": "aufrechte",
+     "size": 9.96
     },
     {
      "x": 216.19,
      "y": 156.38,
      "width": 54.86,
-     "text": "Vereinbarung"
+     "text": "Vereinbarung",
+     "size": 9.96
     },
     {
      "x": 291.01,
      "y": 156.38,
      "width": 13.33,
-     "text": "mit"
+     "text": "mit",
+     "size": 9.96
     },
     {
      "x": 324.23,
      "y": 156.38,
      "width": 24.4,
-     "text": "einem"
+     "text": "einem",
+     "size": 9.96
     },
     {
      "x": 368.49,
      "y": 156.38,
      "width": 48.84,
-     "text": "anerkannten"
+     "text": "anerkannten",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 145.34,
      "width": 294.69,
-     "text": "Zertifizierungssystem über die Zertifizierung von landwirtschaftlichen"
+     "text": "Zertifizierungssystem über die Zertifizierung von landwirtschaftlichen",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 134.3,
      "width": 234.18,
-     "text": "Ausgangsstoffen im Sinne dieser Verordnung nachweisen,"
+     "text": "Ausgangsstoffen im Sinne dieser Verordnung nachweisen,",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 156.38,
      "width": 26.97,
-     "text": "1. eine"
+     "text": "1. eine",
+     "size": 9.96
     },
     {
      "x": 495.05,
      "y": 156.38,
      "width": 37.15,
-     "text": "aufrechte"
+     "text": "aufrechte",
+     "size": 9.96
     },
     {
      "x": 552.12,
      "y": 156.38,
      "width": 54.86,
-     "text": "Vereinbarung"
+     "text": "Vereinbarung",
+     "size": 9.96
     },
     {
      "x": 626.94,
      "y": 156.38,
      "width": 13.33,
-     "text": "mit"
+     "text": "mit",
+     "size": 9.96
     },
     {
      "x": 660.16,
      "y": 156.38,
      "width": 24.4,
-     "text": "einem"
+     "text": "einem",
+     "size": 9.96
     },
     {
      "x": 704.42,
      "y": 156.38,
      "width": 48.84,
-     "text": "anerkannten"
+     "text": "anerkannten",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 145.34,
      "width": 294.69,
-     "text": "Zertifizierungssystem über die Zertifizierung von landwirtschaftlichen"
+     "text": "Zertifizierungssystem über die Zertifizierung von landwirtschaftlichen",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 134.3,
      "width": 234.18,
-     "text": "Ausgangsstoffen im Sinne dieser Verordnung nachweisen,"
+     "text": "Ausgangsstoffen im Sinne dieser Verordnung nachweisen,",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 121.34,
      "width": 305.41,
-     "text": "2. die Anforderungen der Normen ÖVE/ÖNORM EN ISO/IEC 17021-"
+     "text": "2. die Anforderungen der Normen ÖVE/ÖNORM EN ISO/IEC 17021-",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 110.3,
      "width": 294.69,
-     "text": "1:2015, 17021-2:2019 und 17021-3:2019 oder der ÖVE/ÖNORM EN"
+     "text": "1:2015, 17021-2:2019 und 17021-3:2019 oder der ÖVE/ÖNORM EN",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 99.36,
      "width": 294.6,
-     "text": "ISO/IEC 17065: 2013 erfüllen und ihre Kontrollen den Anforderungen"
+     "text": "ISO/IEC 17065: 2013 erfüllen und ihre Kontrollen den Anforderungen",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 88.32,
      "width": 216.88,
-     "text": "der ÖVE/ÖNORM EN ISO 19011: 2018 genügen und"
+     "text": "der ÖVE/ÖNORM EN ISO 19011: 2018 genügen und",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 121.34,
      "width": 305.41,
-     "text": "2. die Anforderungen der Normen ÖVE/ÖNORM EN ISO/IEC 17021-"
+     "text": "2. die Anforderungen der Normen ÖVE/ÖNORM EN ISO/IEC 17021-",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 110.3,
      "width": 294.69,
-     "text": "1:2015, 17021-2:2019 und 17021-3:2019 oder der ÖVE/ÖNORM EN"
+     "text": "1:2015, 17021-2:2019 und 17021-3:2019 oder der ÖVE/ÖNORM EN",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 99.36,
      "width": 34.94,
-     "text": "ISO/IEC"
+     "text": "ISO/IEC",
+     "size": 9.96
     },
     {
      "x": 506.44,
      "y": 99.36,
      "width": 27.81,
-     "text": "17065:"
+     "text": "17065:",
+     "size": 9.96
     },
     {
      "x": 547.3,
      "y": 99.36,
      "width": 19.96,
-     "text": "2013"
+     "text": "2013",
+     "size": 9.96
     },
     {
      "x": 580.15,
      "y": 99.36,
      "width": 31.11,
-     "text": "erfüllen"
+     "text": "erfüllen",
+     "size": 9.96
     },
     {
      "x": 624.46,
      "y": 99.36,
      "width": 22.67,
-     "text": "sowie"
+     "text": "sowie",
+     "size": 9.96
     },
     {
      "x": 660.21,
      "y": 99.36,
      "width": 14.43,
-     "text": "den"
+     "text": "den",
+     "size": 9.96
     },
     {
      "x": 687.66,
      "y": 99.36,
      "width": 39.47,
-     "text": "Vorgaben"
+     "text": "Vorgaben",
+     "size": 9.96
     },
     {
      "x": 740.16,
      "y": 99.36,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 88.32,
      "width": 107.73,
-     "text": "Durchführungsverordnung"
+     "text": "Durchführungsverordnung",
+     "size": 9.96
     },
     {
      "x": 576.32,
      "y": 88.32,
      "width": 19.85,
-     "text": "(EU)"
+     "text": "(EU)",
+     "size": 9.96
     },
     {
      "x": 606.28,
      "y": 88.32,
      "width": 37.81,
-     "text": "2022/996"
+     "text": "2022/996",
+     "size": 9.96
     },
     {
      "x": 654.2,
      "y": 88.32,
      "width": 48.16,
-     "text": "entsprechen"
+     "text": "entsprechen",
+     "size": 9.96
     },
     {
      "x": 712.78,
      "y": 88.32,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 737.94,
      "y": 88.32,
      "width": 15.56,
-     "text": "ihre"
+     "text": "ihre",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -1682,775 +1956,904 @@
      "x": 727.08,
      "y": 554.16,
      "width": 30.06,
-     "text": "3 von 7"
+     "text": "3 von 7",
+     "size": 9.96
     },
     {
      "x": 215.06,
      "y": 497.38,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 497.38,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 486.46,
      "width": 294.98,
-     "text": "Kontrollen den Anforderungen der ÖVE/ÖNORM EN ISO 19011: 2018"
+     "text": "Kontrollen den Anforderungen der ÖVE/ÖNORM EN ISO 19011: 2018",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 475.42,
      "width": 51.35,
-     "text": "genügen und"
+     "text": "genügen und",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 462.46,
      "width": 305.1,
-     "text": "3. sich verpflichten, im Sinne des § 11a Kontrollen und Maßnahmen der"
+     "text": "3. sich verpflichten, im Sinne des § 11a Kontrollen und Maßnahmen der",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 451.42,
      "width": 47.77,
-     "text": "zuständigen"
+     "text": "zuständigen",
+     "size": 9.96
     },
     {
      "x": 178.05,
      "y": 451.42,
      "width": 33.79,
-     "text": "Behörde"
+     "text": "Behörde",
+     "size": 9.96
     },
     {
      "x": 219.53,
      "y": 451.42,
      "width": 9.3,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 236.55,
      "y": 451.42,
      "width": 27.14,
-     "text": "dulden"
+     "text": "dulden",
+     "size": 9.96
     },
     {
      "x": 271.31,
      "y": 451.42,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 293.96,
      "y": 451.42,
      "width": 23.83,
-     "text": "dieser"
+     "text": "dieser",
+     "size": 9.96
     },
     {
      "x": 325.49,
      "y": 451.42,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 345.28,
      "y": 451.42,
      "width": 16.18,
-     "text": "dort"
+     "text": "dort",
+     "size": 9.96
     },
     {
      "x": 368.99,
      "y": 451.42,
      "width": 48.26,
-     "text": "festgelegten"
+     "text": "festgelegten",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 440.38,
      "width": 123.44,
-     "text": "Betretungsrechte zu gewähren."
+     "text": "Betretungsrechte zu gewähren.",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 462.46,
      "width": 305.1,
-     "text": "3. sich verpflichten, im Sinne des § 11a Kontrollen und Maßnahmen der"
+     "text": "3. sich verpflichten, im Sinne des § 11a Kontrollen und Maßnahmen der",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 451.42,
      "width": 47.77,
-     "text": "zuständigen"
+     "text": "zuständigen",
+     "size": 9.96
     },
     {
      "x": 513.98,
      "y": 451.42,
      "width": 33.79,
-     "text": "Behörde"
+     "text": "Behörde",
+     "size": 9.96
     },
     {
      "x": 555.46,
      "y": 451.42,
      "width": 9.3,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 572.48,
      "y": 451.42,
      "width": 27.14,
-     "text": "dulden"
+     "text": "dulden",
+     "size": 9.96
     },
     {
      "x": 607.24,
      "y": 451.42,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 629.89,
      "y": 451.42,
      "width": 23.83,
-     "text": "dieser"
+     "text": "dieser",
+     "size": 9.96
     },
     {
      "x": 661.42,
      "y": 451.42,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 681.21,
      "y": 451.42,
      "width": 16.18,
-     "text": "dort"
+     "text": "dort",
+     "size": 9.96
     },
     {
      "x": 704.92,
      "y": 451.42,
      "width": 48.26,
-     "text": "festgelegten"
+     "text": "festgelegten",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 440.38,
      "width": 124.13,
-     "text": "Betretungsrechte zu gewähren"
+     "text": "Betretungsrechte zu gewähren",
+     "size": 9.96
     },
     {
      "x": 587.02,
      "y": 440.38,
      "width": 166.29,
-     "text": "sowie Meldungen und Informationen im"
+     "text": "sowie Meldungen und Informationen im",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 429.43,
      "width": 275.16,
-     "text": "Sinne des § 3b fristgerecht an die zuständige Behörde zu übermitteln"
+     "text": "Sinne des § 3b fristgerecht an die zuständige Behörde zu übermitteln",
+     "size": 9.96
     },
     {
      "x": 733.92,
      "y": 429.43,
      "width": 2.49,
-     "text": "."
+     "text": ".",
+     "size": 9.96
     },
     {
      "x": 108.14,
      "y": 416.47,
      "width": 50.29,
-     "text": "(2) bis (4) ..."
+     "text": "(2) bis (4) ...",
+     "size": 9.96
     },
     {
      "x": 444.07,
      "y": 416.47,
      "width": 50.29,
-     "text": "(2) bis (4) ..."
+     "text": "(2) bis (4) ...",
+     "size": 9.96
     },
     {
      "x": 176.3,
      "y": 401.35,
      "width": 153.13,
-     "text": "Aufgaben von Zertifizierungsstellen"
+     "text": "Aufgaben von Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 512.23,
      "y": 401.35,
      "width": 153.13,
-     "text": "Aufgaben von Zertifizierungsstellen"
+     "text": "Aufgaben von Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 386.35,
      "width": 20.62,
-     "text": "§ 3b."
+     "text": "§ 3b.",
+     "size": 9.96
     },
     {
      "x": 131.54,
      "y": 386.35,
      "width": 53.25,
-     "text": "(1) und (2) ..."
+     "text": "(1) und (2) ...",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 386.35,
      "width": 20.62,
-     "text": "§ 3b."
+     "text": "§ 3b.",
+     "size": 9.96
     },
     {
      "x": 467.47,
      "y": 386.35,
      "width": 53.25,
-     "text": "(1) und (2) ..."
+     "text": "(1) und (2) ...",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 371.35,
      "width": 308.82,
-     "text": "(3) Die näheren Details zu den Erstaudits, den laufenden Audits und ihrer"
+     "text": "(3) Die näheren Details zu den Erstaudits, den laufenden Audits und ihrer",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 360.43,
      "width": 328.51,
-     "text": "Häufigkeit, zu den Anforderungen an die Auditoren, zur Vorgangsweise und den"
+     "text": "Häufigkeit, zu den Anforderungen an die Auditoren, zur Vorgangsweise und den",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 349.39,
      "width": 328.48,
-     "text": "Folgen von festgestellten Nichtkonformitäten sowie zu den Gruppenaudits sind in"
+     "text": "Folgen von festgestellten Nichtkonformitäten sowie zu den Gruppenaudits sind in",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 338.35,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 109.91,
      "y": 338.35,
      "width": 106.47,
-     "text": "Durchführungsverordnung"
+     "text": "Durchführungsverordnung",
+     "size": 9.96
     },
     {
      "x": 224.94,
      "y": 338.35,
      "width": 19.96,
-     "text": "(EU)"
+     "text": "(EU)",
+     "size": 9.96
     },
     {
      "x": 253.32,
      "y": 338.35,
      "width": 37.7,
-     "text": "2022/996"
+     "text": "2022/996",
+     "size": 9.96
     },
     {
      "x": 299.93,
      "y": 338.35,
      "width": 18.36,
-     "text": "über"
+     "text": "über",
+     "size": 9.96
     },
     {
      "x": 326.66,
      "y": 338.35,
      "width": 49.85,
-     "text": "Vorschriften"
+     "text": "Vorschriften",
+     "size": 9.96
     },
     {
      "x": 385.06,
      "y": 338.35,
      "width": 11.66,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 405.2,
      "y": 338.35,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 327.43,
      "width": 328.49,
-     "text": "Überprüfung in Bezug auf die Nachhaltigkeitskriterien und die Kriterien für"
+     "text": "Überprüfung in Bezug auf die Nachhaltigkeitskriterien und die Kriterien für",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 316.37,
      "width": 328.65,
-     "text": "Treibhausgaseinsparungen sowie die Kriterien für ein geringes Risiko indirekter"
+     "text": "Treibhausgaseinsparungen sowie die Kriterien für ein geringes Risiko indirekter",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 305.33,
      "width": 249.24,
-     "text": "Landnutzungsänderungen, ABl. Nr. L 168 vom 27.6.2022 S. 1,"
+     "text": "Landnutzungsänderungen, ABl. Nr. L 168 vom 27.6.2022 S. 1,",
+     "size": 9.96
     },
     {
      "x": 340.37,
      "y": 305.33,
      "width": 34.62,
-     "text": "geregelt."
+     "text": "geregelt.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 371.35,
      "width": 308.82,
-     "text": "(3) Die näheren Details zu den Erstaudits, den laufenden Audits und ihrer"
+     "text": "(3) Die näheren Details zu den Erstaudits, den laufenden Audits und ihrer",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 360.43,
      "width": 328.51,
-     "text": "Häufigkeit, zu den Anforderungen an die Auditoren, zur Vorgangsweise und den"
+     "text": "Häufigkeit, zu den Anforderungen an die Auditoren, zur Vorgangsweise und den",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 349.39,
      "width": 328.48,
-     "text": "Folgen von festgestellten Nichtkonformitäten sowie zu den Gruppenaudits sind in"
+     "text": "Folgen von festgestellten Nichtkonformitäten sowie zu den Gruppenaudits sind in",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 338.35,
      "width": 221.65,
-     "text": "der Durchführungsverordnung (EU) 2022/996 geregelt."
+     "text": "der Durchführungsverordnung (EU) 2022/996 geregelt.",
+     "size": 9.96
     },
     {
      "x": 108.14,
      "y": 292.37,
      "width": 50.29,
-     "text": "(4) bis (8) ..."
+     "text": "(4) bis (8) ...",
+     "size": 9.96
     },
     {
      "x": 444.07,
      "y": 292.37,
      "width": 50.29,
-     "text": "(4) bis (8) ..."
+     "text": "(4) bis (8) ...",
+     "size": 9.96
     },
     {
      "x": 103.94,
      "y": 277.37,
      "width": 297.77,
-     "text": "Nachhaltigkeitsanforderungen für landwirtschaftliche Ausgangsstoffe"
+     "text": "Nachhaltigkeitsanforderungen für landwirtschaftliche Ausgangsstoffe",
+     "size": 9.96
     },
     {
      "x": 439.87,
      "y": 277.37,
      "width": 297.77,
-     "text": "Nachhaltigkeitsanforderungen für landwirtschaftliche Ausgangsstoffe"
+     "text": "Nachhaltigkeitsanforderungen für landwirtschaftliche Ausgangsstoffe",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 262.37,
      "width": 15.09,
-     "text": "§ 4."
+     "text": "§ 4.",
+     "size": 9.96
     },
     {
      "x": 130.82,
      "y": 262.37,
      "width": 11.58,
-     "text": "(1)"
+     "text": "(1)",
+     "size": 9.96
     },
     {
      "x": 149.74,
      "y": 262.37,
      "width": 79.83,
-     "text": "Landwirtschaftliche"
+     "text": "Landwirtschaftliche",
+     "size": 9.96
     },
     {
      "x": 236.78,
      "y": 262.37,
      "width": 64.69,
-     "text": "Ausgangsstoffe,"
+     "text": "Ausgangsstoffe,",
+     "size": 9.96
     },
     {
      "x": 308.83,
      "y": 262.37,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 328.37,
      "y": 262.37,
      "width": 12.67,
-     "text": "zur"
+     "text": "zur",
+     "size": 9.96
     },
     {
      "x": 348.26,
      "y": 262.37,
      "width": 46.59,
-     "text": "Herstellung"
+     "text": "Herstellung",
+     "size": 9.96
     },
     {
      "x": 402.21,
      "y": 262.37,
      "width": 15.04,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 251.33,
      "width": 328.84,
-     "text": "Biokraftstoffen, flüssigen Biobrennstoffen und Biomasse-Brennstoffen verwendet"
+     "text": "Biokraftstoffen, flüssigen Biobrennstoffen und Biomasse-Brennstoffen verwendet",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 240.41,
      "width": 328.5,
-     "text": "oder in Verkehr gebracht werden und im Inland, in der Europäischen Union oder"
+     "text": "oder in Verkehr gebracht werden und im Inland, in der Europäischen Union oder",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 229.37,
      "width": 328.56,
-     "text": "in Drittstaaten produziert und als nachhaltig ausgewiesen werden, dürfen nicht"
+     "text": "in Drittstaaten produziert und als nachhaltig ausgewiesen werden, dürfen nicht",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 218.33,
      "width": 328.55,
-     "text": "von Flächen mit hohem Wert hinsichtlich der biologischen Vielfalt stammen, das"
+     "text": "von Flächen mit hohem Wert hinsichtlich der biologischen Vielfalt stammen, das",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 207.38,
      "width": 328.51,
-     "text": "heißt von Flächen, die im oder nach Jänner 2008 folgenden Status hatten,"
+     "text": "heißt von Flächen, die im oder nach Jänner 2008 folgenden Status hatten,",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 196.34,
      "width": 243.21,
-     "text": "unabhängig davon, ob die Flächen noch diesen Status haben:"
+     "text": "unabhängig davon, ob die Flächen noch diesen Status haben:",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 262.37,
      "width": 15.09,
-     "text": "§ 4."
+     "text": "§ 4.",
+     "size": 9.96
     },
     {
      "x": 466.75,
      "y": 262.37,
      "width": 11.58,
-     "text": "(1)"
+     "text": "(1)",
+     "size": 9.96
     },
     {
      "x": 485.67,
      "y": 262.37,
      "width": 79.83,
-     "text": "Landwirtschaftliche"
+     "text": "Landwirtschaftliche",
+     "size": 9.96
     },
     {
      "x": 572.71,
      "y": 262.37,
      "width": 64.69,
-     "text": "Ausgangsstoffe,"
+     "text": "Ausgangsstoffe,",
+     "size": 9.96
     },
     {
      "x": 644.76,
      "y": 262.37,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 664.3,
      "y": 262.37,
      "width": 12.67,
-     "text": "zur"
+     "text": "zur",
+     "size": 9.96
     },
     {
      "x": 684.19,
      "y": 262.37,
      "width": 46.59,
-     "text": "Herstellung"
+     "text": "Herstellung",
+     "size": 9.96
     },
     {
      "x": 738.14,
      "y": 262.37,
      "width": 15.04,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 251.33,
      "width": 328.84,
-     "text": "Biokraftstoffen, flüssigen Biobrennstoffen und Biomasse-Brennstoffen verwendet"
+     "text": "Biokraftstoffen, flüssigen Biobrennstoffen und Biomasse-Brennstoffen verwendet",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 240.41,
      "width": 328.5,
-     "text": "oder in Verkehr gebracht werden und im Inland, in der Europäischen Union oder"
+     "text": "oder in Verkehr gebracht werden und im Inland, in der Europäischen Union oder",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 229.37,
      "width": 328.56,
-     "text": "in Drittstaaten produziert und als nachhaltig ausgewiesen werden, dürfen nicht"
+     "text": "in Drittstaaten produziert und als nachhaltig ausgewiesen werden, dürfen nicht",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 218.33,
      "width": 328.55,
-     "text": "von Flächen mit hohem Wert hinsichtlich der biologischen Vielfalt stammen, das"
+     "text": "von Flächen mit hohem Wert hinsichtlich der biologischen Vielfalt stammen, das",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 207.38,
      "width": 328.51,
-     "text": "heißt von Flächen, die im oder nach Jänner 2008 folgenden Status hatten,"
+     "text": "heißt von Flächen, die im oder nach Jänner 2008 folgenden Status hatten,",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 196.34,
      "width": 243.52,
-     "text": "unabhängig davon, ob die Flächen noch diesen Status haben:"
+     "text": "unabhängig davon, ob die Flächen noch diesen Status haben:",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 183.38,
      "width": 305.11,
-     "text": "1. Primärwald und andere bewaldete Flächen, das heißt Wald und andere"
+     "text": "1. Primärwald und andere bewaldete Flächen, das heißt Wald und andere",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 172.34,
      "width": 294.75,
-     "text": "bewaldete Flächen mit einheimischen Arten, in denen es kein deutlich"
+     "text": "bewaldete Flächen mit einheimischen Arten, in denen es kein deutlich",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 161.3,
      "width": 39.95,
-     "text": "sichtbares"
+     "text": "sichtbares",
+     "size": 9.96
     },
     {
      "x": 172.78,
      "y": 161.3,
      "width": 42.74,
-     "text": "Anzeichen"
+     "text": "Anzeichen",
+     "size": 9.96
     },
     {
      "x": 225.89,
      "y": 161.3,
      "width": 11.69,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 247.82,
      "y": 161.3,
      "width": 49.99,
-     "text": "menschliche"
+     "text": "menschliche",
+     "size": 9.96
     },
     {
      "x": 308.13,
      "y": 161.3,
      "width": 35.51,
-     "text": "Aktivität"
+     "text": "Aktivität",
+     "size": 9.96
     },
     {
      "x": 353.94,
      "y": 161.3,
      "width": 15.48,
-     "text": "gibt"
+     "text": "gibt",
+     "size": 9.96
     },
     {
      "x": 379.72,
      "y": 161.3,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 405.12,
      "y": 161.3,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 150.38,
      "width": 210.06,
-     "text": "ökologischen Prozesse nicht wesentlich gestört sind;"
+     "text": "ökologischen Prozesse nicht wesentlich gestört sind;",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 183.38,
      "width": 305.11,
-     "text": "1. Primärwald und andere bewaldete Flächen, das heißt Wald und andere"
+     "text": "1. Primärwald und andere bewaldete Flächen, das heißt Wald und andere",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 172.34,
      "width": 294.75,
-     "text": "bewaldete Flächen mit einheimischen Arten, in denen es kein deutlich"
+     "text": "bewaldete Flächen mit einheimischen Arten, in denen es kein deutlich",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 161.3,
      "width": 39.95,
-     "text": "sichtbares"
+     "text": "sichtbares",
+     "size": 9.96
     },
     {
      "x": 508.71,
      "y": 161.3,
      "width": 42.74,
-     "text": "Anzeichen"
+     "text": "Anzeichen",
+     "size": 9.96
     },
     {
      "x": 561.82,
      "y": 161.3,
      "width": 11.69,
-     "text": "für"
+     "text": "für",
+     "size": 9.96
     },
     {
      "x": 583.75,
      "y": 161.3,
      "width": 49.99,
-     "text": "menschliche"
+     "text": "menschliche",
+     "size": 9.96
     },
     {
      "x": 644.06,
      "y": 161.3,
      "width": 35.51,
-     "text": "Aktivität"
+     "text": "Aktivität",
+     "size": 9.96
     },
     {
      "x": 689.87,
      "y": 161.3,
      "width": 15.48,
-     "text": "gibt"
+     "text": "gibt",
+     "size": 9.96
     },
     {
      "x": 715.65,
      "y": 161.3,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 741.05,
      "y": 161.3,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 150.38,
      "width": 213.21,
-     "text": "ökologischen Prozesse nicht wesentlich gestört sind"
+     "text": "ökologischen Prozesse nicht wesentlich gestört sind",
+     "size": 9.96
     },
     {
      "x": 675.7,
      "y": 150.38,
      "width": 77.69,
-     "text": "sowie Altwald, das"
+     "text": "sowie Altwald, das",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 139.34,
      "width": 294.6,
-     "text": "heißt Wald, der aus einheimischen Baumarten besteht, die sich durch"
+     "text": "heißt Wald, der aus einheimischen Baumarten besteht, die sich durch",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 128.3,
      "width": 294.8,
-     "text": "natürliche Prozesse, Strukturen und Dynamiken entwickelt haben, die"
+     "text": "natürliche Prozesse, Strukturen und Dynamiken entwickelt haben, die",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 117.38,
      "width": 34.37,
-     "text": "späteren"
+     "text": "späteren",
+     "size": 9.96
     },
     {
      "x": 502.95,
      "y": 117.38,
      "width": 82.17,
-     "text": "Entwicklungsphasen"
+     "text": "Entwicklungsphasen",
+     "size": 9.96
     },
     {
      "x": 595.26,
      "y": 117.38,
      "width": 14.45,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 619.83,
      "y": 117.38,
      "width": 61.48,
-     "text": "Primärwäldern"
+     "text": "Primärwäldern",
+     "size": 9.96
     },
     {
      "x": 691.41,
      "y": 117.38,
      "width": 38.78,
-     "text": "derselben"
+     "text": "derselben",
+     "size": 9.96
     },
     {
      "x": 740.34,
      "y": 117.38,
      "width": 12.72,
-     "text": "Art"
+     "text": "Art",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 106.32,
      "width": 50.82,
-     "text": "entsprechen."
+     "text": "entsprechen.",
+     "size": 9.96
     },
     {
      "x": 515.78,
      "y": 106.32,
      "width": 57.12,
-     "text": "Auswirkungen"
+     "text": "Auswirkungen",
+     "size": 9.96
     },
     {
      "x": 579.44,
      "y": 106.32,
      "width": 33.26,
-     "text": "früherer"
+     "text": "früherer",
+     "size": 9.96
     },
     {
      "x": 619.14,
      "y": 106.32,
      "width": 53.45,
-     "text": "menschlicher"
+     "text": "menschlicher",
+     "size": 9.96
     },
     {
      "x": 679.16,
      "y": 106.32,
      "width": 35.63,
-     "text": "Tätigkeit"
+     "text": "Tätigkeit",
+     "size": 9.96
     },
     {
      "x": 721.24,
      "y": 106.32,
      "width": 16.61,
-     "text": "sind"
+     "text": "sind",
+     "size": 9.96
     },
     {
      "x": 744.38,
      "y": 106.32,
      "width": 8.82,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 95.28,
      "width": 163.68,
-     "text": "gering, um natürliche Prozesse zu stören"
+     "text": "gering, um natürliche Prozesse zu stören",
+     "size": 9.96
     },
     {
      "x": 622.42,
      "y": 95.28,
      "width": 2.77,
-     "text": ";"
+     "text": ";",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -2466,853 +2869,995 @@
      "x": 727.08,
      "y": 554.16,
      "width": 30.06,
-     "text": "4 von 7"
+     "text": "4 von 7",
+     "size": 9.96
     },
     {
      "x": 215.06,
      "y": 497.38,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 497.38,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 484.42,
      "width": 42.02,
-     "text": "2. bis 4. ..."
+     "text": "2. bis 4. ...",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 484.42,
      "width": 42.02,
-     "text": "2. bis 4. ..."
+     "text": "2. bis 4. ...",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 471.46,
      "width": 7.53,
-     "text": "5."
+     "text": "5.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 471.46,
      "width": 88.23,
-     "text": "Heideland, das heißt"
+     "text": "Heideland, das heißt",
+     "size": 9.96
     },
     {
      "x": 551.83,
      "y": 471.46,
      "width": 201.33,
-     "text": "Flächen, die einen Bewuchs von verschiedenen"
+     "text": "Flächen, die einen Bewuchs von verschiedenen",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 460.42,
      "width": 82.18,
-     "text": "Zwergstrauchheiden"
+     "text": "Zwergstrauchheiden",
+     "size": 9.96
     },
     {
      "x": 547.19,
      "y": 460.42,
      "width": 42.42,
-     "text": "aufweisen."
+     "text": "aufweisen.",
+     "size": 9.96
     },
     {
      "x": 596.11,
      "y": 460.42,
      "width": 37.2,
-     "text": "Darunter"
+     "text": "Darunter",
+     "size": 9.96
     },
     {
      "x": 639.75,
      "y": 460.42,
      "width": 29.31,
-     "text": "werden"
+     "text": "werden",
+     "size": 9.96
     },
     {
      "x": 675.61,
      "y": 460.42,
      "width": 9.96,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 692.15,
      "y": 460.42,
      "width": 32.31,
-     "text": "engeren"
+     "text": "engeren",
+     "size": 9.96
     },
     {
      "x": 730.99,
      "y": 460.42,
      "width": 22.27,
-     "text": "Sinne"
+     "text": "Sinne",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 449.38,
      "width": 58.72,
-     "text": "Gesellschaften"
+     "text": "Gesellschaften",
+     "size": 9.96
     },
     {
      "x": 526.36,
      "y": 449.38,
      "width": 14.45,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 549.97,
      "y": 449.38,
      "width": 61.57,
-     "text": "kleinwüchsigen"
+     "text": "kleinwüchsigen",
+     "size": 9.96
     },
     {
      "x": 620.73,
      "y": 449.38,
      "width": 77.15,
-     "text": "Gehölzformationen"
+     "text": "Gehölzformationen",
+     "size": 9.96
     },
     {
      "x": 706.95,
      "y": 449.38,
      "width": 46.37,
-     "text": "verstanden,"
+     "text": "verstanden,",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 438.46,
      "width": 27.7,
-     "text": "welche"
+     "text": "welche",
+     "size": 9.96
     },
     {
      "x": 493.02,
      "y": 438.46,
      "width": 51.11,
-     "text": "Wuchshöhen"
+     "text": "Wuchshöhen",
+     "size": 9.96
     },
     {
      "x": 551.04,
      "y": 438.46,
      "width": 14.33,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 572.13,
      "y": 438.46,
      "width": 4.98,
-     "text": "5"
+     "text": "5",
+     "size": 9.96
     },
     {
      "x": 583.89,
      "y": 438.46,
      "width": 11.61,
-     "text": "cm"
+     "text": "cm",
+     "size": 9.96
     },
     {
      "x": 602.35,
      "y": 438.46,
      "width": 11.67,
-     "text": "bis"
+     "text": "bis",
+     "size": 9.96
     },
     {
      "x": 620.82,
      "y": 438.46,
      "width": 8.82,
-     "text": "zu"
+     "text": "zu",
+     "size": 9.96
     },
     {
      "x": 636.52,
      "y": 438.46,
      "width": 14.93,
-     "text": "150"
+     "text": "150",
+     "size": 9.96
     },
     {
      "x": 658.34,
      "y": 438.46,
      "width": 11.61,
-     "text": "cm"
+     "text": "cm",
+     "size": 9.96
     },
     {
      "x": 676.8,
      "y": 438.46,
      "width": 38.2,
-     "text": "erreichen"
+     "text": "erreichen",
+     "size": 9.96
     },
     {
      "x": 721.9,
      "y": 438.46,
      "width": 31.38,
-     "text": "können."
+     "text": "können.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 427.39,
      "width": 294.84,
-     "text": "Zwergstrauchheiden sind in den Tal- und Beckenlagen sowie im Gebirge"
+     "text": "Zwergstrauchheiden sind in den Tal- und Beckenlagen sowie im Gebirge",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 416.35,
      "width": 294.68,
-     "text": "in unterschiedlichen Flächenausmaßen vorzufinden, welche als Standort"
+     "text": "in unterschiedlichen Flächenausmaßen vorzufinden, welche als Standort",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 405.43,
      "width": 273.29,
-     "text": "nährstoffarme carbonathaltige sowie carbonatfreie Böden besiedeln"
+     "text": "nährstoffarme carbonathaltige sowie carbonatfreie Böden besiedeln",
+     "size": 9.96
     },
     {
      "x": 108.14,
      "y": 392.47,
      "width": 50.29,
-     "text": "(2) bis (5) ..."
+     "text": "(2) bis (5) ...",
+     "size": 9.96
     },
     {
      "x": 444.07,
      "y": 392.47,
      "width": 50.29,
-     "text": "(2) bis (5) ..."
+     "text": "(2) bis (5) ...",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 377.35,
      "width": 309.17,
-     "text": "(6) Biokraftstoffe, flüssige Biobrennstoffe und Biomasse-Brennstoffe, die"
+     "text": "(6) Biokraftstoffe, flüssige Biobrennstoffe und Biomasse-Brennstoffe, die",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 366.43,
      "width": 13.35,
-     "text": "aus"
+     "text": "aus",
+     "size": 9.96
     },
     {
      "x": 109.93,
      "y": 366.43,
      "width": 45.37,
-     "text": "Reststoffen"
+     "text": "Reststoffen",
+     "size": 9.96
     },
     {
      "x": 163.39,
      "y": 366.43,
      "width": 41.64,
-     "text": "hergestellt"
+     "text": "hergestellt",
+     "size": 9.96
     },
     {
      "x": 213.03,
      "y": 366.43,
      "width": 31.98,
-     "text": "werden,"
+     "text": "werden,",
+     "size": 9.96
     },
     {
      "x": 252.95,
      "y": 366.43,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 273.09,
      "y": 366.43,
      "width": 15.04,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 296.1,
      "y": 366.43,
      "width": 81.47,
-     "text": "landwirtschaftlichen"
+     "text": "landwirtschaftlichen",
+     "size": 9.96
     },
     {
      "x": 385.67,
      "y": 366.43,
      "width": 31.59,
-     "text": "Flächen"
+     "text": "Flächen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 355.39,
      "width": 38.59,
-     "text": "stammen,"
+     "text": "stammen,",
+     "size": 9.96
     },
     {
      "x": 140.73,
      "y": 355.39,
      "width": 23.26,
-     "text": "sowie"
+     "text": "sowie",
+     "size": 9.96
     },
     {
      "x": 177.56,
      "y": 355.39,
      "width": 91.99,
-     "text": "Biomasse-Brennstoffe,"
+     "text": "Biomasse-Brennstoffe,",
+     "size": 9.96
     },
     {
      "x": 283.14,
      "y": 355.39,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 308.91,
      "y": 355.39,
      "width": 13.35,
-     "text": "aus"
+     "text": "aus",
+     "size": 9.96
     },
     {
      "x": 335.77,
      "y": 355.39,
      "width": 81.58,
-     "text": "landwirtschaftlichen"
+     "text": "landwirtschaftlichen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 344.35,
      "width": 182.64,
-     "text": "Ausgangsstoffen hergestellt werden, werden"
+     "text": "Ausgangsstoffen hergestellt werden, werden",
+     "size": 9.96
     },
     {
      "x": 275.69,
      "y": 344.35,
      "width": 142.04,
-     "text": "für die Zwecke von Art. 29 Abs. 1"
+     "text": "für die Zwecke von Art. 29 Abs. 1",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 333.43,
      "width": 328.36,
-     "text": "lit. a, b und c der Richtlinie (EU) 2018/2001 nur berücksichtigt, wenn die"
+     "text": "lit. a, b und c der Richtlinie (EU) 2018/2001 nur berücksichtigt, wenn die",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 322.37,
      "width": 58.8,
-     "text": "Bewirtschafter"
+     "text": "Bewirtschafter",
+     "size": 9.96
     },
     {
      "x": 156.71,
      "y": 322.37,
      "width": 24.39,
-     "text": "dieser"
+     "text": "dieser",
+     "size": 9.96
     },
     {
      "x": 190.42,
      "y": 322.37,
      "width": 82.18,
-     "text": "landwirtschaftlichen"
+     "text": "landwirtschaftlichen",
+     "size": 9.96
     },
     {
      "x": 282.02,
      "y": 322.37,
      "width": 32.77,
-     "text": "Flächen"
+     "text": "Flächen",
+     "size": 9.96
     },
     {
      "x": 324.21,
      "y": 322.37,
      "width": 12.11,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 345.68,
      "y": 322.37,
      "width": 71.63,
-     "text": "flächenrelevanten"
+     "text": "flächenrelevanten",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 311.33,
      "width": 328.49,
-     "text": "Anforderungen und Standards im Rahmen der Konditionalität in Bezug auf den"
+     "text": "Anforderungen und Standards im Rahmen der Konditionalität in Bezug auf den",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 300.41,
      "width": 329.03,
-     "text": "guten landwirtschaftlichen und ökologischen Zustand der Flächen gemäß Art. 12"
+     "text": "guten landwirtschaftlichen und ökologischen Zustand der Flächen gemäß Art. 12",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 289.37,
      "width": 328.91,
-     "text": "und 13 in Verbindung mit Anhang III der Verordnung (EU) 2021/2115 und"
+     "text": "und 13 in Verbindung mit Anhang III der Verordnung (EU) 2021/2115 und",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 278.33,
      "width": 329.03,
-     "text": "Anlage 2 der GAP-Strategieplan-Anwendungsverordnung – GSP-AV, BGBl. II"
+     "text": "Anlage 2 der GAP-Strategieplan-Anwendungsverordnung – GSP-AV, BGBl. II",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 267.41,
      "width": 242.58,
-     "text": "Nr. 403/2022, oder gleichwertiger Anforderungen einhalten."
+     "text": "Nr. 403/2022, oder gleichwertiger Anforderungen einhalten.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 377.35,
      "width": 309.17,
-     "text": "(6) Biokraftstoffe, flüssige Biobrennstoffe und Biomasse-Brennstoffe, die"
+     "text": "(6) Biokraftstoffe, flüssige Biobrennstoffe und Biomasse-Brennstoffe, die",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 366.43,
      "width": 13.35,
-     "text": "aus"
+     "text": "aus",
+     "size": 9.96
     },
     {
      "x": 445.85,
      "y": 366.43,
      "width": 45.37,
-     "text": "Reststoffen"
+     "text": "Reststoffen",
+     "size": 9.96
     },
     {
      "x": 499.32,
      "y": 366.43,
      "width": 41.64,
-     "text": "hergestellt"
+     "text": "hergestellt",
+     "size": 9.96
     },
     {
      "x": 548.96,
      "y": 366.43,
      "width": 31.98,
-     "text": "werden,"
+     "text": "werden,",
+     "size": 9.96
     },
     {
      "x": 588.88,
      "y": 366.43,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 609.02,
      "y": 366.43,
      "width": 15.04,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 632.03,
      "y": 366.43,
      "width": 81.47,
-     "text": "landwirtschaftlichen"
+     "text": "landwirtschaftlichen",
+     "size": 9.96
     },
     {
      "x": 721.6,
      "y": 366.43,
      "width": 31.59,
-     "text": "Flächen"
+     "text": "Flächen",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 355.39,
      "width": 38.59,
-     "text": "stammen,"
+     "text": "stammen,",
+     "size": 9.96
     },
     {
      "x": 476.66,
      "y": 355.39,
      "width": 23.26,
-     "text": "sowie"
+     "text": "sowie",
+     "size": 9.96
     },
     {
      "x": 513.48,
      "y": 355.39,
      "width": 92,
-     "text": "Biomasse-Brennstoffe,"
+     "text": "Biomasse-Brennstoffe,",
+     "size": 9.96
     },
     {
      "x": 619.07,
      "y": 355.39,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 644.84,
      "y": 355.39,
      "width": 13.35,
-     "text": "aus"
+     "text": "aus",
+     "size": 9.96
     },
     {
      "x": 671.7,
      "y": 355.39,
      "width": 81.58,
-     "text": "landwirtschaftlichen"
+     "text": "landwirtschaftlichen",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 344.35,
      "width": 177.59,
-     "text": "Ausgangsstoffen hergestellt werden, werden"
+     "text": "Ausgangsstoffen hergestellt werden, werden",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 254.45,
      "width": 7.53,
-     "text": "1."
+     "text": "1.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 254.45,
      "width": 294.76,
-     "text": "für die Zwecke von Art. 29 Abs. 1 lit. a, b und c der Richtlinie (EU)"
+     "text": "für die Zwecke von Art. 29 Abs. 1 lit. a, b und c der Richtlinie (EU)",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 243.41,
      "width": 42.84,
-     "text": "2018/2001"
+     "text": "2018/2001",
+     "size": 9.96
     },
     {
      "x": 511.68,
      "y": 243.41,
      "width": 13.93,
-     "text": "nur"
+     "text": "nur",
+     "size": 9.96
     },
     {
      "x": 535.89,
      "y": 243.41,
      "width": 59.09,
-     "text": "berücksichtigt,"
+     "text": "berücksichtigt,",
+     "size": 9.96
     },
     {
      "x": 605.43,
      "y": 243.41,
      "width": 21.06,
-     "text": "wenn"
+     "text": "wenn",
+     "size": 9.96
     },
     {
      "x": 636.96,
      "y": 243.41,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 659.62,
      "y": 243.41,
      "width": 58.69,
-     "text": "Bewirtschafter"
+     "text": "Bewirtschafter",
+     "size": 9.96
     },
     {
      "x": 728.71,
      "y": 243.41,
      "width": 24.39,
-     "text": "dieser"
+     "text": "dieser",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 232.37,
      "width": 294.6,
-     "text": "landwirtschaftlichen Flächen die flächenrelevanten Anforderungen und"
+     "text": "landwirtschaftlichen Flächen die flächenrelevanten Anforderungen und",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 221.33,
      "width": 40.66,
-     "text": "Standards"
+     "text": "Standards",
+     "size": 9.96
     },
     {
      "x": 505.2,
      "y": 221.33,
      "width": 9.96,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 521.4,
      "y": 221.33,
      "width": 32.65,
-     "text": "Rahmen"
+     "text": "Rahmen",
+     "size": 9.96
     },
     {
      "x": 560.23,
      "y": 221.33,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 579.65,
      "y": 221.33,
      "width": 61.13,
-     "text": "Konditionalität"
+     "text": "Konditionalität",
+     "size": 9.96
     },
     {
      "x": 647.01,
      "y": 221.33,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 660.93,
      "y": 221.33,
      "width": 24.39,
-     "text": "Bezug"
+     "text": "Bezug",
+     "size": 9.96
     },
     {
      "x": 691.49,
      "y": 221.33,
      "width": 12.61,
-     "text": "auf"
+     "text": "auf",
+     "size": 9.96
     },
     {
      "x": 710.33,
      "y": 221.33,
      "width": 14.43,
-     "text": "den"
+     "text": "den",
+     "size": 9.96
     },
     {
      "x": 730.96,
      "y": 221.33,
      "width": 22.12,
-     "text": "guten"
+     "text": "guten",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 210.38,
      "width": 82.07,
-     "text": "landwirtschaftlichen"
+     "text": "landwirtschaftlichen",
+     "size": 9.96
     },
     {
      "x": 547.32,
      "y": 210.38,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 569.02,
      "y": 210.38,
      "width": 52.68,
-     "text": "ökologischen"
+     "text": "ökologischen",
+     "size": 9.96
     },
     {
      "x": 628.48,
      "y": 210.38,
      "width": 32.08,
-     "text": "Zustand"
+     "text": "Zustand",
+     "size": 9.96
     },
     {
      "x": 667.2,
      "y": 210.38,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 687.22,
      "y": 210.38,
      "width": 32.66,
-     "text": "Flächen"
+     "text": "Flächen",
+     "size": 9.96
     },
     {
      "x": 726.54,
      "y": 210.38,
      "width": 26.68,
-     "text": "gemäß"
+     "text": "gemäß",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 199.34,
      "width": 27.77,
-     "text": "Art. 12"
+     "text": "Art. 12",
+     "size": 9.96
     },
     {
      "x": 494.91,
      "y": 199.34,
      "width": 14.93,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 518.52,
      "y": 199.34,
      "width": 10.01,
-     "text": "13"
+     "text": "13",
+     "size": 9.96
     },
     {
      "x": 537.21,
      "y": 199.34,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 553.5,
      "y": 199.34,
      "width": 47.16,
-     "text": "Verbindung"
+     "text": "Verbindung",
+     "size": 9.96
     },
     {
      "x": 609.34,
      "y": 199.34,
      "width": 12.73,
-     "text": "mit"
+     "text": "mit",
+     "size": 9.96
     },
     {
      "x": 630.69,
      "y": 199.34,
      "width": 43.75,
-     "text": "Anhang III"
+     "text": "Anhang III",
+     "size": 9.96
     },
     {
      "x": 683.1,
      "y": 199.34,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 705.04,
      "y": 199.34,
      "width": 48.36,
-     "text": "Verordnung"
+     "text": "Verordnung",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 188.3,
      "width": 65.29,
-     "text": "(EU) 2021/2115"
+     "text": "(EU) 2021/2115",
+     "size": 9.96
     },
     {
      "x": 541.32,
      "y": 188.3,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 573.93,
      "y": 188.3,
      "width": 28.27,
-     "text": "Anlage"
+     "text": "Anlage",
+     "size": 9.96
     },
     {
      "x": 619.72,
      "y": 188.3,
      "width": 4.98,
-     "text": "2"
+     "text": "2",
+     "size": 9.96
     },
     {
      "x": 642.38,
      "y": 188.3,
      "width": 13.33,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 673.32,
      "y": 188.3,
      "width": 80.12,
-     "text": "GAP-Strategieplan-"
+     "text": "GAP-Strategieplan-",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 177.38,
      "width": 97.76,
-     "text": "Anwendungsverordnung"
+     "text": "Anwendungsverordnung",
+     "size": 9.96
     },
     {
      "x": 565.9,
      "y": 177.38,
      "width": 4.98,
-     "text": "–"
+     "text": "–",
+     "size": 9.96
     },
     {
      "x": 580.42,
      "y": 177.38,
      "width": 36.42,
-     "text": "GSP-AV,"
+     "text": "GSP-AV,",
+     "size": 9.96
     },
     {
      "x": 626.45,
      "y": 177.38,
      "width": 33.83,
-     "text": "BGBl. II"
+     "text": "BGBl. II",
+     "size": 9.96
     },
     {
      "x": 669.9,
      "y": 177.38,
      "width": 55.74,
-     "text": "Nr. 403/2022,"
+     "text": "Nr. 403/2022,",
+     "size": 9.96
     },
     {
      "x": 735.15,
      "y": 177.38,
      "width": 18.25,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 166.34,
      "width": 178.47,
-     "text": "gleichwertiger Anforderungen einhalten und"
+     "text": "gleichwertiger Anforderungen einhalten und",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 153.38,
      "width": 7.53,
-     "text": "2."
+     "text": "2.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 153.38,
      "width": 294.94,
-     "text": "für die Zwecke von Art. 29 Abs. 2 der Richtlinie (EU) 2018/2001 nur"
+     "text": "für die Zwecke von Art. 29 Abs. 2 der Richtlinie (EU) 2018/2001 nur",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 142.34,
      "width": 59.09,
-     "text": "berücksichtigt,"
+     "text": "berücksichtigt,",
+     "size": 9.96
     },
     {
      "x": 533.29,
      "y": 142.34,
      "width": 21.06,
-     "text": "wenn"
+     "text": "wenn",
+     "size": 9.96
     },
     {
      "x": 570.1,
      "y": 142.34,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 598.04,
      "y": 142.34,
      "width": 64.3,
-     "text": "Systembetreiber"
+     "text": "Systembetreiber",
+     "size": 9.96
     },
     {
      "x": 678.04,
      "y": 142.34,
      "width": 36.71,
-     "text": "entweder"
+     "text": "entweder",
+     "size": 9.96
     },
     {
      "x": 730.45,
      "y": 142.34,
      "width": 22.69,
-     "text": "selbst"
+     "text": "selbst",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 131.3,
      "width": 294.87,
-     "text": "Überwachungs- oder Bewirtschaftungspläne festgelegt haben oder die"
+     "text": "Überwachungs- oder Bewirtschaftungspläne festgelegt haben oder die",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 120.38,
      "width": 294.58,
-     "text": "Festlegung derartiger Pläne an die bei ihnen registrierten Unternehmen"
+     "text": "Festlegung derartiger Pläne an die bei ihnen registrierten Unternehmen",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 109.34,
      "width": 294.63,
-     "text": "delegiert haben, um einer Beeinträchtigung der Bodenqualität und des"
+     "text": "delegiert haben, um einer Beeinträchtigung der Bodenqualität und des",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 98.28,
      "width": 183.49,
-     "text": "Kohlenstoffbestands des Bodens zu begegnen."
+     "text": "Kohlenstoffbestands des Bodens zu begegnen.",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -3328,1117 +3873,1303 @@
      "x": 727.08,
      "y": 554.16,
      "width": 30.06,
-     "text": "5 von 7"
+     "text": "5 von 7",
+     "size": 9.96
     },
     {
      "x": 215.06,
      "y": 497.38,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 497.38,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 182.66,
      "y": 482.38,
      "width": 140.53,
-     "text": "Anforderungen an Unternehmen"
+     "text": "Anforderungen an Unternehmen",
+     "size": 9.96
     },
     {
      "x": 518.59,
      "y": 482.38,
      "width": 140.53,
-     "text": "Anforderungen an Unternehmen"
+     "text": "Anforderungen an Unternehmen",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 467.38,
      "width": 15.09,
-     "text": "§ 5."
+     "text": "§ 5.",
+     "size": 9.96
     },
     {
      "x": 126.02,
      "y": 467.38,
      "width": 52.35,
-     "text": "(1) bis (5) …"
+     "text": "(1) bis (5) …",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 467.38,
      "width": 15.09,
-     "text": "§ 5."
+     "text": "§ 5.",
+     "size": 9.96
     },
     {
      "x": 461.95,
      "y": 467.38,
      "width": 52.35,
-     "text": "(1) bis (5) …"
+     "text": "(1) bis (5) …",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 452.38,
      "width": 308.8,
-     "text": "(6) Die Unternehmen haben Aufzeichnungen zu führen, die erforderlich"
+     "text": "(6) Die Unternehmen haben Aufzeichnungen zu führen, die erforderlich",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 441.46,
      "width": 329.02,
-     "text": "sind, um die Einsparung der anteiligen Treibhausgasemissionen gemäß Art. 31"
+     "text": "sind, um die Einsparung der anteiligen Treibhausgasemissionen gemäß Art. 31",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 430.39,
      "width": 122.47,
-     "text": "der Richtlinie (EU) 2018/2001"
+     "text": "der Richtlinie (EU) 2018/2001",
+     "size": 9.96
     },
     {
      "x": 213.62,
      "y": 430.39,
      "width": 15.06,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 231.26,
      "y": 430.39,
      "width": 50.44,
-     "text": "zu ermitteln."
+     "text": "zu ermitteln.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 452.38,
      "width": 308.8,
-     "text": "(6) Die Unternehmen haben Aufzeichnungen zu führen, die erforderlich"
+     "text": "(6) Die Unternehmen haben Aufzeichnungen zu führen, die erforderlich",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 441.46,
      "width": 329.02,
-     "text": "sind, um die Einsparung der anteiligen Treibhausgasemissionen gemäß Art. 31"
+     "text": "sind, um die Einsparung der anteiligen Treibhausgasemissionen gemäß Art. 31",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 430.39,
      "width": 175.49,
-     "text": "der Richtlinie (EU) 2018/2001 zu ermitteln."
+     "text": "der Richtlinie (EU) 2018/2001 zu ermitteln.",
+     "size": 9.96
     },
     {
      "x": 183.02,
      "y": 415.39,
      "width": 76.4,
-     "text": "Einbeziehung von"
+     "text": "Einbeziehung von",
+     "size": 9.96
     },
     {
      "x": 262.01,
      "y": 415.39,
      "width": 60.94,
-     "text": "Kontrollstellen"
+     "text": "Kontrollstellen",
+     "size": 9.96
     },
     {
      "x": 503.95,
      "y": 415.39,
      "width": 169.9,
-     "text": "Einbeziehung von Zertifizierungsstellen"
+     "text": "Einbeziehung von Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 400.39,
      "width": 15.09,
-     "text": "§ 8."
+     "text": "§ 8.",
+     "size": 9.96
     },
     {
      "x": 127.22,
      "y": 400.39,
      "width": 99.19,
-     "text": "(1) Der Systembetreiber"
+     "text": "(1) Der Systembetreiber",
+     "size": 9.96
     },
     {
      "x": 230.18,
      "y": 400.39,
      "width": 19.48,
-     "text": "kann"
+     "text": "kann",
+     "size": 9.96
     },
     {
      "x": 253.61,
      "y": 400.39,
      "width": 163.64,
-     "text": "für die Überprüfung der Einhaltung der"
+     "text": "für die Überprüfung der Einhaltung der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 389.35,
      "width": 295.79,
-     "text": "Nachhaltigkeitskriterien gemäß Art. 29 der Richtlinie (EU) 2018/2001"
+     "text": "Nachhaltigkeitskriterien gemäß Art. 29 der Richtlinie (EU) 2018/2001",
+     "size": 9.96
     },
     {
      "x": 389.81,
      "y": 389.35,
      "width": 27.7,
-     "text": "andere"
+     "text": "andere",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 378.43,
      "width": 96.31,
-     "text": "Stellen (Kontrollstellen)"
+     "text": "Stellen (Kontrollstellen)",
+     "size": 9.96
     },
     {
      "x": 187.46,
      "y": 378.43,
      "width": 39.48,
-     "text": "einbinden"
+     "text": "einbinden",
+     "size": 9.96
     },
     {
      "x": 227.06,
      "y": 378.43,
      "width": 2.49,
-     "text": "."
+     "text": ".",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 400.39,
      "width": 15.09,
-     "text": "§ 8."
+     "text": "§ 8.",
+     "size": 9.96
     },
     {
      "x": 463.87,
      "y": 400.39,
      "width": 100.4,
-     "text": "(1) Der Systembetreiber"
+     "text": "(1) Der Systembetreiber",
+     "size": 9.96
     },
     {
      "x": 568.78,
      "y": 400.39,
      "width": 12.83,
-     "text": "hat"
+     "text": "hat",
+     "size": 9.96
     },
     {
      "x": 586.06,
      "y": 400.39,
      "width": 167.1,
-     "text": "für die Überprüfung der Einhaltung der"
+     "text": "für die Überprüfung der Einhaltung der",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 389.35,
      "width": 96.56,
-     "text": "Nachhaltigkeitskriterien"
+     "text": "Nachhaltigkeitskriterien",
+     "size": 9.96
     },
     {
      "x": 533.12,
      "y": 389.35,
      "width": 26.54,
-     "text": "gemäß"
+     "text": "gemäß",
+     "size": 9.96
     },
     {
      "x": 571.73,
      "y": 389.35,
      "width": 28.43,
-     "text": "Art. 29"
+     "text": "Art. 29",
+     "size": 9.96
     },
     {
      "x": 612.2,
      "y": 389.35,
      "width": 12.67,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 636.89,
      "y": 389.35,
      "width": 61.89,
-     "text": "Richtlinie (EU)"
+     "text": "Richtlinie (EU)",
+     "size": 9.96
     },
     {
      "x": 710.81,
      "y": 389.35,
      "width": 42.61,
-     "text": "2018/2001"
+     "text": "2018/2001",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 378.43,
      "width": 84.86,
-     "text": "Zertifizierungsstellen"
+     "text": "Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 511.99,
      "y": 378.43,
      "width": 48.36,
-     "text": "einzubinden"
+     "text": "einzubinden",
+     "size": 9.96
     },
     {
      "x": 560.5,
      "y": 378.43,
      "width": 2.49,
-     "text": "."
+     "text": ".",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 363.43,
      "width": 11.69,
-     "text": "(2)"
+     "text": "(2)",
+     "size": 9.96
     },
     {
      "x": 127.17,
      "y": 363.43,
      "width": 13.86,
-     "text": "Für"
+     "text": "Für",
+     "size": 9.96
     },
     {
      "x": 148.02,
      "y": 363.43,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 167.32,
      "y": 363.43,
      "width": 54.96,
-     "text": "Einbeziehung"
+     "text": "Einbeziehung",
+     "size": 9.96
     },
     {
      "x": 229.17,
      "y": 363.43,
      "width": 15.04,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 251.57,
      "y": 363.43,
      "width": 59.78,
-     "text": "Kontrollstellen"
+     "text": "Kontrollstellen",
+     "size": 9.96
     },
     {
      "x": 318.53,
      "y": 363.43,
      "width": 26.66,
-     "text": "gemäß"
+     "text": "gemäß",
+     "size": 9.96
     },
     {
      "x": 352.22,
      "y": 363.43,
      "width": 26.13,
-     "text": "Abs. 1"
+     "text": "Abs. 1",
+     "size": 9.96
     },
     {
      "x": 385.47,
      "y": 363.43,
      "width": 12.22,
-     "text": "hat"
+     "text": "hat",
+     "size": 9.96
     },
     {
      "x": 404.77,
      "y": 363.43,
      "width": 12.67,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 352.39,
      "width": 328.92,
-     "text": "Systembetreiber zu prüfen, ob die Anforderungen gemäß den Art. 29 und 32 der"
+     "text": "Systembetreiber zu prüfen, ob die Anforderungen gemäß den Art. 29 und 32 der",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 341.35,
      "width": 48.36,
-     "text": "Verordnung"
+     "text": "Verordnung",
+     "size": 9.96
     },
     {
      "x": 143.35,
      "y": 341.35,
      "width": 19.96,
-     "text": "(EU)"
+     "text": "(EU)",
+     "size": 9.96
     },
     {
      "x": 169.72,
      "y": 341.35,
      "width": 37.7,
-     "text": "2017/625"
+     "text": "2017/625",
+     "size": 9.96
     },
     {
      "x": 213.83,
      "y": 341.35,
      "width": 17.7,
-     "text": "über"
+     "text": "über",
+     "size": 9.96
     },
     {
      "x": 238.03,
      "y": 341.35,
      "width": 34.4,
-     "text": "amtliche"
+     "text": "amtliche",
+     "size": 9.96
     },
     {
      "x": 278.81,
      "y": 341.35,
      "width": 43.23,
-     "text": "Kontrollen"
+     "text": "Kontrollen",
+     "size": 9.96
     },
     {
      "x": 328.33,
      "y": 341.35,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 349.79,
      "y": 341.35,
      "width": 26.59,
-     "text": "andere"
+     "text": "andere",
+     "size": 9.96
     },
     {
      "x": 382.86,
      "y": 341.35,
      "width": 34.4,
-     "text": "amtliche"
+     "text": "amtliche",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 330.43,
      "width": 45.49,
-     "text": "Tätigkeiten"
+     "text": "Tätigkeiten",
+     "size": 9.96
     },
     {
      "x": 147.94,
      "y": 330.43,
      "width": 12.79,
-     "text": "zur"
+     "text": "zur",
+     "size": 9.96
     },
     {
      "x": 174.44,
      "y": 330.43,
      "width": 63.14,
-     "text": "Gewährleistung"
+     "text": "Gewährleistung",
+     "size": 9.96
     },
     {
      "x": 251.42,
      "y": 330.43,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 278.03,
      "y": 330.43,
      "width": 48.74,
-     "text": "Anwendung"
+     "text": "Anwendung",
+     "size": 9.96
     },
     {
      "x": 340.51,
      "y": 330.43,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 367.61,
      "y": 330.43,
      "width": 49.98,
-     "text": "Lebens- und"
+     "text": "Lebens- und",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 319.37,
      "width": 92.01,
-     "text": "Futtermittelrechts und"
+     "text": "Futtermittelrechts und",
+     "size": 9.96
     },
     {
      "x": 186.63,
      "y": 319.37,
      "width": 69.2,
-     "text": "der Vorschriften"
+     "text": "der Vorschriften",
+     "size": 9.96
     },
     {
      "x": 261.88,
      "y": 319.37,
      "width": 17.7,
-     "text": "über"
+     "text": "über",
+     "size": 9.96
     },
     {
      "x": 285.59,
      "y": 319.37,
      "width": 59.93,
-     "text": "Tiergesundheit"
+     "text": "Tiergesundheit",
+     "size": 9.96
     },
     {
      "x": 351.51,
      "y": 319.37,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 372.58,
      "y": 319.37,
      "width": 44.57,
-     "text": "Tierschutz,"
+     "text": "Tierschutz,",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 308.33,
      "width": 328.62,
-     "text": "Pflanzengesundheit und Pflanzenschutzmittel, zur Änderung der Verordnungen"
+     "text": "Pflanzengesundheit und Pflanzenschutzmittel, zur Änderung der Verordnungen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 297.41,
      "width": 19.96,
-     "text": "(EG)"
+     "text": "(EG)",
+     "size": 9.96
     },
     {
      "x": 121.29,
      "y": 297.41,
      "width": 55.89,
-     "text": "Nr. 999/2001,"
+     "text": "Nr. 999/2001,",
+     "size": 9.96
     },
     {
      "x": 189.91,
      "y": 297.41,
      "width": 19.96,
-     "text": "(EG)"
+     "text": "(EG)",
+     "size": 9.96
     },
     {
      "x": 222.51,
      "y": 297.41,
      "width": 55.95,
-     "text": "Nr. 396/2005,"
+     "text": "Nr. 396/2005,",
+     "size": 9.96
     },
     {
      "x": 291.19,
      "y": 297.41,
      "width": 19.96,
-     "text": "(EG)"
+     "text": "(EG)",
+     "size": 9.96
     },
     {
      "x": 323.9,
      "y": 297.41,
      "width": 61.02,
-     "text": "Nr. 1069/2009,"
+     "text": "Nr. 1069/2009,",
+     "size": 9.96
     },
     {
      "x": 397.65,
      "y": 297.41,
      "width": 19.96,
-     "text": "(EG)"
+     "text": "(EG)",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 286.37,
      "width": 328.79,
-     "text": "Nr. 1107/2009, (EU) Nr. 1151/2012, (EU) Nr. 652/2014, (EU) 2016/429 und"
+     "text": "Nr. 1107/2009, (EU) Nr. 1151/2012, (EU) Nr. 652/2014, (EU) 2016/429 und",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 275.33,
      "width": 328.95,
-     "text": "(EU) 2016/2031, der Verordnungen (EG) Nr. 1/2005 und (EG) Nr. 1099/2009"
+     "text": "(EU) 2016/2031, der Verordnungen (EG) Nr. 1/2005 und (EG) Nr. 1099/2009",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 264.41,
      "width": 328.55,
-     "text": "sowie der Richtlinien 98/58/EG, 1999/74/EG, 2007/43/EG, 2008/119/EG und"
+     "text": "sowie der Richtlinien 98/58/EG, 1999/74/EG, 2007/43/EG, 2008/119/EG und",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 253.37,
      "width": 328.89,
-     "text": "2008/120/EG und zur Aufhebung der Verordnungen (EG) Nr. 854/2004 und (EG)"
+     "text": "2008/120/EG und zur Aufhebung der Verordnungen (EG) Nr. 854/2004 und (EG)",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 242.33,
      "width": 55.82,
-     "text": "Nr. 882/2004,"
+     "text": "Nr. 882/2004,",
+     "size": 9.96
     },
     {
      "x": 154.14,
      "y": 242.33,
      "width": 12.67,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 176.55,
      "y": 242.33,
      "width": 44.31,
-     "text": "Richtlinien"
+     "text": "Richtlinien",
+     "size": 9.96
     },
     {
      "x": 230.63,
      "y": 242.33,
      "width": 55.74,
-     "text": "89/608/EWG,"
+     "text": "89/608/EWG,",
+     "size": 9.96
     },
     {
      "x": 296.1,
      "y": 242.33,
      "width": 55.59,
-     "text": "89/662/EWG,"
+     "text": "89/662/EWG,",
+     "size": 9.96
     },
     {
      "x": 361.43,
      "y": 242.33,
      "width": 55.85,
-     "text": "90/425/EWG,"
+     "text": "90/425/EWG,",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 231.41,
      "width": 52.46,
-     "text": "91/496/EEG,"
+     "text": "91/496/EEG,",
+     "size": 9.96
     },
     {
      "x": 150.43,
      "y": 231.41,
      "width": 41.32,
-     "text": "96/23/EG,"
+     "text": "96/23/EG,",
+     "size": 9.96
     },
     {
      "x": 201.12,
      "y": 231.41,
      "width": 38.81,
-     "text": "96/93/EG"
+     "text": "96/93/EG",
+     "size": 9.96
     },
     {
      "x": 249.31,
      "y": 231.41,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 273.75,
      "y": 231.41,
      "width": 38.81,
-     "text": "97/78/EG"
+     "text": "97/78/EG",
+     "size": 9.96
     },
     {
      "x": 321.94,
      "y": 231.41,
      "width": 14.82,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 346.16,
      "y": 231.41,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 368.82,
      "y": 231.41,
      "width": 48.26,
-     "text": "Beschlusses"
+     "text": "Beschlusses",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 220.37,
      "width": 55.85,
-     "text": "92/438/EWG,"
+     "text": "92/438/EWG,",
+     "size": 9.96
     },
     {
      "x": 152,
      "y": 220.37,
      "width": 19.06,
-     "text": "ABl."
+     "text": "ABl.",
+     "size": 9.96
     },
     {
      "x": 178.63,
      "y": 220.37,
      "width": 34.32,
-     "text": "Nr. L 95"
+     "text": "Nr. L 95",
+     "size": 9.96
     },
     {
      "x": 220.55,
      "y": 220.37,
      "width": 17.81,
-     "text": "vom"
+     "text": "vom",
+     "size": 9.96
     },
     {
      "x": 245.95,
      "y": 220.37,
      "width": 44.88,
-     "text": "07.04.2017"
+     "text": "07.04.2017",
+     "size": 9.96
     },
     {
      "x": 298.43,
      "y": 220.37,
      "width": 18.26,
-     "text": "S. 1,"
+     "text": "S. 1,",
+     "size": 9.96
     },
     {
      "x": 324.26,
      "y": 220.37,
      "width": 10.52,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 342.36,
      "y": 220.37,
      "width": 34.96,
-     "text": "Hinblick"
+     "text": "Hinblick",
+     "size": 9.96
     },
     {
      "x": 384.92,
      "y": 220.37,
      "width": 12.79,
-     "text": "auf"
+     "text": "auf",
+     "size": 9.96
     },
     {
      "x": 405.28,
      "y": 220.37,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 209.3,
      "width": 201.12,
-     "text": "Einhaltung der Nachhaltigkeitskriterien vorliegen."
+     "text": "Einhaltung der Nachhaltigkeitskriterien vorliegen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 363.43,
      "width": 124.7,
-     "text": "(2) Für die Einbeziehung von"
+     "text": "(2) Für die Einbeziehung von",
+     "size": 9.96
     },
     {
      "x": 573.58,
      "y": 363.43,
      "width": 84.75,
-     "text": "Zertifizierungsstellen"
+     "text": "Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 662.74,
      "y": 363.43,
      "width": 90.74,
-     "text": "gemäß Abs. 1 hat der"
+     "text": "gemäß Abs. 1 hat der",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 352.39,
      "width": 270.78,
-     "text": "Systembetreiber zu prüfen, ob die Anforderungen gemäß den Art."
+     "text": "Systembetreiber zu prüfen, ob die Anforderungen gemäß den Art.",
+     "size": 9.96
     },
     {
      "x": 698.26,
      "y": 352.39,
      "width": 55.32,
-     "text": "11 Abs. 1 der"
+     "text": "11 Abs. 1 der",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 341.35,
      "width": 219.21,
-     "text": "Durchführungsverordnung (EU) 2022/996 erfüllt sind."
+     "text": "Durchführungsverordnung (EU) 2022/996 erfüllt sind.",
+     "size": 9.96
     },
     {
      "x": 186.38,
      "y": 194.3,
      "width": 133.24,
-     "text": "Melde- und Auskunftspflichten"
+     "text": "Melde- und Auskunftspflichten",
+     "size": 9.96
     },
     {
      "x": 522.31,
      "y": 194.3,
      "width": 133.24,
-     "text": "Melde- und Auskunftspflichten"
+     "text": "Melde- und Auskunftspflichten",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 179.3,
      "width": 15.09,
-     "text": "§ 9."
+     "text": "§ 9.",
+     "size": 9.96
     },
     {
      "x": 126.02,
      "y": 179.3,
      "width": 52.35,
-     "text": "(1) bis (2) …"
+     "text": "(1) bis (2) …",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 179.3,
      "width": 15.09,
-     "text": "§ 9."
+     "text": "§ 9.",
+     "size": 9.96
     },
     {
      "x": 461.95,
      "y": 179.3,
      "width": 52.35,
-     "text": "(1) bis (2) …"
+     "text": "(1) bis (2) …",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 164.3,
      "width": 308.85,
-     "text": "(3) Unternehmen, die nachhaltige landwirtschaftliche Ausgangsstoffe für"
+     "text": "(3) Unternehmen, die nachhaltige landwirtschaftliche Ausgangsstoffe für",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 153.38,
      "width": 243.54,
-     "text": "flüssige und gasförmige Treibstoffe für den Verkehrssektor"
+     "text": "flüssige und gasförmige Treibstoffe für den Verkehrssektor",
+     "size": 9.96
     },
     {
      "x": 336.17,
      "y": 153.38,
      "width": 81.33,
-     "text": "in Verkehr bringen,"
+     "text": "in Verkehr bringen,",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 142.34,
      "width": 23.9,
-     "text": "haben"
+     "text": "haben",
+     "size": 9.96
     },
     {
      "x": 128.99,
      "y": 142.34,
      "width": 36.02,
-     "text": "Angaben"
+     "text": "Angaben",
+     "size": 9.96
     },
     {
      "x": 181.51,
      "y": 142.34,
      "width": 17.69,
-     "text": "über"
+     "text": "über",
+     "size": 9.96
     },
     {
      "x": 215.57,
      "y": 142.34,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 244.23,
      "y": 142.34,
      "width": 39.39,
-     "text": "getätigten"
+     "text": "getätigten",
+     "size": 9.96
     },
     {
      "x": 300.11,
      "y": 142.34,
      "width": 57.11,
-     "text": "Transaktionen"
+     "text": "Transaktionen",
+     "size": 9.96
     },
     {
      "x": 373.73,
      "y": 142.34,
      "width": 14.93,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 405.14,
      "y": 142.34,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 131.3,
      "width": 117.69,
-     "text": "Nachhaltigkeitseigenschaften"
+     "text": "Nachhaltigkeitseigenschaften",
+     "size": 9.96
     },
     {
      "x": 215.45,
      "y": 131.3,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 232.48,
      "y": 131.3,
      "width": 12.67,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 254.41,
      "y": 131.3,
      "width": 14.93,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 278.51,
      "y": 131.3,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 300.45,
      "y": 131.3,
      "width": 50.92,
-     "text": "Kommission"
+     "text": "Kommission",
+     "size": 9.96
     },
     {
      "x": 360.65,
      "y": 131.3,
      "width": 56.64,
-     "text": "eingerichteten"
+     "text": "eingerichteten",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 120.38,
      "width": 69.97,
-     "text": "Unionsdatenbank"
+     "text": "Unionsdatenbank",
+     "size": 9.96
     },
     {
      "x": 167.72,
      "y": 120.38,
      "width": 67.41,
-     "text": "beziehungsweise"
+     "text": "beziehungsweise",
+     "size": 9.96
     },
     {
      "x": 244.24,
      "y": 120.38,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 261.14,
      "y": 120.38,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 283.07,
      "y": 120.38,
      "width": 22.8,
-     "text": "damit"
+     "text": "damit",
+     "size": 9.96
     },
     {
      "x": 314.96,
      "y": 120.38,
      "width": 51.58,
-     "text": "verbundenen"
+     "text": "verbundenen",
+     "size": 9.96
     },
     {
      "x": 375.61,
      "y": 120.38,
      "width": 41.64,
-     "text": "nationalen"
+     "text": "nationalen",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 109.34,
      "width": 91.3,
-     "text": "Datenbank zu machen."
+     "text": "Datenbank zu machen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 164.3,
      "width": 308.85,
-     "text": "(3) Unternehmen, die nachhaltige landwirtschaftliche Ausgangsstoffe für"
+     "text": "(3) Unternehmen, die nachhaltige landwirtschaftliche Ausgangsstoffe für",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 153.38,
      "width": 56.8,
-     "text": "Biokraftstoffe,"
+     "text": "Biokraftstoffe,",
+     "size": 9.96
     },
     {
      "x": 487.93,
      "y": 153.38,
      "width": 30.45,
-     "text": "flüssige"
+     "text": "flüssige",
+     "size": 9.96
     },
     {
      "x": 524.98,
      "y": 153.38,
      "width": 58.86,
-     "text": "Biobrennstoffe"
+     "text": "Biobrennstoffe",
+     "size": 9.96
     },
     {
      "x": 590.43,
      "y": 153.38,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 612.01,
      "y": 153.38,
      "width": 87.9,
-     "text": "Biomasse-Brennstoffe"
+     "text": "Biomasse-Brennstoffe",
+     "size": 9.96
     },
     {
      "x": 706.54,
      "y": 153.38,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 720.92,
      "y": 153.38,
      "width": 32.69,
-     "text": "Verkehr"
+     "text": "Verkehr",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 142.34,
      "width": 60.56,
-     "text": "bringen, haben"
+     "text": "bringen, haben",
+     "size": 9.96
     },
     {
      "x": 488.95,
      "y": 142.34,
      "width": 64.65,
-     "text": "fristgerecht alle"
+     "text": "fristgerecht alle",
+     "size": 9.96
     },
     {
      "x": 557.38,
      "y": 142.34,
      "width": 195.91,
-     "text": "Angaben über die getätigten Transaktionen und"
+     "text": "Angaben über die getätigten Transaktionen und",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 131.3,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 442.85,
      "y": 131.3,
      "width": 117.57,
-     "text": "Nachhaltigkeitseigenschaften"
+     "text": "Nachhaltigkeitseigenschaften",
+     "size": 9.96
     },
     {
      "x": 566.58,
      "y": 131.3,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 580.47,
      "y": 131.3,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 599.4,
      "y": 131.3,
      "width": 14.93,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 620.48,
      "y": 131.3,
      "width": 12.67,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 639.29,
      "y": 131.3,
      "width": 50.92,
-     "text": "Kommission"
+     "text": "Kommission",
+     "size": 9.96
     },
     {
      "x": 696.36,
      "y": 131.3,
      "width": 56.64,
-     "text": "eingerichteten"
+     "text": "eingerichteten",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 120.38,
      "width": 69.97,
-     "text": "Unionsdatenbank"
+     "text": "Unionsdatenbank",
+     "size": 9.96
     },
     {
      "x": 503.64,
      "y": 120.38,
      "width": 67.41,
-     "text": "beziehungsweise"
+     "text": "beziehungsweise",
+     "size": 9.96
     },
     {
      "x": 580.16,
      "y": 120.38,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 597.07,
      "y": 120.38,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 619,
      "y": 120.38,
      "width": 22.8,
-     "text": "damit"
+     "text": "damit",
+     "size": 9.96
     },
     {
      "x": 650.89,
      "y": 120.38,
      "width": 51.58,
-     "text": "verbundenen"
+     "text": "verbundenen",
+     "size": 9.96
     },
     {
      "x": 711.54,
      "y": 120.38,
      "width": 41.64,
-     "text": "nationalen"
+     "text": "nationalen",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 109.34,
      "width": 91.3,
-     "text": "Datenbank zu machen."
+     "text": "Datenbank zu machen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 94.32,
      "width": 11.69,
-     "text": "(4)"
+     "text": "(4)",
+     "size": 9.96
     },
     {
      "x": 465.27,
      "y": 94.32,
      "width": 14.38,
-     "text": "Die"
+     "text": "Die",
+     "size": 9.96
     },
     {
      "x": 488.89,
      "y": 94.32,
      "width": 64.34,
-     "text": "Massenbilanzen"
+     "text": "Massenbilanzen",
+     "size": 9.96
     },
     {
      "x": 562.29,
      "y": 94.32,
      "width": 15.04,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 586.61,
      "y": 94.32,
      "width": 10.52,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 606.28,
      "y": 94.32,
      "width": 33.27,
-     "text": "Rahmen"
+     "text": "Rahmen",
+     "size": 9.96
     },
     {
      "x": 648.73,
      "y": 94.32,
      "width": 13.33,
-     "text": "des"
+     "text": "des",
+     "size": 9.96
     },
     {
      "x": 671.27,
      "y": 94.32,
      "width": 26.42,
-     "text": "AACS"
+     "text": "AACS",
+     "size": 9.96
     },
     {
      "x": 706.91,
      "y": 94.32,
      "width": 46.08,
-     "text": "gemeldeten"
+     "text": "gemeldeten",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -4454,805 +5185,939 @@
      "x": 727.08,
      "y": 554.16,
      "width": 30.06,
-     "text": "6 von 7"
+     "text": "6 von 7",
+     "size": 9.96
     },
     {
      "x": 215.06,
      "y": 497.38,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 497.38,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 486.46,
      "width": 54.47,
-     "text": "Unternehmen"
+     "text": "Unternehmen",
+     "size": 9.96
     },
     {
      "x": 485.65,
      "y": 486.46,
      "width": 16.61,
-     "text": "sind"
+     "text": "sind",
+     "size": 9.96
     },
     {
      "x": 509.03,
      "y": 486.46,
      "width": 17.69,
-     "text": "über"
+     "text": "über",
+     "size": 9.96
     },
     {
      "x": 533.36,
      "y": 486.46,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 552.19,
      "y": 486.46,
      "width": 32.64,
-     "text": "Website"
+     "text": "Website",
+     "size": 9.96
     },
     {
      "x": 591.54,
      "y": 486.46,
      "width": 63.94,
-     "text": "„www.eama.at“"
+     "text": "„www.eama.at“",
+     "size": 9.96
     },
     {
      "x": 662.26,
      "y": 486.46,
      "width": 12.22,
-     "text": "bei"
+     "text": "bei",
+     "size": 9.96
     },
     {
      "x": 681.2,
      "y": 486.46,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 700.74,
      "y": 486.46,
      "width": 23.26,
-     "text": "AMA"
+     "text": "AMA",
+     "size": 9.96
     },
     {
      "x": 730.72,
      "y": 486.46,
      "width": 22.7,
-     "text": "durch"
+     "text": "durch",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 475.42,
      "width": 95.54,
-     "text": "automationsunterstützte"
+     "text": "automationsunterstützte",
+     "size": 9.96
     },
     {
      "x": 532.42,
      "y": 475.42,
      "width": 14.82,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 559.64,
      "y": 475.42,
      "width": 48.88,
-     "text": "strukturierte"
+     "text": "strukturierte",
+     "size": 9.96
     },
     {
      "x": 620.88,
      "y": 475.42,
      "width": 72.11,
-     "text": "Datenübertragung"
+     "text": "Datenübertragung",
+     "size": 9.96
     },
     {
      "x": 705.27,
      "y": 475.42,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 732.6,
      "y": 475.42,
      "width": 20.57,
-     "text": "unter"
+     "text": "unter",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 464.38,
      "width": 328.88,
-     "text": "Verwendung der vorgesehenen Online-Applikation einzureichen. Abweichend"
+     "text": "Verwendung der vorgesehenen Online-Applikation einzureichen. Abweichend",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 453.46,
      "width": 29.42,
-     "text": "können"
+     "text": "können",
+     "size": 9.96
     },
     {
      "x": 462.13,
      "y": 453.46,
      "width": 64.34,
-     "text": "Massenbilanzen"
+     "text": "Massenbilanzen",
+     "size": 9.96
     },
     {
      "x": 534.67,
      "y": 453.46,
      "width": 12.68,
-     "text": "auf"
+     "text": "auf",
+     "size": 9.96
     },
     {
      "x": 555.52,
      "y": 453.46,
      "width": 61.08,
-     "text": "elektronischem"
+     "text": "elektronischem",
+     "size": 9.96
     },
     {
      "x": 624.82,
      "y": 453.46,
      "width": 18.76,
-     "text": "Weg"
+     "text": "Weg",
+     "size": 9.96
     },
     {
      "x": 651.8,
      "y": 453.46,
      "width": 20.44,
-     "text": "unter"
+     "text": "unter",
+     "size": 9.96
     },
     {
      "x": 680.43,
      "y": 453.46,
      "width": 51.62,
-     "text": "Verwendung"
+     "text": "Verwendung",
+     "size": 9.96
     },
     {
      "x": 740.25,
      "y": 453.46,
      "width": 12.77,
-     "text": "der"
+     "text": "der",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 442.42,
      "width": 38.88,
-     "text": "verfügbar"
+     "text": "verfügbar",
+     "size": 9.96
     },
     {
      "x": 474.96,
      "y": 442.42,
      "width": 43.23,
-     "text": "gemachten"
+     "text": "gemachten",
+     "size": 9.96
     },
     {
      "x": 529.87,
      "y": 442.42,
      "width": 41.57,
-     "text": "Formulare"
+     "text": "Formulare",
+     "size": 9.96
     },
     {
      "x": 583.08,
      "y": 442.42,
      "width": 22.7,
-     "text": "durch"
+     "text": "durch",
+     "size": 9.96
     },
     {
      "x": 617.38,
      "y": 442.42,
      "width": 43.24,
-     "text": "Hochladen"
+     "text": "Hochladen",
+     "size": 9.96
     },
     {
      "x": 672.19,
      "y": 442.42,
      "width": 20.53,
-     "text": "eines"
+     "text": "eines",
+     "size": 9.96
     },
     {
      "x": 704.33,
      "y": 442.42,
      "width": 48.86,
-     "text": "eigenhändig"
+     "text": "eigenhändig",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 431.35,
      "width": 68.28,
-     "text": "unterschriebenen"
+     "text": "unterschriebenen",
+     "size": 9.96
     },
     {
      "x": 501.46,
      "y": 431.35,
      "width": 41.03,
-     "text": "Formulars"
+     "text": "Formulars",
+     "size": 9.96
     },
     {
      "x": 551.08,
      "y": 431.35,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 567.5,
      "y": 431.35,
      "width": 47.43,
-     "text": "Papierform,"
+     "text": "Papierform,",
+     "size": 9.96
     },
     {
      "x": 623.57,
      "y": 431.35,
      "width": 27.16,
-     "text": "mittels"
+     "text": "mittels",
+     "size": 9.96
     },
     {
      "x": 659.31,
      "y": 431.35,
      "width": 28.64,
-     "text": "E-Mail"
+     "text": "E-Mail",
+     "size": 9.96
     },
     {
      "x": 696.56,
      "y": 431.35,
      "width": 17.8,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 723.03,
      "y": 431.35,
      "width": 30.4,
-     "text": "Telefax"
+     "text": "Telefax",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 420.43,
      "width": 328.46,
-     "text": "eingereicht werden, wenn dies auf der Homepage der AMA sowie auf den"
+     "text": "eingereicht werden, wenn dies auf der Homepage der AMA sowie auf den",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 409.39,
      "width": 256.34,
-     "text": "verfügbar gemachten Formularen ausdrücklich ermöglicht wird."
+     "text": "verfügbar gemachten Formularen ausdrücklich ermöglicht wird.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 394.39,
      "width": 308.86,
-     "text": "(5) Zur Vermeidung von Missbräuchen ist durch geeignete technische und"
+     "text": "(5) Zur Vermeidung von Missbräuchen ist durch geeignete technische und",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 383.35,
      "width": 328.71,
-     "text": "organisatorische Maßnahmen zu gewährleisten, dass die Massenbilanzen von im"
+     "text": "organisatorische Maßnahmen zu gewährleisten, dass die Massenbilanzen von im",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 372.43,
      "width": 328.65,
-     "text": "Rahmen des AACS gemeldeten Unternehmen nur durch von den Unternehmen"
+     "text": "Rahmen des AACS gemeldeten Unternehmen nur durch von den Unternehmen",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 361.39,
      "width": 328.5,
-     "text": "befugte Personen eingebracht werden können. Die AMA als Systembetreiberin"
+     "text": "befugte Personen eingebracht werden können. Die AMA als Systembetreiberin",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 350.35,
      "width": 328.5,
-     "text": "hat zu protokollieren, wann die Daten der Massenbilanzen bei ihr eingelangt sind"
+     "text": "hat zu protokollieren, wann die Daten der Massenbilanzen bei ihr eingelangt sind",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 339.43,
      "width": 276.38,
-     "text": "und hat dies auf Anfrage dereinreichenden Person bekannt zu geben."
+     "text": "und hat dies auf Anfrage dereinreichenden Person bekannt zu geben.",
+     "size": 9.96
     },
     {
      "x": 216.86,
      "y": 324.41,
      "width": 72.23,
-     "text": "Kontrolltätigkeit"
+     "text": "Kontrolltätigkeit",
+     "size": 9.96
     },
     {
      "x": 552.79,
      "y": 324.41,
      "width": 72.23,
-     "text": "Kontrolltätigkeit"
+     "text": "Kontrolltätigkeit",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 309.41,
      "width": 20.13,
-     "text": "§ 10."
+     "text": "§ 10.",
+     "size": 9.96
     },
     {
      "x": 130.94,
      "y": 309.41,
      "width": 52.46,
-     "text": "(1) bis (4) …"
+     "text": "(1) bis (4) …",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 309.41,
      "width": 20.13,
-     "text": "§ 10."
+     "text": "§ 10.",
+     "size": 9.96
     },
     {
      "x": 466.87,
      "y": 309.41,
      "width": 39.96,
-     "text": "(1) bis (4)"
+     "text": "(1) bis (4)",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 294.41,
      "width": 309.13,
-     "text": "(5) Die AMA als Systembetreiberin hat im Zuge der Verwaltungs- oder Vor-"
+     "text": "(5) Die AMA als Systembetreiberin hat im Zuge der Verwaltungs- oder Vor-",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 283.37,
      "width": 328.78,
-     "text": "Ort-Kontrollen zu prüfen, ob getätigte Transaktionen vollständig, korrekt und"
+     "text": "Ort-Kontrollen zu prüfen, ob getätigte Transaktionen vollständig, korrekt und",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 272.33,
      "width": 227.16,
-     "text": "fristgerecht in die Unionsdatenbank eingegeben wurden."
+     "text": "fristgerecht in die Unionsdatenbank eingegeben wurden.",
+     "size": 9.96
     },
     {
      "x": 225.74,
      "y": 257.33,
      "width": 54.33,
-     "text": "Maßnahmen"
+     "text": "Maßnahmen",
+     "size": 9.96
     },
     {
      "x": 561.7,
      "y": 257.33,
      "width": 54.33,
-     "text": "Maßnahmen"
+     "text": "Maßnahmen",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 242.33,
      "width": 20.13,
-     "text": "§ 11."
+     "text": "§ 11.",
+     "size": 9.96
     },
     {
      "x": 130.94,
      "y": 242.33,
      "width": 55.7,
-     "text": "(1) und (2) …"
+     "text": "(1) und (2) …",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 242.33,
      "width": 20.13,
-     "text": "§ 11."
+     "text": "§ 11.",
+     "size": 9.96
     },
     {
      "x": 466.87,
      "y": 242.33,
      "width": 43.31,
-     "text": "(1) und (2)"
+     "text": "(1) und (2)",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 227.33,
      "width": 308.94,
-     "text": "(3) Wird gegen gemäß Abs. 1 angeordnete Maßnahmen verstoßen oder sind"
+     "text": "(3) Wird gegen gemäß Abs. 1 angeordnete Maßnahmen verstoßen oder sind",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 216.38,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 108.72,
      "y": 216.38,
      "width": 52.58,
-     "text": "festgestellten"
+     "text": "festgestellten",
+     "size": 9.96
     },
     {
      "x": 169.28,
      "y": 216.38,
      "width": 30.56,
-     "text": "Mängel"
+     "text": "Mängel",
+     "size": 9.96
     },
     {
      "x": 207.64,
      "y": 216.38,
      "width": 8.82,
-     "text": "so"
+     "text": "so",
+     "size": 9.96
     },
     {
      "x": 224.42,
      "y": 216.38,
      "width": 45.27,
-     "text": "gravierend,"
+     "text": "gravierend,",
+     "size": 9.96
     },
     {
      "x": 277.5,
      "y": 216.38,
      "width": 17.2,
-     "text": "dass"
+     "text": "dass",
+     "size": 9.96
     },
     {
      "x": 302.55,
      "y": 216.38,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 322.69,
      "y": 216.38,
      "width": 38.24,
-     "text": "Kontrolle"
+     "text": "Kontrolle",
+     "size": 9.96
     },
     {
      "x": 368.84,
      "y": 216.38,
      "width": 19.91,
-     "text": "nicht"
+     "text": "nicht",
+     "size": 9.96
     },
     {
      "x": 396.65,
      "y": 216.38,
      "width": 20.47,
-     "text": "mehr"
+     "text": "mehr",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 205.34,
      "width": 328.65,
-     "text": "sichergestellt werden kann, hat die AMA als Systembetreiberin die Registrierung"
+     "text": "sichergestellt werden kann, hat die AMA als Systembetreiberin die Registrierung",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 194.3,
      "width": 58.11,
-     "text": "abzuerkennen."
+     "text": "abzuerkennen.",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 227.33,
      "width": 308.97,
-     "text": "(3) Wird gegen gemäß Abs. 1 angeordnete Maßnahmen verstoßen oder sind"
+     "text": "(3) Wird gegen gemäß Abs. 1 angeordnete Maßnahmen verstoßen oder sind",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 216.38,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 444.65,
      "y": 216.38,
      "width": 52.58,
-     "text": "festgestellten"
+     "text": "festgestellten",
+     "size": 9.96
     },
     {
      "x": 505.21,
      "y": 216.38,
      "width": 30.56,
-     "text": "Mängel"
+     "text": "Mängel",
+     "size": 9.96
     },
     {
      "x": 543.56,
      "y": 216.38,
      "width": 8.82,
-     "text": "so"
+     "text": "so",
+     "size": 9.96
     },
     {
      "x": 560.34,
      "y": 216.38,
      "width": 45.27,
-     "text": "gravierend,"
+     "text": "gravierend,",
+     "size": 9.96
     },
     {
      "x": 613.42,
      "y": 216.38,
      "width": 17.2,
-     "text": "dass"
+     "text": "dass",
+     "size": 9.96
     },
     {
      "x": 638.48,
      "y": 216.38,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 658.62,
      "y": 216.38,
      "width": 38.24,
-     "text": "Kontrolle"
+     "text": "Kontrolle",
+     "size": 9.96
     },
     {
      "x": 704.76,
      "y": 216.38,
      "width": 19.91,
-     "text": "nicht"
+     "text": "nicht",
+     "size": 9.96
     },
     {
      "x": 732.57,
      "y": 216.38,
      "width": 20.47,
-     "text": "mehr"
+     "text": "mehr",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 205.34,
      "width": 328.65,
-     "text": "sichergestellt werden kann, hat die AMA als Systembetreiberin die Registrierung"
+     "text": "sichergestellt werden kann, hat die AMA als Systembetreiberin die Registrierung",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 194.3,
      "width": 58.11,
-     "text": "abzuerkennen."
+     "text": "abzuerkennen.",
+     "size": 9.96
     },
     {
      "x": 485.47,
      "y": 194.3,
      "width": 267.63,
-     "text": "Dies gilt auch bei Nichteinhaltung der Bestimmungen zur Eingabe"
+     "text": "Dies gilt auch bei Nichteinhaltung der Bestimmungen zur Eingabe",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 183.38,
      "width": 14.45,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 445.61,
      "y": 183.38,
      "width": 57.72,
-     "text": "Transaktionen"
+     "text": "Transaktionen",
+     "size": 9.96
     },
     {
      "x": 509.87,
      "y": 183.38,
      "width": 15.04,
-     "text": "und"
+     "text": "und",
+     "size": 9.96
     },
     {
      "x": 531.44,
      "y": 183.38,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 550.15,
      "y": 183.38,
      "width": 70.59,
-     "text": "Unionsdatenbank"
+     "text": "Unionsdatenbank",
+     "size": 9.96
     },
     {
      "x": 627.22,
      "y": 183.38,
      "width": 26.68,
-     "text": "gemäß"
+     "text": "gemäß",
+     "size": 9.96
     },
     {
      "x": 660.42,
      "y": 183.38,
      "width": 12.7,
-     "text": "§ 9"
+     "text": "§ 9",
+     "size": 9.96
     },
     {
      "x": 679.76,
      "y": 183.38,
      "width": 25.04,
-     "text": "Abs. 3"
+     "text": "Abs. 3",
+     "size": 9.96
     },
     {
      "x": 711.32,
      "y": 183.38,
      "width": 23.31,
-     "text": "durch"
+     "text": "durch",
+     "size": 9.96
     },
     {
      "x": 741.17,
      "y": 183.38,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 172.34,
      "width": 56.93,
-     "text": "Unternehmen."
+     "text": "Unternehmen.",
+     "size": 9.96
     },
     {
      "x": 91.46,
      "y": 157.34,
      "width": 322.72,
-     "text": "Überprüfung der Arbeitsweise der Zertifizierungsstellen durch die Behörde"
+     "text": "Überprüfung der Arbeitsweise der Zertifizierungsstellen durch die Behörde",
+     "size": 9.96
     },
     {
      "x": 427.39,
      "y": 157.34,
      "width": 322.72,
-     "text": "Überprüfung der Arbeitsweise der Zertifizierungsstellen durch die Behörde"
+     "text": "Überprüfung der Arbeitsweise der Zertifizierungsstellen durch die Behörde",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 142.34,
      "width": 25.03,
-     "text": "§ 11a."
+     "text": "§ 11a.",
+     "size": 9.96
     },
     {
      "x": 135.98,
      "y": 142.34,
      "width": 52.35,
-     "text": "(1) bis (4) …"
+     "text": "(1) bis (4) …",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 142.34,
      "width": 25.03,
-     "text": "§ 11a."
+     "text": "§ 11a.",
+     "size": 9.96
     },
     {
      "x": 471.91,
      "y": 142.34,
      "width": 52.35,
-     "text": "(1) bis (4) …"
+     "text": "(1) bis (4) …",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 127.34,
      "width": 309.21,
-     "text": "(5) Zu diesem Zweck ist die AMA berechtigt, während der Geschäfts- oder"
+     "text": "(5) Zu diesem Zweck ist die AMA berechtigt, während der Geschäfts- oder",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 116.3,
      "width": 47.64,
-     "text": "Betriebszeit"
+     "text": "Betriebszeit",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 127.34,
      "width": 309.21,
-     "text": "(5) Zu diesem Zweck ist die AMA berechtigt, während der Geschäfts- oder"
+     "text": "(5) Zu diesem Zweck ist die AMA berechtigt, während der Geschäfts- oder",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 116.3,
      "width": 47.64,
-     "text": "Betriebszeit"
+     "text": "Betriebszeit",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 103.32,
      "width": 45.37,
-     "text": "1. und 2. ..."
+     "text": "1. und 2. ...",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 103.32,
      "width": 45.37,
-     "text": "1. und 2. ..."
+     "text": "1. und 2. ...",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 90.36,
      "width": 7.53,
-     "text": "3."
+     "text": "3.",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 90.36,
      "width": 29.43,
-     "text": "Kopien"
+     "text": "Kopien",
+     "size": 9.96
     },
     {
      "x": 160.18,
      "y": 90.36,
      "width": 14.93,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 183.31,
      "y": 90.36,
      "width": 44.41,
-     "text": "Unterlagen"
+     "text": "Unterlagen",
+     "size": 9.96
     },
     {
      "x": 235.93,
      "y": 90.36,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 251.76,
      "y": 90.36,
      "width": 45.01,
-     "text": "Papierform"
+     "text": "Papierform",
+     "size": 9.96
     },
     {
      "x": 304.96,
      "y": 90.36,
      "width": 17.69,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 330.84,
      "y": 90.36,
      "width": 56.42,
-     "text": "elektronischer"
+     "text": "elektronischer",
+     "size": 9.96
     },
     {
      "x": 395.46,
      "y": 90.36,
      "width": 21.64,
-     "text": "Form"
+     "text": "Form",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 90.36,
      "width": 7.53,
-     "text": "3."
+     "text": "3.",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 90.36,
      "width": 29.43,
-     "text": "Kopien"
+     "text": "Kopien",
+     "size": 9.96
     },
     {
      "x": 496.11,
      "y": 90.36,
      "width": 14.93,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 519.24,
      "y": 90.36,
      "width": 44.41,
-     "text": "Unterlagen"
+     "text": "Unterlagen",
+     "size": 9.96
     },
     {
      "x": 571.86,
      "y": 90.36,
      "width": 7.75,
-     "text": "in"
+     "text": "in",
+     "size": 9.96
     },
     {
      "x": 587.69,
      "y": 90.36,
      "width": 45.01,
-     "text": "Papierform"
+     "text": "Papierform",
+     "size": 9.96
     },
     {
      "x": 640.89,
      "y": 90.36,
      "width": 17.69,
-     "text": "oder"
+     "text": "oder",
+     "size": 9.96
     },
     {
      "x": 666.77,
      "y": 90.36,
      "width": 56.42,
-     "text": "elektronischer"
+     "text": "elektronischer",
+     "size": 9.96
     },
     {
      "x": 731.39,
      "y": 90.36,
      "width": 21.64,
-     "text": "Form"
+     "text": "Form",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -5268,409 +6133,477 @@
      "x": 727.08,
      "y": 554.16,
      "width": 30.06,
-     "text": "7 von 7"
+     "text": "7 von 7",
+     "size": 9.96
     },
     {
      "x": 215.06,
      "y": 497.38,
      "width": 75.61,
-     "text": "Geltende Fassung"
+     "text": "Geltende Fassung",
+     "size": 9.96
     },
     {
      "x": 536.59,
      "y": 497.38,
      "width": 104.51,
-     "text": "Vorgeschlagene Fassung"
+     "text": "Vorgeschlagene Fassung",
+     "size": 9.96
     },
     {
      "x": 122.54,
      "y": 486.46,
      "width": 120.4,
-     "text": "unentgeltlich anzufordern und"
+     "text": "unentgeltlich anzufordern und",
+     "size": 9.96
     },
     {
      "x": 458.47,
      "y": 486.46,
      "width": 67.45,
-     "text": "(inklusive Fotos)"
+     "text": "(inklusive Fotos)",
+     "size": 9.96
     },
     {
      "x": 528.55,
      "y": 486.46,
      "width": 120.29,
-     "text": "unentgeltlich anzufordern und"
+     "text": "unentgeltlich anzufordern und",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 473.5,
      "width": 20.28,
-     "text": "4. …"
+     "text": "4. …",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 473.5,
      "width": 20.28,
-     "text": "4. …"
+     "text": "4. …",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 460.42,
      "width": 3.87,
-     "text": "s"
+     "text": "s",
+     "size": 9.96
     },
     {
      "x": 92.42,
      "y": 460.42,
      "width": 298.83,
-     "text": "oweit dies zur Überwachung der Arbeitsweise nach Abs. 2 erforderlich ist."
+     "text": "oweit dies zur Überwachung der Arbeitsweise nach Abs. 2 erforderlich ist.",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 460.42,
      "width": 3.87,
-     "text": "s"
+     "text": "s",
+     "size": 9.96
     },
     {
      "x": 428.35,
      "y": 460.42,
      "width": 298.83,
-     "text": "oweit dies zur Überwachung der Arbeitsweise nach Abs. 2 erforderlich ist."
+     "text": "oweit dies zur Überwachung der Arbeitsweise nach Abs. 2 erforderlich ist.",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 445.42,
      "width": 52.46,
-     "text": "(6) bis (8) …"
+     "text": "(6) bis (8) …",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 445.42,
      "width": 52.46,
-     "text": "(6) bis (8) …"
+     "text": "(6) bis (8) …",
+     "size": 9.96
     },
     {
      "x": 225.26,
      "y": 430.39,
      "width": 55.49,
-     "text": "Kostenersatz"
+     "text": "Kostenersatz",
+     "size": 9.96
     },
     {
      "x": 561.22,
      "y": 430.39,
      "width": 55.49,
-     "text": "Kostenersatz"
+     "text": "Kostenersatz",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 415.39,
      "width": 20.13,
-     "text": "§ 12."
+     "text": "§ 12.",
+     "size": 9.96
     },
     {
      "x": 134.42,
      "y": 415.39,
      "width": 11.58,
-     "text": "(1)"
+     "text": "(1)",
+     "size": 9.96
     },
     {
      "x": 152.02,
      "y": 415.39,
      "width": 200.99,
-     "text": "Im Rahmen der Vollziehung gemäß § 3 kann"
+     "text": "Im Rahmen der Vollziehung gemäß § 3 kann",
+     "size": 9.96
     },
     {
      "x": 359.04,
      "y": 415.39,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 377.26,
      "y": 415.39,
      "width": 23.26,
-     "text": "AMA"
+     "text": "AMA",
+     "size": 9.96
     },
     {
      "x": 406.51,
      "y": 415.39,
      "width": 11.07,
-     "text": "als"
+     "text": "als",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 404.35,
      "width": 328.62,
-     "text": "Systembetreiberin für folgende Tätigkeiten einen angemessenen Kostenersatz von"
+     "text": "Systembetreiberin für folgende Tätigkeiten einen angemessenen Kostenersatz von",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 393.43,
      "width": 88.87,
-     "text": "den Unternehmen und"
+     "text": "den Unternehmen und",
+     "size": 9.96
     },
     {
      "x": 180.02,
      "y": 393.43,
      "width": 59.79,
-     "text": "Kontrollstellen"
+     "text": "Kontrollstellen",
+     "size": 9.96
     },
     {
      "x": 242.45,
      "y": 393.43,
      "width": 38.97,
-     "text": "einheben:"
+     "text": "einheben:",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 415.39,
      "width": 20.13,
-     "text": "§ 12."
+     "text": "§ 12.",
+     "size": 9.96
     },
     {
      "x": 470.35,
      "y": 415.39,
      "width": 11.58,
-     "text": "(1)"
+     "text": "(1)",
+     "size": 9.96
     },
     {
      "x": 487.95,
      "y": 415.39,
      "width": 200.99,
-     "text": "Im Rahmen der Vollziehung gemäß § 3 kann"
+     "text": "Im Rahmen der Vollziehung gemäß § 3 kann",
+     "size": 9.96
     },
     {
      "x": 694.97,
      "y": 415.39,
      "width": 12.22,
-     "text": "die"
+     "text": "die",
+     "size": 9.96
     },
     {
      "x": 713.19,
      "y": 415.39,
      "width": 23.26,
-     "text": "AMA"
+     "text": "AMA",
+     "size": 9.96
     },
     {
      "x": 742.44,
      "y": 415.39,
      "width": 11.07,
-     "text": "als"
+     "text": "als",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 404.35,
      "width": 328.62,
-     "text": "Systembetreiberin für folgende Tätigkeiten einen angemessenen Kostenersatz von"
+     "text": "Systembetreiberin für folgende Tätigkeiten einen angemessenen Kostenersatz von",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 393.43,
      "width": 88.87,
-     "text": "den Unternehmen und"
+     "text": "den Unternehmen und",
+     "size": 9.96
     },
     {
      "x": 515.95,
      "y": 393.43,
      "width": 84.74,
-     "text": "Zertifizierungsstellen"
+     "text": "Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 603.34,
      "y": 393.43,
      "width": 38.97,
-     "text": "einheben:"
+     "text": "einheben:",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 380.47,
      "width": 47.82,
-     "text": "1. und 2. …"
+     "text": "1. und 2. …",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 380.47,
      "width": 47.82,
-     "text": "1. und 2. …"
+     "text": "1. und 2. …",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 367.39,
      "width": 131.9,
-     "text": "3. Prüfung der einzubeziehenden"
+     "text": "3. Prüfung der einzubeziehenden",
+     "size": 9.96
     },
     {
      "x": 246.77,
      "y": 367.39,
      "width": 59.79,
-     "text": "Kontrollstellen"
+     "text": "Kontrollstellen",
+     "size": 9.96
     },
     {
      "x": 309.17,
      "y": 367.39,
      "width": 21.79,
-     "text": "(§ 8),"
+     "text": "(§ 8),",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 367.39,
      "width": 131.9,
-     "text": "3. Prüfung der einzubeziehenden"
+     "text": "3. Prüfung der einzubeziehenden",
+     "size": 9.96
     },
     {
      "x": 582.7,
      "y": 367.39,
      "width": 84.85,
-     "text": "Zertifizierungsstellen"
+     "text": "Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 670.18,
      "y": 367.39,
      "width": 21.79,
-     "text": "(§ 8),"
+     "text": "(§ 8),",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 354.43,
      "width": 47.82,
-     "text": "4. und 5. …"
+     "text": "4. und 5. …",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 354.43,
      "width": 47.82,
-     "text": "4. und 5. …"
+     "text": "4. und 5. …",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 339.43,
      "width": 24.19,
-     "text": "(2) …"
+     "text": "(2) …",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 339.43,
      "width": 24.19,
-     "text": "(2) …"
+     "text": "(2) …",
+     "size": 9.96
     },
     {
      "x": 108.38,
      "y": 324.41,
      "width": 309.05,
-     "text": "(3) Im Rahmen der Vollziehung gemäß § 11a kann die AMA für folgende"
+     "text": "(3) Im Rahmen der Vollziehung gemäß § 11a kann die AMA für folgende",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 313.37,
      "width": 205.43,
-     "text": "Tätigkeiten einen angemessenen Kostenersatz von"
+     "text": "Tätigkeiten einen angemessenen Kostenersatz von",
+     "size": 9.96
     },
     {
      "x": 297.77,
      "y": 313.37,
      "width": 14.43,
-     "text": "den"
+     "text": "den",
+     "size": 9.96
     },
     {
      "x": 315.77,
      "y": 313.37,
      "width": 85.3,
-     "text": "Zertifizierungsstellen"
+     "text": "Zertifizierungsstellen",
+     "size": 9.96
     },
     {
      "x": 404.71,
      "y": 313.37,
      "width": 12.73,
-     "text": "mit"
+     "text": "mit",
+     "size": 9.96
     },
     {
      "x": 88.58,
      "y": 302.33,
      "width": 55.55,
-     "text": "Sitz im Inland"
+     "text": "Sitz im Inland",
+     "size": 9.96
     },
     {
      "x": 146.78,
      "y": 302.33,
      "width": 38.86,
-     "text": "einheben:"
+     "text": "einheben:",
+     "size": 9.96
     },
     {
      "x": 444.31,
      "y": 324.41,
      "width": 309.05,
-     "text": "(3) Im Rahmen der Vollziehung gemäß § 11a kann die AMA für folgende"
+     "text": "(3) Im Rahmen der Vollziehung gemäß § 11a kann die AMA für folgende",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 313.37,
      "width": 45.49,
-     "text": "Tätigkeiten"
+     "text": "Tätigkeiten",
+     "size": 9.96
     },
     {
      "x": 487.03,
      "y": 313.37,
      "width": 9.96,
-     "text": "im"
+     "text": "im",
+     "size": 9.96
     },
     {
      "x": 513.9,
      "y": 313.37,
      "width": 26.06,
-     "text": "Inland"
+     "text": "Inland",
+     "size": 9.96
     },
     {
      "x": 556.9,
      "y": 313.37,
      "width": 21.63,
-     "text": "einen"
+     "text": "einen",
+     "size": 9.96
     },
     {
      "x": 595.51,
      "y": 313.37,
      "width": 57.61,
-     "text": "angemessenen"
+     "text": "angemessenen",
+     "size": 9.96
     },
     {
      "x": 670,
      "y": 313.37,
      "width": 51.55,
-     "text": "Kostenersatz"
+     "text": "Kostenersatz",
+     "size": 9.96
     },
     {
      "x": 738.48,
      "y": 313.37,
      "width": 14.93,
-     "text": "von"
+     "text": "von",
+     "size": 9.96
     },
     {
      "x": 424.51,
      "y": 302.33,
      "width": 126.84,
-     "text": "Zertifizierungsstellen einheben:"
+     "text": "Zertifizierungsstellen einheben:",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 289.37,
      "width": 214.01,
-     "text": "1. Registrierung von Zertifizierungsstellen (§ 3a) und"
+     "text": "1. Registrierung von Zertifizierungsstellen (§ 3a) und",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 289.37,
      "width": 214.01,
-     "text": "1. Registrierung von Zertifizierungsstellen (§ 3a) und"
+     "text": "1. Registrierung von Zertifizierungsstellen (§ 3a) und",
+     "size": 9.96
     },
     {
      "x": 112.22,
      "y": 276.41,
      "width": 302.05,
-     "text": "2. Überwachung der Arbeitsweise der Zertifizierungsstellen (§ 11a Abs. 2)."
+     "text": "2. Überwachung der Arbeitsweise der Zertifizierungsstellen (§ 11a Abs. 2).",
+     "size": 9.96
     },
     {
      "x": 448.15,
      "y": 276.41,
      "width": 302.05,
-     "text": "2. Überwachung der Arbeitsweise der Zertifizierungsstellen (§ 11a Abs. 2)."
+     "text": "2. Überwachung der Arbeitsweise der Zertifizierungsstellen (§ 11a Abs. 2).",
+     "size": 9.96
     }
    ],
    "geometry": {
@@ -5926,7 +6859,8 @@
     "text": "Kostenersatz Im Rahmen der Vollziehung gemäß § 3 kann die AMA als Systembetreiberin für folgende Tätigkeiten einen angemessenen Kostenersatz von den Unternehmen und Kontrollstellen einheben: Registrierung (§ 6), Überwachung der Massenbilanz (§ 7), Prüfung der einzubeziehenden Kontrollstellen (§ 8), Durchführung der Überwachung (§ 10), sowie Anordnung von Maßnahmen (§ 11). Die Höhe des Kostenersatzes ist in geeigneter Weise von der AMA als Systembetreiberin kundzumachen. Im Rahmen der Vollziehung gemäß § 11a kann die AMA für folgende Tätigkeiten einen angemessenen Kostenersatz von den Zertifizierungsstellen mit Sitz im Inland einheben: Registrierung von Zertifizierungsstellen (§ 3a) und Überwachung der Arbeitsweise der Zertifizierungsstellen (§ 11a Abs. 2).",
     "heading": "Kostenersatz"
    }
-  }
+  },
+  "acrossGap": {}
  },
  "expected": {
   "ran": true,

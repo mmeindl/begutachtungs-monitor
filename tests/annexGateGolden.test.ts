@@ -8,7 +8,8 @@ import { parseAnnexPdf, type AnnexPage } from '../server/utils/annex/annexPdf'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { draftArticles } from '../server/utils/lawtext/draftArticles'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
-import { expandLaw, resolveKey, standingKey, type RecordedLaw } from '../scripts/lib/gateGoldenKeys'
+import { acrossGapKey, expandLaw, resolveKey, standingKey, type RecordedLaw } from '../scripts/lib/gateGoldenKeys'
+import type { KonsParagraphRef } from '../server/utils/ris/konsLaw'
 
 /**
  * Five real gate runs, frozen — verdicts, not parses.
@@ -31,7 +32,7 @@ import { expandLaw, resolveKey, standingKey, type RecordedLaw } from '../scripts
  * green on a verdict nothing checked — the failure this file exists to
  * prevent. So the replay refuses, and the fixture is re-recorded on purpose:
  *
- *     npx vite-node scripts/ci/gateGoldenRecord.ts -- --only=<Titelteil> --out=tests/fixtures/gate-<name>.json
+ *     npx vite-node -c vitest.config.ts scripts/ci/gateGoldenRecord.ts -- --only=<Titelteil> --out=tests/fixtures/gate-<name>.json
  *
  * Re-record in the SAME commit that changes the engine, and read the diff of
  * the verdict map: that diff is the change, in the only terms the reader of
@@ -64,6 +65,8 @@ interface GateFixture {
   recorded: {
     resolveLaw: Record<string, RecordedLaw | null>
     standingText: Record<string, { text: string; heading: string } | null>
+    /** The § across a gap in RIS (`paragraphAcrossGap`), recorded since 21.11.2026; a fixture without it was recorded without that source. */
+    acrossGap?: Record<string, KonsParagraphRef | null>
   }
   expected: {
     ran: boolean
@@ -91,6 +94,15 @@ function replay(f: GateFixture): AnnexSources {
       if (!(key in f.recorded.standingText)) throw new Error(`nicht aufgezeichnet: standingText ${key}`)
       return f.recorded.standingText[key]!
     },
+    ...(f.recorded.acrossGap
+      ? {
+          paragraphAcrossGap: async (gesetzesnummer: string, key: string, date: string) => {
+            const id = acrossGapKey(gesetzesnummer, key, date)
+            if (!(id in f.recorded.acrossGap!)) throw new Error(`nicht aufgezeichnet: paragraphAcrossGap ${id}`)
+            return f.recorded.acrossGap![id]!
+          },
+        }
+      : {}),
   }
 }
 

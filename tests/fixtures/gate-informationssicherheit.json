@@ -258,7 +258,8 @@
     "text": "Inkrafttreten § 3 Abs. 1 und § 12 Abs. 4b in der Fassung des Materien-Datenschutz-Anpassungsgesetzes 2018, BGBl. I Nr. 32/2018, treten mit 25. Mai 2018 in Kraft; gleichzeitig tritt § 3 Abs. 3 außer Kraft. § 2 Abs. 1 und 2 in der Fassung des Informationsfreiheits-Anpassungsgesetzes, BGBl. I Nr. 50/2025, tritt mit 1. September 2025 in Kraft.",
     "heading": "Inkrafttreten"
    }
-  }
+  },
+  "acrossGap": {}
  },
  "expected": {
   "ran": true,

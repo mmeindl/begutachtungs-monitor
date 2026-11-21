@@ -26,7 +26,7 @@
  * offline run, or two worktrees over the same drafts — and the first line of
  * the run says when that list was fetched and how far it reaches.
  *
- * Usage:  npx vite-node scripts/harness/annexPdf.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--liste-aus-cache]
+ * Usage:  npx vite-node -c vitest.config.ts scripts/harness/annexPdf.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--liste-aus-cache]
  */
 import { annexParagraphKey, designationKey } from '../../server/utils/annex/annexText'
 import { MIN_PROSE_TOKENS, coverageOf, displayedChangeRows, isDisplayedChange } from '../../server/utils/annex/coverage'
@@ -44,7 +44,7 @@ import { pagesOf } from '../../server/utils/annex/annexPdfPages'
 import { plainText } from '../../server/utils/lawtext/konsTree'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
-import { getText, resolveLawByBgbl, type KonsLawAtDate } from '../../server/utils/ris/konsLaw'
+import { getText, type KonsLawAtDate } from '../../server/utils/ris/konsLaw'
 import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { annexSection, parseTextComparison, type ComparisonParse, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
@@ -55,6 +55,8 @@ import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickBundledTextComparisons, pickOlderTextComparisons, pickTextComparisons } from '../lib/ris'
 import { holdsAsAnnex } from '../../server/utils/annex/olderAnnex'
+import { annexSources } from '../lib/productionSources'
+import { corpusReach, harnessStamp } from '../lib/harnessRecord'
 
 const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
 
@@ -64,20 +66,16 @@ const SCRIPT = 'harness/annexPdf'
 const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: SCRIPT })
 
 /**
- * The standing law for the gate, uncached — the same two lookups the request
- * path injects through `annexGuardService.ts`, minus Nitro. That is what
- * `AnnexSources` is for: the verdict logic runs here exactly as it runs in a
- * request, so the corpus measures the shipped decision instead of a copy of
- * it that can drift.
+ * The standing law for the gate, uncached — the request path's own sources
+ * (`annexSourcesOf` over `resolveKonsLaw`, `lib/productionSources.ts`),
+ * minus Nitro. That is what `AnnexSources` is for: the verdict logic runs
+ * here exactly as it runs in a request, so the corpus measures the shipped
+ * decision instead of a copy of it that can drift. Until 21.11.2026 this
+ * was `resolveLawByBgbl` without the clause, without `standingOnDay` and
+ * without the bridge over a version gap, so the drift baseline and
+ * /genauigkeit measured another standing text than the page shows.
  */
-const gateSources: AnnexSources = {
-  resolveLaw: (organ, nummer, date, title) => resolveLawByBgbl({ organ, nummer }, date, title || undefined),
-  standingText: async (ref) => {
-    const tree = await fetchParagraphTree(ref)
-    if (!tree) return null
-    return { text: [...tree.context, plainText(tree)].join(' '), heading: [...tree.context, tree.heading ?? ''].join(' ') }
-  },
-}
+const gateSources: AnnexSources = annexSources
 
 interface DraftResult {
   /**
@@ -382,7 +380,9 @@ async function verify(doc: any): Promise<DraftResult | null> {
     const article = key === null ? (amending.length === 1 ? amending[0]! : null) : byKey.get(key)
     // The Artikel's own title is what tells the Bankwesengesetz from the
     // Bausparkassengesetz when both were promulgated by BGBl. Nr. 532/1993.
-    const law = article?.bgbl ? await resolveLawByBgbl(article.bgbl, beginn, article.title).catch(() => null) : null
+    // Asked as the gate asks it, and a failure throws: the draft is then not
+    // reached, never a draft whose law RIS does not know.
+    const law = article?.bgbl ? await gateSources.resolveLaw(article.bgbl.organ, article.bgbl.nummer, beginn, article.title ?? '', article.clause) : null
     resolved.set(key, law)
     return law
   }
@@ -647,9 +647,13 @@ const listWindow = windowOf(docs.slice(0, limit), cache.served)
 console.log(`GP ${gp}: ${docs.length} Entwürfe aus dem RIS — ${windowLine(listWindow)}\n`)
 
 const results: DraftResult[] = []
+/** The drafts of the list the run looked at, and those whose reading threw, with why — the record's reach. */
+let requested = 0
+const unreached: { id: string; cause: string }[] = []
 for (const doc of docs.slice(0, limit)) {
   const label = `${doc?.Data?.Metadaten?.Bundesrecht?.Begut?.Begutachtungsverfahrennummer ?? ''} ${doc?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? ''} ${doc?.Data?.Metadaten?.Bundesrecht?.Titel ?? ''}`
   if (only && !label.toLowerCase().includes(only.toLowerCase())) continue
+  requested++
   try {
     const r = await verify(doc)
     if (!r) continue
@@ -662,8 +666,12 @@ for (const doc of docs.slice(0, limit)) {
     else console.log(`  ${r.clean === r.checked ? '✓' : '✗'}  ${r.cite.padEnd(9)} ${r.clean}/${r.checked} Paragraphen ≥99 % im RIS${dropped}${r.worst.length ? ` — ${r.worst.slice(0, 2).join('; ')}` : ''}`)
   } catch (err) {
     console.log(`  ?  ${String(doc?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '?').slice(0, 9).padEnd(9)} ${String(err).slice(0, 90)}`)
+    unreached.push({ id: String(doc?.Data?.Metadaten?.Technisch?.ID ?? label.trim()), cause: String(err).slice(0, 200) })
   }
 }
+// A draft whose reading threw is missing from every figure below; the count says so (20.11.2026: the
+// lookups' failures were caught into „no law" and the draft scored as one without a law).
+if (unreached.length > 0) console.log(`\n  ✗ ${unreached.length} von ${requested} Entwürfen nicht erreicht (oben mit „?")`)
 
 const scored = results.filter((r) => r.note === null && r.checked > 0)
 const checked = scored.reduce((n, r) => n + r.checked, 0)
@@ -780,7 +788,9 @@ const jsonPath = argAssigned('json') ?? null
 if (jsonPath) {
   const { writeFileSync } = await import('node:fs')
   const report: AnnexReport = {
-    at: new Date().toISOString(),
+    // When, on which code, and how much of the list it reached (`lib/harnessRecord.ts`).
+    ...harnessStamp(),
+    ...corpusReach(requested, unreached),
     gp,
     path: xmlMode ? 'xml' : 'pdf',
     limit,

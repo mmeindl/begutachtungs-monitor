@@ -21,46 +21,16 @@
  * check reads it per Novellierungsanordnung (`draftBags`) — which
  * of them a § may draw on is the rule's decision, not the caller's.
  */
-import { verifyAnnex, type AnnexSources, type AnnexVerification } from './verdict'
+import { verifyAnnex, type AnnexVerification } from './verdict'
+import { annexSourcesOf } from './annexSources'
 import { readParagraphHistory, fetchParagraphXml, resolveKonsLaw } from '../kons/konsCache'
-import { bridgeVersionGap, promulgatedBeforeInForce } from '../ris/konsLaw'
-import { designationKey } from './annexText'
-import { parseKonsParagraph, plainText } from '../lawtext/konsTree'
 import type { TextBlock } from '../lawtext/lawUnits'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import type { ComparisonRow } from './comparisonRows'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
-const sources: AnnexSources = {
-  resolveLaw: (organ, nummer, date, title, clause) => resolveKonsLaw(organ, nummer, date, title, clause),
-  paragraphAcrossGap: async (gesetzesnummer, key, date) => {
-    const history = await readParagraphHistory(gesetzesnummer)
-    if (!history) return null
-    const versions = history.filter((v) => designationKey(v.ref.label) === key)
-    return bridgeVersionGap(versions, date) ?? promulgatedBeforeInForce(versions, date)
-  },
-  standingText: async (ref) => {
-    if (!ref.xmlUrl) return null
-    // The fetch is outside the try on purpose. A RIS that will not answer is
-    // not a statement about this §, and `verifyAnnex` turns a thrown error
-    // into an unavailable section rather than into a cached "ungeprüft"; a
-    // document we *did* receive and cannot make sense of is the opposite —
-    // a stable property of that document, and null is the right answer for
-    // it (`lawtext/konsTree.ts` already returns null for a § held as a table).
-    const xml = await fetchParagraphXml(ref.nor, ref.xmlUrl)
-    try {
-      const tree = parseKonsParagraph(xml)
-      if (!tree) return null
-      // `plainText` opens with the § heading; `context` holds the Abschnitt
-      // and Hauptstück lines above it. The headings are offered a second time
-      // on their own because the draft check has to be able to discount them:
-      // the annex reprints them, the draft's instruction does not.
-      return { text: [...tree.context, plainText(tree)].join(' '), heading: [...tree.context, tree.heading ?? ''].join(' ') }
-    } catch {
-      return null
-    }
-  },
-}
+/** The cached readers of `kons/konsCache.ts`; the harnesses read the same functions uncached (`annexSourcesOf`). */
+const sources = annexSourcesOf({ resolveLaw: resolveKonsLaw, history: readParagraphHistory, paragraphXml: fetchParagraphXml })
 
 /**
  * The verdicts for one annex.

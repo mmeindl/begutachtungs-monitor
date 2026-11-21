@@ -120,7 +120,8 @@
     "text": "Die § 4 Abs. 6, § 6 Abs. 2, 5, 6, und 11 sowie § 7 in der Fassung des 2. Materien-Datenschutz-Anpassungsgesetzes, BGBl. I Nr. 37/2018, treten mit 25. Mai 2018 in Kraft.",
     "heading": ""
    }
-  }
+  },
+  "acrossGap": {}
  },
  "expected": {
   "ran": true,

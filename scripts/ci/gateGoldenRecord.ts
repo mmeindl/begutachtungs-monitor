@@ -19,7 +19,7 @@
  * Textgegenüberstellung. Parliament's copy of the same annex is deliberately
  * not used here: it is the one excluded from open data.
  *
- * Usage:  npx vite-node scripts/ci/gateGoldenRecord.ts -- --only=Organtransplantations --out=tests/fixtures/gate-organtransplantation.json
+ * Usage:  npx vite-node -c vitest.config.ts scripts/ci/gateGoldenRecord.ts -- --only=Organtransplantations --out=tests/fixtures/gate-organtransplantation.json
  */
 import { writeFileSync } from 'node:fs'
 import { notRunReason } from '../../server/utils/annex/gateRows'
@@ -30,14 +30,13 @@ import {
 } from '../../server/utils/annex/verdict'
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
-import { plainText } from '../../server/utils/lawtext/konsTree'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { draftArticles } from '../../server/utils/lawtext/draftArticles'
-import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
-import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
+import { getText, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
-import { compactLaw, resolveKey, standingKey, type RecordedLaw } from '../lib/gateGoldenKeys'
+import { acrossGapKey, compactLaw, resolveKey, standingKey, type RecordedLaw } from '../lib/gateGoldenKeys'
+import { annexSources } from '../lib/productionSources'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
@@ -126,19 +125,29 @@ if (readable) {
 
 // The live sources, wrapped so every question and every answer is written
 // down. Recording the *answer* rather than the HTTP body is what keeps the
-// fixture readable and small: the gate asks for a law at a date and for one
-// §'s standing text, and those two answers are the whole of its input.
+// fixture readable and small: the gate asks for a law at a date, for one
+// §'s standing text and for a § across a gap in RIS, and those answers are
+// the whole of its input. The sources are the page's own (`annexSourcesOf`
+// over `resolveKonsLaw`, 21.11.2026): until then this recorded a lookup the
+// page does not make, and caught a failed one into „no law" — which the
+// fixture then pinned as an unchecked verdict. Now a failure throws, and no
+// fixture is written.
 const resolveCalls: Record<string, KonsLawAtDate | null> = {}
 const standingCalls: Record<string, { text: string; heading: string } | null> = {}
+const acrossGapCalls: Record<string, KonsParagraphRef | null> = {}
 const sources: AnnexSources = {
-  resolveLaw: async (organ, nummer, date, title) => {
-    const law = await resolveLawByBgbl({ organ, nummer }, date, title || undefined).catch(() => null)
+  resolveLaw: async (organ, nummer, date, title, clause) => {
+    const law = await annexSources.resolveLaw(organ, nummer, date, title, clause)
     resolveCalls[resolveKey(organ, nummer, date, title)] = law
     return law
   },
+  paragraphAcrossGap: async (gesetzesnummer, key, date) => {
+    const ref = await annexSources.paragraphAcrossGap!(gesetzesnummer, key, date)
+    acrossGapCalls[acrossGapKey(gesetzesnummer, key, date)] = ref
+    return ref
+  },
   standingText: async (ref) => {
-    const tree = await fetchParagraphTree(ref)
-    const value = tree === null ? null : { text: [...tree.context, plainText(tree)].join(' '), heading: [...tree.context, tree.heading ?? ''].join(' ') }
+    const value = await annexSources.standingText(ref)
     standingCalls[standingKey(ref)] = value
     return value
   },
@@ -163,7 +172,7 @@ const fixture = {
   draftXml,
   annexXml: readable ? annexXml : null,
   annexPages,
-  recorded: { resolveLaw: compacted, standingText: standingCalls },
+  recorded: { resolveLaw: compacted, standingText: standingCalls, acrossGap: acrossGapCalls },
   expected: {
     ran: check.ran,
     notRunReason: notRunReason(check),
@@ -177,5 +186,5 @@ writeFileSync(out, `${JSON.stringify(fixture, null, 1)}\n`)
 const counts = Object.values(check.verdicts).reduce<Record<string, number>>((acc, v) => ({ ...acc, [v]: (acc[v] ?? 0) + 1 }), {})
 console.log(`${fixture.cite} (${fixture.path}-Pfad) → ${out}`)
 console.log(`  Urteile: ${Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', ')}; Gründe: ${Object.values(check.withheldCauses).join(', ') || '—'}`)
-console.log(`  aufgezeichnet: ${Object.keys(resolveCalls).length} Gesetze, ${Object.keys(standingCalls).length} Paragraphen`)
+console.log(`  aufgezeichnet: ${Object.keys(resolveCalls).length} Gesetze, ${Object.keys(standingCalls).length} Paragraphen, ${Object.keys(acrossGapCalls).length} über eine Lücke`)
 console.log(`  Größe: ${(JSON.stringify(fixture).length / 1024).toFixed(0)} kB`)

@@ -164,6 +164,11 @@ export interface AnnexReport {
   records: number
   /** Which drafts the run measured (20.11.2026); absent in older reports, which did not know it */
   window?: AnnexWindow
+  /** The commit measured, and the drafts asked for, reached and not reached with why (`lib/harnessRecord.ts`, 21.11.2026); absent in older reports */
+  commit?: string
+  requested?: number
+  reached?: number
+  unreached?: { id: string; cause: string }[]
   drafts: AnnexDraftReport[]
 }
 

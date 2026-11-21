@@ -317,10 +317,10 @@
  * `--urteile` prints every verdict on a line of its own, so two runs of an
  * oracle change can be compared § by § with `diff` rather than by totals.
  *
- * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme] [--urteile] [--zeige=<§> [--voll]] [--liste-aus-cache]
+ * Usage:  npx vite-node -c vitest.config.ts scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme] [--urteile] [--zeige=<§> [--voll]] [--liste-aus-cache]
  */
 import { annexParagraphKey, comparableTokens, designationKey } from '../../server/utils/annex/annexText'
-import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../../server/utils/annex/coverage'
+import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange } from '../../server/utils/annex/coverage'
 import { paragraphReference } from '../../server/utils/annex/verdict'
 import {
   MIN_STANDING_STRETCH,
@@ -337,7 +337,7 @@ import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { articleBlocks, draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
-import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
+import { getText, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
@@ -358,6 +358,7 @@ import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
 import { donorSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
 import { chainedAbsaetze } from '../lib/faultSites'
+import { annexSources, resolveKonsLaw } from '../lib/productionSources'
 
 // The Begut list is fetched afresh; `--liste-aus-cache` replays the cached one on purpose (`lib/harnessCache.ts`).
 const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
@@ -611,12 +612,22 @@ async function inject(doc: any): Promise<DraftResult | null> {
   if (parsed.refusal || parsed.rows.length === 0) return null
 
   const byKey = new Map<string | null, DraftArticle>(articles.map((a) => [a.key, a]))
-  const resolved = new Map<string | null, KonsLawAtDate | null>()
-  const lawOf = async (key: string | null): Promise<KonsLawAtDate | null> => {
-    if (resolved.has(key)) return resolved.get(key)!
+  const resolved = new Map<string, KonsLawAtDate | null>()
+  /**
+   * The law of an Artikel as the page finds it (`resolveKonsLaw`, 21.11.2026):
+   * the Stammnorm with the draft's clause, on the day as it stood. `byName`
+   * is the Lesefassung's extra step (`kons/consolidate.ts`): a clause that
+   * cites no Stammnorm is looked up by its name; the annex check does not
+   * take it (`verifyAnnex`). A failure throws, and the draft is not reached.
+   */
+  const lawOf = async (key: string | null, byName = false): Promise<KonsLawAtDate | null> => {
+    const id = `${key ?? ''}|${byName}`
+    if (resolved.has(id)) return resolved.get(id)!
     const article = key === null ? (amending.length === 1 ? amending[0]! : null) : byKey.get(key)
-    const law = article?.amends && article.bgbl ? await resolveLawByBgbl(article.bgbl, beginn, article.title ?? undefined).catch(() => null) : null
-    resolved.set(key, law)
+    let law: KonsLawAtDate | null = null
+    if (article?.amends && article.bgbl) law = await resolveKonsLaw(article.bgbl.organ, article.bgbl.nummer, beginn, article.title ?? '', article.clause)
+    else if (article?.amends && byName && article.clause) law = await resolveKonsLaw('', '', beginn, article.title ?? '', article.clause)
+    resolved.set(id, law)
     return law
   }
   const indexes = new Map<KonsLawAtDate, Map<string, KonsParagraphRef>>()
@@ -652,7 +663,8 @@ async function inject(doc: any): Promise<DraftResult | null> {
     if (!law) continue
     const key = designationKey(group.para)
     if (key === null) continue
-    const ref = indexOf(law).get(key)
+    // Across a version gap on the day, as the gate reads it (`paragraphAcrossGap`).
+    const ref = indexOf(law).get(key) ?? (group.rows.some(isDisplayedChange) ? await annexSources.paragraphAcrossGap!(law.gesetzesnummer, key, beginn) : null)
     if (!ref) continue
     const tree = await fetchParagraphTree(ref)
     // A § RIS holds as a table is not represented as a tree, so there is
@@ -796,7 +808,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
   }
   // The draft's PDF in the same record: the second witness's reading (`kons/draftRendition.ts`).
   const mainPdf = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
-  await injectIntoResults(cite, draftBlocks, amending.length, parsed.rows, lawOf, () => renditionOf(mainPdf))
+  await injectIntoResults(cite, draftBlocks, amending.length, parsed.rows, (key) => lawOf(key, true), () => renditionOf(mainPdf))
   return { cite, judged: confirmed.length, injected }
 }
 
@@ -1346,8 +1358,7 @@ const unitLabel = (id: string): string => (id.startsWith('Anl.') ? id : `§ ${id
  * The engine run is `harness/me.ts`'s, step for step, through the same
  * production modules (`instructionsFromUnits`, `applyNovelle`, `oracleVerdict`),
  * on the annex rows this run has already parsed for the path it measures.
- * Only the law join is this script's (`lawOf`, the Stammnorm alone): a law the
- * Kurztitel fallback of `me.ts` would find is simply not in the population.
+ * The law is found as the page finds it (`lawOf`, `resolveKonsLaw`).
  */
 async function injectIntoResults(
   cite: string,

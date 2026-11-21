@@ -16,6 +16,8 @@ import type { KonsLawAtDate, KonsParagraphRef } from '../../server/utils/ris/kon
  */
 export const resolveKey = (organ: string, nummer: string, date: string, title: string): string => `${organ}|${nummer}|${date}|${title}`
 export const standingKey = (ref: KonsParagraphRef): string => `${ref.nor}|${ref.label}`
+/** A question to `paragraphAcrossGap`: which version of this § stood on the day across a gap in RIS (21.11.2026). */
+export const acrossGapKey = (gesetzesnummer: string, key: string, date: string): string => `${gesetzesnummer}|${key}|${date}`
 
 /**
  * A resolved law, with full refs only for the §§ the run actually asked about.
