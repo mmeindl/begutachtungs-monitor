@@ -253,7 +253,12 @@ export function diffLandDraft(draftAsRead: LawUnit[], kundmachungAsRead: LawUnit
   const marked = (name: string | null, k: number | undefined) => (k === undefined ? sameSpaces(name) : `${sameSpaces(name) ?? ''} ${PAIR_MARK}${k}`)
   const from = unquoted(draft).map((u, i) => ({ ...u, article: marked(pairs[markFrom.get(draft[i]!.article) ?? -1]?.to ?? draft[i]!.article, markFrom.get(draft[i]!.article)) }))
   const to = unquoted(kundmachung).map((u, i) => ({ ...u, article: marked(kundmachung[i]!.article, markTo.get(kundmachung[i]!.article)) }))
-  const result = diffAtSamePlace(from, to)
+  // Past the word diff's ceiling, as the Bund's § comparison (21.11.2026):
+  // this comparison only shows the segments, no guard decides on them. With
+  // the ceiling, 17 changed units of the cached station pairs stood unmarked
+  // under „Texte dieser Länge …", and a fault set into one went unmarked
+  // too (`landStations.ts`, fault injection). Cost: at most 70 ms a pair.
+  const result = diffAtSamePlace(from, to, { beyondCeiling: true })
   const unmark = (s: string | null | undefined) => (s == null ? s : s.replace(PAIR_MARK_RE, ''))
   return result.map((u) => ({ ...u, article: unmark(u.article) ?? null, ...(u.fromArticle ? { fromArticle: unmark(u.fromArticle)! } : {}) }))
 }

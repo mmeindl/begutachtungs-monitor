@@ -409,6 +409,20 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     expect(at('1').map((u) => u.change)).toEqual(['changed'])
     expect(at('2').map((u) => u.change).sort()).toEqual(['inserted', 'removed'])
   })
+
+  it('marks the changed words of a long instruction past the word diff\'s ceiling, as the Bund\'s comparison does (21.11.2026)', () => {
+    // Two changes 1,800 words apart: the part left between them exceeds the
+    // matrix's ceiling, where the words came out unmarked and the page said
+    // „Texte dieser Länge vergleicht der Monitor nicht Wort für Wort"
+    // (Kärnten 20258 Z 4, Oberösterreich 16110 § 2, Salzburg 32001 Z 7).
+    const body = Array.from({ length: 1_800 }, (_, k) => `Wort${k}`).join(' ')
+    const units = diffLandDraft(
+      lgblUnits(xml(`1. § 4 lautet: "§ 4 (1) Die Behörde ${body} binnen 14 Tagen."`)),
+      lgblUnits(xml(`1. § 4 lautet: "§ 4 (1) Das Amt ${body} binnen 15 Tagen."`)),
+    )
+    expect(units.map((u) => u.change)).toEqual(['changed'])
+    expect(units[0]!.segments?.filter((s) => s.type !== 'equal').map((s) => `${s.type === 'inserted' ? '+' : '-'}${s.text}`)).toEqual(['-Die Behörde', '+Das Amt', '-14', '+15'])
+  })
 })
 
 describe('what the Land files as the draft (26.10.2026)', () => {
