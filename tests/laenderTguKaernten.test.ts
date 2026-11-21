@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AnnexItem, AnnexPage } from '../server/utils/annex/annexPdf'
-import { divisionOf, gutterOf, ktnLines, ktnTguParagraphs, ktnTguReading, promulgatedName, rangeNumbers, readInstruction } from '../server/utils/laender/landTguKaernten'
+import { divisionOf, frameOf, gutterOf, ktnLines, ktnTguParagraphs, ktnTguReading, leftLawsOf, promulgatedName, rangeNumbers, readInstruction } from '../server/utils/laender/landTguKaernten'
 
 /**
  * Kärnten's layout, as measured (23.10.2026): the left column from 85 to 417,
@@ -277,6 +277,21 @@ describe('ktnTguParagraphs', () => {
     const inserts = [...right, centre(R, 'Artikel IV', 200), body(R, '1. Nach § 9 wird folgender § 9a eingefügt:', 188), centre(R, '§ 9a', 176), body(R, 'Neu.', 164)]
     // Filed under the Artikel's own designation, so that two such Artikel do not run into one (26.10.2026).
     expect(ktnTguParagraphs([page([...leftLaw(), ...second, ...inserts])], ['Kärntner Beispielgesetz', 'Kärntner Zweitgesetz']).find((p) => p.number === '9a')).toMatchObject({ law: 'Artikel IV', unread: true, old: [], neu: [] })
+  })
+
+  // 11829/2023, § 18 of the Kärntner Bezügegesetz 1997 (21.11.2026): the next law's title began otherwise than a title does, and stood at the end of the §.
+  it('takes a title from the line that opens its short title\'s bracket, out of the § above it', () => {
+    const second = [
+      body(L, 'Abgabenverwaltung in Kärnten (Kärntner Zweitgesetz – K-', 290),
+      body(L, 'ZG)', 278),
+      body(L, 'StF: LGBl Nr 2/2001', 266),
+      centre(L, '§ 5', 254),
+      body(L, 'Der Zweck des zweiten Gesetzes ist ein anderer als der des ersten.', 242),
+    ]
+    const lines = ktnLines([page([...leftLaw(), ...second])])
+    const laws = leftLawsOf(lines, frameOf(lines))
+    expect(laws.map((l) => l.title)).toEqual(['Kärntner Beispielgesetz - K-BspG', 'Abgabenverwaltung in Kärnten (Kärntner Zweitgesetz – K- ZG)'])
+    expect(JSON.stringify(laws[0])).not.toContain('Abgabenverwaltung')
   })
 
   it('reads nothing from a portrait document', () => {

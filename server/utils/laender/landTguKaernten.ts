@@ -928,13 +928,16 @@ export function leftLawsOf(lines: readonly KtnLine[], f: Frame): LeftLaw[] {
   if (!starts.length) return [{ title: '', paragraphs: printedParagraphs(lines, f) }]
   // Each law's title: up to five lines above its „StF:", from the topmost
   // that begins like one („Gesetz vom 23. September 2021 über …",
-  // „Kärntner Tourismusabgabegesetz - K-TAG"); else the one line above.
-  // It stands after the last § of the law before and is cut out of it.
+  // „Kärntner Tourismusabgabegesetz - K-TAG"), or else that opens the
+  // bracket of its short title („Abgabenverwaltung in Kärnten (Kärntner
+  // Abgabenorganisationsgesetz – K-" / „AOG)", 11829/2023, 21.11.2026: the
+  // line stood at the end of § 18 of the law before); else the one line
+  // above. It stands after the last § of the law before and is cut out of it.
   const titleAt = starts.map((at) => {
-    for (let from = Math.max(0, at - 5); from < at; from++) {
-      if (/^(?:Gesetz\b|Landesgesetz\b|Verordnung\b|Kärntner\s|Allgemeine\s|Geschäftsordnung\b|K-)/.test(lines[from]!.text)) return from
-    }
-    return Math.max(0, at - 1)
+    const above = lines.slice(Math.max(0, at - 5), at).map((l, k) => ({ text: l.text, at: Math.max(0, at - 5) + k }))
+    const begins = above.find((l) => /^(?:Gesetz\b|Landesgesetz\b|Verordnung\b|Kärntner\s|Allgemeine\s|Geschäftsordnung\b|K-)/.test(l.text))
+    const bracket = above.find((l) => /\((?:Kärntner|Klagenfurter|Villacher)\s[^()]*(?:gesetz|ordnung)/i.test(l.text))
+    return begins?.at ?? bracket?.at ?? Math.max(0, at - 1)
   })
   return starts.map((at, k) => ({
     title: lines.slice(titleAt[k]!, at).map((l) => l.text).join(' '),

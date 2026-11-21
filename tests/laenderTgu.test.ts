@@ -258,6 +258,22 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
     expect(paras[0]!.old).toEqual(['18. Grenzwerte: Werte;', '19. Teil-Aktionsplan: Plan zur Regelung;', 'IV. Teil, 4. Hauptstück, nach Inhalt gleichwertig;', '20. Beste verfügbare Techniken.'])
     expect(paras[1]!.old).toEqual(['(1) Text.'])
   })
+  // 21.11.2026: Oö. 2026-16124 § 41a, 2025-16103 § 29a, 2025-16094 § 91c printed what follows at their end, in both columns.
+  it('closes a § at „Vb. ABSCHNITT", a Roman numeral with a letter', () => {
+    const paras = tguParagraphs([law, line('§ 41a'), line('(5) Die Richtlinie wird umgesetzt.'), line('Vb. ABSCHNITT'), line('Vermeidung von Lichtverschmutzung'), line('§ 41b'), line('(1) Text.')])
+    expect(paras.map((p) => [p.number, p.old])).toEqual([['41a', ['(5) Die Richtlinie wird umgesetzt.']], ['41b', ['(1) Text.']]])
+  })
+
+  it('closes a § at the next law\'s name standing alone after a sentence, and files what follows under it', () => {
+    const paras = tguParagraphs([law, line('§ 91c'), line('Die Bestimmungen über die Amtsverschwiegenheit bleiben unberührt.'), line('Seite 104'), line('Oö. Land- und forstwirtschaftliches Schulgesetz'), line('IV. HAUPTSTÜCK'), line('§ 80'), line('(1) Text.')])
+    expect(paras.map((p) => [p.law, p.number, p.old])).toEqual([
+      ['Oö. Gemeindeordnung 1990', '91c', ['Die Bestimmungen über die Amtsverschwiegenheit bleiben unberührt.']],
+      ['Oö. Land- und forstwirtschaftliches Schulgesetz', '80', ['(1) Text.']],
+    ])
+    // A line of text that opens with a law's name after a line that runs on stays text (2025-16105).
+    const text = tguParagraphs([law, line('§ 5'), line('(1) Die Schutzzwecke gemäß § 5 Z 7 und § 14'), line('Oö. Natur- und Landschaftsschutzgesetz 2001 sind von der nach diesem Landesgesetz'), line('zuständigen Behörde wahrzunehmen.')])
+    expect(text.map((p) => p.old.length)).toEqual([3])
+  })
 })
 
 describe('tguParagraphs — headings the draft changes (26.10.2026)', () => {

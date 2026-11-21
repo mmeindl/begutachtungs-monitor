@@ -1,5 +1,5 @@
 {
- "at": "2026-11-21T09:08:58.431Z",
+ "at": "2026-11-21T13:58:46.886Z",
  "documents": {
   "ktn-104907-2025-32": {
    "land": "ktn",
@@ -1148,12 +1148,11 @@
    "land": "ooe",
    "state": "beantwortet",
    "available": true,
-   "shown": 33,
+   "shown": 34,
    "withheld": [
     "draftDiffers · Oö. Umweltschutzgesetz 1996 · §29",
     "draftDiffers · Oö. Umweltschutzgesetz 1996 · §45",
-    "leftCheck · Oö. Umweltschutzgesetz 1996 · §1a",
-    "leftCheck · Oö. Umweltschutzgesetz 1996 · §39"
+    "leftCheck · Oö. Umweltschutzgesetz 1996 · §1a"
    ]
   },
   "ooe-v544478": {

@@ -338,20 +338,35 @@ const ANNEX_RE = /^[„"“]?\s*((?:Anlage|Anhang)\s+(?:\d+|[IVXL]+)[a-z]?)$/
 /** A line that ends mid-sentence: in a word that wants the next one, or a comma. Shared with the draft reader (`draftPdfLaw.ts`). */
 export const RUNS_ON_RE = /(?:^|\s)(?:bis|und|oder|sowie|bzw\.|des|der|dem|den|die|das|im|in|zum|zur|vom|von|für|mit|nach|gemäß|laut|siehe|über|auf|aus|bei|an|gegen|ohne)$|,$/
 /**
- * „2. Hauptstück", „III. Teil", „7b. Abschnitt": the next division's
- * heading, which closes the § above it. Only where the word ends there, at a
- * space or a colon: „19. Teil-Aktionsplan: Plan zur …" is the 19th
- * definition of a § (2026-16124), and „IV. Teil, 4. Hauptstück, …" a
- * reference in one (2021-16018); each closed its § mid-text and lost the
- * rest of it until 26.10.2026.
+ * „2. Hauptstück", „III. Teil", „7b. Abschnitt", „VIIa. ABSCHNITT": the
+ * next division's heading, which closes the § above it. Only where the word
+ * ends there, at a space or a colon: „19. Teil-Aktionsplan: Plan zur …" is
+ * the 19th definition of a § (2026-16124), and „IV. Teil, 4. Hauptstück, …"
+ * a reference in one (2021-16018); each closed its § mid-text and lost the
+ * rest of it until 26.10.2026. A Roman numeral takes a letter too since
+ * 21.11.2026: „Vb. ABSCHNITT Vermeidung von Lichtverschmutzung" stood at the
+ * end of § 41a in both columns (2026-16124), „VIIa. ABSCHNITT KLIMAANLAGEN"
+ * at the end of § 29a (2025-16103). Over the 23 cached one-column documents
+ * of Oberösterreich the letter adds seven lines, every one a division's
+ * heading („Va.", „Vb.", „VIIa.", „XIa.").
  */
-const DIVISION_RE = /^(?:\d+[a-z]?|[IVXL]+)\.\s+(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)(?=$|[\s:])/i
+const DIVISION_RE = /^(?:\d+[a-z]?|[IVXL]+[a-z]?)\.\s+(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)(?=$|[\s:])/i
 /** The law's long title, which the short title in brackets follows within a few lines. */
 const LONG_TITLE_RE = /^(?:Landes)?(?:[Gg]esetz|Verordnung)\b/
 /** „(Oö. Bautechnikgesetz 2013 - Oö. BauTG 2013)": the short title, and the abbreviation after the dash. */
 const SHORT_TITLE_RE = /\(([^()]*?)(?:\s+-\s+[^()]*)?\)\s*$/
 /** „Oö. Gemeindeordnung 1990 (Oö. GemO 1990)": the short title standing alone, its abbreviation in brackets. */
 const BARE_TITLE_RE = /^((?:Oö\.\s|Statut\s)[^()]*?)\s+\(([^()]{2,30})\)$/
+/**
+ * „Oö. Land- und forstwirtschaftliches Schulgesetz": the short title alone,
+ * with no abbreviation — the next law of a package, which stood at the end of
+ * the § above it in both columns (2025-16094, § 91c; 21.11.2026). Only on a
+ * line of its own after a sentence's end: over the 23 cached one-column
+ * documents of Oberösterreich one line has this shape there, this one; a
+ * line of text that opens with a law's name and closes on „Landesgesetz"
+ * follows a line that runs on (2025-16105).
+ */
+const NAME_ONLY_RE = /^Oö\.\s[^.,;:()§„“"]*?(?:gesetz|ordnung)(?:\s\d{4})?$/
 const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+|(?:Sub)?[Bb]eilage zu\b.*)$/
 
 /**
@@ -523,6 +538,10 @@ export function tguParagraphs(lines: readonly TguLine[]): TguParagraph[] {
       if (lines.slice(titleAt, i + 1).some((l) => l.marked)) titled()
       // The long title above it was read as the end of the last § of the law before.
       retractFrom(titleAt)
+      open = null
+      division = null
+    } else if (NAME_ONLY_RE.test(raw) && /[.;:]$/.test(prev) && !line.marked) {
+      law = raw.replace(/\s+/g, ' ').trim()
       open = null
       division = null
     } else if (DIVISION_RE.test(raw) || sideDivision) {
