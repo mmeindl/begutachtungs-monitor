@@ -194,6 +194,14 @@ interface GateResult {
   withheldRepealUnproven: number
   withheldRepeated: number
   uncheckedParas: number
+  /**
+   * The §§ the page marks „nicht geprüft" (21.11.2026): unchecked AND owing a
+   * check (`checkAnnexRows`, `uncheckedParagraphs`), plus each row without a
+   * § that owes one — what `groupAnnexRows` counts on the page. `uncheckedParas`
+   * counts every unchecked verdict, also of §§ the page shows unmarked: a
+   * § with no change shown, or one whose new text rule 2 held.
+   */
+  markedParas: number
   /** Pair rows without any § designation, and the subset the page shows as a change */
   rowsNoPara: number
   changeRowsNoPara: number
@@ -282,7 +290,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const id = String(meta?.Technisch?.ID ?? cite)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, withheldRepealUnproven: 0, withheldRepeated: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [] }
+  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, withheldRepealUnproven: 0, withheldRepeated: 0, uncheckedParas: 0, markedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {}, rows: [] }
   const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, lostLines: 0, lostDiffering: 0, lostApart: 0, frontMatterLaws: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
@@ -576,6 +584,7 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promi
     withheldRepealUnproven: checked.withheldByCause.repealUnproven,
     withheldRepeated: checked.withheldByCause.repeated,
     uncheckedParas: verdicts.filter((v) => v === 'unchecked').length,
+    markedParas: checked.uncheckedParagraphs + checked.rowsWithoutParagraph,
     rowsNoPara,
     changeRowsNoPara,
     verdictless,
@@ -696,6 +705,7 @@ const gated = results.filter((r) => r.note === null)
 const gsum = (pick: (g: GateResult) => number) => gated.reduce((n, r) => n + pick(r.gate), 0)
 console.log(`\n  Das Tor, wie es ausgeliefert wird (${gated.length} Entwürfe)`)
 console.log(`    Paragraphen bestätigt / einbehalten / ungeprüft: ${gsum((g) => g.verifiedParas)} / ${gsum((g) => g.withheldParas)} / ${gsum((g) => g.uncheckedParas)}`)
+console.log(`    davon auf der Seite mit „nicht geprüft“ markiert (samt Zeilen ohne Paragraph): ${gsum((g) => g.markedParas)}`)
 // Which of the three checks refused a §. The two right-column rules are new
 // on 2026-09-10; before them the first line was the whole story.
 console.log(`    einbehalten, weil die geltende Fassung so nicht im RIS steht : ${gsum((g) => g.withheldStanding)}`)
@@ -803,6 +813,7 @@ if (jsonPath) {
       withheldRepealUnproven: r.gate.withheldRepealUnproven,
       withheldRepeated: r.gate.withheldRepeated,
       uncheckedParas: r.gate.uncheckedParas,
+      markedParas: r.gate.markedParas,
       rowsNoPara: r.gate.rowsNoPara,
       changeRowsNoPara: r.gate.changeRowsNoPara,
       verdictless: r.gate.verdictless,

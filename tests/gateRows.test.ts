@@ -3,6 +3,7 @@ import { annexParagraphKey } from '../server/utils/annex/annexText'
 import { checkAnnexRows, notRunReason } from '../server/utils/annex/gateRows'
 import { REASON_NO_ARTICLES, REASON_NOTHING_TO_COMPARE, REASON_NO_SUCH_PARAGRAPH, REASON_TOO_SHORT, REASON_UNREADABLE_DESIGNATION, REASON_UNRESOLVED, type AnnexVerification } from '../server/utils/annex/verdict'
 import { comparisonRow as row } from './helpers/builders'
+import { groupAnnexRows } from '../app/utils/annexGroups'
 
 // ---------------------------------------------------------------------------
 // checkAnnexRows — the gate as the response carries it
@@ -156,6 +157,30 @@ describe('checkAnnexRows', () => {
     const verdicts = { [annexParagraphKey('X-Gesetz', '§ 5.')]: 'verified' as const, [annexParagraphKey('Y-Gesetz', '§ 5.')]: 'withheld' as const }
     const out = checkAnnexRows(rows, verification({ verdicts }))
     expect(out.rows.map((r) => r.check)).toEqual(['verified', 'withheld'])
+  })
+
+  it('counts the §§ the page marks „nicht geprüft" — the record’s markedParas (21.11.2026)', () => {
+    // annexPdf.ts records `uncheckedParagraphs + rowsWithoutParagraph` as the
+    // §§ that carry the mark; the page counts them itself, row by row
+    // (`groupAnnexRows`, `check === 'unchecked' && owesCheck`). The two must
+    // be one number, or the record says something the page does not show.
+    const rows = [
+      row({ law: 'X-Gesetz', gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu' }),
+      row({ law: 'X-Gesetz', gld: '§ 1.', para: '§ 1.', current: 'mehr alt', proposed: 'mehr neu' }),
+      row({ law: 'X-Gesetz', gld: '§ 2.', para: '§ 2.', current: 'gleich', proposed: 'gleich', change: 'unchanged' }),
+      row({ law: 'X-Gesetz', gld: '§ 3.', para: '§ 3.', current: '', proposed: 'Der Bund entscheidet.', change: 'inserted' }),
+      row({ law: 'X-Gesetz', gld: '§ 4.', para: '§ 4.', current: '', proposed: 'Ein ganz neuer Paragraph.', change: 'inserted' }),
+      row({ law: 'X-Gesetz', gld: null, para: null, current: 'alt', proposed: 'neu' }),
+      row({ law: 'Y-Gesetz', gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu' }),
+    ]
+    const key = (law: string, p: string) => annexParagraphKey(law, p)
+    const out = checkAnnexRows(rows, verification({
+      verdicts: { [key('X-Gesetz', '§ 1.')]: 'unchecked', [key('X-Gesetz', '§ 2.')]: 'unchecked', [key('X-Gesetz', '§ 3.')]: 'unchecked', [key('X-Gesetz', '§ 4.')]: 'unchecked', [key('Y-Gesetz', '§ 1.')]: 'unchecked' },
+      uncheckedReasons: { [key('X-Gesetz', '§ 3.')]: REASON_TOO_SHORT, [key('X-Gesetz', '§ 4.')]: REASON_NOTHING_TO_COMPARE },
+    }))
+    const marked = groupAnnexRows(out.rows, { matches: null, hidden: [] }).groups.reduce((n, g) => n + g.unchecked, 0)
+    expect(marked).toBe(4)
+    expect(out.uncheckedParagraphs + out.rowsWithoutParagraph).toBe(marked)
   })
 })
 

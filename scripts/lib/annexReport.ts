@@ -137,6 +137,12 @@ export interface AnnexDraftReport {
   /** Printed more than once by a column, the prints not to be joined (`ComparisonRow.ambiguous`, 19.11.2026); absent counts as 0. */
   withheldRepeated?: number
   uncheckedParas: number
+  /**
+   * Of the §§ in the report, those the page marks „nicht geprüft", rows
+   * without a § included (`markedParas` of annexPdf.ts, 21.11.2026); absent
+   * in older reports.
+   */
+  markedParas?: number
   rowsNoPara: number
   /** …of those, shown as a change — class B, see the header */
   changeRowsNoPara: number
