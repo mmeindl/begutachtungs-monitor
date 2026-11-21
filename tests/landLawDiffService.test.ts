@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LandDraftDetail, LandLawDiffResponse } from '../shared/types'
 import { clearNitroCache, nitroCacheKeys, nitroCachedFunction } from './helpers/nitroCache'
+import { MUTATION_KINDS, isMiss, mutationOutcome, mutations, type MutationKind } from '../scripts/lib/stationMutations'
 
 /**
  * The cache in front of a Land's comparisons (`server/utils/laender/
@@ -161,5 +162,40 @@ describe('compareReadTexts — pages without text inside a document', () => {
   it('counts no empty page before the first or after the last text, and none of the Landesgesetzblatt', () => {
     const got = compareReadTexts('entwurf', 'lgbl', [{ units, text: '', pages: ['', 'Seite 1', 'Seite 2', ''] }, { units, text: '' }], [doc('Entwurf'), doc('LGBl. Nr. 1/2026')])
     expect(got.droppedPages).toBeUndefined()
+  })
+})
+
+// The Bund's fault classes set into a Land's units, compared as the Länder
+// station harness compares them (`scripts/harness/landStations.ts`,
+// 21.11.2026): through the comparison the route serves, the Land's cleaning
+// of quotes, „&" and split compounds, the Artikel pairing and the withholding
+// included. Every fault has to come out a change of substance with a marked
+// run. The long unit stood unmarked until the comparison passed the word
+// diff's ceiling.
+describe('compareReadTexts — a fault set into a Land unit is a change of substance', () => {
+  const unit = (id: string, text: string) => ({ article: 'Artikel I Änderung des K-JG', articleNumber: 'Artikel I', id, heading: null, quotedHeadings: [], text, blocks: [{ kind: 'novao', cls: 'pdf', text, gld: null }] }) as never as { text: string }
+  const doc = { label: 'Einheit', url: null, publisher: '' }
+  const texts = [
+    'Im § 2 wird das Wort „Rot- und Gamswild“ durch die Wortfolge „Land- & Forstwirtschaft“ ersetzt; dies gilt nicht für Abs. 3 oder 4.',
+    '§ 7 Abs. 2 lautet: „(2) Der Zuschlag beträgt 5 % bis 10 %, höchstens 1 500 Euro, für Flächen > 2 ha in den Zonen 3-5.“',
+    `§ 4 lautet: „§ 4 (1) Die Behörde hat nicht ${Array.from({ length: 1_700 }, (_, k) => `Wort${k}`).join(' ')} und binnen 14 Tagen oder sofort zu entscheiden.“`,
+  ]
+
+  it('in every class, over a unit of each shape', () => {
+    const tried = new Set<MutationKind>()
+    const misses: string[] = []
+    for (const [k, text] of texts.entries()) {
+      const before = unit(`Z${k + 1}`, text)
+      for (const m of mutations(text)) {
+        tried.add(m.kind)
+        const got = compareReadTexts('entwurf', 'lgbl', [{ units: [before as never], text }, { units: [{ ...before, text: m.text } as never], text: m.text }], [doc, doc])
+        const outcome = mutationOutcome(got.units)
+        // Unpaired is no miss (`isMiss`): a digit of the instruction's own
+        // address („Im § 2" → „Im § 3") names another place.
+        if (isMiss(outcome)) misses.push(`Z${k + 1} ${m.kind} → ${outcome}`)
+      }
+    }
+    expect([...tried].sort()).toEqual([...MUTATION_KINDS].sort())
+    expect(misses).toEqual([])
   })
 })

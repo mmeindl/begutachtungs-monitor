@@ -64,6 +64,17 @@
  * each breach failing the run; symmetry against the served comparison the
  * other way round, listed, not asserted.
  *
+ * HELD TO FAULTS, as the Bund's (`station.ts --mutationen`, 21.11.2026):
+ * every distinct unit of a pair's later text is compared, through
+ * `compareReadTexts`, against itself with one change of substance in it
+ * (`lib/stationMutations.ts`: a digit, a minus sign, „nicht" struck, „und"
+ * and „oder" swapped, „%" for „‰", „<" for „>", two numbers joined, a range
+ * collapsed). A fault forgiven („redaktionell", „unverändert") or unmarked
+ * is a miss and fails the run; the record carries the table as `mutations`,
+ * with the faults the comparison withheld instead (`withheld`). Its first
+ * run found 12 long units whose words stood unmarked past the word diff's
+ * ceiling.
+ *
  * Counted beside them, not asserted: the instructions a pair withholds or
  * names as unread because one side or both did not read what they announce
  * (`announcedText.ts`, 19.11.2026), per pair in `comparisons.jsonl` and
@@ -82,7 +93,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { LaenderResponse, LandCode, LandDraftDetail, LandLawDiffResponse, LandTextStation, LawDiffUnit } from '../../shared/types'
+import type { LaenderResponse, LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandTextStation, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
 import { harnessStamp } from '../lib/harnessRecord'
 import { argFlag, argPair } from '../lib/args'
@@ -91,6 +102,8 @@ import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/rea
 import { landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPerLand, recurringRuns, type PairState } from '../lib/landStationChecks'
 import type { Breach } from '../lib/stationChecks'
 import { comparedText, diffLandDraft } from '../../server/utils/laender/landLawDiff'
+import type { LawUnit } from '../../server/utils/lawtext/lawUnits'
+import { MUTATION_KINDS, MUTATION_LABELS, isMiss, mutations, mutationOutcome, type MutationKind, type MutationOutcome } from '../lib/stationMutations'
 
 const outDir = argPair('out')
 const onlyLand = argPair('land') as LandCode | undefined
@@ -193,6 +206,8 @@ interface ComparisonLine {
   droppedPages?: number
 }
 const lines: ComparisonLine[] = []
+/** Every distinct unit of a pair's later text, by its text, with its pair and where it stands — for the fault injection below. */
+const laterUnits = new Map<string, { unit: LawUnit; from: LandTextStation; to: LandTextStation; where: string }>()
 /** Every draft of the population: its detail in the cache, and the pairs it offers (`pairsPerLand`). */
 const draftsRun: { land: LandCode; cached: boolean; pairs: number }[] = []
 const segmentsOf = (u: LawDiffUnit): string[] =>
@@ -228,6 +243,7 @@ for (const item of items) {
     }
     try {
       const reads = [await a.read(), await b.read()] as const
+      for (const unit of reads[1].units ?? []) if (!laterUnits.has(unit.text)) laterUnits.set(unit.text, { unit, from, to, where: `${item.id} ${to} ${(unit.article ?? '—').slice(0, 50)} · ${unit.id}` })
       const value = compareReadTexts(from, to, reads, [a.document, b.document])
       line.from = value.fromDocument?.url ?? value.fromDocument?.label ?? null
       line.to = value.toDocument?.url ?? value.toDocument?.label ?? null
@@ -272,6 +288,27 @@ const recurring = recurringRuns(lines.flatMap((l) => l.units.map((u) => ({
   line: u,
 }))))
 for (const r of recurring) for (const u of r.only) if (!u.line.violations.includes('Wiederkehrender Einschub')) u.line.violations.push('Wiederkehrender Einschub')
+
+// --- Held to faults, as the Bund's (`station.ts --mutationen`) ----------------
+// Every distinct unit of a later text against itself with one change of
+// substance in it, through the comparison the route serves — the Land's
+// cleaning, Artikel pairing and withholding included.
+const unitDoc: LandTextDocument = { label: 'Einheit', url: null, publisher: '' }
+const emptyTally = (): { tried: number } & Record<MutationOutcome, number> => ({ tried: 0, änderung: 0, redaktionell: 0, unverändert: 0, unsichtbar: 0, ungepaart: 0 })
+const faults = { units: laterUnits.size, classes: Object.fromEntries(MUTATION_KINDS.map((k) => [k, emptyTally()])) as Record<MutationKind, ReturnType<typeof emptyTally>>, misses: [] as { kind: MutationKind; outcome: MutationOutcome; unit: string; before: string; after: string }[] }
+/** Faults whose unit the comparison withheld (`announcedText.ts`) — counted apart, as the Bund has no such answer. */
+let faultsWithheld = 0
+for (const { unit, from, to, where } of laterUnits.values()) {
+  for (const m of mutations(unit.text)) {
+    const value = compareReadTexts(from, to, [{ units: [unit], text: unit.text }, { units: [{ ...unit, text: m.text }], text: m.text }], [unitDoc, unitDoc])
+    if (value.withheld.length) faultsWithheld++
+    const outcome = mutationOutcome(value.units)
+    const tally = faults.classes[m.kind]
+    tally.tried++
+    tally[outcome]++
+    if (isMiss(outcome)) faults.misses.push({ kind: m.kind, outcome, unit: where, before: m.before, after: m.after })
+  }
+}
 
 // --- Output --------------------------------------------------------------
 writeFileSync(join(outDir, 'comparisons.jsonl'), lines.map((l) => JSON.stringify(l)).join('\n') + '\n')
@@ -334,6 +371,15 @@ out.push(`- Symmetrie (gelistet): ${symmetryLines.length} in ${new Set(symmetryL
 out.push('')
 for (const { l, b } of breachLines) out.push(`- [Bruch] ${l.draft} ${l.pair} ${b.slice(0, 300)}`)
 for (const { l, b } of symmetryLines) out.push(`- [Symmetrie] ${l.draft} ${l.pair} ${b.slice(0, 300)}`)
+out.push('')
+out.push(`## Mutationen über ${faults.units} Einheiten der späteren Texte (stationMutations.ts): versucht · Änderung · redaktionell · unverändert · ohne Markierung · ungepaart`)
+out.push('')
+for (const k of MUTATION_KINDS) {
+  const c = faults.classes[k]
+  out.push(`- ${MUTATION_LABELS[k]}: ${[c.tried, c.änderung, c.redaktionell, c.unverändert, c.unsichtbar, c.ungepaart].join(' · ')}`)
+}
+out.push(`- zurückgehalten (announcedText.ts): ${faultsWithheld}`)
+for (const miss of faults.misses) out.push(`- [Mutation verfehlt] ${MUTATION_LABELS[miss.kind]} → ${miss.outcome}: ${miss.unit} „${miss.before}" → „${miss.after}"`)
 const errors = lines.filter((l) => l.state === 'Fehler')
 if (errors.length) {
   out.push('')
@@ -394,7 +440,9 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   withheldPairs: lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length,
   unread: unreadUnits.length,
   unreadPairs: lines.filter((l) => l.unread.length).length,
+  // Per class: tried and how the comparison answered, as `station.ts --mutationen` writes it; the misses to read.
+  mutations: { ...faults, withheld: faultsWithheld },
 }, null, 1)}\n`)
 console.log(out.join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)
-process.exit(hits.length || stale.length || breachLines.length ? 1 : 0)
+process.exit(hits.length || stale.length || breachLines.length || faults.misses.length ? 1 : 0)
