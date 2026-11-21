@@ -99,7 +99,7 @@ const { compareLandLawChanges, NOT_CONSOLIDATED_YET_DE } = await import('../../s
 const { fetchLgblIndex, lgblRecord } = await import('../../server/utils/laender/lgblIndex')
 const { isLawEntry } = await import('../../server/utils/laender/landLaws')
 const { konsRefsOfLgbl, lgblNummer } = await import('../../server/utils/laender/landKonsLaws')
-const { instructionLawsOf, konsVersionOf, lgblNamedParagraphs, namesAsLast, repealedBy, subInstructionHeads } = await import('../../server/utils/laender/landLawChanges')
+const { instructionLawsOf, konsVersionOf, lautetMissing, lgblNamedParagraphs, namesAsLast, repealedBy, subInstructionHeads } = await import('../../server/utils/laender/landLawChanges')
 const { lgblUnits } = await import('../../server/utils/laender/landLawDiff')
 const { upstreamText } = await import('../../server/utils/upstream/fetch')
 const { TEXT_POLICY } = await import('../../server/utils/laender/texts/read')
@@ -211,7 +211,8 @@ function lautetCensus(land: LandCode, nr: string, lgblXml: string, paragraphs: r
     const quoted = wordsOf(u.text.slice(at.index + at[0].length))
     const ris = wordsOf(`${shown[0]!.id} ${shown[0]!.heading ?? ''} ${shown[0]!.toText}`)
     const whole = /^(?:Der\s+)?(?:nunmehrige\s+)?§\s*\d+[a-z]*\s*$/.test(head.trim())
-    const notInRis = [...quoted].filter((w) => !ris.has(w))
+    // The product's own check (`lautetMissing`, 22.11.2026): a § it finds this in is withheld, so here it must find none.
+    const notInRis = lautetMissing(u, keys[0]!, { id: shown[0]!.id, heading: shown[0]!.heading ?? null, text: shown[0]!.toText ?? '' }) ?? []
     const notInLgbl = whole ? [...ris].filter((w) => !quoted.has(w)) : []
     if (notInRis.length || notInLgbl.length) lautet.lines.push({ land, nr, id: keys[0]!, instruction: u.text.slice(0, 300), whole, notInRis, notInLgbl })
   }

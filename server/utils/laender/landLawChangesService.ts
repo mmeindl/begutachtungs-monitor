@@ -30,6 +30,7 @@ import {
   lgblInstructedParagraphs,
   isNamed,
   konsUnit,
+  lautetMissing,
   konsVersionOf,
   namesAsLast,
   pairOf,
@@ -138,6 +139,9 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
       // Neither side read: a repeal (no new wording) of a § whose history holds no earlier one (`new`)
       // pushed nothing and was dropped uncounted until 20.11.2026.
       if ((pair.kind === 'pair' && !oldUnit) || (!repeal && !newUnit) || (!oldUnit && !newUnit)) return void withheld.push({ law: v.law, id: v.key, reason: 'unpaired' })
+      // The Landesgesetzblatt's own wording for the § stands in the version RIS ties to it, or the § is not
+      // shown (`lautetMissing`, 22.11.2026): compared, it read as a change this Landesgesetzblatt did not make.
+      if (newUnit && lgbl.some((u) => u.article === lawKey && !!lautetMissing(u, v.key, newUnit)?.length)) return void withheld.push({ law: v.law, id: v.key, reason: 'wordingNotInRis' })
       pairs.push([oldUnit, newUnit])
     } catch {
       complete = false
@@ -197,5 +201,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-11', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-12', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
 )

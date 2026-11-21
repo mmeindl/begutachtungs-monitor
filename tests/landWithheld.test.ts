@@ -122,6 +122,14 @@ describe('withheldNotes — a Landesgesetz\'s page (20.11.2026)', () => {
   })
 })
 
+describe('withheldNotes — a wording RIS’s version does not carry (22.11.2026)', () => {
+  it('says what the monitor did not find, not whose deviation it is', () => {
+    const [one] = withheldNotes([{ law: 'X', id: '§14', reason: 'wordingNotInRis' }])
+    expect(one!.text).toBe('Das Landesgesetzblatt gibt für ihn einen Wortlaut vor, den der Monitor in der Fassung, die das RIS diesem Landesgesetzblatt zuordnet, nicht vollständig fand')
+    expect(withheldNotes([{ law: 'X', id: '§14', reason: 'wordingNotInRis' }, { law: 'X', id: '§16', reason: 'wordingNotInRis' }])[0]!.text).toMatch(/^Das Landesgesetzblatt gibt für sie .* in den Fassungen, /)
+  })
+})
+
 describe('withheldNotes — a law title (26.10.2026)', () => {
   it('names a changed title after everything else, as what RIS cannot check, and refers to it as „ihn"', () => {
     const notes = withheldNotes([{ law: 'O', id: 'Titel', reason: 'title' }, { law: 'O', id: 'Anlage 1', reason: 'annex' }])
@@ -197,7 +205,7 @@ describe('the announced text a station pair did not read (19.11.2026)', () => {
 
 describe('the leads of a Landesgesetz’s withheld §§ (21.11.2026)', () => {
   it('open with the withheld list’s own lead, as every other cause does', () => {
-    for (const reason of ['uninstructed', 'unpaired', 'lawUnmatched', 'enactedUnread'] as const) {
+    for (const reason of ['uninstructed', 'unpaired', 'lawUnmatched', 'enactedUnread', 'wordingNotInRis'] as const) {
       expect(withheldNotes([{ law: 'L', id: '§1', reason }])[0]!.lead).toBe('Nicht gezeigt:')
     }
   })

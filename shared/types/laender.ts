@@ -460,7 +460,7 @@ export interface LandLawDiffResponse {
  *    text RIS holds in no single version the monitor reads with certainty
  *    (19.11.2026).
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'notInDraft' | 'draftDiffers' | 'unprinted' | 'announced'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'wordingNotInRis' | 'notInDraft' | 'draftDiffers' | 'unprinted' | 'announced'
 
 /**
  * Why a § shown was not held word for word against the draft

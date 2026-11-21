@@ -171,6 +171,27 @@ describe('compareLandLawChanges — Artikel titled with their number alone (22.1
   })
 })
 
+describe('compareLandLawChanges — a wording the version RIS ties does not carry (22.11.2026)', () => {
+  it('withholds the §, never shows the Landesgesetzblatt’s own words as removed by it (Wien LGBl. Nr. 45/2020 § 14 Abs. 6)', async () => {
+    XML['w45.xml'] = '<risdok><nutzdaten><absatz typ="novao1">4. § 14 Abs. 6 lautet:</absatz><absatz typ="abs">„(6) § 13 Abs. 3, 6, 6a, 6b und 7 gelten sinngemäß. § 13 Abs. 6b letzter Satz gilt mit der Maßgabe, dass sich alle Mitglieder des Geschäftsverteilungsausschusses an der Beschlussfassung beteiligen müssen.“</absatz></nutzdaten></risdok>'
+    XML['14-old.xml'] = '<risdok><nutzdaten><absatz typ="abs" ct="text">(6) § 13 Abs. 3, 6, 6a, 6b und 7 gelten sinngemäß. § 13 Abs. 6b letzter Satz gilt mit der Maßgabe, dass sich alle Mitglieder des Geschäftsverteilungsausschusses an der Beschlussfassung beteiligen müssen.</absatz></nutzdaten></risdok>'
+    XML['14-new.xml'] = '<risdok><nutzdaten><absatz typ="abs" ct="text">(6) § 13 Abs. 3, 6 und 7 gelten sinngemäß.</absatz></nutzdaten></risdok>'
+    const version = (xml: string, from: string, to: string | null, organ: string) => {
+      const r = ref('§ 14', xml, from)
+      Object.assign(r.Data.Metadaten.Landesrecht.LrKons, { Kundmachungsorgan: organ, StammnormBgblnummer: '83/2012', Ausserkrafttretensdatum: to })
+      return r
+    }
+    // RIS ties the version after the wording expired; the one before it carries the Landesgesetzblatt's words.
+    const neu = version('14-new.xml', '2021-07-01', null, 'LGBl. Nr. 83/2012 zuletzt geändert durch LGBl. Nr. 45/2020')
+    const old = version('14-old.xml', '2020-07-23', '2021-06-30', 'LGBl. Nr. 83/2012 zuletzt geändert durch LGBl. Nr. 77/2020')
+    konsRefsOfLgbl.mockResolvedValue({ refs: [neu], complete: true })
+    konsParagraphHistory.mockResolvedValue([old, neu])
+    const { value } = await compareLandLawChanges('w', 'LGBl. Nr. 45/2020', 'w45.xml', null, '2020-07-22')
+    expect(value.units).toEqual([])
+    expect(value.withheld).toEqual([{ law: LAW, id: '§14', reason: 'wordingNotInRis' }])
+  })
+})
+
 describe('compareLandLawChanges — a § the Landesgesetzblatt repeals (20.11.2026)', () => {
   beforeEach(() => {
     XML['novelle.xml'] = '<risdok><nutzdaten><absatz typ="novao1">1. § 2 entfällt.</absatz></nutzdaten></risdok>'

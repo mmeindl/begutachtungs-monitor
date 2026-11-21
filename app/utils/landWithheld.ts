@@ -166,6 +166,13 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     one: 'Das RIS ordnet seine Fassung diesem Landesgesetzblatt zu, aber welche Anweisungen des Landesgesetzblatts sein Gesetz betreffen, konnte der Monitor nicht sicher feststellen',
     many: 'Das RIS ordnet ihre Fassung diesem Landesgesetzblatt zu, aber welche Anweisungen des Landesgesetzblatts ihr Gesetz betreffen, konnte der Monitor nicht sicher feststellen',
   },
+  // A „lautet:" instruction's own wording not in the version RIS ties to the Landesgesetzblatt (22.11.2026, `lautetMissing`):
+  // the monitor's finding, not whose deviation it is — a wording that expired (Wien LGBl. Nr. 45/2020) reads the same as a reading of ours.
+  wordingNotInRis: {
+    lead: 'Nicht gezeigt:',
+    one: 'Das Landesgesetzblatt gibt für ihn einen Wortlaut vor, den der Monitor in der Fassung, die das RIS diesem Landesgesetzblatt zuordnet, nicht vollständig fand',
+    many: 'Das Landesgesetzblatt gibt für sie einen Wortlaut vor, den der Monitor in den Fassungen, die das RIS diesem Landesgesetzblatt zuordnet, nicht vollständig fand',
+  },
   // A law the Landesgesetzblatt enacts anew (19.11.2026): no instruction names its §§, and there is nothing before.
   enactedUnread: {
     lead: 'Nicht gezeigt:',
@@ -181,7 +188,7 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'lawUnmatched', 'uninstructed', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'draftDiffers', 'unprinted', 'announced', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
+const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'lawUnmatched', 'uninstructed', 'wordingNotInRis', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'draftDiffers', 'unprinted', 'announced', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
  * The numbers other §§ of a group move to: „§ 34 → § 33" makes § 33 one

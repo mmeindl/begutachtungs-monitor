@@ -287,6 +287,35 @@ export function subInstructionHeads(text: string): string[] {
   return starts.map((at, i) => bare.slice(at, starts[i + 1] ?? bare.length).split('\u0000')[0]!.trim()).filter(Boolean)
 }
 
+/** A text's words, lower case: what the „lautet:" check holds against each other. */
+const wordsOf = (s: string) => new Set(s.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [])
+
+/**
+ * The words of an instruction's own wording that RIS's new version of the
+ * § lacks (22.11.2026): for an instruction that writes the wording of one
+ * § or part of it („§ 14 Abs. 6 lautet: …", „Im § 48 Abs 1 lautet die Z 4:
+ * …"), its words against the heading, number and text of the version RIS
+ * ties to the Landesgesetzblatt. Null for any other instruction — one that
+ * names several §§, the table of contents or an Anlage, or nests
+ * sub-instructions (Salzburg's „15.1.") — and for one of another §.
+ *
+ * Words, not sequence. The census of the harness found two such misses in
+ * 172 checked instructions, both Wien LGBl. Nr. 45/2020 (§ 14 Abs. 6, § 16
+ * Abs. 5): its Artikel II lets the new wording expire at the end of 2020,
+ * and the version RIS ties to it is the one after the expiry, without the
+ * words the Landesgesetzblatt writes — compared with the one before, the
+ * page showed them as removed by the Landesgesetzblatt that enacted them.
+ */
+export function lautetMissing(instruction: LawUnit, key: string, unit: Pick<LawUnit, 'id' | 'heading' | 'text'>): string[] | null {
+  const at = /\blautet\b[^:„"]*:/.exec(instruction.text)
+  if (!/^Z/.test(instruction.id) || !at || /[„"]/.test(instruction.text.slice(0, at.index))) return null
+  const head = instruction.text.slice(0, at.index)
+  const keys = lgblNamedParagraphs(head).filter((k) => k.startsWith('§'))
+  if (keys.length !== 1 || keys[0] !== key || /Inhaltsverzeichnis|Anlage|Anhang/.test(head) || subInstructionHeads(instruction.text).length) return null
+  const ris = wordsOf(`${unit.id} ${unit.heading ?? ''} ${unit.text}`)
+  return [...wordsOf(instruction.text.slice(at.index + at[0].length))].filter((w) => !ris.has(w))
+}
+
 /**
  * The instructions' law for one of RIS's laws: the Artikel whose title
  * holds every distinctive word of the Kurztitel — exactly one, or none at

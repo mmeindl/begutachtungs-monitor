@@ -1,7 +1,7 @@
 /** What a Landesgesetz changed, § by § (`landLawChanges.ts`): every doubt is a § not compared. */
 import { describe, expect, it } from 'vitest'
 import { diffLandDraft, lgblUnits } from '../server/utils/laender/landLawDiff'
-import { instructionLawFor, instructionLawsOf, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
+import { instructionLawFor, instructionLawsOf, lautetMissing, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
 
 const v = (over: Partial<LandKonsVersion>): LandKonsVersion => ({ gesetzesnummer: '20001217', law: 'Salzburger Kinderbildungs- und -betreuungsgesetz 2019', key: '§5', from: null, to: null, organ: '', xmlUrl: 'x', stammnorm: '57/2019', abbreviation: null, ...over })
 
@@ -121,6 +121,21 @@ describe('instructionLawsOf — a law under another name (22.11.2026)', () => {
       { law: 'Landesbedienstetengesetz 1988', stammnorm: '1/1988' },
       { law: 'Landesbedienstetengesetz 2000', stammnorm: '44/2013' },
     ])).toEqual({ 'Landesbedienstetengesetz 1988': undefined, 'Landesbedienstetengesetz 2000': undefined })
+  })
+})
+
+describe('lautetMissing (22.11.2026)', () => {
+  const z = (text: string) => ({ article: null, articleNumber: null, id: 'Z4', heading: null, quotedHeadings: [], text, blocks: [], stammnorm: null })
+  const instruction = z('§ 14 Abs. 6 lautet: "(6) § 13 Abs. 3, 6, 6a, 6b und 7 gelten sinngemäß."')
+  it('names the words of the instruction’s wording the new version lacks', () => {
+    expect(lautetMissing(instruction, '§14', { id: '§14', heading: null, text: '(6) § 13 Abs. 3, 6 und 7 gelten sinngemäß.' })).toEqual(['6a', '6b'])
+    expect(lautetMissing(instruction, '§14', { id: '§14', heading: null, text: '(6) § 13 Abs. 3, 6, 6a, 6b und 7 gelten sinngemäß.' })).toEqual([])
+  })
+  it('checks nothing it cannot hold to one § (null)', () => {
+    expect(lautetMissing(instruction, '§16', { id: '§16', heading: null, text: 'x' })).toBeNull()
+    expect(lautetMissing(z('In § 14 Abs. 6 wird das Wort "sechs" durch das Wort "sieben" ersetzt.'), '§14', { id: '§14', heading: null, text: 'x' })).toBeNull()
+    expect(lautetMissing(z('Die §§ 14 und 15 lauten: "§ 14 … § 15 …"'), '§14', { id: '§14', heading: null, text: 'x' })).toBeNull()
+    expect(lautetMissing(z('Im § 18 werden folgende Änderungen vorgenommen: 15.1. Im Abs 1 lautet die Z 6: "6. x"'), '§18', { id: '§18', heading: null, text: 'y' })).toBeNull()
   })
 })
 
