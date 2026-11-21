@@ -601,6 +601,24 @@ describe('where one § ends and the next begins, as the ministries set it (21.11
     expect(rows.map((r) => r.gld)).toEqual(['§ 30.'])
   })
 
+  // E-ControlG (RIS EA7560E7): the left column copies § 25b's heading from
+  // a RIS print, flush and over three lines, and all three stood at the end
+  // of § 25a.
+  it('hands on a flush heading of three lines under a finished sentence', () => {
+    const rows = read([
+      at(108, 780, '§ 25a. (1) Die E-Control kann Ermittlungen durchführen.', 380), at(444, 780, '§ 25a. (1) Die E-Control kann Ermittlungen durchführen.', 716),
+      ...filler(766),
+      at(L0, 640, 'Die Bestimmungen des Allgemeinen Verwaltungsverfahrensgesetzes 1991 gelten sinngemäß.', 330), at(R0, 640, 'Die Bestimmungen des Allgemeinen Verwaltungsverfahrensgesetzes 1991 gelten sinngemäß.', 666),
+      at(L0, 628, 'Sonderbestimmungen in Bezug auf die Untersuchungs- und', 417.7),
+      at(L0, 616, 'Überwachungsbefugnisse im Dienste der Strafrechtspflege bei Verdacht auf', 417.2),
+      at(L0, 604, 'Missbrauch einer Insider-Information', 240.8),
+      at(108, 592, '§ 25b. Im Ermittlungsverfahren zur Aufklärung des Verdachts des', 417.1),
+      at(L0, 580, 'Missbrauchs einer Insider-Information ist die E-Control verpflichtet.', 380),
+    ])
+    expect(rows.find((r) => r.gld === '§ 25a.')!.current.endsWith('gelten sinngemäß.')).toBe(true)
+    expect(rows.find((r) => r.gld === '§ 25b.')!.current.startsWith('Sonderbestimmungen in Bezug auf die Untersuchungs- und Überwachungsbefugnisse im Dienste der Strafrechtspflege bei Verdacht auf Missbrauch einer Insider-Information § 25b.')).toBe(true)
+  })
+
   // ASVG, GSVG and BSVG (RIS CF28D2C0): a § the draft repeals, whose right
   // cell prints „Aufgehoben" beside its heading and beside each Absatz, but
   // not its designation. The first two went to the end of § 79c, the last

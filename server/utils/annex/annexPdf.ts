@@ -1452,6 +1452,33 @@ function contentsInBoth(left: readonly ColumnLine[], right: readonly ColumnLine[
 }
 
 /**
+ * How many of a unit's last lines are a heading set flush, as a RIS print
+ * sets one: 0, or the 2 to `room` lines of a run that ran to the edge and
+ * ended in a line that did not, none of them centred, opening an Absatz or
+ * ending a sentence — begun with a capital under a short line that ends one.
+ * The left column of E-ControlG (RIS EA7560E7) copies § 25b's heading
+ * „Sonderbestimmungen in Bezug auf die Untersuchungs- und" / „…" /
+ * „Missbrauch einer Insider-Information" that way, and all three lines
+ * stood at the end of § 25a, struck there. A sentence that goes on to the
+ * next line begins inside its Absatz („(6) Die Regelungen …" /
+ * „kundzumachen", `unitsOfColumn`), and that stays with its §. Over GP
+ * XXVIII's PDF annexes this moved E-ControlG's heading and one Verordnung's
+ * title off the Anhang above it, nothing else (21.11.2026).
+ */
+function flushHeadingRun(parts: readonly ColumnLine[], opener: ColumnLine | null, room: number): number {
+  let j = parts.length - 2
+  let n = 1
+  while (n < room && j >= 0 && parts[j] !== opener && parts[j]!.wrapped && !parts[j]!.centred && parts[j]!.flush === true && !SENTENCE_END.test(parts[j]!.text.trim()) && !BODY_LINE_RE.test(parts[j]!.text)) {
+    n++
+    j--
+  }
+  const before = parts[j]
+  const head = parts[j + 1]!
+  if (n < 2 || !before || before.wrapped || !SENTENCE_END.test(before.text.trim()) || !/^\p{Lu}/u.test(head.text.trim())) return 0
+  return n
+}
+
+/**
  * One column's lines → its units.
  *
  * The two columns of an annex do **not** advance together. Where the draft
@@ -1599,13 +1626,16 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
       // already handed on that starts at the margin too, the column sets its
       // headings flush, as a RIS print does („… und den Zugang zu
       // Verbraucherzahlungskonten mit grundlegenden" / „Funktionen
-      // (Verbraucherzahlungskontogesetz – VZKG)", RIS F36AA3A2). What this
-      // cannot tell is a flush heading with nothing handed on yet: the last
-      // line of E-ControlG § 25b's three-line heading now stays with § 25a,
-      // where its first two already stood (RIS EA7560E7). Where headings are
-      // centred over the designation, the axis decides (`onAxis`).
+      // (Verbraucherzahlungskontogesetz – VZKG)", RIS F36AA3A2). A flush
+      // heading with nothing handed on yet is told by where its run of lines
+      // begins (`flushHeadingRun`). Where headings are centred over the
+      // designation, the axis decides (`onAxis`).
       const runsInto = current.parts.at(-2)
-      if (!centredLayout && !continued && !carried[0]?.flush && last.flush === true && !last.centred && runsInto?.wrapped && !runsInto.centred && !SENTENCE_END.test(runsInto.text)) break
+      if (!centredLayout && !continued && !carried[0]?.flush && last.flush === true && !last.centred && runsInto?.wrapped && !runsInto.centred && !SENTENCE_END.test(runsInto.text)) {
+        const run = flushHeadingRun(current.parts, current.opener, 3 - carried.length)
+        if (run > 0) carried.unshift(...current.parts.splice(current.parts.length - run))
+        break
+      }
       carried.unshift(current.parts.pop()!)
     }
     // A line the line above runs on into is that line's end, on the middle
