@@ -101,6 +101,15 @@ describe('draftLawKey', () => {
     expect(draftLawKey('Oö. Sozialhilfegesetz 1998', ['Artikel I', 'Artikel II'], clauses)).toBe('Artikel II')
   })
 
+  it('names a law whose name holds a comma, a declined adjective or „u." for „und" (Tirol 723/2026, Oö. 2025-16094, 2026-16113; 21.11.2026)', () => {
+    const tirol = ['Artikel I Änderung der Tiroler Bauordnung 2022', 'Artikel III Änderung des Tiroler Gas-, Heizungs- und Klimaanlagengesetzes 2013']
+    expect(draftLawKey('Tiroler Gas-, Heizungs- und Klimaanlagengesetz 2013', tirol)).toBe(tirol[1])
+    const ooe = ['Artikel 27 Änderung des Oö. Krankenanstaltengesetzes 1997', 'Artikel 28 Änderung des Oö. Land- und forstwirtschaftlichen Schulgesetzes', 'Artikel 30 Änderung des Oö. Landarbeitsrecht-Organisationsgesetzes']
+    expect(draftLawKey('Oö. Land- und forstwirtschaftliches Schulgesetz', ooe)).toBe(ooe[1])
+    const lehrer = ['Artikel X Änderung des Oö. Landesrechnungshofgesetzes 2013', 'Artikel XI Änderung des Oö. Land- und forstwirtschaftlichen Landeslehrer-Diensthoheitsgesetzes 1988']
+    expect(draftLawKey('Oö. Land- u. forstwirtschaftliches Landeslehrer-Diensthoheitsgesetz 1988', lehrer)).toBe(lehrer[1])
+  })
+
   it('is undefined — the whole draft — where it cannot be named with certainty', () => {
     expect(draftLawKey('Oö. Informations- und Datenschutzgesetz', ['Artikel I Landesgesetz zur Umsetzung …', 'Artikel II Änderung des Oö. ADIG'])).toBeUndefined()
     expect(draftLawKey(null, ['Artikel I', 'Artikel II'])).toBeUndefined()

@@ -71,14 +71,26 @@ const designationOf = (id: string): string => id.replace(/^§\s*/, '§ ')
 export function draftLawKey(law: string | null, keys: readonly (string | null)[], clauses: ReadonlyMap<string, string> = new Map()): string | null | undefined {
   if (keys.length === 1) return keys[0]
   if (!law) return undefined
-  const words = bareLawName(law).split(/\s+/).filter(Boolean)
+  // Split as the title is (21.11.2026): „Gas-," met no word of „Änderung des Tiroler Gas-, Heizungs- und …" (Tirol 723/2026); „u." is „und" (Oö. 2026-16113).
+  const words = bareLawName(law).split(/[\s,()]+/).filter(Boolean).map((w) => (w === 'u.' ? 'und' : w))
   if (!words.length) return undefined
   const names = (text: string) => {
     const title = text.toLowerCase().split(/[\s,()]+/)
-    return words.every((w) => title.some((t) => t === w || (w.length >= 5 && t.startsWith(w))))
+    return words.every((w) => title.some((t) => t === w || (w.length >= 5 && t.startsWith(w)) || declinedAs(w, t)))
   }
   const hits = keys.filter((k): k is string => k !== null && (names(k) || names(clauses.get(k) ?? '')))
   return hits.length === 1 ? hits[0] : undefined
+}
+
+/**
+ * A word of a law's name as the title declines it, its ending swapped:
+ * „forstwirtschaftliches" in „des Oö. Land- und forstwirtschaftlichen
+ * Schulgesetzes" (Oö. 2025-16094, 2026-16113; 21.11.2026) — never a longer
+ * word on the same stem.
+ */
+function declinedAs(word: string, title: string): boolean {
+  const stem = word.replace(/(?:es|er|em|en|e)$/, '')
+  return stem !== word && stem.length >= 5 && title.startsWith(stem) && title.length - stem.length <= 2
 }
 
 /**
