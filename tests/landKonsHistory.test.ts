@@ -21,21 +21,21 @@ beforeEach(() => {
 
 describe('konsParagraphHistory', () => {
   it('reads one page where RIS counts no more, at the address it always had', async () => {
-    risJson.mockImplementation((async (url: string) => answer(85, pageOf(url))) as typeof risJson)
+    risJson.mockImplementation((async (url: string) => answer(85, pageOf(url))) as never)
     expect(await konsParagraphHistory('ooe', '20000001', '§5')).toHaveLength(85)
     expect(risJson).toHaveBeenCalledTimes(1)
     expect(new URL(risJson.mock.calls[0]![0]).searchParams.has('Seitennummer')).toBe(false)
   })
 
   it('reads on where §§ 5, 5a and 5b share more than one page', async () => {
-    risJson.mockImplementation((async (url: string) => answer(230, pageOf(url))) as typeof risJson)
+    risJson.mockImplementation((async (url: string) => answer(230, pageOf(url))) as never)
     expect(await konsParagraphHistory('ooe', '20000001', '§5')).toHaveLength(230)
     expect(risJson.mock.calls.map(([url]) => pageOf(url))).toEqual([1, 2, 3])
   })
 
   it('fails where the pages fall short of the count, never answers with a part', async () => {
     // RIS counts 150 and serves no second page.
-    risJson.mockImplementation((async (url: string) => (pageOf(url) === 1 ? answer(150, 1) : { OgdDocumentResults: { Hits: { '#text': '150' } } })) as typeof risJson)
+    risJson.mockImplementation((async (url: string) => (pageOf(url) === 1 ? answer(150, 1) : answer(150, 99))) as never)
     await expect(konsParagraphHistory('ooe', '20000001', '§5')).rejects.toThrow()
   })
 })
