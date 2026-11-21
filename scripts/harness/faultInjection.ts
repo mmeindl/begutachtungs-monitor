@@ -1274,6 +1274,54 @@ function zifferSwap(node: LawNode, gotKey: string, rows: readonly ComparisonRow[
 }
 
 /**
+ * **Bezeichnung** (21.11.2026) — one Ziffer's or Litera's label in the
+ * result moved by one („3." → „4.", „b)" → „c)"), where a changed row prints
+ * the unit: the page shows the designations, and the oracle compares the
+ * text without them (`stripMarkers`; check 5 reads Absätze only). The BGBl
+ * bench fails on a shown § with designations that are not the law's; this
+ * says what the draft-time check reaches. Not floored.
+ */
+function designationBumped(node: LawNode, gotKey: string, rows: readonly ComparisonRow[]): { node: LawNode; shows: string } | null {
+  const hay = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged' && r.proposed)
+    .flatMap((r) => printedStretches(normalizeText(r.proposed))).map(containmentKey).join('\u0000')
+  const printed = (u: LawNode): boolean => {
+    const probe = containmentKey(plainText(u)).slice(0, 60)
+    return probe.length >= 10 && gotKey.indexOf(probe) === gotKey.lastIndexOf(probe) && hay.includes(probe)
+  }
+  const sites: LawNode[] = []
+  const walk = (n: LawNode): void => {
+    for (const c of n.children) {
+      if ((c.level === 'z' || c.level === 'lit') && /\d|[a-z]\)/.test(c.marker) && printed(c)) sites.push(c)
+      walk(c)
+    }
+  }
+  walk(node)
+  const site = middle(sites)
+  if (!site) return null
+  const bump = (t: string): string => t.replace(/\d+|[a-y](?=\))|^[a-y]$/, (m) => (/\d/.test(m) ? String(Number(m) + 1) : String.fromCharCode(m.charCodeAt(0) + 1)))
+  const moved = bump(site.marker)
+  if (moved === site.marker) return null
+  const swap = (n: LawNode): LawNode => (n === site ? { ...n, marker: moved, id: bump(n.id) } : { ...n, children: n.children.map(swap) })
+  return { node: swap(node), shows: `${site.level === 'z' ? 'Z' : 'lit.'} ${site.marker} → ${moved}` }
+}
+
+/**
+ * **Komma** and **Ungedruckt-Komma** (21.11.2026, audit G020) — one comma of
+ * the result dropped, where a changed row prints the site and where nothing
+ * prints it (`wordGround`). Check 2 compares a printed stretch character for
+ * character; check 3's bags compare words without their punctuation. Not
+ * floored: the two figures say what the check reaches.
+ */
+function commaDropped(ground: WordGround, printedSite: boolean): (WordFault & { kind?: string }) | null {
+  const { tokens } = ground
+  const sites = tokens.map((_, i) => i).filter((i) => /\p{L}{2,},$/u.test(tokens[i]!) && (printedSite ? ground.printed(i) : ground.unprinted(i) !== null))
+  const at = middle(sites)
+  if (at === undefined) return null
+  const by = tokens[at]!.slice(0, -1)
+  return { got: edit(tokens, at, by), at, shows: excerpt(tokens, at, `[${tokens[at]}→${by}]`), ...(printedSite ? {} : { kind: ground.unprinted(at)! }) }
+}
+
+/**
  * **Überschrift** — one word of the § heading replaced by another word of
  * the §, where the annex prints the heading in a changed row: a heading the
  * draft rewrites and the engine got wrong.
@@ -1657,6 +1705,12 @@ async function injectIntoResults(
       if (swapped) judgeWord(oracleFaults.ZifferReihe, plainText(swapped.node), swapped.node, swapped.shows, null)
       const reheaded = headingFault(node, ground.tokens, paraRows)
       if (reheaded) judgeWord(oracleFaults.Ueberschrift, plainText(reheaded.node), reheaded.node, reheaded.shows, null)
+      const relabelled = designationBumped(node, ground.gotKey, paraRows)
+      if (relabelled) judgeWord(oracleFaults.Bezeichnung, plainText(relabelled.node), relabelled.node, relabelled.shows, null)
+      for (const [printedSite, into] of [[true, oracleFaults.Komma], [false, oracleFaults.UngedrucktKomma]] as const) {
+        const comma = commaDropped(ground, printedSite)
+        if (comma) judgeWord(into, comma.got, node, comma.shows, printedSite ? ground.stretchAt(comma.at) : null, comma.kind)
+      }
       if (argAssigned('zeige') === id) {
         for (const [label, faulted] of [['Überschrift', reheaded ? plainText(reheaded.node) : null], ['Ziffer-Reihe', swapped ? plainText(swapped.node) : null], ...Object.entries(printedFaults).map(([k, f]) => [k, f.got] as const), ...Object.entries(unprintedFaults).map(([k, f]) => [`ungedruckt-${k}`, f.got] as const)] as const) {
           if (!faulted) continue
@@ -1880,11 +1934,14 @@ const oracleFaults = {
   UngedrucktZahl: oracleTally('Ungedruckt-Zahl Zahl geändert'),
   Zurueck: oracleTally('Zurück Absatz samt Nummern zurück'),
   ZurueckGleich: oracleTally('Zurück-gleich … gleicher Anfang'),
+  Bezeichnung: oracleTally('Bezeichnung Ziffer/Litera umbenannt'),
+  Komma: oracleTally('Komma gedrucktes Komma fehlt'),
+  UngedrucktKomma: oracleTally('Ungedruckt-Komma Komma fehlt'),
   Payload: oracleTally('Payload neuer Text falsch gelesen'),
   BeilageZahl: oracleTally('Beilage-Zahl Zahl in der Beilage'),
 }
 /** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
-const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich]
+const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich, oracleFaults.Bezeichnung, oracleFaults.Komma, oracleFaults.UngedrucktKomma]
 /** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
 const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck]
 /**
