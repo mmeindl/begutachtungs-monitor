@@ -90,6 +90,18 @@
  * Landesgesetzblatt as its authentic PDF too, but no cache does: XML against
  * PDF, one document read twice, waits for a run with network.
  *
+ * KÄRNTEN'S KUNDMACHUNG HELD AGAINST THE TEXTS (21.11.2026): the join
+ * „beschluss" (`ktnKundmachung`) takes the Landesgesetzblatt by the
+ * Beschluss's date and the title's words, with no text compared. Per find,
+ * listed, not asserted: the two promulgation clauses (`amendmentChain`) and
+ * the share of the draft's and the Vorlage's five-word runs in the
+ * Landesgesetzblatt (`containedIn`); a clause naming another last amendment
+ * or a share below 0.6 is marked to read. First run: 31 finds, 4 marked,
+ * each read and right — the draft reworked before the Vorlage, which the
+ * Landesgesetzblatt holds at 0.59 to 0.99, while another find's holds at
+ * most 0.55 of a Vorlage (13199, which amends the other's Artikel II), 0.32
+ * of every other.
+ *
  * Counted beside them, not asserted: the instructions a pair withholds or
  * names as unread because one side or both did not read what they announce
  * (`announcedText.ts`, 19.11.2026), per pair in `comparisons.jsonl` and
@@ -118,6 +130,8 @@ import { baselineMoves, landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPer
 import { residuesOf, type Breach, type Residue } from '../lib/stationChecks'
 import { comparedText, diffLandDraft } from '../../server/utils/laender/landLawDiff'
 import type { LawUnit } from '../../server/utils/lawtext/lawUnits'
+import { amendmentChain, type ChainVerdict } from '../../server/utils/laender/amendmentChain'
+import { containedIn, shingles, VORLAGE_CONTAINED } from '../../server/utils/laender/vorlageMatch'
 import { MUTATION_KINDS, MUTATION_LABELS, isMiss, mutations, mutationOutcome, type MutationKind, type MutationOutcome } from '../lib/stationMutations'
 
 const outDir = argPair('out')
@@ -234,6 +248,17 @@ const lines: ComparisonLine[] = []
  * Kundmachung" in a Land's shape. Kept apart from the pairs the page offers.
  */
 const nullLines: (ComparisonLine & { residues: Residue[] })[] = []
+/**
+ * Kärnten's Kundmachung held against the texts (21.11.2026): the join
+ * („beschluss", `ktnKundmachung`) rests on the Beschluss's date and the
+ * title's words, with no text compared. Per find: the two promulgation
+ * clauses (`amendmentChain`, the rule Salzburg's title finds are held to)
+ * and the share of the draft's and the Vorlage's five-word runs that stand
+ * in the Landesgesetzblatt (`containedIn`). A clause that names another last
+ * amendment, or a share below the Vorlage oracle's 0.6, is listed to read.
+ */
+const ktnFinds: { draft: string; lgbl: string; chain: ChainVerdict | null; draftShare: number | null; rvShare: number | null; error?: string }[] = []
+const lawWords = (r: { units: LawUnit[] | null; text: string }) => (r.units?.length ? r.units.map((u) => `${u.heading ?? ''} ${u.text}`).join(' ') : r.text)
 /** Every distinct unit of a pair's later text, by its text, with its pair and where it stands — for the fault injection below. */
 const laterUnits = new Map<string, { unit: LawUnit; from: LandTextStation; to: LandTextStation; where: string }>()
 /** Every draft of the population: its detail in the cache, and the pairs it offers (`pairsPerLand`). */
@@ -301,6 +326,23 @@ for (const item of items) {
     } catch (err) {
       line.state = /nicht im Cache/.test(String(err)) ? 'fehlt' : 'Fehler'
       line.reason = String(err).slice(0, 200)
+    }
+  }
+  const stage = detail.draft.stage
+  if (item.land === 'ktn' && stage && stage !== 'unknown' && stage.certainBy === 'beschluss' && sources.lgbl) {
+    const find: (typeof ktnFinds)[number] = { draft: item.id, lgbl: stage.detail ?? '', chain: null, draftShare: null, rvShare: null }
+    ktnFinds.push(find)
+    try {
+      const lgbl = await sources.lgbl.read()
+      const theirs = shingles(lgbl.text)
+      if (sources.entwurf) {
+        const draft = await sources.entwurf.read()
+        find.chain = amendmentChain(draft.text, lgbl.text)
+        find.draftShare = containedIn(shingles(lawWords(draft)), theirs)
+      }
+      if (sources.rv) find.rvShare = containedIn(shingles(lawWords(await sources.rv.read())), theirs)
+    } catch (err) {
+      find.error = String(err).slice(0, 200)
     }
   }
   // The null comparison: nothing may change between the committee's text and the Kundmachung, unless the Landtag changed it.
@@ -426,6 +468,16 @@ for (const k of MUTATION_KINDS) {
 }
 out.push(`- zurückgehalten (announcedText.ts): ${faultsWithheld}`)
 for (const miss of faults.misses) out.push(`- [Mutation verfehlt] ${MUTATION_LABELS[miss.kind]} → ${miss.outcome}: ${miss.unit} „${miss.before}" → „${miss.after}"`)
+// --- Kärnten's Kundmachung against the texts ---------------------------------
+const share = (x: number | null) => (x === null ? '—' : x.toFixed(2))
+const ktnToRead = ktnFinds.filter((f) => f.error || f.chain === 'differ' || (f.draftShare ?? 1) < VORLAGE_CONTAINED || (f.rvShare ?? 1) < VORLAGE_CONTAINED)
+out.push('')
+out.push(`## Kärnten: Kundmachung aus Beschlussdatum und Titel (certainBy „beschluss"), gegen die Texte gehalten`)
+out.push('')
+out.push(`${ktnFinds.length} Funde; Promulgationsklausel gleich ${ktnFinds.filter((f) => f.chain === 'same').length}, anders ${ktnFinds.filter((f) => f.chain === 'differ').length}, kein gemeinsames Gesetz ${ktnFinds.filter((f) => f.chain === 'none').length}; zu lesen (Klausel anders, Anteil unter ${VORLAGE_CONTAINED} oder nicht gelesen): ${ktnToRead.length}`)
+out.push('')
+for (const f of ktnFinds) out.push(`- ${ktnToRead.includes(f) ? '[lesen] ' : ''}${f.draft} → ${f.lgbl}: Klausel ${f.chain ?? '—'}, Entwurf im LGBl ${share(f.draftShare)}, Vorlage im LGBl ${share(f.rvShare)}${f.error ? ` — ${f.error}` : ''}`)
+
 // --- The null comparison against its baseline ------------------------------
 const residueLine = (l: (typeof nullLines)[number], r: Residue) => `${l.draft} ${l.pair} ${r.change}${r.editorial ? ' (redaktionell)' : ''} ${r.unit}`
 const nullBaseline = JSON.parse(readFileSync(NULL_BASELINE, 'utf8')) as { note: string; pairs: number; residues: string[]; reasons: Record<string, string> }
@@ -510,6 +562,8 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   // Per class: tried and how the comparison answered, as `station.ts --mutationen` writes it; the misses to read.
   mutations: { ...faults, withheld: faultsWithheld },
   // The committee's text against the Landesgesetzblatt: pairs, those compared, units held against each other, residues (not unchanged) and those not editorial; against the baseline.
+  // Kärnten's date-and-title join held against the texts: finds, clauses alike / other / none to compare, finds listed to read.
+  ktnKundmachung: { finds: ktnFinds.length, same: ktnFinds.filter((f) => f.chain === 'same').length, differ: ktnFinds.filter((f) => f.chain === 'differ').length, none: ktnFinds.filter((f) => f.chain === 'none').length, toRead: ktnToRead.length },
   nullComparison: { pairs: nullLines.length, compared: nullCompared.length, units: nullUnits, residues: nullResidues.length, substantive: nullResidues.filter((r) => !r.editorial).length, came: nullCame.length, went: nullWent.length },
 }, null, 1)}\n`)
 console.log(out.join('\n'))
