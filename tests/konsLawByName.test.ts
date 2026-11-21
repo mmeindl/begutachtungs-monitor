@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { resolveLawByName } from '../server/utils/ris/konsLaw'
+import { konsRecordsOfNummer, resolveLawByName } from '../server/utils/ris/konsLaw'
 
 /**
  * The law a Promulgationsklausel names without a Stammnorm we can read
@@ -66,5 +66,35 @@ describe('resolveLawByName — a law named without a Stammnorm we can read (20.1
   it('throws where RIS ignores the Gesetzesnummer filter', async () => {
     ris([record('10000719', '§ 33', 'Mediengesetz', 'MedienG')], { 10000719: [record('99999999', '§ 1', 'Anderes Gesetz', null)] })
     await expect(resolveLawByName({ name: 'Mediengesetz', abbreviation: null }, '2026-10-21')).rejects.toThrow(/ignorierte den Filter/)
+  })
+})
+
+// Both reads of a law on a day stop after twenty pages of a hundred records
+// (`NUMMER_PAGES`). Past them a § went unread and read as one RIS does not
+// carry, said to the reader as RIS's gap (audit of 20.11.2026). The largest
+// such read in the harness cache is the UGB's at 1,681 records; the fakes
+// state 2,001.
+describe('a law longer than the twenty pages read is a failure, not a shorter law', () => {
+  const paged = (total: number, gesetzesnummer: string) =>
+    vi.stubGlobal('fetch', vi.fn((input: string) => {
+      const url = new URL(String(input))
+      if (!url.searchParams.get('Gesetzesnummer') && !url.searchParams.get('Kundmachungsorgannummer')) return Promise.resolve(answer([record(gesetzesnummer, '§ 1', 'Großes Gesetz', 'GG')]))
+      const page = Number(url.searchParams.get('Seitennummer') ?? 1)
+      const records = Array.from({ length: Math.max(0, Math.min(100, total - (page - 1) * 100)) }, (_, i) => record(gesetzesnummer, `§ ${(page - 1) * 100 + i + 1}`, 'Großes Gesetz', 'GG'))
+      return Promise.resolve(new Response(JSON.stringify({ OgdSearchResult: { OgdDocumentResults: { Hits: { '#text': String(total) }, OgdDocumentReference: records } } }), { status: 200 }))
+    }))
+
+  it('by the BGBl number of its Kundmachung', async () => {
+    paged(2000, '10001702')
+    expect(await konsRecordsOfNummer('10/2000', '2026-10-21')).toHaveLength(2000)
+    paged(2001, '10001702')
+    await expect(konsRecordsOfNummer('10/2000', '2026-10-21')).rejects.toThrow(/2001 Treffer/)
+  })
+
+  it('by its Gesetzesnummer', async () => {
+    paged(2000, '10001702')
+    expect(Object.keys((await resolveLawByName({ name: 'Großes Gesetz', abbreviation: null }, '2026-10-21'))!.paragraphs)).toHaveLength(2000)
+    paged(2001, '10001702')
+    await expect(resolveLawByName({ name: 'Großes Gesetz', abbreviation: null }, '2026-10-21')).rejects.toThrow(/2001 Treffer/)
   })
 })

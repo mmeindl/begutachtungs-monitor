@@ -249,6 +249,18 @@ export type KonsRecordsRead = (nummer: string, date: string) => Promise<KonsReco
 const NUMMER_PAGES = 20
 
 /**
+ * More records than `NUMMER_PAGES` hold: the read throws rather than end
+ * short (audit of 20.11.2026). It used to stop after the twentieth page, and
+ * a § past it read as one RIS does not carry („nicht-im-ris"), which the page
+ * tells as RIS's gap. The largest such read in the harness cache is the
+ * UGB's by its Gesetzesnummer, 1,681 records; by a BGBl number the ASVG's,
+ * 1,006 (measured 21.11.2026).
+ */
+function beyondPages(hits: number, what: string): void {
+  if (hits > NUMMER_PAGES * 100) throw new Error(`RIS meldet ${hits} Treffer für ${what}, gelesen werden höchstens ${NUMMER_PAGES * 100}`)
+}
+
+/**
  * Every consolidated § version in force on `date` whose Kundmachung carries
  * the BGBl number `nummer`, in RIS's order — the one upstream read under
  * `resolveLawByBgbl`, and the part of it that does not depend on who asks.
@@ -276,6 +288,7 @@ export async function konsRecordsOfNummer(nummer: string, date: string): Promise
     const results = body?.OgdSearchResult?.OgdDocumentResults
     const hits = Number(results?.Hits?.['#text'] ?? 0)
     if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für ${nummer}`)
+    beyondPages(hits, nummer)
     const refs = asArray<any>(results?.OgdDocumentReference)
     for (const r of refs) {
       const p = konsRefOf(r)
@@ -420,6 +433,7 @@ async function lawOfNummer(gesetzesnummer: string, date: string): Promise<KonsLa
     const results = (await pages.get(page))?.OgdSearchResult?.OgdDocumentResults
     const hits = Number(results?.Hits?.['#text'] ?? 0)
     if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für Gesetzesnummer ${gesetzesnummer}`)
+    beyondPages(hits, `Gesetzesnummer ${gesetzesnummer}`)
     const refs = asArray<any>(results?.OgdDocumentReference)
     for (const r of refs) {
       const p = konsRefOf(r)
