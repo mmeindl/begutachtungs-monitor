@@ -622,6 +622,27 @@ describe('a § whose sign is lost, and a title over two lines', () => {
     expect(headings(law('Ziel', '§ 3', '(1) Text eins.', 'Arten, Geltungsbereich', 'und Umfang der Bewilligung', '§ 4', '(1) Text vier.'))).toEqual(['Ziel', 'Arten, Geltungsbereich und Umfang der Bewilligung'])
   })
 
+  // Oberösterreich's KFG and Oö. EEffG (16087, 16110), as the committee's report prints them (21.11.2026).
+  it('takes a title that breaks off mid-phrase over its next line, whatever its case, and „(Verfassungsbestimmung)" with the title under it', () => {
+    const law16087 = [page('Der Oö. Landtag hat beschlossen:', '§ 23', 'Erstattung', '(1) Die Beiträge werden erstattet.',
+      '§ 24', 'Beiträge in der Krankenfürsorge von mit inländischen Pensionsleistungen (Ruhe- und', 'Versorgungsbezüge) vergleichbaren ausländischen Renten', '(1) Wird eine ausländische Rente bezogen, ist ein Beitrag zu leisten.',
+      '§ 43', 'Beziehungen zu anderen Kranken- und Unfallfürsorgeeinrichtungen und zu den', 'Sozialversicherungsträgern', '(1) Hat die KFG Leistungen erbracht, ist sie zu entschädigen.',
+      '§ 72', '(Verfassungsbestimmung)', 'Inkrafttreten', 'Dieses Landesgesetz tritt mit dem Ablauf des Tages seiner Kundmachung in Kraft.')]
+    expect(headings(law16087)).toEqual(['Erstattung', 'Beiträge in der Krankenfürsorge von mit inländischen Pensionsleistungen (Ruhe- und Versorgungsbezüge) vergleichbaren ausländischen Renten',
+      'Beziehungen zu anderen Kranken- und Unfallfürsorgeeinrichtungen und zu den Sozialversicherungsträgern', '(Verfassungsbestimmung) Inkrafttreten'])
+    expect(landDraftUnits(law16087)!.map((u) => u.text.slice(0, 12))).toEqual(['(1) Die Beit', '(1) Wird ein', '(1) Hat die ', 'Dieses Lande'])
+    // Not the § 's first sentence under a title that ends.
+    expect(headings(law('Ziel', '§ 3', '(1) Text eins.', '§ 4', 'Begriffe', 'Die Begriffe dieses Gesetzes gelten auch für Verordnungen.'))).toEqual(['Ziel', 'Begriffe'])
+  })
+
+  it('drops the heading „Anlagen" after a § that ends its sentence, never a title\'s last line', () => {
+    const pages = [page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Landesgesetz über Maßnahmen zur Steigerung der Energieeffizienz', '§ 19', 'Übergangsbestimmungen',
+      '(1) Das Verfahren ist nach der bisherigen Rechtslage fortzuführen.', 'Anlagen', 'Artikel II', 'Änderung des Oö. EU-Begleitregelungs- und Umsetzungsgesetzes')]
+    expect(landDraftUnits(pages)!.find((u) => u.id === '§19')!.text).toBe('(1) Das Verfahren ist nach der bisherigen Rechtslage fortzuführen.')
+    const title = law('Ziel', '§ 70', '(1) Text.', '§ 71', 'Übergangsbestimmungen für am 28. Februar 1998 bestehende bauliche', 'Anlagen', '(1) Wird ein Gebäude saniert, gilt Abs. 2.')
+    expect(landDraftUnits(title)!.map((u) => u.text).join(' ')).toMatch(/Anlagen/)
+  })
+
   it('reads the Landesgesetzblatt’s bare „36" heading as § 36 too', () => {
     const lgbl = '<?xml version="1.0" encoding="utf-8"?><risdok xmlns="http://www.bka.gv.at"><nutzdaten><abschnitt>' +
       '<ueberschrift typ="para">Werbung</ueberschrift><ueberschrift typ="para">§ 35</ueberschrift><absatz typ="abs">(1) Werbung ist maßvoll.</absatz>' +

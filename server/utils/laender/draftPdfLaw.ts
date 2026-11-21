@@ -272,6 +272,33 @@ function isFirstTextLine(line: string, next: string | undefined): boolean {
 }
 
 /**
+ * A new law's § title that goes on over its next line, whose first word is
+ * a noun (21.11.2026): the title breaks off mid-phrase — „Beiträge … von mit
+ * inländischen Pensionsleistungen (Ruhe- und" / „Versorgungsbezüge)
+ * vergleichbaren ausländischen Renten", „Beziehungen … und zu den" /
+ * „Sozialversicherungsträgern" — and the § opens below it („(1)"); or the
+ * „title" is the note „(Verfassungsbestimmung)", which the Landesgesetzblatt
+ * sets before the title in one heading, „(Verfassungsbestimmung)
+ * Inkrafttreten". Read as text until then, the second line stood in the
+ * §'s first Absatz against the Landesgesetzblatt (Oberösterreich's KFG,
+ * 16087, §§ 24, 43 and 72 of its null comparison).
+ */
+function titleRunsOn(title: string, line: string, next: string | undefined): boolean {
+  if (OPENS_RE.test(line) || BARE_PARAGRAPH_RE.test(line) || /[.;:,]$/.test(line) || line.length > 90) return false
+  if (/^\(Verfassungsbestimmung\)$/.test(title)) return true
+  return (RUNS_ON_RE.test(title) || /\([^)]*$/.test(title)) && OPENS_RE.test(next ?? '')
+}
+
+/**
+ * The bare heading „Anlagen" over a law's annexes, where the line above ends
+ * a sentence (21.11.2026): in Oberösterreich's 16110 it stands between the
+ * Oö. EEffG's last § and Artikel II, and the reader took it for the last
+ * words of § 19, which the Landesgesetzblatt does not print there. Not a
+ * title's last line, „… bestehende bauliche" / „Anlagen".
+ */
+const ANNEXES_HEADING_RE = /^Anlagen$/
+
+/**
  * The legal text of a draft PDF as blocks, or null where no enacting clause
  * marks it — then the PDF is not a draft law this reader can take apart.
  */
@@ -374,6 +401,10 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
     // A paragraph that ends in a colon is complete: settle it before the
     // payload under it is weighed.
     if (para !== null && /:$/.test(para) && !ARTICLE_LINE_RE.test(line)) flush()
+    if (ANNEXES_HEADING_RE.test(line) && /[.;:]$/.test(body[i - 1] ?? '')) {
+      drop(line)
+      continue
+    }
     if (isDivision(line) && !INSTRUCTION_VERB_RE.test(line)) {
       inDivisionTitle = true
       drop(line)
@@ -518,6 +549,12 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
       }
       if (pendingGld && title === null && !titledAbove && !OPENS_RE.test(line) && !isFirstTextLine(line, body[i + 1])) {
         title = line
+        continue
+      }
+      // A title that breaks off mid-phrase goes on whatever the case of its
+      // next line (`titleRunsOn`).
+      if (pendingGld && title !== null && !titledAbove && titleRunsOn(title, line, body[i + 1])) {
+        title = joinLines(title, line)
         continue
       }
       // A title wrapped onto a second line goes on in lower case — unless
