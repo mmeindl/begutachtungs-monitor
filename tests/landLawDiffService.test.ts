@@ -30,6 +30,8 @@ const answer = (withheld: LandLawDiffResponse['withheld']): LandLawDiffResponse 
 beforeEach(() => {
   clearNitroCache()
   compareTgu.mockReset()
+  textSources.mockReset()
+  textSources.mockReturnValue({})
 })
 
 describe('cachedLandComparison', () => {
@@ -40,10 +42,28 @@ describe('cachedLandComparison', () => {
 
     compareTgu.mockResolvedValueOnce({ value: answer([]), complete: true })
     expect((await cachedLandComparison('ktn', '1-2025-1', 'geltend', 'entwurf', detail)).withheld).toEqual([])
-    expect(nitroCacheKeys()).toEqual(['land-law-diff:ktn-1-2025-1-geltend-entwurf'])
+    expect(nitroCacheKeys()).toEqual(['land-law-diff:ktn-1-2025-1-geltend-entwurf%7C%7C%7C'])
     // Kept: the next request does not compare again.
     expect((await cachedLandComparison('ktn', '1-2025-1', 'geltend', 'entwurf', detail)).withheld).toEqual([])
     expect(compareTgu).toHaveBeenCalledTimes(2)
+  })
+
+  // G081 of the audit of 20.11.2026: keyed by land, number and pair alone,
+  // a replaced document or a newly decided Kundmachung was answered for a
+  // day from the comparison of the old one.
+  it('compares anew where a document or the Kundmachung changed, and serves the kept answer where nothing did', async () => {
+    textSources.mockImplementation((_land, d) => ({ entwurf: { document: { label: 'Entwurf', url: d.draft.documents[0]!.url, publisher: 'Land Kärnten' }, read: vi.fn() } }))
+    compareTgu.mockResolvedValue({ value: answer([]), complete: true })
+    const at = (url: string, lgbl: string | null) =>
+      ({ draft: { id: 'ktn-1-2025-1', documents: [{ title: 'Entwurf', url }], stage: lgbl ? { station: 'bgbl', detail: lgbl } : null }, comparisons: [['geltend', 'entwurf']] }) as unknown as LandDraftDetail
+    await cachedLandComparison('ktn', '1-2025-1', 'geltend', 'entwurf', at('https://example.org/e1.pdf', null))
+    await cachedLandComparison('ktn', '1-2025-1', 'geltend', 'entwurf', at('https://example.org/e1.pdf', null))
+    expect(compareTgu).toHaveBeenCalledTimes(1)
+    await cachedLandComparison('ktn', '1-2025-1', 'geltend', 'entwurf', at('https://example.org/e2.pdf', null))
+    expect(compareTgu).toHaveBeenCalledTimes(2)
+    await cachedLandComparison('ktn', '1-2025-1', 'geltend', 'entwurf', at('https://example.org/e2.pdf', 'LGBl. Nr. 3/2026'))
+    expect(compareTgu).toHaveBeenCalledTimes(3)
+    expect(nitroCacheKeys()).toHaveLength(3)
   })
 
   it('keeps nothing where the comparison throws', async () => {

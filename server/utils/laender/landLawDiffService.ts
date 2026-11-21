@@ -28,6 +28,7 @@ import { gapDe } from '#shared/utils/gaps'
 import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandTextStation, LawDiffUnit } from '#shared/types'
 import { landDraftPath } from '#shared/utils/laender'
 import { DERIVED_CACHE } from '../cache/base'
+import { storageKeyOf } from '../cache/key'
 import { onlyComplete, type Gathered } from '../cache/gathered'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { summarizeDiff } from '../diff/lawDiff'
@@ -181,6 +182,12 @@ function settleAnnounced(all: LawDiffUnit[], x: readonly LawUnit[], y: readonly 
  * Held a day, in the derived layer: the documents do not change, but the
  * reader does, and a stale comparison must not outlive a fix to it. Only a
  * complete answer is held (`onlyComplete`).
+ *
+ * Keyed by the pair AND what names its two documents (21.11.2026): the
+ * Kundmachung (`stage.detail`) and the addresses the texts are read from.
+ * Keyed by land, number and pair alone, a Vorlage whose PDF the Land
+ * replaced, or a Kundmachung decided anew, was answered for a day from the
+ * comparison of the old one. Encoded (`cache/key.ts`): URLs and free text.
  */
 const readLandComparison = defineCachedFunction(
   (land: LandCode, number: string, from: LandTextStation, to: LandTextStation, detail: LandDraftDetail): Promise<Gathered<LandLawDiffResponse>> =>
@@ -188,7 +195,12 @@ const readLandComparison = defineCachedFunction(
   {
     name: 'land-law-diff',
     base: DERIVED_CACHE,
-    getKey: (land: LandCode, number: string, from: LandTextStation, to: LandTextStation) => `${land}-${number}-${from}-${to}`,
+    getKey: (land: LandCode, number: string, from: LandTextStation, to: LandTextStation, detail: LandDraftDetail) => {
+      const sources = textSources(land, detail)
+      const stage = detail.draft.stage
+      const kundmachung = stage && stage !== 'unknown' ? stage.detail ?? '' : ''
+      return storageKeyOf(`${land}-${number}-${from}-${to}|${kundmachung}|${sources[from]?.document.url ?? ''}|${sources[to]?.document.url ?? ''}`)
+    },
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
     // An answer with a § unchecked for want of RIS, or without the drafts
