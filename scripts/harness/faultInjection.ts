@@ -89,8 +89,13 @@
  *
  * A kept sentence struck passes wherever the draft check held before the
  * fault: it reads no old text, and under every rule its holding keeps the §
- * clean. Zahl, Wort and neuer Satz fehlt are held to 95 % on both paths
- * under `--mindestens` (`CHAIN_FLOORED`); neuer Satz fehlt does not hold.
+ * clean. Zahl, Wort and neuer Satz fehlt are held to 95 % under
+ * `--mindestens` (`CHAIN_FLOORED`), neuer Satz fehlt on the table path only:
+ * on the PDF path every one of its 27 misses is a § whose dropped words the
+ * draft check excuses behind an elision mark of the column (the window runs
+ * to the column's edge where no word of the draft's wording follows), and
+ * the floor would fail by construction until that window is closed. Each
+ * class not held says why, in the record (`CHAIN_NOT_FLOORED`).
  *
  * Until these builders said what they build, the oracle stood at 89,3 and
  * 87,8 % for Zahl, 95,9 and 96,0 % for Satz-weg and 73,2 and 98,1 % for
@@ -685,6 +690,24 @@ const chainFaults: Record<ChainKey, ChainTally> = {
 /** The classes held to 95 % on both paths under `--mindestens` (withheld or marked, the rule in force). */
 const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg']
 const CHAIN_FLOOR = 95
+/**
+ * Why a class is not held to the floor (22.11.2026), on one path or on both:
+ * where the draft check holds the faulted §, the § stays clean whatever the
+ * oracle says (`annex/annexMark.ts`), so each of these misses where the draft
+ * check cannot see the fault (and where the oracle, holding the columns by
+ * containment, cannot see what a column lacks) — the floor would fail by
+ * construction, not because the chain fell. In the record as `notFloored`.
+ */
+const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why: string }>> = {
+  satzweg: { path: 'pdf', why: 'die Prüfung gegen den Entwurf entschuldigt fehlenden Wortlaut hinter einem Auslassungszeichen der Spalte bis zu ihrem Rand: fehlt der letzte neue Satz vor „(3) bis (6) …“, bemerkt sie es nicht' },
+  bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
+  rweg: { why: 'die Prüfung gegen den Entwurf liest keinen gestrichenen Text' },
+  links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
+}
+const notFlooredOf = (key: ChainKey): string | undefined => {
+  const not = CHAIN_NOT_FLOORED[key]
+  return not && (!not.path || not.path === (xmlMode ? 'table' : 'pdf')) ? not.why : undefined
+}
 /**
  * What the oracle says per draft (`injectIntoResults`): for every § group of
  * the annex it confirmed, the oracle again over the same result with some of
@@ -2411,13 +2434,15 @@ for (const t of Object.values(chainFaults)) {
   console.log(`    ${t.label.padEnd(36)}${String(t.tried).padStart(8)}${String(t.withheld).padStart(13)}${String(t.marked).padStart(10)}${String(t.unmarked).padStart(17)}   ${pct(t.withheld + t.marked, t.tried)} gefangen   (${RULES.map((rule) => `${t.byRule[rule].withheld + t.byRule[rule].marked}/${t.byRule[rule].tried}`).join(' / ')}); Orakel vorher bestätigt ${t.oracleBefore}, danach gefragt ${t.oracleAsked}`)
 }
 if (argFlag('misses')) for (const t of Object.values(chainFaults)) for (const m of t.misses) console.log(`      ${t.label}: ${m}`)
-const chainFloor = floor && floorOf(CHAIN_FLOORED.map((k) => ({ key: k, tried: chainFaults[k].tried, caught: chainFaults[k].withheld + chainFaults[k].marked })), CHAIN_FLOOR)
-for (const k of CHAIN_FLOORED) {
+const chainFloored = CHAIN_FLOORED.filter((k) => notFlooredOf(k) === undefined)
+const chainFloor = floor && floorOf(chainFloored.map((k) => ({ key: k, tried: chainFaults[k].tried, caught: chainFaults[k].withheld + chainFaults[k].marked })), CHAIN_FLOOR)
+for (const k of CHAIN_FLOORED.filter((c) => !chainFloored.includes(c))) if (floor) console.log(`  · Kette auf diesem Pfad nicht gehalten: ${chainFaults[k].label} — ${notFlooredOf(k)}`)
+for (const k of chainFloored) {
   const status = chainFloor?.status.get(k)
   if (status === 'verfehlt') console.log(`  ✗ Kette unter ${CHAIN_FLOOR} %: ${chainFaults[k].label} — ${chainFaults[k].withheld + chainFaults[k].marked}/${chainFaults[k].tried}`)
   if (status === 'nicht gehalten') console.log(`  · Kette nicht gehalten (unter 20 Versuchen): ${chainFaults[k].label}`)
 }
-if (chainFloor?.passed) console.log(`  ✓ die Kette fängt ${CHAIN_FLOORED.map((k) => chainFaults[k].label).join(', ')} zu mindestens ${CHAIN_FLOOR} %`)
+if (chainFloor?.passed) console.log(`  ✓ die Kette fängt ${chainFloored.map((k) => chainFaults[k].label).join(', ')} zu mindestens ${CHAIN_FLOOR} %`)
 const chainPassed = !chainFloor || chainFloor.passed
 if (gateFloor && gatePassed) console.log(`  ✓ das Tor fängt L, R-alt und R-neu mindestens zu ${Object.entries(GATE_FLOORS).map(([k, v]) => `${k} ${v} %`).join(', ')}`)
 
@@ -2466,7 +2491,7 @@ if (jsonPath) {
     // The annex's right column misread, as the oracle sees it against the unchanged result.
     column: columnClasses.map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f), ...(floor && floored.has(f) ? { floor: floor.status.get(keyOf(f.label)) } : {}) })),
     // The whole chain the page runs, gate then table (`judgeChain`, 21.11.2026), under each value of the table's open cell.
-    chain: (Object.entries(chainFaults) as [ChainKey, ChainTally][]).map(([key, t]) => ({ key, label: t.label, tried: t.tried, withheld: t.withheld, marked: t.marked, unmarked: t.unmarked, byRule: t.byRule, oracleBefore: t.oracleBefore, oracleAsked: t.oracleAsked, floored: CHAIN_FLOORED.includes(key), ...(chainFloor && CHAIN_FLOORED.includes(key) ? { floorMin: CHAIN_FLOOR, floor: chainFloor.status.get(key) } : {}) })),
+    chain: (Object.entries(chainFaults) as [ChainKey, ChainTally][]).map(([key, t]) => ({ key, label: t.label, tried: t.tried, withheld: t.withheld, marked: t.marked, unmarked: t.unmarked, byRule: t.byRule, oracleBefore: t.oracleBefore, oracleAsked: t.oracleAsked, floored: chainFloored.includes(key), ...(chainFloor && chainFloored.includes(key) ? { floorMin: CHAIN_FLOOR, floor: chainFloor.status.get(key) } : {}), ...(notFlooredOf(key) ? { notFloored: notFlooredOf(key) } : {}) })),
     chainRule: OBJECTION_OVER_CONFIRMATION,
   }
   writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)
