@@ -1,5 +1,5 @@
 {
- "at": "2026-11-21T08:51:04.638Z",
+ "at": "2026-11-21T08:57:23.345Z",
  "documents": {
   "ktn-104907-2025-32": {
    "land": "ktn",
@@ -1572,8 +1572,9 @@
    "land": "sbg",
    "state": "beantwortet",
    "available": true,
-   "shown": 38,
+   "shown": 37,
    "withheld": [
+    "draftDiffers · Baupolizeigesetz 1997 · §24b",
     "draftDiffers · Baupolizeigesetz 1997 · §9",
     "draftDiffers · Salzburger Raumordnungsgesetz 2009 · §31b",
     "leftCheck · Baupolizeigesetz 1997 · §2",

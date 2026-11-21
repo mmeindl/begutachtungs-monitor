@@ -80,6 +80,19 @@ describe('refusedAddress — the § an instruction opens with, where the draft r
   })
 })
 
+describe('an instruction\'s „§ 24 b" (Salzburg 32075; 21.11.2026)', () => {
+  it('is read as § 24b, never as § 24, and „§§ 46 f" stays „und folgende"', () => {
+    const draft = lawBlocksFromPdfPages([[
+      'Gesetz vom ……, mit dem das Baupolizeigesetz 1997 geändert wird', 'Der Salzburger Landtag hat beschlossen:', 'Das Baupolizeigesetz 1997 wird geändert wie folgt:',
+      '1. Im § 24 b wird nach Abs 13 folgender Abs 14 angefügt:', '„(14) Die §§ 46 f gelten für anhängige Bauverfahren sinngemäß.“',
+    ].join('\n')])!
+    const shown = unit({ id: '§24b', fromId: '§24b', fromText: '(13) Alt.', toText: '(13) Alt. (14) Die §§ 46 f gelten für anhängige Bauverfahren sinngemäß.', segments: [
+      { type: 'equal', text: '(13) Alt. ' }, { type: 'inserted', text: '(14) Die §§ 46 f gelten für anhängige Bauverfahren sinngemäß.' },
+    ] })
+    expect(guardTguUnits([shown], draft).strict.get(0)!.state).toBe('holds')
+  })
+})
+
 describe('draftLawKey', () => {
   it('names a package law by its declined Artikel title, or an untitled Artikel by its clause', () => {
     const keys = ['Artikel 1 Änderung des Tiroler Raumordnungsgesetzes 2022', 'Artikel 2 Änderung der Tiroler Bauordnung 2022']
