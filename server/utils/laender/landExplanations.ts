@@ -53,9 +53,18 @@ const START_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Allgemeiner Teil|Allgemeines
  * word — „… verwiesen.", „Erläuterungen dazu.", „Erläuterungen zu Abs. 5).".
  */
 export const TITLE_RE = /^(?:(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen):?$|(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen)\s+(?:zum|zur|ZUM|ZUR)\s(?![^]*(?:\bverwiesen\b|\bdargelegt\b|\bBGBl\b|[.;]$))|Erläuternde Bemerkungen\s(?![^]*[.;]$))/
-const PARTICULAR_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Besonderer Teil|Zu den einzelnen Bestimmungen)\b/
-/* „Zu Art. I Z 2", and in Salzburg's packages „Zu Art 2 Z 1" (23.10.2026). */
-const ENTRY_RE = /^Zu\s+(?:(?:Art(?:ikel)?\.?\s*(?:[IVXL]+|\d+)|Z(?:iffer)?n?\.?\s*\d|§§?\s*\d|den\s+Z|Abs)|Art\.)/
+/*
+ * And „7. Erläuterungen zu den einzelnen Bestimmungen:", „6. Zu einzelnen
+ * Bestimmungen:" (21.11.2026): 74 and 52 such headings over the 1,365 cached
+ * Land PDFs, which the reader knew only as „Zu den einzelnen Bestimmungen".
+ * Without its heading the particular part began at the first „Zu …" line,
+ * and in Salzburg's Vorlagen 34234 and 34239 that was the general part's
+ * „6. Ergebnis des Begutachtungsverfahrens", whose answers to the statements
+ * („Zu § 4: Zur kritischen Eingabe der Fraktion …") stood as entries.
+ */
+const PARTICULAR_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Besonderer Teil|(?:Erläuterungen zu|Zu) (?:den )?einzelnen Bestimmungen)\b/
+/* „Zu Art. I Z 2", and in Salzburg's packages „Zu Art 2 Z 1" (23.10.2026); „Zu den §§ 124 bis 130" (21.11.2026: 19 lines in 14 documents, whose block ran into the § before it). */
+const ENTRY_RE = /^Zu\s+(?:(?:Art(?:ikel)?\.?\s*(?:[IVXL]+|\d+)|Z(?:iffer)?n?\.?\s*\d|(?:den\s+)?§§?\s*\d|den\s+Z|Abs)|Art\.)/
 /* „TEXTGEGENÜBERSTELLUNG" in capitals in Wien's drafts (w-2026006); the last „Zu …" entry ran on into the table. */
 export const END_RE = /^(?:Textgegenüberstellung|TEXTGEGENÜBERSTELLUNG|Der (?:Oö\. |Salzburger |Wiener )?Landtag hat beschlossen|Die (?:Oö\. |Salzburger |Wiener )?Landesregierung hat (?:beschlossen|verordnet)|Vorblatt)\b/
 const HEADING_RE = /^(?:[A-Z]|[IVX]+|\d+)\.\s+\S/
@@ -198,14 +207,32 @@ const DANGLING_RE = /\s(?:von|der|die|das|des|dem|den|und|oder|für|zur|zum|im|i
 /**
  * The §§ a „Zu …" heading names: „(§ 1 Abs. 3)" → 1, „(§§ 4, 5 und 7)" →
  * 4, 5, 7, „(§ 2 Abs. 9 bis 11)" → 2 — a number after „Abs." or „Z" is no §.
+ * A range of §§ names every § in it (21.11.2026): „Zu den §§ 124 bis 130" →
+ * 124 … 130, as the Bund's reader reads „Zu §§ 8 bis 10" (`headingAddress`);
+ * read as its two ends, the §§ between them got no Begründung. Lettered ends
+ * of one number, „§§ 5a bis 5c", name their letters; other lettered ends
+ * stay ends. Not the §§ a title names: Salzburg titles „Zu § 81 (Anwendung
+ * der §§ 8 bis 12; Dienstbeginn)", and § 8 and § 12 got § 81's Begründung.
  */
 export function headingParas(heading: string): string[] {
   const out = new Set<string>()
+  // Behind a heading that names its § the bracket is the §'s title, „Zu § 81 (Anwendung der §§ 8 bis 12; Dienstbeginn)": no § of its own.
+  if (/^[^(]*§/.test(heading)) for (let i = 0; i < 2; i++) heading = heading.replace(/\([^()]*\)/g, ' ')
   for (const m of heading.matchAll(/§§\s*(\d+[a-z]*(?:\s*(?:,|und|bis|sowie)\s*\d+[a-z]*)*)/g)) {
-    for (const n of m[1]!.matchAll(/\d+[a-z]*/g)) out.add(n[0])
+    for (const n of m[1]!.matchAll(/(\d+[a-z]*)(?:\s*bis\s*(\d+[a-z]*))?/g)) for (const p of paraRange(n[1]!, n[2])) out.add(p)
   }
   for (const m of heading.matchAll(/§(?!§)\s*(\d+[a-z]*)/g)) out.add(m[1]!)
   return [...out]
+}
+
+/** „124" bis „130" → 124 … 130; „5a" bis „5c" → 5a, 5b, 5c; any other pair its two ends (`headingParas`). */
+function paraRange(from: string, to: string | undefined): string[] {
+  if (!to) return [from]
+  const [fn, fx] = zifferPlace(from)
+  const [tn, tx] = zifferPlace(to)
+  if (!fx && !tx && tn > fn && tn - fn < 60) return Array.from({ length: tn - fn + 1 }, (_, k) => String(fn + k))
+  if (fn === tn && fx && tx && tx > fx) return Array.from({ length: tx.charCodeAt(0) - fx.charCodeAt(0) + 1 }, (_, k) => `${fn}${String.fromCharCode(fx.charCodeAt(0) + k)}`)
+  return [from, to]
 }
 
 /** „11a" → [11, „a"]: a Ziffer's place in its draft's sequence. */

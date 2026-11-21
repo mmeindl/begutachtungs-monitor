@@ -106,7 +106,8 @@ describe('Salzburg\'s draft 31199', () => {
       url: 'https://service.salzburg.gv.at/pub/get/31199',
     })
     expect(r.available).toBe(true)
-    expect(r.general.map((g) => g.heading)).toEqual(['1. Allgemeines', '2. Verfassungsrechtliche Grundlage', '3. Übereinstimmung mit EU-Recht', '4. Kosten', '5. Erläuterungen zu den einzelnen Bestimmungen'])
+    // „5. Erläuterungen zu den einzelnen Bestimmungen" heads the particular part (21.11.2026), not a passage of the general one.
+    expect(r.general.map((g) => g.heading)).toEqual(['1. Allgemeines', '2. Verfassungsrechtliche Grundlage', '3. Übereinstimmung mit EU-Recht', '4. Kosten'])
     const lbg = 'Salzburger Landes-Beamtengesetz 1987'
     const lvbg = 'Landes-Vertragsbedienstetengesetz 2000'
     const gehg = 'Landesbediensteten-Gehaltsgesetz'

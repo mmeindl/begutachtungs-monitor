@@ -11,6 +11,15 @@ describe('a Land\'s Erläuterungen', () => {
     expect(headingParas('Zu Z 4 (§§ 4, 5 und 7a):')).toEqual(['4', '5', '7a'])
   })
 
+  // 21.11.2026: a range read as its two ends; §§ a title names read as the heading's.
+  it('names every § of a range, and none a § heading\'s title cites', () => {
+    expect(headingParas('Zu den §§ 124 bis 130 (Bereitschaftsabgeltung, Gefahrenabgeltung):')).toEqual(['124', '125', '126', '127', '128', '129', '130'])
+    expect(headingParas('Zu Z 1 (§§ 7 bis 9):')).toEqual(['7', '8', '9'])
+    expect(headingParas('Zu Z 4 (§§ 16a bis 16c Oö. LGO 2009):')).toEqual(['16a', '16b', '16c'])
+    expect(headingParas('Zu § 81 (Anwendung der §§ 8 bis 12; Dienstbeginn):')).toEqual(['81'])
+    expect(headingParas('Zu § 46 („Grundverkehrskommission“) sowie zu § 73 Abs 2 und 3 („Übergangsbestimmungen“):')).toEqual(['46', '73'])
+  })
+
   it('reads the Ziffern of a heading that names no §', () => {
     expect(headingZiffern('Zu Z 1 und 3:')).toEqual(['1', '3'])
     expect(headingZiffern('Zu den Z 3 bis 5:')).toEqual(['3', '4', '5'])
@@ -63,6 +72,22 @@ describe('a Land\'s Erläuterungen', () => {
       ['Zu § 6:', ['6'], 'Zu Abs 1: Die Gebühr soll angehoben werden.'],
     ])
     expect(parse.general.flatMap((p) => p.text).join(' ')).not.toMatch(/2025-0\.123\.456|Amt der/)
+  })
+
+  // 21.11.2026, Salzburg's Vorlagen 34234 and 34239.
+  it('opens an entry at „Zu den §§", and takes „7. Erläuterungen zu den einzelnen Bestimmungen" for the particular part\'s heading', () => {
+    const parse = parseLandExplanations([[
+      'Erläuterungen', '1. Allgemeines:', 'Das Gesetz fasst das Dienstrecht neu.',
+      '6. Ergebnis des Begutachtungsverfahrens:', 'Zu § 4: Zur kritischen Eingabe der Fraktion ist anzumerken, dass', 'die Regelung bleibt.',
+      '7. Erläuterungen zu den einzelnen Bestimmungen:',
+      'Zu § 123 (Journaldienstabgeltung):', 'Die Abgeltung bleibt unverändert.',
+      'Zu den §§ 124 bis 130 (Bereitschaftsabgeltung, Gefahrenabgeltung):', 'Die Nebengebühren werden zusammengefasst.',
+    ].join('\n')])!
+    expect(parse.general.map((p) => p.heading)).toEqual(['1. Allgemeines', '6. Ergebnis des Begutachtungsverfahrens'])
+    expect(parse.particular.map((e) => [e.heading, e.paras, e.text])).toEqual([
+      ['Zu § 123 (Journaldienstabgeltung):', ['123'], ['Die Abgeltung bleibt unverändert.']],
+      ['Zu den §§ 124 bis 130 (Bereitschaftsabgeltung, Gefahrenabgeltung):', ['124', '125', '126', '127', '128', '129', '130'], ['Die Nebengebühren werden zusammengefasst.']],
+    ])
   })
 
   it('opens an entry at „Zu Abs" where no § stands above it', () => {
