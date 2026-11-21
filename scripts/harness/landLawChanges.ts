@@ -99,7 +99,10 @@ const { compareLandLawChanges, NOT_CONSOLIDATED_YET_DE } = await import('../../s
 const { fetchLgblIndex, lgblRecord } = await import('../../server/utils/laender/lgblIndex')
 const { isLawEntry } = await import('../../server/utils/laender/landLaws')
 const { konsRefsOfLgbl, lgblNummer } = await import('../../server/utils/laender/landKonsLaws')
-const { konsVersionOf, namesAsLast, repealedBy } = await import('../../server/utils/laender/landLawChanges')
+const { instructionLawFor, konsVersionOf, lgblInstructedParagraphs, lgblNamedParagraphs, namesAsLast, repealedBy, subInstructionHeads } = await import('../../server/utils/laender/landLawChanges')
+const { lgblUnits } = await import('../../server/utils/laender/landLawDiff')
+const { upstreamText } = await import('../../server/utils/upstream/fetch')
+const { TEXT_POLICY } = await import('../../server/utils/laender/texts/read')
 
 const sha = (s: string | null | undefined) => (s == null ? null : createHash('sha1').update(s).digest('hex').slice(0, 12))
 
@@ -113,6 +116,8 @@ interface ParagraphLine {
   toHash: string | null
   fromText: string | null
   toText: string | null
+  /** The shown unit's heading, for the „lautet:" census (RIS sets it apart from the text). */
+  heading?: string | null
 }
 interface LgblLine {
   land: LandCode
@@ -137,24 +142,25 @@ function spread<T>(xs: readonly T[], k: number): T[] {
   return [...at].sort((a, b) => a - b).map((i) => xs[i]!)
 }
 
-/** Every § RIS ties to this Landesgesetzblatt, by law and key — read as the service reads them. */
-async function tiedParagraphs(land: LandCode, nr: string): Promise<{ law: string; id: string }[]> {
+/** Every § RIS ties to this Landesgesetzblatt, by law and key — read as the service reads them; `laws`: how many laws its records name, as the service counts them. */
+async function tiedParagraphs(land: LandCode, nr: string): Promise<{ law: string; id: string }[] & { laws?: number }> {
   const nummer = lgblNummer(nr)
   if (!nummer) return []
   const { refs } = await konsRefsOfLgbl(land, nummer)
+  const versions = refs.map(konsVersionOf).filter((v) => v !== null)
   const out = new Map<string, { law: string; id: string }>()
-  for (const v of refs.map(konsVersionOf)) {
-    if (v && (namesAsLast(v.organ, nummer) || repealedBy(v.organ, nummer))) out.set(`${v.law}|${v.key}`, { law: v.law, id: v.key })
+  for (const v of versions) {
+    if (namesAsLast(v.organ, nummer) || repealedBy(v.organ, nummer)) out.set(`${v.law}|${v.key}`, { law: v.law, id: v.key })
   }
-  return [...out.values()]
+  return Object.assign([...out.values()], { laws: new Set(versions.map((v) => v.law)).size })
 }
 
 /** The §§ of one answer by outcome; a § that ends twice or nowhere breaks the invariant. */
 function outcomes(value: LandLawDiffResponse, tied: readonly { law: string; id: string }[]): { paragraphs: ParagraphLine[]; instructedOnly: LgblLine['instructedOnly'] } {
-  const seen = new Map<string, { outcome: string; from: string | null; to: string | null }[]>()
-  const add = (law: string | null, id: string, o: { outcome: string; from: string | null; to: string | null }) => seen.set(`${law ?? ''}|${id}`, [...(seen.get(`${law ?? ''}|${id}`) ?? []), o])
+  const seen = new Map<string, { outcome: string; from: string | null; to: string | null; heading?: string | null }[]>()
+  const add = (law: string | null, id: string, o: { outcome: string; from: string | null; to: string | null; heading?: string | null }) => seen.set(`${law ?? ''}|${id}`, [...(seen.get(`${law ?? ''}|${id}`) ?? []), o])
   for (const u of value.units) {
-    const o = { outcome: `shown:${u.change}`, from: u.fromText ?? null, to: u.toText ?? null }
+    const o = { outcome: `shown:${u.change}`, from: u.fromText ?? null, to: u.toText ?? null, heading: u.heading }
     add(u.article, u.id, o)
     if (u.fromId && u.fromId !== u.id) add(u.fromArticle ?? u.article, u.fromId, o)
   }
@@ -164,10 +170,51 @@ function outcomes(value: LandLawDiffResponse, tied: readonly { law: string; id: 
     const hits = seen.get(`${law}|${id}`) ?? []
     const outcome = hits.length === 1 ? hits[0]!.outcome : hits.length > 1 ? `twice:${hits.map((h) => h.outcome).join('+')}` : !value.available && value.withheld.length === 0 ? 'off' : 'lost'
     const h = hits.length === 1 ? hits[0]! : null
-    return { law, id, outcome, fromHash: sha(h?.from), toHash: sha(h?.to), fromText: h?.from ?? null, toText: h?.to ?? null }
+    return { law, id, outcome, fromHash: sha(h?.from), toHash: sha(h?.to), fromText: h?.from ?? null, toText: h?.to ?? null, heading: h?.heading ?? null }
   })
   const instructedOnly = value.withheld.filter((w) => !tiedKeys.has(`${w.law ?? ''}|${w.id}`)).map((w) => ({ law: w.law, id: w.id, reason: w.reason ?? 'none' }))
   return { paragraphs, instructedOnly }
+}
+
+/**
+ * THE „LAUTET:" CENSUS (G088, 21.11.2026; a count, no rule): the new
+ * wording the page shows is RIS's, the Landesgesetzblatt only addresses
+ * the §. Where an instruction quotes the wording itself („§ 5 lautet:",
+ * „§ 5 Abs. 2 lautet:"), its words must stand in RIS's new version; and
+ * where it replaces the whole §, RIS's words must stand in its wording too.
+ * Words, not sequence: a miss is a word one side has and the other lacks;
+ * RIS's side is the shown unit's heading, number and text. The § is the
+ * one of the instruction's law, matched as the service matches it
+ * (`instructionLawFor`). Skipped and counted: nested instructions
+ * (Salzburg's „15.1."), and an instruction whose § is not shown.
+ */
+interface LautetLine { land: LandCode; nr: string; id: string; instruction: string; whole: boolean; notInRis: string[]; notInLgbl: string[] }
+const lautet = { instructions: 0, skipped: 0, checked: 0, lines: [] as LautetLine[] }
+const wordsOf = (s: string) => new Set((s.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []))
+function lautetCensus(land: LandCode, nr: string, lgblXml: string, paragraphs: readonly ParagraphLine[], risLaws: number): void {
+  const units = lgblUnits(lgblXml)
+  const instructionLaws = [...lgblInstructedParagraphs(units).keys()]
+  for (const u of units) {
+    if (!/^Z/.test(u.id)) continue
+    const at = /\blautet\b[^:„"]*:/.exec(u.text)
+    if (!at || /[„"]/.test(u.text.slice(0, at.index))) continue
+    const head = u.text.slice(0, at.index)
+    const keys = lgblNamedParagraphs(head).filter((k) => k.startsWith('§'))
+    if (keys.length !== 1 || /Inhaltsverzeichnis|Anlage|Anhang/.test(head)) continue
+    lautet.instructions++
+    const shown = paragraphs.filter((p) => p.id === keys[0] && p.toText && /^shown:(changed|inserted)$/.test(p.outcome) && instructionLawFor(p.law, instructionLaws, risLaws) === u.article)
+    if (subInstructionHeads(u.text).length || shown.length !== 1) {
+      lautet.skipped++
+      continue
+    }
+    lautet.checked++
+    const quoted = wordsOf(u.text.slice(at.index + at[0].length))
+    const ris = wordsOf(`${shown[0]!.id} ${shown[0]!.heading ?? ''} ${shown[0]!.toText}`)
+    const whole = /^(?:Der\s+)?(?:nunmehrige\s+)?§\s*\d+[a-z]*\s*$/.test(head.trim())
+    const notInRis = [...quoted].filter((w) => !ris.has(w))
+    const notInLgbl = whole ? [...ris].filter((w) => !quoted.has(w)) : []
+    if (notInRis.length || notInLgbl.length) lautet.lines.push({ land, nr, id: keys[0]!, instruction: u.text.slice(0, 300), whole, notInRis, notInLgbl })
+  }
 }
 
 // --- The run -------------------------------------------------------------
@@ -198,7 +245,9 @@ for (const land of LANDS.filter((l) => !onlyLand || l === onlyLand)) {
         line.available = value.available
         line.reason = value.unavailableReason
         line.complete = complete
-        Object.assign(line, outcomes(value, await tiedParagraphs(land, e.nr)))
+        const tied = await tiedParagraphs(land, e.nr)
+        Object.assign(line, outcomes(value, tied))
+        if (value.available) lautetCensus(land, e.nr, await upstreamText(record.xmlUrl, TEXT_POLICY), line.paragraphs, tied.laws ?? 0)
         // Not held on purpose where RIS has not consolidated yet; any other incomplete answer rests on a failed read.
         if (!complete && value.unavailableReason !== NOT_CONSOLIDATED_YET_DE) unreached.push({ id: `${land}:${e.nr}`, cause: 'unvollständig (eine Quelle antwortete nicht)' })
       }
@@ -240,6 +289,9 @@ for (const land of LANDS) {
 const violations = lines.flatMap((l) => l.paragraphs.filter((p) => p.outcome === 'lost' || p.outcome.startsWith('twice')).map((p) => `${l.land} ${l.nr} ${p.law} ${p.id}: ${p.outcome}`))
 md.push('## Invariante', '', violations.length ? violations.map((v) => `- ${v}`).join('\n') : 'Jeder vom RIS zugeordnete Paragraph endet genau einmal.', '')
 if (unreached.length) md.push('## Nicht erreicht', '', ...unreached.map((u) => `- ${u.id}: ${u.cause}`), '')
+const wholeMiss = lautet.lines.filter((l) => l.whole && l.notInLgbl.length).length
+md.push('## „lautet:" (Zählung, keine Regel)', '', `${lautet.instructions} Anweisungen „… lautet:" zu einem Paragraphen, ${lautet.skipped} übersprungen, ${lautet.checked} geprüft: ${lautet.lines.filter((l) => l.notInRis.length).length} mit Wörtern, die in der neuen Fassung des RIS fehlen; ${wholeMiss} ganze Paragraphen mit Wörtern des RIS, die das Landesgesetzblatt nicht hat (${join(outDir, 'lautet.txt')}).`, '')
+writeFileSync(join(outDir, 'lautet.txt'), lautet.lines.map((l) => `${l.land} ${l.nr} ${l.id}${l.whole ? ' (ganz)' : ''}\n  ${l.instruction}\n  fehlt im RIS: ${l.notInRis.join(' ') || '—'}${l.whole ? `\n  fehlt im LGBl: ${l.notInLgbl.join(' ') || '—'}` : ''}`).join('\n') + '\n')
 
 // --- Against an earlier run ----------------------------------------------
 let unexplained = 0
@@ -305,6 +357,7 @@ writeFileSync(join(outDir, 'record.json'), JSON.stringify({
   reach: corpusReach(requested, unreached),
   requests,
   violations: violations.length,
+  lautet: { instructions: lautet.instructions, skipped: lautet.skipped, checked: lautet.checked, misses: lautet.lines.length },
   perLand,
 }, null, 2) + '\n')
 console.log(`\n${md.join('\n')}`)
