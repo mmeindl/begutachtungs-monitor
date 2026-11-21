@@ -136,9 +136,12 @@ export interface LandStage {
    */
   unique?: boolean
   /**
-   * With `via: 'suche'`: how the find became certain — decided by text on
-   * the draft's page (`laender/texts/kundmachung.ts`). Absent:
-   * not decided, and nothing is compared against it.
+   * With `via: 'suche'`: how the find became certain (`LandKundmachungCertainty`)
+   * — decided on the draft's page (`laender/texts/kundmachung.ts`), by text
+   * or, `treffer`, as the search's one candidate with nothing in the texts
+   * against it; or, `beschluss`, by Kärnten's chain (`ktnKundmachung`): the
+   * Beschluss date and the draft's title words, with no text compared.
+   * Absent: not decided, and nothing is compared against it.
    */
   certainBy?: LandKundmachungCertainty
   /** The title search's find, where the text decided on another. */

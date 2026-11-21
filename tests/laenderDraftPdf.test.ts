@@ -283,6 +283,17 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     expect(packageChanges(single, kundmachung)).toEqual({ added: ['Artikel II Änderung des Oö. Y-Gesetzes'], dropped: [] })
   })
 
+  // Kärnten 67907-2025-9, Steiermark's Wohnunterstützungsgesetz (21.11.2026):
+  // the Landtag's name stands inside the clause, which went unread, and the
+  // reader started at the title instead — so the law went unnamed.
+  it('starts at Kärnten\'s and Steiermark\'s enacting clause, and names the law by its title above it', () => {
+    for (const clause of ['Der Landtag von Kärnten hat beschlossen:', 'Der Landtag Steiermark hat beschlossen:']) {
+      const units = landDraftUnits([page('Begutachtungsentwurf', 'Gesetz vom ………, mit dem das X-Gesetz geändert wird', clause,
+        'Das X-Gesetz, LGBl. Nr. 1/2020, wird wie folgt geändert:', '1. § 20 Abs. 3 entfällt.')])!
+      expect(units.map((u) => [u.article, u.id])).toEqual([['Gesetz vom ………, mit dem das X-Gesetz geändert wird', 'Z1']])
+    }
+  })
+
   // Salzburg 33358 (19.11.2026): no „Artikel I" in the draft, and its new
   // texts differ from the Kundmachung in what the Kundmachung fills in. By
   // whole text they matched none, and stood as removed and inserted.

@@ -78,8 +78,12 @@ function pageLines(page: string): string[] {
 }
 
 /** Where the legal text begins: the enacting clause. */
-/* A Verordnung is issued, not resolved: „Auf Grund des § … wird verordnet:". */
-export const ENACTING_RE = /(?:Landtag hat beschlossen|wird verordnet):?$/
+/* A Verordnung is issued, not resolved: „Auf Grund des § … wird verordnet:".
+   Kärnten and Steiermark name their Landtag inside the clause („Der Landtag
+   von Kärnten hat beschlossen:", 71 lines in the 849 cached Land PDFs; „Der
+   Landtag Steiermark hat beschlossen:", 35), and until 21.11.2026 the reader
+   started at the title fallback below and left their single laws unnamed. */
+export const ENACTING_RE = /(?:Landtag(?: von Kärnten| Steiermark)? hat beschlossen|wird verordnet):?$/
 /** Where it ends, if the PDF goes on: the explanations or the comparison after it. */
 /* And at a Vorblatt (15.11.2026). Burgenland and Wien print one between the
    law and its Erläuterungen, and the reader went on into it — its
