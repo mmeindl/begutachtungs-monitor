@@ -103,6 +103,28 @@ describe('Begründungsvergleich eines Landes — der § eines neuen Gesetzes (21
     expect(entryAt(r, definitions)).toMatchObject({ comparable: true, changed: true })
   })
 
+  it('takes no answer to the statements as a §\'s Begründung: a § heading that runs on into prose joins nothing', async () => {
+    const one = unit('§1')
+    const passage = 'Zu § 1 (Ziel):\nDie Bestimmung regelt den Zweck des Gesetzes.'
+    // A Vorlage's „Ergebnis des Begutachtungsverfahrens", which the reader takes into the particular part (Salzburg 34234).
+    const r = await compare([one], passage, `Zu § 1: Zur Anregung der Fraktion der Personalvertretung ist festzuhalten, dass\ndie Bestimmung bleibt.\n${passage}`)
+    expect(entryAt(r, one)).toMatchObject({ comparable: true, changed: false })
+  })
+
+  it('compares the prose a sub-heading runs on into: it is the first sentence of that passage', async () => {
+    const one = unit('§1')
+    const passage = (month: string) => `Zu § 1 (Ziel):\nDie Bestimmung regelt den Zweck.\nZu Abs. 2: Die Übermittlung der Daten an die genannten Stellen ist ab ${month}\nzulässig und notwendig.`
+    const r = await compare([one], passage('Jänner'), passage('April'))
+    expect(entryAt(r, one)).toMatchObject({ comparable: true, changed: true })
+  })
+
+  it('reads no motion of the Landesregierung as part of the last §\'s Begründung', async () => {
+    const last = unit('§14')
+    const passage = 'Zu § 14 (Inkrafttreten):\nDas Gesetz soll mit 28. August 2025 in Kraft treten.'
+    const r = await compare([last], passage, `${passage}\nDie Landesregierung stellt sohin den\nAntrag,\nder Salzburger Landtag wolle beschließen:\n1. Das vorstehende Gesetz wird zum Beschluss erhoben.`)
+    expect(entryAt(r, last)).toMatchObject({ comparable: true, changed: false })
+  })
+
   it('gives a § only one side has no entry', async () => {
     const one = unit('§1')
     const added = unit('§3', 'inserted')

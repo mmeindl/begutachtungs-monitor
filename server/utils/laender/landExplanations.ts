@@ -59,6 +59,21 @@ const ENTRY_RE = /^Zu\s+(?:(?:Art(?:ikel)?\.?\s*(?:[IVXL]+|\d+)|Z(?:iffer)?n?\.?
 /* „TEXTGEGENÜBERSTELLUNG" in capitals in Wien's drafts (w-2026006); the last „Zu …" entry ran on into the table. */
 export const END_RE = /^(?:Textgegenüberstellung|TEXTGEGENÜBERSTELLUNG|Der (?:Oö\. |Salzburger |Wiener )?Landtag hat beschlossen|Die (?:Oö\. |Salzburger |Wiener )?Landesregierung hat (?:beschlossen|verordnet)|Vorblatt)\b/
 const HEADING_RE = /^(?:[A-Z]|[IVX]+|\d+)\.\s+\S/
+/*
+ * The Landesregierung's motion behind a Vorlage's Erläuterungen (21.11.2026):
+ * Salzburg's „Die Landesregierung stellt sohin den" over „Antrag," and „der
+ * Salzburger Landtag wolle beschließen:", Oberösterreich's „Die Oö.
+ * Landesregierung beantragt, der Oö. Landtag möge …", its place and date and
+ * the signing member of the government. Read on, all of it stood in the
+ * last entry's text — the § on In- und Außerkrafttreten of a new law —, and
+ * held against the draft, which has no motion, that Begründung read
+ * „geändert" (Salzburg's 32441, where nothing else changed). Measured over
+ * the cached Länder documents the census reads: 64 such lines, all in a
+ * Vorlage, none in a draft's Erläuterungen; „Die Landesregierung stellt den
+ * Gemeinden …" and „(4) Die Landesregierung stellt durch Verordnung fest"
+ * are quotes and law text, and stay.
+ */
+const MOTION_RE = /^Die (?:Oö\. )?Landesregierung (?:stellt (?:sohin )?den(?: Antrag\b.*)?$|beantragt, der (?:Oö\. )?Landtag möge\b)/
 
 /** A line of the document, and whether all of it is set in bold (`pdfStyledPages`). */
 interface Line {
@@ -94,6 +109,11 @@ function withoutFurniture(lines: readonly Line[]): Line[] {
  */
 function boldHeading(l: Line): boolean {
   return l.bold && l.text.length < 120 && /^\p{Lu}/u.test(l.text) && !/[.;,]$/.test(l.text)
+}
+
+/** A line appended to the text it continues: a word broken at its hyphen is joined whole („Sportfachvertre-" over „tung"), „Sport-" over „und Freizeit" keeps it. */
+export function joinWrapped(text: string, line: string): string {
+  return /\p{L}-$/u.test(text) && /^\p{Ll}/u.test(line) && !/^(?:und|oder|bzw\.|sowie)\b/.test(line) ? `${text.slice(0, -1)}${line}` : `${text} ${line}`
 }
 
 /** Lines into paragraphs: a line that ends a sentence well short of the measure ends its paragraph; a bullet or a heading opens one. */
@@ -141,7 +161,7 @@ function paragraphs(lines: readonly Line[]): ExplanationPassage[] {
       return
     }
     if (/^[-–•]\s/.test(line)) flushPara()
-    para = !para ? line : /\p{L}-$/u.test(para) && /^\p{Ll}/u.test(line) && !/^(?:und|oder|bzw\.|sowie)\b/.test(line) ? `${para.slice(0, -1)}${line}` : `${para} ${line}`
+    para = !para ? line : joinWrapped(para, line)
     if (/[.:;!?]$/.test(line) && line.length < measure * 0.85) flushPara()
   })
   flushPassage()
@@ -248,7 +268,7 @@ function ownArticles(heading: string): { article: string | null; several: boolea
 function particularOf(lines: readonly Line[], entry: RegExp): ParticularExplanation[] {
   const particular: ParticularExplanation[] = []
   let body = lines
-  const end = body.findIndex((l, i) => i > 0 && END_RE.test(l.text))
+  const end = body.findIndex((l, i) => i > 0 && (END_RE.test(l.text) || MOTION_RE.test(l.text)))
   if (end > 0) body = body.slice(0, end)
   let current: { heading: string; lines: Line[] } | null = null
   /*

@@ -145,6 +145,26 @@ describe('a Land\'s Erläuterungen', () => {
   })
 })
 
+describe('parseLandExplanations — the Landesregierung\'s motion ends a Vorlage\'s Erläuterungen (21.11.2026)', () => {
+  it('leaves Salzburg\'s and Oberösterreich\'s motion, and the signature under it, out of the last entry', () => {
+    const salzburg = [
+      'Erläuterungen\n1. Allgemeines:\nDas Gesetz regelt das Beispiel.\nBesonderer Teil',
+      'Zu § 14 (Inkrafttreten):\nDas Gesetz soll mit 28. August 2025 in Kraft treten.\nDie Landesregierung stellt sohin den\nAntrag,\nder Salzburger Landtag wolle beschließen:\n1. Das vorstehende Gesetz wird zum Beschluss erhoben.',
+    ]
+    expect(parseLandExplanations(salzburg)!.particular.map((e) => e.text)).toEqual([['Das Gesetz soll mit 28. August 2025 in Kraft treten.']])
+    const ooe = [
+      'Erläuterungen\nI. Allgemeiner Teil\nDas Gesetz regelt das Beispiel.\nII. Besonderer Teil',
+      'Zu § 24:\nDie Bescheide bleiben aufrecht.\nDie Oö. Landesregierung beantragt, der Oö. Landtag möge das Landesgesetz über die\nGewährung von Beispielen beschließen.\nLinz, am 28. September 2026\nFür die Oö. Landesregierung:\nLandesrat',
+    ]
+    expect(parseLandExplanations(ooe)!.particular.map((e) => e.text)).toEqual([['Die Bescheide bleiben aufrecht.']])
+  })
+
+  it('keeps a sentence of the Begründung that quotes the Landesregierung, and law text', () => {
+    const pages = ['Erläuterungen\n1. Allgemeines:\nDas Gesetz regelt das Beispiel.\nBesonderer Teil\nZu § 4:\n„Die Landesregierung stellt den Gemeinden das Werkzeug zur Verfügung.“\n(4) Die Landesregierung stellt durch Verordnung fest, welche Sportarten anerkannt sind.']
+    expect(parseLandExplanations(pages)!.particular[0]!.text.join(' ')).toContain('stellt durch Verordnung fest')
+  })
+})
+
 describe('parseLandExplanations — Burgenland\'s Vorblatt (30.10.2026)', () => {
   const pages = [
     'E n t w u r f\nGesetz vom ……, mit dem das Burgenländische Raumplanungsgesetz 2019 geändert wird\n§ 22h\nBatterie-Energiespeicheranlagen',

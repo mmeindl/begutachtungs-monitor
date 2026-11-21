@@ -15,11 +15,11 @@ import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import type { HtmlExplanations } from '../explanations/explanationsHtml'
 import { compareReasoningByParagraph } from '../explanations/reasoningDiff'
-import { ziffernOf } from '../explanations/risExplanations'
+import { headingAddress, leadingAddress, splitHeading, ziffernOf } from '../explanations/risExplanations'
 import { articleNumberKey } from '../text/designation'
 import { landDraftUnits } from './landLawDiff'
 import { cachedLandComparison } from './landLawDiffService'
-import { parseLandExplanations } from './landExplanations'
+import { joinWrapped, parseLandExplanations } from './landExplanations'
 import { explainedParagraphs } from './landExplanationsRead'
 import { draftExplanationsDocument, NOT_A_DRAFT, type PagesReader } from './texts/read'
 import { cachedPdfPages } from './texts/pdfPagesService'
@@ -78,6 +78,32 @@ function reasonsByParagraph(entries: readonly LandReasoningEntry[]): Map<string,
  *    number no other law of the draft carries): its law is not certain, and
  *    one law's Begründung at another law's § is worse than none.
  */
+/**
+ * A heading titled by a § that runs on into prose behind its colon — „Zu § 2:
+ * Zur Eingabe der Fraktion … ist festzuhalten …" — is none of the join's.
+ * Measured over the 110 cached drafts with a Vorlage (21.11.2026): 58 such
+ * headings, all in a Vorlage's „Ergebnis des Begutachtungsverfahrens"
+ * (Salzburg 34234 and 34239), where the Land answers the statements § by §.
+ * The reader takes them into the particular part (its heading „7.
+ * Erläuterungen zu den einzelnen Bestimmungen:" is none it knows). Joined,
+ * the answer stood beside the Begründung of 22 §§ of 34234: at 9 of them
+ * it was the only change, and two were held apart as a regrouping. No
+ * draft's Begründung of a § is titled
+ * so in that corpus; over the 459 cached drafts' own Erläuterungen, 8
+ * headings of three drafts are (Burgenland, Steiermark, Tirol), and where
+ * such a draft gets a Vorlage, those §§ get the line that their Begründung
+ * could not be attached, not an answer to the statements as their
+ * Begründung. The Bund's reader holds a heading that runs on to the same
+ * test (`ziffernOf`).
+ */
+function repliesUnder(heading: string): boolean {
+  if (!headingAddress(leadingAddress(heading)).paragraphs.length) return false
+  let flat = heading
+  for (let i = 0; i < 2; i++) flat = flat.replace(/\([^()]*\)/g, ' ')
+  const at = flat.indexOf(':')
+  return at >= 0 && /[A-Za-zÄÖÜäöüß]/.test(flat.slice(at + 1))
+}
+
 function ownPassages(entries: readonly LandReasoningEntry[], units: readonly LawDiffUnit[], side: 'before' | 'after'): HtmlExplanations {
   const present = units.filter((u) => (side === 'after' ? u.change !== 'removed' : u.change !== 'inserted'))
   const articleOf = (u: LawDiffUnit) => (side === 'after' ? u.articleKey : u.fromArticleKey)
@@ -86,9 +112,13 @@ function ownPassages(entries: readonly LandReasoningEntry[], units: readonly Law
   const special = entries.flatMap((e) => {
     const article = e.article ? articleNumberKey(e.article) : null
     if (several && !article) return []
+    if (repliesUnder(e.heading)) return []
     const instructions = instructed.has(article ?? '') || (article === null ? instructed.size > 0 : instructed.has(''))
     const ziffern = instructions ? ziffernOf(e.heading).map((z) => ({ article: z.article ?? article, ziffer: z.ziffer })) : []
-    return [{ heading: e.heading, paragraphs: e.paras.map((p) => `§ ${p}`), text: e.text, article, ziffern, section: null, law: e.law }]
+    // The prose a heading runs on into is the first of its text, as the Bund's reader holds it (`splitHeading`): „Zu Abs. 4: Die Übermittlung …".
+    const { address, prose } = splitHeading(e.heading)
+    const text = !prose ? e.text : e.text.length ? [joinWrapped(prose, e.text[0]!), ...e.text.slice(1)] : [prose]
+    return [{ heading: address, paragraphs: e.paras.map((p) => `§ ${p}`), text, article, ziffern, section: null, law: e.law }]
   })
   return { general: [], special }
 }
