@@ -97,3 +97,32 @@ export function floorOf(classes: readonly { key: string; tried: number; caught: 
 export function corpusReach(requested: number, unreached: { id: string; cause: string }[]): CorpusReach {
   return { requested, reached: requested - unreached.length, unreached }
 }
+
+/** What a cached Länder list held for one Land, and when it was fetched. */
+export interface LandListWindow {
+  /** The latest Beginn and the latest Frist among its drafts; null where none carries one. */
+  newestStart: string | null
+  newestDeadline: string | null
+  /** Drafts with neither: the window cannot speak for them. */
+  undated: number
+  /** When the list was fetched: the cache file's time, as `annexReport.ts` `windowOf` gives the Bund's. */
+  listFetchedAt: string
+}
+
+/**
+ * Per Land, the window of the cached Länder list a Länder harness reads
+ * (21.11.2026). The harnesses read the list as `corpus:eu-laender` fetched
+ * it, and a round's „gemessen am …" said nothing of that day: on
+ * 21.11.2026 the list was the one of 04.11.2026, its newest Salzburg draft
+ * begun that day.
+ */
+export function landListWindows(items: readonly { land: string; startedAt: string | null; deadline: string | null }[], fetchedAt: Date): Record<string, LandListWindow> {
+  const out: Record<string, LandListWindow> = {}
+  for (const i of [...items].sort((a, b) => a.land.localeCompare(b.land))) {
+    const w = (out[i.land] ??= { newestStart: null, newestDeadline: null, undated: 0, listFetchedAt: fetchedAt.toISOString() })
+    if (i.startedAt && (!w.newestStart || i.startedAt > w.newestStart)) w.newestStart = i.startedAt
+    if (i.deadline && (!w.newestDeadline || i.deadline > w.newestDeadline)) w.newestDeadline = i.deadline
+    if (!i.startedAt && !i.deadline) w.undated++
+  }
+  return out
+}

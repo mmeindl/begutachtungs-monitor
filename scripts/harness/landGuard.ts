@@ -92,11 +92,11 @@
  * Runs with `-c vitest.config.ts`: `texts/read.ts` imports `#shared`.
  */
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
-import { harnessStamp } from '../lib/harnessRecord'
+import { harnessStamp, landListWindows } from '../lib/harnessRecord'
 import { argAssigned, argFlag, argPair } from '../lib/args'
 import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorLine, floorRows, landBaselineFindings, landRecord, markTallies, reachByLand, toLandBaseline, unaccountedInstructed, unmarkedFloor, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument, type MarkOutcome } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
@@ -877,6 +877,8 @@ if (baselineFindings) writeFileSync(join(outDir, 'baseline-findings.txt'), basel
 writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   // `at` and `commit`: the builder of /genauigkeit takes only records of one clean commit (`scripts/lib/genauigkeitRound.ts`).
   ...harnessStamp(),
+  // Per Land: the latest Beginn and Frist of the cached list's drafts, those with neither, and when the list was fetched (the cache file's time, 21.11.2026).
+  windows: landListWindows(items, statSync(`${EU}/server/${sha1('/api/laender?gp=XXVIII&status=all')}.json`).mtime),
   lands: LANDS,
   documents: new Set(units.map((u) => u.draft)).size,
   // The §§ the product shows as changed or new: neither rule withholds them.

@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
-import { DIRTY, UNKNOWN_COMMIT, commitStamp, corpusReach, floorOf, harnessStamp } from '../scripts/lib/harnessRecord'
+import { DIRTY, UNKNOWN_COMMIT, commitStamp, corpusReach, floorOf, harnessStamp, landListWindows } from '../scripts/lib/harnessRecord'
 
 /**
  * Every harness record names its code and its reach (20.11.2026), so the
@@ -54,5 +54,21 @@ describe('floorOf', () => {
     expect(floor).toMatchObject({ passed: true, failed: [], unheld: ['Fehlt', 'Lücke'] })
     expect(floor.status.get('Lücke')).toBe('nicht gehalten')
     expect(floor.status.get('E')).toBe('gehalten')
+  })
+})
+
+describe('landListWindows — what a cached Länder list held, per Land (21.11.2026)', () => {
+  it('gives each Land its latest Beginn and Frist, the drafts with neither, and when the list was fetched', () => {
+    const at = new Date('2026-11-04T14:24:46Z')
+    expect(landListWindows([
+      { land: 'sbg', startedAt: '2026-11-04', deadline: '2026-12-02' },
+      { land: 'sbg', startedAt: '2026-10-01', deadline: '2026-12-09' },
+      { land: 'ooe', startedAt: null, deadline: '2026-11-20' },
+      { land: 'bgld', startedAt: null, deadline: null },
+    ], at)).toEqual({
+      bgld: { newestStart: null, newestDeadline: null, undated: 1, listFetchedAt: '2026-11-04T14:24:46.000Z' },
+      ooe: { newestStart: null, newestDeadline: '2026-11-20', undated: 0, listFetchedAt: '2026-11-04T14:24:46.000Z' },
+      sbg: { newestStart: '2026-11-04', newestDeadline: '2026-12-09', undated: 0, listFetchedAt: '2026-11-04T14:24:46.000Z' },
+    })
   })
 })

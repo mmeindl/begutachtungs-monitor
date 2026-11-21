@@ -125,11 +125,11 @@
  * Runs with `-c vitest.config.ts`: `texts/read.ts` imports `#shared`.
  */
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaenderResponse, LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandTextStation, LawDiffUnit } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
-import { harnessStamp } from '../lib/harnessRecord'
+import { harnessStamp, landListWindows } from '../lib/harnessRecord'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { UpstreamError } from '../../server/utils/upstream/fetch'
@@ -241,7 +241,8 @@ function violations(u: LawDiffUnit): Invariant[] {
 }
 
 // --- The population ------------------------------------------------------
-const list = JSON.parse(readFileSync(`${EU}/server/${sha1('/api/laender?gp=XXVIII&status=all')}.json`, 'utf8')) as LaenderResponse
+const LIST = `${EU}/server/${sha1('/api/laender?gp=XXVIII&status=all')}.json`
+const list = JSON.parse(readFileSync(LIST, 'utf8')) as LaenderResponse
 const items = list.items
   .filter((i) => (!onlyLand || i.land === onlyLand) && (!show || i.id === show))
   .sort((a, b) => a.id.localeCompare(b.id))
@@ -481,6 +482,10 @@ out.push(`# Länder-Stationen: Vergleiche und Invarianten — ${new Date().toISO
 out.push('')
 // A draft whose detail the cache lacks is not fetched (Steiermark's 30 of 40 on 21.11.2026): named here, not only in the table.
 const uncachedDrafts = Object.entries(pairsPerLand(draftsRun, [])).filter(([, c]) => c.uncached).map(([land, c]) => `${land} ${c.uncached} von ${c.drafts}`)
+/* The list's window: as `corpus:eu-laender` fetched it, not as of the run (21.11.2026). */
+const windows = landListWindows(items, statSync(LIST).mtime)
+out.push(`Liste der Länder abgerufen am ${statSync(LIST).mtime.toISOString().slice(0, 10)}; jüngster Beginn je Land: ${Object.entries(windows).map(([land, w]) => `${land} ${w.newestStart ?? '—'}`).join(', ')}`)
+out.push('')
 out.push(`Population: ${items.length} Entwürfe (GP XXVIII), ${draftLines.length} Stationspaare; ${lawItems.length} Seiten von Landesgesetzen, ${lawLines.length} Paare; PDFs geholt: ${fetched.length}, fehlend: ${missing.length}${uncachedDrafts.length ? `; Entwürfe ohne Detail im Cache (nicht geholt): ${uncachedDrafts.join(', ')}` : ''}`)
 out.push('')
 out.push('| Paar | angeboten | verglichen | nicht verfügbar | fehlt | Fehler | Einheiten | geändert | neu | entfallen |')
@@ -631,6 +636,8 @@ writeFileSync(join(outDir, 'summary.md'), out.join('\n'))
 writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   // `at` and `commit`: the builder of /genauigkeit takes only records of one clean commit (`scripts/lib/genauigkeitRound.ts`).
   ...harnessStamp(),
+  // Per Land: the latest Beginn and Frist of the cached list's drafts, those with neither, and when the list was fetched (the cache file's time).
+  windows,
   pairs: draftLines.length,
   compared: draftLines.filter((l) => l.state === 'verglichen').length,
   lands: perLand,
