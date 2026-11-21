@@ -23,6 +23,7 @@ import {
   upstreamText,
   type UpstreamPolicy,
 } from '../../server/utils/upstream/fetch'
+import { decodeHtml } from '../../server/utils/upstream/decodeHtml'
 
 /** The RIS OGD endpoint every Applikation (Begut, BrKons, BgblAuth) is queried through. */
 export const RIS_API = RIS_API_BASE
@@ -101,6 +102,21 @@ async function withMessage<T>(url: string, opts: HttpOptions, run: () => Promise
 /** The body as text, decoded the way `fetch` decodes it. */
 export function getText(url: string, opts: HttpOptions): Promise<string> {
   return withMessage(url, opts, () => upstreamText(url, policyOf(opts)))
+}
+
+/**
+ * A Parliament HTML document, decoded in the charset it declares, as the
+ * server decodes it (`decodeHtml`, `upstream/fetchDocument.ts`). Parliament
+ * serves Word HTML as windows-1252 or UTF-8; read as UTF-8 by `getText`,
+ * 306 d.B. XXVIII (windows-1252) came out with every umlaut and „§" a
+ * replacement character, and the station harness counted 101 false residues
+ * on it (21.11.2026). The harness cache keeps no header, so the document's
+ * own meta tag decides, as it does in the server without one. Not for RIS's
+ * XML, which is UTF-8 and says so.
+ */
+export async function getParliamentHtml(url: string, opts: HttpOptions): Promise<string> {
+  const bytes = await getBytes(url, opts)
+  return decodeHtml(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer, undefined)
 }
 
 /**

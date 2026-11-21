@@ -37,6 +37,7 @@
 import { getText, resolveLawByBgbl } from '../../server/utils/ris/konsLaw'
 import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
+import { getParliamentHtml } from '../lib/http'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { promulgationByArticle } from '../../server/utils/lawtext/draftArticles'
 import { unitName, withoutOwnDesignation } from '../../shared/utils/unitName'
@@ -132,8 +133,8 @@ for (const row of map.rows.filter((r: any) => r.risDocument?.xml)) {
   // blind spot. The audit runs the default pair (ME → RV).
   const clauses = new Map<any, any>()
   for (const [a, b] of promulgationByArticle(parseRisXml(await getText(row.risDocument.xml)))) clauses.set(a, b)
-  if (diff.fromDocument?.url?.endsWith('.html')) for (const [a, b] of promulgationByArticle(parseParliamentHtml(await getText(diff.fromDocument.url)))) clauses.set(a, b)
-  if (diff.toDocument?.url) for (const [a, b] of promulgationByArticle(parseParliamentHtml(await getText(diff.toDocument.url)))) clauses.set(a, b)
+  if (diff.fromDocument?.url?.endsWith('.html')) for (const [a, b] of promulgationByArticle(parseParliamentHtml(await getParliamentHtml(diff.fromDocument.url, { script: 'audit/paraTitle' })))) clauses.set(a, b)
+  if (diff.toDocument?.url) for (const [a, b] of promulgationByArticle(parseParliamentHtml(await getParliamentHtml(diff.toDocument.url, { script: 'audit/paraTitle' })))) clauses.set(a, b)
   const laws = new Map<string, any>()
   for (const u of diff.units) {
     const shown = titles[`${u.article ?? ''}|${u.id}|${u.change}`]

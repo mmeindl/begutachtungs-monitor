@@ -35,7 +35,7 @@ import { join } from 'node:path'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
 import { parseExplanationsHtml, passagesByParagraph } from '../../server/utils/explanations/explanationsHtml'
 import { diffTokens } from '../../server/utils/diff/wordDiff'
-import { PARLIAMENT as BASE, getJson, getText } from '../lib/http'
+import { PARLIAMENT as BASE, getJson, getParliamentHtml } from '../lib/http'
 import { cachedJson, cachedText } from '../lib/diskCache'
 
 const SCRIPT = 'corpus/erlDiff'
@@ -57,7 +57,7 @@ async function explanationsHtml(kind: 'ME' | 'I', inr: number): Promise<string |
   const group = (detail?.content?.documents ?? []).find((g: any) => /^Erläuterungen$/i.test(String(g?.title ?? '').trim()))
   const link = (group?.documents ?? []).find((f: any) => /html/i.test(String(f?.type ?? '')))?.link
   if (!link) return null
-  return cachedText(join(cacheDir, gp, `${kind}-${inr}-erl.html`), () => getText(`${BASE}${link}`, { script: SCRIPT }))
+  return cachedText(join(cacheDir, gp, `${kind}-${inr}-erl.html`), () => getParliamentHtml(`${BASE}${link}`, { script: SCRIPT }))
 }
 
 /**

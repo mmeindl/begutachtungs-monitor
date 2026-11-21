@@ -45,7 +45,7 @@ import { isLawStationPair } from '../../shared/utils/lawStations'
 import type { LawStationId } from '../../shared/types'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag, argPair } from '../lib/args'
-import { PARLIAMENT, RIS_API, getJson as fetchJson, getText as fetchText, type HttpOptions } from '../lib/http'
+import { PARLIAMENT, RIS_API, getJson as fetchJson, getParliamentHtml, getText as fetchText, type HttpOptions } from '../lib/http'
 
 if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
@@ -60,6 +60,8 @@ const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) =
 const getJson = (url: string): Promise<unknown> =>
   fetchJson(url, { ...PATIENT, onExhausted: (u) => new Error(`nicht erreichbar: ${u}`) })
 const getText = (url: string): Promise<string> => fetchText(url, { script: SCRIPT, timeoutMs: 45_000 })
+/** Parliament's HTML in the charset it declares (`getParliamentHtml`); `getText` is for RIS's XML. */
+const getHtml = (url: string): Promise<string> => getParliamentHtml(url, { script: SCRIPT, timeoutMs: 45_000 })
 
 /** List 81 of one period: the numbers of the Ministerialentwürfe. */
 async function draftNumbers(): Promise<number[]> {
@@ -182,10 +184,10 @@ async function measureScope(inr: number, bgbl: string, c: any, bgblUnits: LawUni
     return
   }
   const text = new Map<LawStationId, LawUnit[]>([['bgbl', bgblUnits]])
-  text.set('me', parseLawUnits(await getText(meHtml)))
+  text.set('me', parseLawUnits(await getHtml(meHtml)))
   for (const id of ['rv', 'ausschuss', 'plenum'] as const) {
     const html = found.get(id)?.html
-    if (html) text.set(id, parseLawUnits(await getText(html)))
+    if (html) text.set(id, parseLawUnits(await getHtml(html)))
   }
   const draft = text.get('me')!
   const row: ScopeRow = {
@@ -344,7 +346,7 @@ for (const inr of numbers) {
     // The counter-check: last parliamentary version against the Kundmachung.
     const last = lastParliamentaryText(c)
     if (last && units.length) {
-      const html = await getText(last.url)
+      const html = await getHtml(last.url)
       const { units: diff, lawsOnlyInTo, lawsOnlyInFrom } = diffLawPackage(parseLawUnits(html), units)
       const st = summarizeDiff(diff)
       // `--dump` prints the units that are neither equal nor merely editorial

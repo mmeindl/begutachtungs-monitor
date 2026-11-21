@@ -112,8 +112,7 @@ import { fetchRisBegutCorpus } from '../lib/corpus'
 import { installFetchCache, isBegutSearch } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { corpusReach, harnessStamp, type CorpusReach, type HarnessStamp } from '../lib/harnessRecord'
-import { PARLIAMENT, RIS_API, getBytes, getJson as fetchJson, getText as fetchText, type HttpOptions } from '../lib/http'
-import { decodeHtml } from '../../server/utils/upstream/decodeHtml'
+import { PARLIAMENT, RIS_API, getJson as fetchJson, getParliamentHtml, getText as fetchText, type HttpOptions } from '../lib/http'
 
 /** List 81, the period's Ministerialentwürfe — one POST address for every period, told apart by its body. */
 const isList81 = (url: string): boolean => url.startsWith(`${PARLIAMENT}/Filter/api/filter/data/81?`)
@@ -141,18 +140,8 @@ const CENSUS_FEW_WORDS = 5
 const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) => 1_200 * retry, timeoutMs: 60_000, retryOnHttpError: true }
 const getJson = <T = unknown>(url: string): Promise<T> => fetchJson<T>(url, { ...PATIENT, onExhausted: (u) => new Error(`nicht erreichbar: ${u}`) })
 const getText = (url: string): Promise<string> => fetchText(url, { script: SCRIPT, timeoutMs: 60_000 })
-/**
- * A Parliament HTML document decoded as `fetchDocument` decodes it
- * (`decodeHtml`, 21.11.2026): Parliament serves Word HTML as windows-1252 or
- * UTF-8. Read as UTF-8 throughout, 306 d.B. XXVIII (windows-1252) came out
- * with every umlaut and „§" a replacement character, and 101 of its §§ stood
- * as residues against the Kundmachung. The cache keeps no header, so the
- * document's own meta tag decides, as it does in the server without one.
- */
-async function getHtml(url: string): Promise<string> {
-  const bytes = await getBytes(url, { script: SCRIPT, timeoutMs: 60_000 })
-  return decodeHtml(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer, undefined)
-}
+/** A Parliament HTML document in the charset it declares (`getParliamentHtml`). */
+const getHtml = (url: string): Promise<string> => getParliamentHtml(url, { script: SCRIPT, timeoutMs: 60_000 })
 
 /** List 81 of the period: one row per Ministerialentwurf. */
 async function list81(): Promise<unknown[][]> {

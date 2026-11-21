@@ -78,6 +78,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
+import { decodeHtml } from '../../server/utils/upstream/decodeHtml'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { articleBlocks } from '../../server/utils/lawtext/draftArticles'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
@@ -147,7 +148,8 @@ for (const name of readdirSync(cacheDir).filter((n) => n.endsWith('.bin'))) {
     continue
   }
   if (!/<html/i.test(head)) continue
-  const html = buf.toString('utf8')
+  // In the charset the document declares, as `getParliamentHtml` reads it: Parliament serves windows-1252 too.
+  const html = decodeHtml(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer, undefined)
   if (!html.includes('NovAo')) continue
   let blocks: TextBlock[]
   try {
