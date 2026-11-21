@@ -458,7 +458,10 @@ export interface LandLawDiffResponse {
  *    is not known (20.11.2026);
  *  - `enactedUnread`: a § of a law the Landesgesetzblatt enacts anew whose
  *    text RIS holds in no single version the monitor reads with certainty
- *    (19.11.2026).
+ *    (19.11.2026);
+ *  - `wordingNotInRis`: an instruction writes its wording („§ 14 Abs. 6
+ *    lautet: …"), and the version RIS ties to the Landesgesetzblatt does
+ *    not carry all its words (`lautetMissing`, 22.11.2026).
  */
 export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'wordingNotInRis' | 'notInDraft' | 'draftDiffers' | 'unprinted' | 'announced'
 
