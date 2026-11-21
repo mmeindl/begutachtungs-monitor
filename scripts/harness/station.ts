@@ -50,6 +50,16 @@
  * before their Vorlage, so a run over GP XXVIII read 91 drafts, not every
  * draft the page compares.
  *
+ * The list of drafts (list 81) and the RIS Begut list the draft's XML is
+ * joined from are fetched afresh on every run and still written, as the
+ * annex harnesses' list is (`installFetchCache`'s `fresh`, 21.11.2026):
+ * served from disk for ever, they froze every run at the list of the day
+ * the cache first held it. `--liste-aus-cache` replays the cached lists on
+ * purpose — an offline run, and a comparison with `--baseline`, which needs
+ * the frozen corpus. The record says which (`window`): the oldest and the
+ * newest draft of the list, and when the list was fetched. A draft's own
+ * record is still read from the cache when it holds one.
+ *
  * With `--baseline`, every changed unit whose badge moved („geändert",
  * „redaktionell", „ohne Wortdiff") is printed with its pieces, in both
  * directions — the line-by-line reading a rate cannot replace —, and every
@@ -99,13 +109,17 @@ import { findLawStations } from '../../server/utils/diff/stationDocuments'
 import { badgeMoves, completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches, type Breach, type Residue } from '../lib/stationChecks'
 import { MUTATION_KINDS, MUTATION_LABELS, isMiss, mutations, mutationOutcome, type MutationKind, type MutationOutcome } from '../lib/stationMutations'
 import { fetchRisBegutCorpus } from '../lib/corpus'
-import { installFetchCache } from '../lib/harnessCache'
+import { installFetchCache, isBegutSearch } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { corpusReach, harnessStamp, type CorpusReach, type HarnessStamp } from '../lib/harnessRecord'
 import { PARLIAMENT, RIS_API, getBytes, getJson as fetchJson, getText as fetchText, type HttpOptions } from '../lib/http'
 import { decodeHtml } from '../../server/utils/upstream/decodeHtml'
 
-if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
+/** List 81, the period's Ministerialentwürfe — one POST address for every period, told apart by its body. */
+const isList81 = (url: string): boolean => url.startsWith(`${PARLIAMENT}/Filter/api/filter/data/81?`)
+/** `--liste-aus-cache`: the lists replayed from the cache, on purpose (see above). */
+const replayLists = argFlag('liste-aus-cache')
+const cache = argFlag('cache') ? installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: (url) => isList81(url) || isBegutSearch(url), replay: replayLists }) : null
 
 const SCRIPT = 'harness/station'
 const gp = argAssigned('gp') ?? 'XXVIII'
@@ -353,6 +367,19 @@ interface Record_ extends Partial<HarnessStamp>, Partial<CorpusReach> {
    * names no first text. Absent before 21.11.2026.
    */
   withoutRv?: number
+  /**
+   * Which drafts the run walked (21.11.2026): the oldest and the newest of
+   * list 81 by number, with the day each came in, when the list was fetched
+   * (ISO; null where the run did not go through the cache) and whether it
+   * was replayed from the cache (`--liste-aus-cache`). Absent with
+   * `--ohne-begutachtung`, whose list is `population`.
+   */
+  window?: {
+    oldest: { inr: number; arrivedAt: string } | null
+    newest: { inr: number; arrivedAt: string } | null
+    listFetchedAt: string | null
+    fromCache: boolean
+  }
   /** With `--ohne-begutachtung`: the list the laws come from, and when it was measured. */
   population?: { source: string; measuredAt: string | null }
   /** Drafts whose Kundmachung was found through the Bundesrat's Einspruch (`bgblViaObjection`). Absent before 21.11.2026. */
@@ -430,7 +457,16 @@ const slow: { pair: string; ms: number }[] = []
 const piecesOf = new Map<string, string[]>()
 /** The drafts of list 81 that could not be loaded, with why. */
 const unreached: { id: string; cause: string }[] = []
-const record: Record_ = { gp, ...(population ? { population } : {}), drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, refused: [], withoutRv: 0, viaObjection: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
+/** The list's span and where it came from: the drafts of list 81 by number, and the list request as the cache served it. */
+function windowOfList(): Record_['window'] {
+  const drafts = rows.map(mapDraftRow).filter((d) => d.inr > 0).sort((a, b) => a.inr - b.inr)
+  const at = (d: (typeof drafts)[number] | undefined) => (d ? { inr: d.inr, arrivedAt: d.arrivedAt } : null)
+  const served = (cache?.served ?? []).filter((r) => isList81(r.url))
+  const fetched = served.map((r) => r.fetchedAt.getTime()).sort((a, b) => a - b)
+  return { oldest: at(drafts[0]), newest: at(drafts.at(-1)), listFetchedAt: fetched.length ? new Date(fetched[0]!).toISOString() : null, fromCache: served.some((r) => r.fromCache) }
+}
+const listWindow = withoutDraft ? undefined : windowOfList()
+const record: Record_ = { gp, ...(population ? { population } : {}), ...(listWindow ? { window: listWindow } : {}), drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, refused: [], withoutRv: 0, viaObjection: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
 /** With `--mutationen`: every distinct unit of a later text, by its text, with where it stands. */
 const laterUnits = new Map<string, { unit: LawUnit; where: string }>()
 const requested = targets.filter((x) => !only.size || only.has(x.inr))
@@ -519,6 +555,11 @@ const residueLine = (r: Record_['residues'][number]): string =>
 const reachLine = withoutDraft
   ? `GP ${gp}, Gesetze ohne Begutachtung (${SKIPPED_LIST}, gemessen ${population?.measuredAt ?? '?'}): ${requested.length - unreached.length} von ${requested.length} geladen, ${record.drafts} mit einem ersten Text (${record.withoutRv} ohne)`
   : `GP ${gp}: ${requested.length - unreached.length} von ${requested.length} Entwürfen der Liste geladen, ${record.drafts} mit Regierungsvorlage (${record.withoutRv} ohne)`
+if (listWindow) {
+  const day = (iso: string) => iso.slice(0, 10).split('-').reverse().join('.')
+  console.log(`\nListe 81: ${listWindow.oldest ? `${listWindow.oldest.inr}/ME (${day(listWindow.oldest.arrivedAt)})` : '—'} bis ${listWindow.newest ? `${listWindow.newest.inr}/ME (${day(listWindow.newest.arrivedAt)})` : '—'}, ${listWindow.listFetchedAt ? `${listWindow.fromCache ? 'aus dem Cache, abgerufen am' : 'frisch abgerufen am'} ${day(listWindow.listFetchedAt)}` : 'Abruf unbekannt'}`)
+  if (baselinePath && !listWindow.fromCache) console.log(`   Achtung: --baseline gegen eine frisch abgerufene Liste — ein neuer Entwurf steht als neuer Rest da; den eingefrorenen Korpus liest --liste-aus-cache`)
+}
 console.log(`\n${reachLine}, ${record.pairs} Stationspaare verglichen, ${record.refused!.length} vom Dienst abgelehnt${record.viaObjection ? `, ${record.viaObjection} Kundmachungen über den Einspruch des Bundesrats` : ''}`)
 const refusedBy = new Map<string, string[]>()
 for (const r of record.refused!) refusedBy.set(r.cause, [...(refusedBy.get(r.cause) ?? []), r.pair])
