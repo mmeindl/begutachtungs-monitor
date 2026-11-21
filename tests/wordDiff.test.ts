@@ -56,6 +56,20 @@ describe('sameWording', () => {
     expect(sameWording('BGBl. I Nr. 8/2020', 'BGBl. I Nr. 82020')).toBe(false)
     expect(sameWording('BGBl. I Nr. 8/2020.', 'BGBl. I Nr. 8/2020')).toBe(true)
   })
+
+  // The words were joined with nothing until 21.11.2026, so the space between
+  // two numbers went with the rest: „Abs. 1 3" read as „Abs. 13". The unit
+  // key keeps a separator there (`foldSpacing`), and so does this now.
+  it('hält zwischen zwei Zahlen einen Trenner fest, wie der Schlüssel der Einheit', () => {
+    expect(sameWording('nach Abs. 1 3', 'nach Abs. 13')).toBe(false)
+    expect(sameWording('3 000 Euro', '30 00 Euro')).toBe(false)
+    expect(sameWording('§§ 3 - 5', '§§ 35')).toBe(false)
+    expect(sameWording('§§ 3 - 5', '§§ 3-5')).toBe(true)
+    expect(sameWording('§§ 3 -5', '§§ 3-5')).toBe(true)
+    expect(sameWording('Abs. 1, 3', 'Abs. 1 3')).toBe(true)
+    expect(sameWording('Abs. 1, 3', 'Abs. 1,3')).toBe(false)
+    expect(sameWording('Abs.2', 'Abs. 2')).toBe(true)
+  })
 })
 
 // The alignment tokenizes each unit once and scores the words (22.10.2026);

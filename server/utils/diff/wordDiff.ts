@@ -100,11 +100,30 @@ const WORD_SIGNS = new Set(['§', '%', '‰', '&', '*'])
 const PUNCTUATION_RE = /\p{P}/gu
 const DIGIT_RE = /\d/
 
-/** A text as one string of its letters, digits and word signs — see `sameWording`. */
+/**
+ * A text as one string of its letters, digits and word signs — see `sameWording`.
+ *
+ * The words joined with nothing, but for the space between two numbers
+ * (21.11.2026): „Abs. 1 3" is not „Abs. 13", nor „3 000" „30 00". The unit
+ * key's rule (`foldSpacing`): a separator stays between two digits, „-"
+ * where a hyphen stands there („3 - 5" is „3-5"), „ " otherwise. Decided
+ * after each word lost its punctuation, so „1, 3" stays „1 3" and never
+ * becomes the number „1,3".
+ */
 function wordingOf(text: string): string {
-  return words(text)
-    .compare.map((w) => w.replace(PUNCTUATION_RE, (mark, at: number) => (WORD_SIGNS.has(mark) || (DIGIT_RE.test(w[at - 1] ?? '') && DIGIT_RE.test(w[at + 1] ?? '')) ? mark : '')))
-    .join('')
+  let out = ''
+  let dash = false
+  for (const w of words(text).compare) {
+    const bare = w.replace(PUNCTUATION_RE, (mark, at: number) => (WORD_SIGNS.has(mark) || (DIGIT_RE.test(w[at - 1] ?? '') && DIGIT_RE.test(w[at + 1] ?? '')) ? mark : ''))
+    if (!bare) {
+      dash ||= w.includes('-')
+      continue
+    }
+    if (DIGIT_RE.test(out.at(-1) ?? '') && DIGIT_RE.test(bare[0]!)) out += dash || w.startsWith('-') ? '-' : ' '
+    out += bare
+    dash = w.endsWith('-')
+  }
+  return out
 }
 
 export interface TokenDiff {
