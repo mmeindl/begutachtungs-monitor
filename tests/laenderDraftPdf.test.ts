@@ -63,6 +63,12 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
     expect(blocks.find((b) => b.text.startsWith('3.'))!.text).toContain('bis zum 31. August des aktuellen Jahres“ durch')
   })
 
+  it('counts instructions on from a first one numbered „0." (Salzburg 35591; 21.11.2026)', () => {
+    const blocks = lawBlocksFromPdfPages([page('Der Salzburger Landtag hat beschlossen:', 'Das Salzburger Grundversorgungsgesetz wird wie folgt geändert:',
+      '0. Im § 2 Abs 1 lautet die Z 2:', '„2. Personen mit besonderen Bedürfnissen,“', '1. Im § 4 werden folgende Änderungen vorgenommen:', '1.1. Die Z 1 lautet:', '„1. Fremde: Menschen;“', '2. § 5 entfällt.')])!
+    expect(blocks.filter((b) => b.kind === 'novao').map((b) => b.text.slice(0, 2))).toEqual(['0.', '1.', '2.'])
+  })
+
   it('still opens a numbered item after a line ending in „und" or a comma: a list goes on', () => {
     const blocks = lawBlocksFromPdfPages([page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Das Oö. X-Gesetz wird wie folgt geändert:',
       '1. § 3 lautet:', '„§ 3', '(1) Zu bestellen sind', '1. die Leiterin,', '2. die Stellvertreterin und', '3. der Kassier.“')])!

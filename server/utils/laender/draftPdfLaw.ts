@@ -337,7 +337,8 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
       const instruction = single || (amending && n > 0 && inSequence && (depth === 0 || (n === lastNumber + 1 && INSTRUCTION_VERB_RE.test(para))))
       if (instruction) {
         depth = 0
-        lastNumber = Math.max(n, 1)
+        // A draft that counts its instructions from „0." (Salzburg 35591): its „1." is the next.
+        lastNumber = /^0\.\s/.test(para) ? 0 : Math.max(n, 1)
       }
       // Plain paragraphs as `ziff`: appended to the open unit, and never
       // promoted to an instruction by `segmentUnits` behind this reader's back.
