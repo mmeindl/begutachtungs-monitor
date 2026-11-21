@@ -102,13 +102,21 @@ describe('quoteRoles', () => {
     expect(roles('Im § 25 Abs 1 erhalten die Z 3 und 4 die Bezeichnungen „2.“ und „3.“, wobei in der Z 3 neu der Punkt am Ende durch einen Strichpunkt ersetzt wird, und lautet die Z 4 neu:')).toEqual(['new', 'new'])
   })
 
-  it('does not guess: a range of designations, a replacement left to the reader\'s grammar', () => {
-    expect(roles('Im § 24a erhalten die bisherigen Abs. 1 bis 8 die Bezeichnungen „(2)“ bis „(9)“.')).toEqual(['new', null])
+  it('does not guess: a replacement left to the reader\'s grammar; a range of designations is read with what lies between', () => {
+    // The designations between the two ends are derived (`draftWording`), not guessed (21.11.2026); before, the second end was refused.
+    expect(roles('Im § 24a erhalten die bisherigen Abs. 1 bis 8 die Bezeichnungen „(2)“ bis „(9)“.')).toEqual(['new', 'new'])
+    // „entfällt" opens no clause for the range: its end is no old wording.
+    expect(roles('In § 29 Abs. 1 entfällt die Z 15; die Z 16 bis 21 erhalten die Ziffernbezeichnungen „15.“ bis „20.“.')).toEqual(['new', 'new'])
     expect(roles('Im § 31 wird das Wort „Bezirk“ in der jeweiligen grammatikalischen Form durch das Wort „Wahlkreis“ ersetzt.')).toContain(null)
   })
 })
 
 describe('draftWording', () => {
+  it('gives the designations a quoted range leaves between its ends, held as designations', () => {
+    const range = [...draftWording([{ kind: 'novao', cls: 'absatz/novao1', text: '1. In § 7 entfällt Abs. 1; die Abs. 2 bis 5 erhalten die Absatzbezeichnungen „(1)“ bis „(4)“.', gld: null }]).values()][0]!
+    expect(range.byKey.get('§ 7')!.wordings.filter((w) => w.designation).map((w) => w.tokens.join(' ')).sort()).toEqual(['1', '2', '3', '4'])
+  })
+
   it('cuts a payload that prints several §§ at their designations, the headings with them', () => {
     const law = [...draftWording(blocks, (u) => (/Nach § 21/.test(u.text) ? ['§ 21a', '§ 21b'] : [])).values()][0]!
     expect(law.byKey.get('§ 21a')!.wordings.map((w) => w.tokens.filter((_, i) => !w.optional[i]).join(' '))).toEqual(['1 der landesfischereiverband kann durch verordnung teilbereiche von fischwässern zu maflnahmengebieten erklären'])

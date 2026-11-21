@@ -263,7 +263,7 @@ const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jewei
  * Read clause by clause, since German puts the verb at either end:
  * „entfällt die Wortfolge „X"" and „wird die Wortfolge „X" gestrichen".
  */
-export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean }[] {
+export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean; range: boolean }[] {
   const line = withoutResidue(raw)
   const quotes = [...line.matchAll(QUOTE_RE)]
   const bounds = [...line.matchAll(CLAUSE_RE)].map((m) => m.index)
@@ -280,7 +280,7 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     else if (/(?<![\p{L}])durch\s+(?:\p{L}+[\s-]+){0,5}$/u.test(before)) role = 'new'
     else if (ANCHOR_RE.test(before)) role = 'anchor'
     else if (NEW_AFTER_RE.test(before) || /^\s*bezeichnet(?![\p{L}])/u.test(after)) role = 'new'
-    return { text: m[1]!, role, before, after, start, end, designation: DESIGNATION_BEFORE_RE.test(before) && DESIGNATION_TEXT_RE.test(m[1]!) }
+    return { text: m[1]!, role, before, after, start, end, designation: DESIGNATION_BEFORE_RE.test(before) && DESIGNATION_TEXT_RE.test(m[1]!), range: false }
   })
   // A list of quotations shares the role its last or its first member has.
   const lists = () => {
@@ -288,6 +288,12 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     for (let i = 1; i < out.length; i++) if (out[i]!.role === null && LIST_RE.test(out[i]!.before)) out[i]!.role = out[i - 1]!.role
   }
   lists()
+  // „die Abs. 2 bis 4 erhalten die Absatzbezeichnungen „(1)“ bis „(3)“": the range's second end is a designation the line gives too,
+  // not the old wording of an „entfällt" before it („Abs. 1 entfällt; die Abs. 2 bis 4 erhalten …"; 21.11.2026). Never one the
+  // line itself reads as old („die Bezeichnungen „c“ bis „e“ durch die Ziffernbezeichnungen … ersetzt").
+  for (let i = 1; i < out.length; i++) {
+    if (out[i]!.role !== 'old' && out[i - 1]!.role === 'new' && out[i - 1]!.designation && /^\s*bis\s*$/u.test(out[i]!.before) && DESIGNATION_TEXT_RE.test(out[i]!.text)) Object.assign(out[i]!, { role: 'new', designation: true, range: true })
+  }
   // What is left takes its clause's verb: before it („entfällt die Wortfolge „X""), or after („wird die Wortfolge „X" gestrichen").
   for (const q of out) {
     if (q.role !== null) continue
@@ -304,7 +310,7 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
   lists()
   // „die Bezeichnungen „4.“ und „5.“": a list of designations.
   for (let i = 1; i < out.length; i++) if (out[i - 1]!.designation && out[i]!.role === out[i - 1]!.role && LIST_RE.test(out[i]!.before) && DESIGNATION_TEXT_RE.test(out[i]!.text)) out[i]!.designation = true
-  return out.map(({ text, role, designation }) => ({ text, role: inexact && role === 'new' ? null : role, designation: role === 'new' && designation }))
+  return out.map(({ text, role, designation, range }) => ({ text, role: inexact && role === 'new' ? null : role, designation: role === 'new' && designation, range }))
 }
 
 /** A block that opens with a § designation: „§ 2. (1) Die …", „„§ 21a", „§ 20a". */
@@ -392,6 +398,33 @@ function payloadPieces(blocks: readonly TextBlock[]): Piece[] {
   close()
   return pieces
 }
+
+/** At most this many designations between the two ends of a quoted range: beyond it the line is not read as one. */
+const MAX_RANGE = 30
+
+/**
+ * The designations a renumbering gives in words between the two it quotes
+ * (21.11.2026): „die Abs. 3 bis 6 erhalten die Absatzbezeichnungen „(4)" bis
+ * „(7)"" prints „(5)" and „(6)" nowhere, and the right column shows them as
+ * new. Two numbers or two single letters, ascending, at most `MAX_RANGE`
+ * apart; any other shape adds nothing. Held as the quoted ends are
+ * (`Wording.designation`).
+ */
+function rangeDesignations(roles: readonly { text: string; role: Role; range: boolean }[]): string[] {
+  const out = new Set<string>()
+  roles.forEach((q, i) => {
+    if (!q.range || q.role !== 'new' || i === 0) return
+    const [a, b] = [strictTokens(roles[i - 1]!.text), strictTokens(q.text)].map((t) => (t.length === 1 ? t[0]! : ''))
+    if (/^\d+$/.test(a!) && /^\d+$/.test(b!) && Number(b) > Number(a) && Number(b) - Number(a) <= MAX_RANGE) {
+      for (let n = Number(a) + 1; n < Number(b); n++) out.add(String(n))
+    } else if (/^[a-z]$/.test(a!) && /^[a-z]$/.test(b!) && b! > a!) {
+      for (let c = a!.charCodeAt(0) + 1; c < b!.charCodeAt(0); c++) out.add(String.fromCharCode(c))
+    }
+  })
+  return [...out]
+}
+
+const designationWording = (t: string): Wording => ({ tokens: [t], optional: [false], repeats: true, designation: true })
 
 /** What a draft writes, for one law. */
 export interface LawWording {
@@ -497,10 +530,12 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const into = lawOf(draft.law)
       into.generalText.push(standing)
       for (const run of runs) {
-        for (const quote of run.line === null ? [] : quoteRoles(run.line)) {
+        const roles = run.line === null ? [] : quoteRoles(run.line)
+        for (const quote of roles) {
           const tokens = quote.role === 'new' ? strictTokens(quote.text) : []
           if (tokens.length) into.general.push({ tokens, optional: tokens.map(() => false), repeats: true, ...(quote.designation ? { designation: true } : {}) })
         }
+        into.general.push(...rangeDesignations(roles).map(designationWording))
       }
       return
     }
@@ -509,7 +544,9 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       at(draft.law, key).written.push(written)
     }
     for (const run of runs) {
-      for (const quote of run.line === null ? [] : quoteRoles(run.line)) {
+      const roles = run.line === null ? [] : quoteRoles(run.line)
+      for (const t of rangeDesignations(roles)) for (const key of keys) at(draft.law, key).wordings.push(designationWording(t))
+      for (const quote of roles) {
         if (quote.role === null) {
           for (const key of keys) at(draft.law, key).unread ??= `${STRICT_UNCHECKED.quoteRole}${run.line!.slice(0, 120)}`
           continue

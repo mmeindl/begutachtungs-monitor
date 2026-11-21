@@ -20,15 +20,17 @@ import { tguVerdicts, type TguVerdict } from '../scripts/lib/landTguGolden'
  * verdict of every § (shown, withheld with its reason, shown with „nicht
  * geprüft" and its reason). Between them they hold withheld `draftDiffers`
  * (Oö. 16101 § 19, Salzburg 34574 § 2, Wien 2026009 § 6: the draft's „3 000"
- * against the comparison's „2 500"), and marks of reasons `wording` (Tirol
- * 722 §§ 15, 24) and `unassigned` (Wien 2026003 § 11d). Kärnten, whose right
+ * against the comparison's „2 500"), a mark of reason `unassigned` (Wien
+ * 2026003 § 11d), and Tirol 722 §§ 15 and 24 shown, whose quoted range of
+ * designations was a mark of reason `wording` until 21.11.2026. Kärnten, whose right
  * column the draft rules are not asked of, is frozen one step earlier: its
  * page geometry, and what its reader makes of it.
  *
  * Not frozen: Oberösterreich's side-by-side layout (no document of the
  * cached corpus has it), and the readers of the other four Länder — their
  * output is this test's input. A § withheld by the bag rule alone
- * (`notInDraft`) and a mark of reason `long` occur in no small document.
+ * (`notInDraft`) and marks of reasons `long` and `wording` occur in no small
+ * document.
  *
  * Re-record in the SAME commit that changes the guard or Kärnten's reader on
  * purpose (`scripts/ci/landTguGoldenRecord.ts`), and read the diff of the
