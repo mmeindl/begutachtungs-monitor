@@ -64,9 +64,20 @@
  * share — in both columns where one text feeds both (Oberösterreich's
  * strike marks, Tirol), on the left alone in two columns. RIS passes a § at
  * 98 % of its words and takes no citation's number, and the cuts above ask
- * only §§ printed unchanged. Measured, not held by the floor: on 21.11.2026
- * a one-column misreading was shown without the mark in 411 of 649 numbers,
- * 583 of 766 words and 400 of 465 citations.
+ * only §§ printed unchanged. Measured, not held by the floor: on 21.11.2026,
+ * over the §§ unmarked before, a one-column misreading was shown without
+ * the mark in 411 of 630 numbers, 583 of 744 words and 400 of 455 citations.
+ * At the same §§ the Bund's classes, by the Bund harness's own edits
+ * (`bund-faults.jsonl`, `summary.json` `bundClasses`): L (the left column's
+ * second sentence lost) shown without the mark 85 of 749 times, R-alt
+ * (another §'s text in force appended right) 0 of 903, U (that sentence in
+ * both columns, which RIS sees) 16 of 903. R-alt and U are held by the
+ * floor; L and the left column's three are not — no rule reads them yet, so
+ * their figure is the statement. Measured and not built (21.11.2026): the
+ * Bund's rule 1 with RIS's text („bereits geltend") would catch 12 of the 85
+ * L and withhold two §§ shown today whose new text RIS already has in force
+ * (Oö. 2024-16082, §§ 42 and 50); `coverOfRis` asked of changed §§ too would
+ * refuse 30 shown, about ten of them over spacing (`controls.jsonl`).
  *
  * `--mindestens=<pct>` (20.11.2026): exit 1 when a fault class — the five
  * of the right column and the cuts of the left — tried at least
@@ -121,7 +132,7 @@ import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { MIN_NEW_WORDS, draftBags, draftWordBag } from '../../server/utils/annex/rightColumn'
 import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { diffTokens } from '../../server/utils/diff/wordDiff'
-import { lastSentenceGone, raisedNumber, swappedWord } from '../lib/rightColumnFaults'
+import { donorSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
 
 const LANDS: LandCode[] = ['ooe', 'sbg', 't', 'w']
 /* Kärnten's answers are dumped too (`tgu.jsonl`): the RIS check is the same
@@ -677,9 +688,20 @@ for (const answer of answers) {
  */
 type LeftFault = 'Zahl links' | 'Wort links' | 'Verweis links'
 const LEFT_FAULTS: LeftFault[] = ['Zahl links', 'Wort links', 'Verweis links']
+/**
+ * And the Bund's three classes at the same sites (21.11.2026), built by the
+ * Bund harness's own edits (`lib/rightColumnFaults.ts`): L, the left
+ * column's second sentence lost, so the word diff paints standing law as
+ * new; R-alt, a sentence of another §'s text in force appended to the right
+ * column; U, that sentence printed alike in both columns. The donor is the
+ * text in force of another § of the same law the comparison shows.
+ */
+type BundFault = 'L' | 'R-alt' | 'U'
+const BUND_FAULTS: BundFault[] = ['L', 'R-alt', 'U']
 const ONE_COLUMN: readonly Layout[] = ['OÖ Striche', 'Tirol']
-interface LeftFaultRecord { fault: LeftFault; land: LandCode; layout: Layout; columns: 'eine' | 'zwei'; draft: string; law: string | null; id: string; markedBefore: boolean; outcome: MarkOutcome; by: 'RIS' | 'Entwurf' | null; edit: string }
-const leftFaults: LeftFaultRecord[] = []
+interface ColumnFaultRecord { fault: LeftFault | BundFault; land: LandCode; layout: Layout; columns: 'eine' | 'zwei'; draft: string; law: string | null; id: string; markedBefore: boolean; outcome: MarkOutcome; by: 'RIS' | 'Entwurf' | null; edit: string }
+const leftFaults: ColumnFaultRecord[] = []
+const bundFaults: ColumnFaultRecord[] = []
 /** The changed §§ shown, and of those the ones RIS confirmed as printed (the sites). */
 const leftPopulation = { changed: 0, noRis: 0, risRefusesUnfaulted: 0, sites: 0 }
 const escaped = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -714,7 +736,8 @@ const leftEdit: Record<LeftFault, (token: string) => string | null> = {
 }
 const answerOf = new Map(answers.map((a) => [a.draft, a]))
 const lawMemo = new Map<string, Promise<Map<string, string> | null>>()
-for (const { record, unit, blocks, all } of sites) {
+for (const site of sites) {
+  const { record, unit, blocks, all } = site
   if (unit.change !== 'changed' || !unit.fromText || !unit.toText || !unit.segments || !/^§/.test(unit.id) || !unit.article) continue
   leftPopulation.changed++
   const answer = answerOf.get(record.draft)
@@ -736,28 +759,39 @@ for (const { record, unit, blocks, all } of sites) {
   const at = all.indexOf(unit)
   const mirrored = ONE_COLUMN.includes(record.layout)
   const equal = unit.segments.filter((s) => s.type === 'equal').map((s) => s.text).join(' | ')
-  for (const fault of LEFT_FAULTS) {
-    const edited = leftEdited(leftCandidates(fault, unit.fromText), leftEdit[fault], unit.fromText, unit.toText, equal, mirrored)
-    if (!edited) continue
-    const base = { fault, land: record.land, layout: record.layout, columns: mirrored ? ('eine' as const) : ('zwei' as const), draft: record.draft, law: unit.article, id: unit.id, markedBefore: record.marked, edit: edited.edit }
-    if (!standsInRis(edited.from, ris, bare)) {
-      leftFaults.push({ ...base, outcome: 'withheld', by: 'RIS' })
-      continue
-    }
-    const faulted: LawDiffUnit = { ...unit, fromText: edited.from, toText: edited.to, segments: diffTokens(edited.from, edited.to).segments }
+  /** The § with both texts as the fault leaves them, asked as the product asks it: RIS on the left column, then the draft rules on the § re-diffed. */
+  const ask = (fault: LeftFault | BundFault, from: string, to: string, edit: string): ColumnFaultRecord => {
+    const base = { fault, land: record.land, layout: record.layout, columns: mirrored ? ('eine' as const) : ('zwei' as const), draft: record.draft, law: unit.article, id: unit.id, markedBefore: record.marked, edit }
+    if (!standsInRis(from, ris, bare)) return { ...base, outcome: 'withheld', by: 'RIS' }
+    const faulted: LawDiffUnit = { ...unit, fromText: from, toText: to, segments: diffTokens(from, to).segments }
     const guard = guardTguUnits(all.map((x) => (x === unit ? faulted : x)), blocks, at)
     const outcome: MarkOutcome = undrafted(guard).has(at) ? 'withheld' : notHeld(guard).has(at) ? 'marked' : 'unmarked'
-    leftFaults.push({ ...base, outcome, by: outcome === 'withheld' ? 'Entwurf' : null })
+    return { ...base, outcome, by: outcome === 'withheld' ? 'Entwurf' : null }
+  }
+  for (const fault of LEFT_FAULTS) {
+    const edited = leftEdited(leftCandidates(fault, unit.fromText), leftEdit[fault], unit.fromText, unit.toText, equal, mirrored)
+    if (edited) leftFaults.push(ask(fault, edited.from, edited.to, edited.edit))
+  }
+  const lost = secondSentenceGone(unit.fromText, SENTENCE_SPLIT, toks)
+  if (lost) bundFaults.push(ask('L', lost, unit.toText, lostOf(unit.fromText, lost)))
+  const donor = sites.filter((s) => s !== site && s.record.draft === record.draft && s.unit.article === unit.article && s.unit.fromText).map((s) => donorSentence(s.unit.fromText!, SENTENCE_SPLIT, toks)).find((x) => x !== null)
+  if (donor) {
+    bundFaults.push(ask('R-alt', unit.fromText, `${unit.toText} ${donor}`, donor.slice(0, 200)))
+    bundFaults.push(ask('U', `${unit.fromText} ${donor}`, `${unit.toText} ${donor}`, donor.slice(0, 200)))
   }
 }
 /** Per class: the three outcomes (`markTallies`), and of the withheld how many RIS refused; once over every layout and once per number of columns. */
-const leftTally = (list: readonly LeftFaultRecord[]) => markTallies(list.map((x) => ({ key: x.fault, markedBefore: x.markedBefore, outcome: x.outcome })), LEFT_FAULTS).map((t) => ({ ...t, byRis: list.filter((x) => x.fault === t.key && x.by === 'RIS').length }))
-const leftTable = leftTally(leftFaults)
-const leftByColumns = { eine: leftTally(leftFaults.filter((x) => x.columns === 'eine')), zwei: leftTally(leftFaults.filter((x) => x.columns === 'zwei')) }
+const columnTally = <K extends string>(list: readonly ColumnFaultRecord[], keys: readonly K[]) => markTallies(list.map((x) => ({ key: x.fault, markedBefore: x.markedBefore, outcome: x.outcome })), keys).map((t) => ({ ...t, byRis: list.filter((x) => x.fault === t.key && x.by === 'RIS').length }))
+const byColumns = <K extends string>(list: readonly ColumnFaultRecord[], keys: readonly K[]) => ({ eine: columnTally(list.filter((x) => x.columns === 'eine'), keys), zwei: columnTally(list.filter((x) => x.columns === 'zwei'), keys) })
+const leftTable = columnTally(leftFaults, LEFT_FAULTS)
+const leftByColumns = byColumns(leftFaults, LEFT_FAULTS)
+const bundTable = columnTally(bundFaults, BUND_FAULTS)
+const bundByColumns = byColumns(bundFaults, BUND_FAULTS)
 
 // --- Output --------------------------------------------------------------
 writeFileSync(join(outDir, 'units.jsonl'), units.map((u) => JSON.stringify(u)).join('\n') + '\n')
 writeFileSync(join(outDir, 'left-faults.jsonl'), leftFaults.map((f) => JSON.stringify(f)).join('\n') + '\n')
+writeFileSync(join(outDir, 'bund-faults.jsonl'), bundFaults.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'faults.jsonl'), faults.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'corpus.jsonl'), corpus.map((c) => JSON.stringify(c)).join('\n') + '\n')
 writeFileSync(join(outDir, 'drafts.jsonl'), drafts.map((d) => JSON.stringify(d)).join('\n') + '\n')
@@ -859,15 +893,17 @@ for (const t of markTable) {
 }
 for (const x of applied.filter((f) => !f.markedBefore && f.outcome === 'unmarked')) lines.push(`- ohne Marke durchgegangen (${x.fault}): ${x.draft} ${x.id} — ${x.lacks.slice(0, 200)}`)
 lines.push('')
-lines.push(`## Linke Spalte eines geänderten § verlesen (an ${leftPopulation.sites} von ${leftPopulation.changed} gezeigten geänderten §§, deren Text in Kraft RIS bestätigt; ohne RIS-Text ${leftPopulation.noRis}, ungestört schon abgelehnt ${leftPopulation.risRefusesUnfaulted})`)
+lines.push(`## Linke Spalte eines geänderten § verlesen, und die Klassen des Bundes (an ${leftPopulation.sites} von ${leftPopulation.changed} gezeigten geänderten §§, deren Text in Kraft RIS bestätigt; ohne RIS-Text ${leftPopulation.noRis}, ungestört schon abgelehnt ${leftPopulation.risRefusesUnfaulted})`)
 lines.push('')
-lines.push('Eine Spalte: der Fehler steht links und rechts (Oberösterreichs Striche, Tirol). Zwei Spalten: nur links, das Wortdiff zeigt das richtige Wort als neu. Gemessen, nicht am Boden gehalten.')
+lines.push('Eine Spalte: der Fehler steht links und rechts (Oberösterreichs Striche, Tirol). Zwei Spalten: nur links, das Wortdiff zeigt das richtige Wort als neu. Die drei Lesefehler links und L: gemessen, nicht am Boden gehalten; R-alt und U hält der Boden.')
 lines.push('')
 lines.push('| Fehler | Spalten | angewandt | zurückgehalten | davon RIS | mit Marke | ohne Marke | ohne Marke vorher: angewandt | ohne Marke |')
 lines.push('|---|---|---|---|---|---|---|---|---|')
-for (const [columns, table] of [['alle', leftTable], ['eine', leftByColumns.eine], ['zwei', leftByColumns.zwei]] as const) {
+for (const [columns, table] of [['alle', leftTable], ['eine', leftByColumns.eine], ['zwei', leftByColumns.zwei], ['alle', bundTable], ['eine', bundByColumns.eine], ['zwei', bundByColumns.zwei]] as const) {
   for (const t of table) lines.push(`| ${t.key} | ${columns} | ${t.tried} | ${t.withheld} | ${t.byRis} | ${t.marked} | ${t.unmarked} | ${t.beforeUnmarked.tried} | ${t.beforeUnmarked.unmarked} |`)
 }
+lines.push('')
+lines.push('L: der zweite Satz der linken Spalte fehlt. R-alt: ein Satz aus dem Text in Kraft eines anderen § desselben Gesetzes rechts angehängt. U: derselbe Satz in beiden Spalten (die Klassen des Bundes, `lib/rightColumnFaults.ts`).')
 lines.push('')
 lines.push('## Beide Spalten gekürzt (linke Spalte gegen RIS)')
 lines.push('')
@@ -965,6 +1001,8 @@ for (const m of instructedMissing.filter((x) => !x.anchor)) lines.push(`  - ${m.
 const tallies: FaultTally[] = [
   // Over the §§ without a mark before the fault: caught is what is not shown without the mark (`unmarkedFloor`).
   ...markTable.map(unmarkedFloor),
+  // The Bund's R-alt and U at the left column's sites; L and the left column's misreadings are measured, not held (head comment).
+  ...bundTable.filter((t) => t.key !== 'L').map(unmarkedFloor),
   ...CUTS.map((kind) => {
     const c = cuts.filter((x) => x.cut === kind)
     return { key: `Beide gekürzt: ${kind}`, tried: c.length, caught: c.filter((x) => x.refused).length }
@@ -1029,6 +1067,8 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   // `faults[]` as `mark.faults[]`, plus `byRis` (withheld because RIS refused the left column); `byColumns`: the same
   // for one-column layouts (the fault in both columns) and two-column ones (left alone). Measured, not held by the floor.
   leftColumn: { population: leftPopulation, faults: leftTable, byColumns: leftByColumns },
+  // The Bund's classes L, R-alt and U (21.11.2026) at the same sites, shaped as `leftColumn.faults` and `.byColumns`.
+  bundClasses: { faults: bundTable, byColumns: bundByColumns },
   // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten". The five right-column
   // classes since 20.11.2026 over the §§ without a mark, caught = not shown without it (`mark.faults[].beforeUnmarked`).
   floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },

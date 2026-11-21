@@ -356,7 +356,7 @@ import { argAssigned, argFlag } from '../lib/args'
 import { corpusReach, floorOf, harnessStamp, type FloorStatus } from '../lib/harnessRecord'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
-import { lastSentenceGone, raisedNumber, swappedWord } from '../lib/rightColumnFaults'
+import { donorSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
 
 // The Begut list is fetched afresh; `--liste-aus-cache` replays the cached one on purpose (`lib/harnessCache.ts`).
 const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
@@ -380,13 +380,6 @@ const SENTENCE_SPLIT = /(?<![\s(](?:Abs|Nr|Z|Art|lit|sublit|BGBl|bzw|usw|vgl|idF
 
 const toks = (text: string): string[] => comparableTokens(normalizeText(text))
 const sentencesOf = (text: string): string[] => text.split(SENTENCE_SPLIT)
-
-/** A donor sentence has to carry enough words to be evidence of anything. */
-const MIN_DONOR_TOKENS = 8
-/** The injection site's left column: three sentences to lose the middle one of. */
-const MIN_SITE_SENTENCES = 3
-/** …and enough prose that losing one sentence still leaves a judgeable § */
-const MIN_SITE_TOKENS = 30
 
 /**
  * What one fault did to one §, under both references rule 2 can have.
@@ -763,20 +756,15 @@ async function inject(doc: any): Promise<DraftResult | null> {
     // annex's line breaks rather than the gate.
     const site = para.rows.find((row) => {
       if (row.kind !== 'pair' || row.change !== 'changed' || row.elided || !row.segments) return false
-      const sentences = sentencesOf(row.current)
-      return sentences.length >= MIN_SITE_SENTENCES &&
-        toks(row.current).length >= MIN_SITE_TOKENS &&
-        // A second sentence below the rule's own floor is a fault the rule is
-        // not built to see, and counting it as a miss would measure the
-        // injector. Six words is `MIN_STANDING_STRETCH`.
-        toks(sentences[1]!).length >= MIN_STANDING_STRETCH
+      // Three sentences, thirty words, a second of six at least (`secondSentenceGone`, shared with the Länder harness).
+      return secondSentenceGone(row.current, SENTENCE_SPLIT, toks) !== null
     })
     if (!site) continue
     injected++
 
     // Fault L: the sentence is gone from the left column and the word diff is
     // recomputed, exactly as it would have been had the parser lost the line.
-    const lostCurrent = sentencesOf(site.current).filter((_, i) => i !== 1).join(' ')
+    const lostCurrent = secondSentenceGone(site.current, SENTENCE_SPLIT, toks)!
     const faultL = withRow(para.rows, site, { ...site, current: lostCurrent, segments: diffTokens(lostCurrent, site.proposed).segments })
     record(faults.L, judge(faultL, para.standing, wide, bagOf(para)), baseVerdict)
 
@@ -784,7 +772,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
     // gate also confirmed — one from the standing text RIS holds for it, one
     // from what the annex proposes for it.
     const donors = confirmed.filter((other) => other !== para && other.law === para.law)
-    const sentence = (text: string): string | null => sentencesOf(text).find((s) => toks(s).length >= MIN_DONOR_TOKENS) ?? null
+    const sentence = (text: string): string | null => donorSentence(text, SENTENCE_SPLIT, toks)
     const oldDonor = donors.map((other) => sentence(other.standing.text)).find((s) => s !== null) ?? null
     const newDonor = donors.map((other) => sentence(other.rows.map((r) => r.proposed).join(' '))).find((s) => s !== null) ?? null
 
