@@ -474,10 +474,11 @@ const readTirol = readOwn({ publisher: 'Land Tirol', load: tirolTguPages, parse:
 /* No document of the draft titled so (21.11.2026): a list without an entry
    proves no absence — the Land may print it inside another document, or
    title it otherwise. So the sentence names what was searched, not that the
-   Land published none. */
-const NO_TGU = gapDe('outOfScope', 'Textgegenüberstellungen, die nicht als eigenes Dokument beim Entwurf stehen. Unter den Dokumenten dieses Entwurfs heißt keines Textgegenüberstellung.')
+   Land published none — in the Bund's words (`NO_ANNEX`), under the lead the
+   rule gives a document missing from a list (`shared/utils/gaps.ts`). */
+const NO_TGU = gapDe('unreadable', 'Unter den Dokumenten zu diesem Entwurf fand der Monitor keine Textgegenüberstellung.')
 /** Wien's, searched in the draft's own PDF (`wienTguStart`). */
-const NO_TGU_IN_DRAFT = gapDe('outOfScope', 'Textgegenüberstellungen außerhalb des Entwurfs selbst. Im Entwurf fand der Monitor keine.')
+const NO_TGU_IN_DRAFT = gapDe('unreadable', 'Im Entwurf fand der Monitor keine Textgegenüberstellung.')
 
 /** Where §§ were read and none can be shown. The page names every one under it, with why (`LandWithheldNotes`). */
 const NONE_SHOWN = 'Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen. Welche Paragraphen die Novelle ändert und warum sie hier fehlen, steht darunter; die Textgegenüberstellung selbst steht unter den Dokumenten.'

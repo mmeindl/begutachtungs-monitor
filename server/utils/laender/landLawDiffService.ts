@@ -83,7 +83,7 @@ export async function compareLandTexts(
   const sources = textSources(land, detail, cachedPdfPages)
   const a = sources[from]
   const b = sources[to]
-  if (!a || !b) return whole(unavailable(from, to, gapDe('notPublished', 'Einen der beiden Texte hat das Land nicht veröffentlicht.')))
+  if (!a || !b) return whole(unavailable(from, to, gapDe('unreadable', 'Einen der beiden Texte fand der Monitor unter den Dokumenten des Landes nicht.')))
   const read = await Promise.all([a.read(), b.read()])
   const compared = compareReadTexts(from, to, read, [a.document, b.document])
   if (!compared.available) return whole(compared)

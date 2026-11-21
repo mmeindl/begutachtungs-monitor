@@ -152,7 +152,8 @@ export async function readLandExplanations(
   const doc = own ?? draft
   const url = doc ? safeExternalUrl(doc.url) : null
   const done = (response: LandExplanationsResponse, draftFailed = false): LandExplanationsRead => ({ response, pages, draftUrl, draftFailed })
-  if (!doc || !url) return done(unavailable(gapDe('notPublished', 'Erläuterungen zu diesem Entwurf hat das Land nicht veröffentlicht.'), publisher))
+  // No document to read them from: said of the list, which proves no absence („hat das Land nicht veröffentlicht" until 21.11.2026).
+  if (!doc || !url) return done(unavailable(gapDe('unreadable', 'Unter den Dokumenten zu diesem Entwurf fand der Monitor keine Erläuterungen.'), publisher))
   const document = { label: own ? doc.title : `${doc.title} (Erläuterungen)`, url }
   const read = HEADINGS_BY_WEIGHT.has(land) ? await styledPages(await bytesOf(url)) : { pages: await pagesOf(url), bold: undefined }
   pages.set(url, read.pages)

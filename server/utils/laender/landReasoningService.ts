@@ -57,7 +57,7 @@ export async function compareLandReasoning(
   const sources = textSources(land, detail)
   const draftUrl = sources.entwurf?.document.url
   const rvUrl = sources.rv?.document.url
-  if (!draftUrl || !rvUrl) return unavailable(gapDe('notPublished', 'Einen der beiden Texte hat das Land nicht veröffentlicht.'))
+  if (!draftUrl || !rvUrl) return unavailable(gapDe('unreadable', 'Einen der beiden Texte fand der Monitor unter den Dokumenten des Landes nicht.'))
   // Their own documents, where the Land files them so: the draft's „Erläuterungen", the Vorlage's „Regierungsvorlage, Erläuterungen".
   const docs = detail.draft.documents
   const urlOf = (doc: { url: string } | null | undefined) => (doc ? safeExternalUrl(doc.url) : null)

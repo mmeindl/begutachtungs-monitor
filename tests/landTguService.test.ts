@@ -577,12 +577,12 @@ describe('compareTgu — no Textgegenüberstellung found is no proof the Land pu
     const untitled = { ...detail(), draft: { ...detail().draft, documents: [{ title: 'Entwurf', url: 'https://www.ktn.gv.at/e.pdf' }] } } as unknown as LandDraftDetail
     const r = (await compareTgu('ktn', untitled)).value
     expect(r.available).toBe(false)
-    expect(r.unavailableReason).toBe('Nicht im Monitor: Textgegenüberstellungen, die nicht als eigenes Dokument beim Entwurf stehen. Unter den Dokumenten dieses Entwurfs heißt keines Textgegenüberstellung.')
+    expect(r.unavailableReason).toBe('Nicht lesbar: Unter den Dokumenten zu diesem Entwurf fand der Monitor keine Textgegenüberstellung.')
   })
 
   it('says for Wien that it read the draft itself and found none there', async () => {
     const wien = { ...detail(), draft: { ...detail().draft, id: 'w-2026003', land: 'w', documents: [{ title: 'Entwurf', url: 'https://www.wien.gv.at/a.pdf' }] } } as unknown as LandDraftDetail
     const r = (await compareTgu('w', wien)).value
-    expect(r.unavailableReason).toBe('Nicht im Monitor: Textgegenüberstellungen außerhalb des Entwurfs selbst. Im Entwurf fand der Monitor keine.')
+    expect(r.unavailableReason).toBe('Nicht lesbar: Im Entwurf fand der Monitor keine Textgegenüberstellung.')
   })
 })

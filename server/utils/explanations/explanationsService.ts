@@ -168,7 +168,8 @@ async function read(
     return whole(empty(
       formats
         ? gapDe('unreadable', 'Die Erläuterungen gibt es im RIS nur als Bilddatei; Text lässt sich daraus nicht lesen.')
-        : gapDe('notPublished', 'Erläuterungen zu diesem Entwurf führt das RIS nicht.'),
+        // A record without the document proves no absence (`shared/utils/gaps.ts`; „Nicht veröffentlicht: … führt das RIS nicht" until 21.11.2026).
+        : gapDe('unreadable', 'Unter den Dokumenten zu diesem Entwurf fand der Monitor im RIS keine Erläuterungen.'),
       formats ? documentLink(formats) : null,
     ))
   }
