@@ -62,12 +62,29 @@
  * „Amtsverschwiegenheit" one letter short), the others sound §§ lost to
  * this module's limits — a table read in another order, a payload our
  * draft reader lost or left a footer in.
+ *
+ * ITS OWN MISSES (21.11.2026): 11 injected faults passed where this module
+ * held the §. Closed: a citation the draft wraps onto a line of its own cut a
+ * payload as if a § began there (Salzburg 32025, § 48a); a single new number
+ * passed for the draft's because the instruction's line names it as an
+ * address („am Ende der Z 8"); a part of a quoted wording passed as the
+ * instruction's text where the whole stood at another place („jeweils").
+ * Since then (1,044 held, 71 not held, 47 differing) the strict check sees
+ * every changed number and swapped word in the §§ it holds, and 317 of 324
+ * dropped sentences. The seven it does not see: a word the new text shares
+ * with the old at its seam lost there (Oö. 2025-16094, § 21, in three laws:
+ * old text lost from the right column, which no rule here reads); a quoted
+ * wording of one word that stands again inside a payload's text („(3)",
+ * „(5)", „Bemessung"; three — a quote and a payload may share a place, so
+ * the place is not asked); and a payload's word found again further down the
+ * § by the alignment, which keeps order but not adjacency (one).
  */
 import type { LawDiffUnit } from '../../../shared/types'
 import { segmentUnits, type LawUnit, type TextBlock } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { designationKey } from '../annex/annexText'
 import { draftUnits, type DraftUnit } from '../annex/annexDraft'
+import { RUNS_ON_RE } from './landTgu'
 
 const JOINERS = 'und|oder|bzw|sowie|beziehungsweise'
 /** A word broken at a line's end („Verord- nung", „Infrastruktur- Dienstleistung"), never an Ergänzungsstrich („Land- und Forstwirtschaft"). The marks of `markedText` between the halves stay. */
@@ -146,6 +163,13 @@ export interface DraftWording {
    * of these is the draft's, wherever the alignment put it.
    */
   text: string[][]
+  /**
+   * The same instructions without their lines' own words: what they quote as
+   * new (a quotation the line leaves open runs to its end) and their
+   * payloads. A single new word must stand here to be the draft's — in the
+   * line it is an address („Z 8", „Abs. 10"), not wording.
+   */
+  written: string[][]
   /** Set where an instruction naming the § could not be read as wording; the § is then not held strictly. */
   unread: string | null
 }
@@ -268,7 +292,8 @@ function payloadPieces(blocks: readonly TextBlock[]): Piece[] {
   for (let i = 0; i < blocks.length; i++) {
     const text = `${blocks[i]!.gld ?? ''} ${blocks[i]!.text}`.replace(FOOTER_RE, ' ').trim()
     const next = blocks[i + 1] ? `${blocks[i + 1]!.gld ?? ''} ${blocks[i + 1]!.text}`.replace(FOOTER_RE, ' ').trim() : ''
-    const designation = DESIGNATION_BLOCK_RE.exec(text)
+    // „… richtet sich nach" / „§ 73 AVG; …": a citation the line wrapped, not a § (`RUNS_ON_RE`, as the readers take it; Salzburg 32025, § 48a, and Oö. 2026-16122, § 57).
+    const designation = last !== null && RUNS_ON_RE.test(last) ? null : DESIGNATION_BLOCK_RE.exec(text)
     // A heading above the designation opens the §'s piece.
     if (!designation && isHeadingBlock(text) && headsDesignation(blocks, i + 1)) {
       heading = `${heading ?? ''} ${text}`
@@ -313,6 +338,9 @@ export interface LawWording {
   /** Those instructions as they stand: text that may be any §'s. */
   generalText: string[][]
 }
+
+/** What a line quotes: „…" closed, or opened and left open to the line's end. */
+const WRITTEN_RE = new RegExp(`[${OPEN}]([^${OPEN}${CLOSE}]*)(?:[${CLOSE}]|$)`, 'gu')
 
 /** A unit's blocks as the lines of its instructions and the payloads between them. */
 interface Run { line: string | null; payload: TextBlock[] }
@@ -370,7 +398,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
   }
   const at = (lawKey: string | null, key: string): DraftWording => {
     const byKey = lawOf(lawKey).byKey
-    const w = byKey.get(key) ?? { wordings: [], text: [], unread: null }
+    const w = byKey.get(key) ?? { wordings: [], text: [], written: [], unread: null }
     byKey.set(key, w)
     return w
   }
@@ -380,13 +408,20 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
     const runs = runsOf(unit)
     // The unit as it stands, without what it quotes as old or as a place.
     const standing: string[] = []
+    const written: string[] = []
     for (const run of runs) {
       if (run.line !== null) {
         const roles = quoteRoles(run.line)
         let k = 0
-        standing.push(...strictTokens(withoutResidue(run.line).replace(QUOTE_RE, (m) => (roles[k++]?.role === 'new' ? m : ' '))))
+        const kept = withoutResidue(run.line).replace(QUOTE_RE, (m) => (roles[k++]?.role === 'new' ? m : ' '))
+        standing.push(...strictTokens(kept))
+        written.push(...[...kept.matchAll(WRITTEN_RE)].flatMap((m) => strictTokens(m[1]!)))
       }
-      for (const block of run.payload) standing.push(...strictTokens(`${block.gld ?? ''} ${block.text}`.replace(FOOTER_RE, ' ')))
+      for (const block of run.payload) {
+        const tokens = strictTokens(`${block.gld ?? ''} ${block.text}`.replace(FOOTER_RE, ' '))
+        standing.push(...tokens)
+        written.push(...tokens)
+      }
     }
     if (!keys.length) {
       const into = lawOf(draft.law)
@@ -399,7 +434,10 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       }
       return
     }
-    for (const key of keys) at(draft.law, key).text.push(standing)
+    for (const key of keys) {
+      at(draft.law, key).text.push(standing)
+      at(draft.law, key).written.push(written)
+    }
     for (const run of runs) {
       for (const quote of run.line === null ? [] : quoteRoles(run.line)) {
         if (quote.role === null) {
@@ -418,7 +456,10 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         if (piece.key !== null) {
           const into = at(draft.law, piece.key)
           into.wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false })
-          if (!keys.includes(piece.key)) into.text.push(standing)
+          if (!keys.includes(piece.key)) {
+            into.text.push(standing)
+            into.written.push(written)
+          }
         } else if (keyed) {
           // Text before the first § of a payload that prints §§: a division heading, or what the reader did not cut. Whose it is, is not read.
           for (const key of keys) at(draft.law, key).unread ??= STRICT_UNCHECKED.beforeFirst
@@ -675,8 +716,14 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     let j = i
     while (j < shown.length && shown[j]!.marked) j++
     const own = found.flatMap((f) => f.text)
-    // One stretch of an instruction naming the §, as it stands: the draft's, wherever the alignment put it.
-    if (!accounted.slice(i, j).every(Boolean) && own.some((t) => contains(t, words.slice(i, j)))) for (let k = i; k < j; k++) accounted[k] = true
+    // One stretch of an instruction naming the §, as it stands: the draft's,
+    // wherever the alignment put it. Not a part of a quoted wording, which
+    // accounts only where it stands whole (Oö. 2025-16103, § 38: „jeweils",
+    // one place cut short); and a single word only from what an instruction
+    // quotes or prints — in its line it is an address, „Z 8" (Tirol 728/2026).
+    const stretch = words.slice(i, j)
+    const partOfQuote = quoted.some((q) => q.length > stretch.length && contains(q, stretch))
+    if (!accounted.slice(i, j).every(Boolean) && !partOfQuote && (stretch.length > 1 ? own : found.flatMap((f) => f.written)).some((t) => contains(t, stretch))) for (let k = i; k < j; k++) accounted[k] = true
     if (!accounted.slice(i, j).every(Boolean)) {
       for (let shift = -(j - i); shift <= j - i; shift++) {
         if (shift === 0 || i + shift < 0 || j + shift > shown.length) continue
@@ -704,10 +751,14 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     }
   }
   const notInDraft = shown.filter((t, i) => t.marked && !accounted[i]).map((t) => t.word)
+  const notShown = draft.filter((_, j) => !optional[j] && !aligned.draft[j])
+  for (const w of all) if (w.repeats && w.once && !contains(words, w.tokens)) notShown.push(...w.tokens)
   // New text the draft writes elsewhere — for a § the document prints no
   // block of its own for, or in an instruction whose address was not read:
   // whose text it is, is then not read, and the § is not held strictly.
-  if (notInDraft.length) {
+  // Not where the draft's own wording for the § is missing: that differs,
+  // whoever wrote the rest.
+  if (notInDraft.length && !notShown.length) {
     let foreign = true
     for (let i = 0; i < shown.length && foreign; i++) {
       if (!shown[i]!.marked || accounted[i]) continue
@@ -721,8 +772,6 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     }
     if (foreign) return unchecked(STRICT_UNCHECKED.elsewhere)
   }
-  const notShown = draft.filter((_, j) => !optional[j] && !aligned.draft[j])
-  for (const w of all) if (w.repeats && w.once && !contains(words, w.tokens)) notShown.push(...w.tokens)
   return {
     state: notInDraft.length || notShown.length ? 'differs' : 'holds',
     reason: null,

@@ -1,5 +1,5 @@
 {
- "at": "2026-11-20T18:27:15.253Z",
+ "at": "2026-11-21T08:21:25.076Z",
  "documents": {
   "ktn-104907-2025-32": {
    "land": "ktn",
@@ -2711,8 +2711,9 @@
    "land": "t",
    "state": "beantwortet",
    "available": true,
-   "shown": 14,
+   "shown": 13,
    "withheld": [
+    "draftDiffers · Tiroler Naturschutzgesetz 2005 · §3",
     "inserted · Tiroler Elektrizitätsgesetz 2026 · §12a",
     "inserted · Tiroler Elektrizitätsgesetz 2026 · §12b",
     "inserted · Tiroler Elektrizitätsgesetz 2026 · §12c",

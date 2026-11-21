@@ -189,3 +189,51 @@ describe('what the strict check cannot hold is said, and the bag rule decides (2
     expect(undrafted(guard).size).toBe(0)
   })
 })
+
+describe('the strict check\'s own misses, closed (21.11.2026)', () => {
+  const DRAFT_2 = [
+    'Gesetz vom ……, mit dem das Naturschutzgesetz 1999 geändert wird',
+    'Der Salzburger Landtag hat beschlossen:',
+    'Das Naturschutzgesetz 1999, LGBl Nr 73/1999, wird geändert wie folgt:',
+    '1. Nach § 48 wird eingefügt:',
+    '„Besondere Verfahren',
+    '§ 48a',
+    '(1) Die Entscheidungspflicht der Behörde richtet sich nach',
+    '§ 73 AVG; die Entscheidungsfrist beginnt mit Einlangen des Antrages zu laufen.',
+    '(2) Tötungen geschützter Arten gelten nicht als absichtlich.“',
+    '2. Im § 47 werden am Ende der Z 8 der Beistrich durch einen Punkt ersetzt und die Z 9 aufgehoben.',
+    '3. Im § 38 Abs 2 und 2a wird jeweils der letzte Satz durch folgende Sätze ersetzt: „Der Befund ist der Behörde zu übermitteln. Die Meldepflicht ist elektronisch zu erfüllen.“',
+    '4. Im § 8 Abs 2 lautet der Einleitungsteil: „Die Fertigstellung ist der Behörde anzuzeigen. Die Anzeige ist in elektronischer Form zu übermitteln. Der Anzeige sind anzuschließen:“',
+    '5. § 9 Abs 1 lautet:',
+    '„(1) Die Anzeige ist in elektronischer Form zu übermitteln.“',
+  ].join('\n')
+  const blocks2 = lawBlocksFromPdfPages([DRAFT_2])!
+  const strict2 = (u: LawDiffUnit) => guardTguUnits([u], blocks2).strict.get(0)!
+
+  it('reads a citation the draft wrapped onto a line of its own as the sentence\'s end, not as a § (Salzburg 32025, § 48a)', () => {
+    const whole = unit({ id: '§48a', fromId: null, change: 'inserted', heading: 'Besondere Verfahren', toText: '(1) Die Entscheidungspflicht der Behörde richtet sich nach § 73 AVG; die Entscheidungsfrist beginnt mit Einlangen des Antrages zu laufen. (2) Tötungen geschützter Arten gelten nicht als absichtlich.' })
+    expect(strict2(whole).state).toBe('holds')
+    // The last Absatz lost: the payload is the §'s to its end, so its words are missing.
+    expect(strict2({ ...whole, toText: whole.toText!.replace(/ \(2\).*$/, '') })).toMatchObject({ state: 'differs', notShown: ['2', 'tötungen', 'geschützter', 'arten', 'gelten', 'nicht', 'als', 'absichtlich'] })
+  })
+
+  it('does not take a single new word from the address an instruction names (Tirol 728/2026, § 47)', () => {
+    const shown = (n: string) => changed('§47', `Umgesetzt werden: 8. Richtlinie A, ABl. L 1, S. {1, 9. Richtlinie B, ABl. L 2, S. 82.} [${n}.]`)
+    expect(strict2(shown('1')).state).toBe('holds')
+    // „am Ende der Z 8": the 8 is the instruction's place, not its wording.
+    expect(strict2(shown('8'))).toMatchObject({ state: 'differs', notInDraft: ['8'] })
+  })
+
+  it('does not take part of a quoted wording for the instruction\'s text where the whole stands elsewhere (Oö. 2025-16103, § 38)', () => {
+    const at2a = '(2a) Die Anlage ist zu melden. {Der Befund ist vorzulegen.} [Der Befund ist der Behörde zu übermitteln. Die Meldepflicht ist elektronisch zu erfüllen.]'
+    expect(strict2(changed('§38', `(2) Der Antrag ist zu stellen. {Der Befund ist vorzulegen.} [Der Befund ist der Behörde zu übermitteln. Die Meldepflicht ist elektronisch zu erfüllen.] ${at2a}`)).state).toBe('holds')
+    // „jeweils": the second sentence lost at Abs. 2, whole at Abs. 2a.
+    expect(strict2(changed('§38', `(2) Der Antrag ist zu stellen. {Der Befund ist vorzulegen.} [Der Befund ist der Behörde zu übermitteln.] ${at2a}`)).state).toBe('differs')
+  })
+
+  it('says a § differs where the draft\'s wording for it is missing, though its new text stands elsewhere in the draft (Salzburg 34728, § 8)', () => {
+    expect(strict2(changed('§8', '(1) … (2) Die Fertigstellung ist der Behörde anzuzeigen. {Dabei} [Die Anzeige ist in elektronischer Form zu übermitteln. Der Anzeige] sind {folgende Unterlagen} anzuschließen:')).state).toBe('holds')
+    // „Der Anzeige" lost: the quoted Einleitungsteil does not stand, whoever else writes the sentence before it (§ 9).
+    expect(strict2(changed('§8', '(1) … (2) Die Fertigstellung ist der Behörde anzuzeigen. {Dabei} [Die Anzeige ist in elektronischer Form zu übermitteln.] sind {folgende Unterlagen} anzuschließen:')).state).toBe('differs')
+  })
+})
