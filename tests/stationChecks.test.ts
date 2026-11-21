@@ -39,6 +39,29 @@ describe('the checks the station harness runs (`scripts/lib/stationChecks.ts`)',
     expect(completeness(from, to, { ...diff, units: [...diff.units, ...diff.units] }, isCommencementArticle).breaches.length).toBeGreaterThan(0)
   })
 
+  // 21.11.2026: a commencement Artikel only one side carries is neither in
+  // the list nor named as a law. The page says so only through the sentence
+  // on the laws only the later text carries („verglichen wird deshalb, was in
+  // beiden Texten steht"); where no such law exists, nothing is said.
+  it('lets a commencement Artikel only one side carries go only where the page says that only both texts are compared', () => {
+    const pkg = (laws: { title: string; ziffer: string }[]) =>
+      `<html><body>${laws.map((l, i) => `<p class=41UeberschrG1>Artikel&nbsp;${i + 1}</p><p class=43UeberschrG2>${l.title}</p><p class=21NovAo1>${l.ziffer}</p>`).join('')}</body></html>`
+    const law = { title: '&Auml;nderung des Auskunftspflichtgesetzes', ziffer: '1. &sect;&nbsp;1 lautet: &bdquo;alt&ldquo;' }
+    const commencement = { title: 'Inkrafttreten', ziffer: '1. Dieses Bundesgesetz tritt mit 1. J&auml;nner 2026 in Kraft.' }
+    const other = { title: '&Auml;nderung des Datenschutzgesetzes', ziffer: '1. &sect;&nbsp;4 lautet: &bdquo;x&ldquo;' }
+    const withIt = parseLawUnits(pkg([law, commencement]))
+    const alone = parseLawUnits(pkg([law]))
+    const silent = diffLawPackage(withIt, alone)
+    expect(silent.lawsOnlyInTo).toEqual([])
+    expect(completeness(withIt, alone, silent, isCommencementArticle).breaches.map((b) => b.unit)).toEqual(['Inkrafttreten'])
+    const grown = parseLawUnits(pkg([law, other]))
+    const said = diffLawPackage(withIt, grown)
+    expect(said.lawsOnlyInTo.map((l) => l.article)).toEqual(['Änderung des Datenschutzgesetzes'])
+    const whole = completeness(withIt, grown, said, isCommencementArticle)
+    expect(whole.breaches).toEqual([])
+    expect(whole.commencementLeftOut).toEqual([{ side: 'from', article: 'Inkrafttreten', units: 1 }])
+  })
+
   it('catches a unit under a heading its own text does not carry', () => {
     const diff = diffLawPackage(from, to)
     expect(headingBreaches(to, diff)).toEqual([])

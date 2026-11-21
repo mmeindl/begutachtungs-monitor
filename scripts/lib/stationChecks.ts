@@ -16,7 +16,12 @@
  *  - **Completeness.** Every unit of each side stands in the result exactly
  *    once, or its law is named in a list (`lawsOnlyInFrom`, `lawsOnlyInTo`).
  *    Leftovers of a commencement Artikel are counted apart: `lawsOf` leaves
- *    those out of the lists on purpose (`COMMENCEMENT_ARTICLE`).
+ *    those out of the lists on purpose (`COMMENCEMENT_ARTICLE`). They are
+ *    left out unsaid unless the page says that only what both texts carry is
+ *    compared — the sentence on the laws only the later text carries
+ *    (`mergedLawsNote`: „verglichen wird deshalb, was in beiden Texten
+ *    steht"), which stands only where `lawsOnlyInTo` names a law. Without it
+ *    a leftover is a breach (21.11.2026).
  *  - **Symmetry.** Compared the other way round, the same units pair. A pair
  *    that only one direction makes is the alignment's tie-break deciding what
  *    the reader is shown.
@@ -167,7 +172,7 @@ export function completeness(from: readonly UnitLike[], to: readonly UnitLike[],
     }
     for (const [article, n] of byArticle) {
       if (named.get(article) === n) continue
-      if (article && isCommencement(article) && !named.has(article)) {
+      if (article && isCommencement(article) && !named.has(article) && diff.lawsOnlyInTo.length) {
         commencementLeftOut.push({ side, article, units: n })
         continue
       }

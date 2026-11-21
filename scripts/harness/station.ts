@@ -250,6 +250,7 @@ interface Record_ extends Partial<HarnessStamp>, Partial<CorpusReach> {
   pairs: number
   breaches: (Breach & { pair: string })[]
   symmetry: (Breach & { pair: string })[]
+  /** Units of a commencement Artikel only one side carries, left out under the sentence that only both texts are compared (`completeness`); one without it is a breach. */
   commencementLeftOut: number
   /**
    * Every pair the chooser offers and the page answers with a sentence
@@ -396,7 +397,7 @@ for (const r of record.refused!) refusedBy.set(r.cause, [...(refusedBy.get(r.cau
 for (const [cause, pairs] of refusedBy) console.log(`   abgelehnt (${cause}): ${pairs.length} — ${pairs.slice(0, 12).join(' · ')}${pairs.length > 12 ? ' …' : ''}`)
 console.log(`\n── 1. Invarianten (müssen 0 sein): ${record.breaches.length}`)
 for (const b of record.breaches.slice(0, 60)) console.log(`   ✗ ${b.kind} ${b.pair} ${b.unit} — ${b.detail}`)
-console.log(`   Inkrafttretens-Artikel nur einer Seite, absichtlich nicht gezeigt (lawsOf): ${record.commencementLeftOut} Einheiten`)
+console.log(`   Inkrafttretens-Artikel nur einer Seite, nicht gezeigt unter dem Satz „verglichen wird deshalb, was in beiden Texten steht" (lawsOf, mergedLawsNote): ${record.commencementLeftOut} Einheiten`)
 console.log(`\n── 2. Symmetrie: ${record.symmetry.length} Paare nur in einer Richtung`)
 for (const b of record.symmetry.slice(0, 60)) console.log(`   · ${b.pair} ${b.unit} — ${b.detail}`)
 for (const kind of ['parlament-bgbl', 'html-xml'] as const) {
