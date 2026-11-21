@@ -45,6 +45,15 @@
  * section's own state („Abschnitt: aus „Nicht veröffentlicht“→verglichen“),
  * which a section off with no § RIS ties to it shows alone.
  *
+ * THE RECORD ALSO SAYS WHY (22.11.2026): `lawUnmatched` splits the §§
+ * withheld as lawUnmatched into those of a law the Landesgesetzblatt
+ * repeals whole (every version RIS ties is „aufgehoben durch" it — no
+ * instruction amends it) and the rest, each of which `summary.md` lists;
+ * `lautet.byClass` sorts the „lautet:" misses (`lautetMissing`). A § shown
+ * though its Landesgesetzblatt's own wording is missing in RIS's version
+ * (`lautet.byClass.shownWordingNotInRis`) fails the run, as a broken
+ * invariant does.
+ *
  * Runs with `-c vitest.config.ts`: the services import `#shared`.
  */
 import { createHash } from 'node:crypto'
@@ -132,6 +141,8 @@ interface LgblLine {
   paragraphs: ParagraphLine[]
   /** Withheld entries for §§ RIS does not tie to the Landesgesetzblatt — an instruction names them (`unpaired`). */
   instructedOnly: { law: string | null; id: string; reason: string }[]
+  /** The laws every version of which RIS ties to this Landesgesetzblatt as its repeal: repealed whole, no instruction amends them. */
+  repealedWhole?: string[]
 }
 
 /** N evenly spaced from first to last, the last always in. */
@@ -187,9 +198,20 @@ function outcomes(value: LandLawDiffResponse, tied: readonly { law: string; id: 
  * one of the instruction's law, matched as the service matches it
  * (`instructionLawsOf`). Skipped and counted: nested instructions
  * (Salzburg's „15.1."), and an instruction whose § is not shown.
+ *
+ * The misses by class (22.11.2026): `shownWordingNotInRis`, a § shown
+ * though the Landesgesetzblatt's own words are missing in RIS's version —
+ * the product withholds such a § (`wordingNotInRis`), so this must be 0;
+ * `withheld`, the §§ it withheld for it; and of a whole § replaced, the
+ * words RIS's side has and the Landesgesetzblatt's wording lacks:
+ * `numberOrDivision` where all of them are RIS's number, its heading or
+ * the division lines RIS sets before the §'s wording („V. Hauptstück
+ * Wirtschaftswesen der Stadt 1. Abschnitt …"), which the Landesgesetzblatt
+ * prints outside the § — 12 of 12 on 22.11.2026 —, `risTextExtra` where
+ * any other word is.
  */
-interface LautetLine { land: LandCode; nr: string; id: string; instruction: string; whole: boolean; notInRis: string[]; notInLgbl: string[] }
-const lautet = { instructions: 0, skipped: 0, checked: 0, lines: [] as LautetLine[] }
+interface LautetLine { land: LandCode; nr: string; id: string; instruction: string; whole: boolean; notInRis: string[]; notInLgbl: string[]; outsideWording: boolean }
+const lautet = { instructions: 0, skipped: 0, checked: 0, withheld: 0, lines: [] as LautetLine[] }
 const wordsOf = (s: string) => new Set((s.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []))
 function lautetCensus(land: LandCode, nr: string, lgblXml: string, paragraphs: readonly ParagraphLine[], versions: Parameters<typeof instructionLawsOf>[0]): void {
   const units = lgblUnits(lgblXml)
@@ -203,6 +225,7 @@ function lautetCensus(land: LandCode, nr: string, lgblXml: string, paragraphs: r
     if (keys.length !== 1 || /Inhaltsverzeichnis|Anlage|Anhang/.test(head)) continue
     lautet.instructions++
     const shown = paragraphs.filter((p) => p.id === keys[0] && p.toText && /^shown:(changed|inserted)$/.test(p.outcome) && lawKeys.get(p.law) === u.article)
+    if (paragraphs.some((p) => p.id === keys[0] && p.outcome === 'withheld:wordingNotInRis' && lawKeys.get(p.law) === u.article)) lautet.withheld++
     if (subInstructionHeads(u.text).length || shown.length !== 1) {
       lautet.skipped++
       continue
@@ -214,7 +237,12 @@ function lautetCensus(land: LandCode, nr: string, lgblXml: string, paragraphs: r
     // The product's own check (`lautetMissing`, 22.11.2026): a § it finds this in is withheld, so here it must find none.
     const notInRis = lautetMissing(u, keys[0]!, { id: shown[0]!.id, heading: shown[0]!.heading ?? null, text: shown[0]!.toText ?? '' }) ?? []
     const notInLgbl = whole ? [...ris].filter((w) => !quoted.has(w)) : []
-    if (notInRis.length || notInLgbl.length) lautet.lines.push({ land, nr, id: keys[0]!, instruction: u.text.slice(0, 300), whole, notInRis, notInLgbl })
+    // RIS's number, heading, and the text before the word the Landesgesetzblatt's wording opens with (its first that is no number).
+    const opens = (u.text.slice(at.index + at[0].length).toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).find((w) => !/^\d+[a-z]*$/.test(w))
+    const toText = (shown[0]!.toText ?? '').toLowerCase()
+    const before = opens ? toText.slice(0, Math.max(0, toText.search(new RegExp(`(?<![\\p{L}\\p{N}])${opens}(?![\\p{L}\\p{N}])`, 'u')))) : ''
+    const edge = wordsOf(`${shown[0]!.id} ${shown[0]!.heading ?? ''} ${before}`)
+    if (notInRis.length || notInLgbl.length) lautet.lines.push({ land, nr, id: keys[0]!, instruction: u.text.slice(0, 300), whole, notInRis, notInLgbl, outsideWording: notInLgbl.every((w) => edge.has(w)) })
   }
 }
 
@@ -248,6 +276,9 @@ for (const land of LANDS.filter((l) => !onlyLand || l === onlyLand)) {
         line.complete = complete
         const tied = await tiedParagraphs(land, e.nr)
         Object.assign(line, outcomes(value, tied))
+        const nummer = lgblNummer(e.nr)!
+        const ownVersions = (tied.versions ?? []).filter((v) => namesAsLast(v.organ, nummer) || repealedBy(v.organ, nummer))
+        line.repealedWhole = [...new Set(ownVersions.map((v) => v.law))].filter((law) => ownVersions.every((v) => v.law !== law || repealedBy(v.organ, nummer)))
         if (value.available) lautetCensus(land, e.nr, await upstreamText(record.xmlUrl, TEXT_POLICY), line.paragraphs, tied.versions ?? [])
         // Not held on purpose where RIS has not consolidated yet; any other incomplete answer rests on a failed read.
         if (!complete && value.unavailableReason !== NOT_CONSOLIDATED_YET_DE) unreached.push({ id: `${land}:${e.nr}`, cause: 'unvollständig (eine Quelle antwortete nicht)' })
@@ -291,8 +322,18 @@ const violations = lines.flatMap((l) => l.paragraphs.filter((p) => p.outcome ===
 md.push('## Invariante', '', violations.length ? violations.map((v) => `- ${v}`).join('\n') : 'Jeder vom RIS zugeordnete Paragraph endet genau einmal.', '')
 if (unreached.length) md.push('## Nicht erreicht', '', ...unreached.map((u) => `- ${u.id}: ${u.cause}`), '')
 const wholeMiss = lautet.lines.filter((l) => l.whole && l.notInLgbl.length).length
-md.push('## „lautet:" (Zählung, keine Regel)', '', `${lautet.instructions} Anweisungen „… lautet:" zu einem Paragraphen, ${lautet.skipped} übersprungen, ${lautet.checked} geprüft: ${lautet.lines.filter((l) => l.notInRis.length).length} mit Wörtern, die in der neuen Fassung des RIS fehlen; ${wholeMiss} ganze Paragraphen mit Wörtern des RIS, die das Landesgesetzblatt nicht hat (${join(outDir, 'lautet.txt')}).`, '')
-writeFileSync(join(outDir, 'lautet.txt'), lautet.lines.map((l) => `${l.land} ${l.nr} ${l.id}${l.whole ? ' (ganz)' : ''}\n  ${l.instruction}\n  fehlt im RIS: ${l.notInRis.join(' ') || '—'}${l.whole ? `\n  fehlt im LGBl: ${l.notInLgbl.join(' ') || '—'}` : ''}`).join('\n') + '\n')
+const byClass = {
+  shownWordingNotInRis: lautet.lines.filter((l) => l.notInRis.length).length,
+  withheld: lautet.withheld,
+  numberOrDivision: lautet.lines.filter((l) => l.notInLgbl.length && l.outsideWording).length,
+  risTextExtra: lautet.lines.filter((l) => l.notInLgbl.length && !l.outsideWording).length,
+}
+md.push('## „lautet:"', '', `${lautet.instructions} Anweisungen „… lautet:" zu einem Paragraphen, ${lautet.skipped} übersprungen, ${lautet.checked} geprüft: ${byClass.shownWordingNotInRis} gezeigt mit Wörtern des Landesgesetzblatts, die in der neuen Fassung des RIS fehlen (muss 0 sein; ${byClass.withheld} deshalb nicht gezeigt); ${wholeMiss} ganze Paragraphen mit Wörtern des RIS, die das Landesgesetzblatt nicht hat — ${byClass.numberOrDivision} nur Nummer, Überschrift oder Gliederung, ${byClass.risTextExtra} im Text (${join(outDir, 'lautet.txt')}).`, '')
+// The §§ withheld as lawUnmatched: of a law repealed whole, or one of the rest, each listed.
+const unmatched = lines.flatMap((l) => l.paragraphs.filter((p) => p.outcome === 'withheld:lawUnmatched').map((p) => ({ l, p, whole: (l.repealedWhole ?? []).includes(p.law) })))
+const lawUnmatched = { repealedWhole: unmatched.filter((x) => x.whole).length, other: unmatched.filter((x) => !x.whole).length }
+md.push('## lawUnmatched', '', `${unmatched.length} §§: ${lawUnmatched.repealedWhole} eines Gesetzes, das das Landesgesetzblatt als Ganzes aufhebt; ${lawUnmatched.other} andere:`, '', ...unmatched.filter((x) => !x.whole).map(({ l, p }) => `- ${l.land} ${l.nr} ${p.law} ${p.id}`), '')
+writeFileSync(join(outDir, 'lautet.txt'), lautet.lines.map((l) => `${l.land} ${l.nr} ${l.id}${l.whole ? ` (ganz${l.notInLgbl.length ? `, ${l.outsideWording ? 'nur Nummer, Überschrift oder Gliederung' : 'im Text'}` : ''})` : ''}\n  ${l.instruction}\n  fehlt im RIS: ${l.notInRis.join(' ') || '—'}${l.whole ? `\n  fehlt im LGBl: ${l.notInLgbl.join(' ') || '—'}` : ''}`).join('\n') + '\n')
 
 // --- Against an earlier run ----------------------------------------------
 let unexplained = 0
@@ -358,8 +399,9 @@ writeFileSync(join(outDir, 'record.json'), JSON.stringify({
   reach: corpusReach(requested, unreached),
   requests,
   violations: violations.length,
-  lautet: { instructions: lautet.instructions, skipped: lautet.skipped, checked: lautet.checked, misses: lautet.lines.length },
+  lautet: { instructions: lautet.instructions, skipped: lautet.skipped, checked: lautet.checked, misses: lautet.lines.length, byClass },
+  lawUnmatched,
   perLand,
 }, null, 2) + '\n')
 console.log(`\n${md.join('\n')}`)
-if (violations.length || unexplained) process.exit(1)
+if (violations.length || unexplained || byClass.shownWordingNotInRis) process.exit(1)
