@@ -93,7 +93,7 @@
  * sequence. The floor over the §§ it holds is unchanged: every changed
  * number and swapped word, 329 of 336 dropped sentences (the same seven).
  */
-import type { LawDiffUnit } from '../../../shared/types'
+import type { LawDiffSegment, LawDiffUnit } from '../../../shared/types'
 import { segmentUnits, type LawUnit, type TextBlock } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { designationKey } from '../annex/annexText'
@@ -111,6 +111,8 @@ interface Marked {
   marked: boolean
   /** Whether the word is printed as a designation, where a unit begins (`designationForm`). */
   designation?: boolean
+  /** Where the word stands in the §'s word diff, removed words counted (`diffWords`); none for the heading. */
+  at?: number
 }
 
 /** The words a figure stands after in an address or a citation, not where a unit begins: „Abs. 5.", „Nr. 5.", „S. 1.". */
@@ -729,28 +731,128 @@ export const STRICT_UNCHECKED = {
  * against „Einzelfall." is the instruction „der Strichpunkt wird durch einen
  * Punkt ersetzt", and no word of the draft. So the words a new stretch
  * shares, in order, with the removed one beside it lose the mark.
+ *
+ * `flip`: places of the word diff (`diffWords`) read the other way — a kept
+ * word as new, a new one as kept (`keptElsewhere`).
  */
-export function shownTokens(unit: LawDiffUnit): Marked[] | null {
+export function shownTokens(unit: LawDiffUnit, flip: ReadonlySet<number> = new Set()): Marked[] | null {
   const heading = markedTokens(unit.heading ?? '')
   if (unit.change === 'inserted') return [...heading, ...markedTokens(`\uE000${unit.toText ?? ''}\uE001`)]
   if (unit.change !== 'changed' || !unit.segments) return null
   const out = [...heading]
   const segments = unit.segments
+  let at = 0
   segments.forEach((s, i) => {
-    if (s.type === 'removed') return
-    if (s.type !== 'inserted') {
-      out.push(...markedTokens(s.text))
+    if (s.type === 'removed') {
+      at += markedTokens(s.text).length
       return
     }
-    const tokens = markedTokens(`\uE000${s.text}\uE001`)
+    if (s.type !== 'inserted') {
+      out.push(...markedTokens(s.text).map((t) => ({ ...t, at, marked: flip.has(at++) })))
+      return
+    }
+    const tokens = markedTokens(`\uE000${s.text}\uE001`).map((t) => ({ ...t, at: at++ }))
     const beside = [segments[i - 1], segments[i + 1]].find((x) => x?.type === 'removed')
     // The words the new stretch keeps of the removed one, in order: „geschlechtsbezogene Verhaltensweisen," against „Verhaltensweisen in Bezug auf …,".
     if (beside) align(tokens.map((t) => ({ word: t.word, marked: false })), strictTokens(beside.text)).shown.forEach((kept, k) => {
       if (kept) tokens[k]!.marked = false
     })
+    for (const t of tokens) if (flip.has(t.at)) t.marked = false
     out.push(...tokens)
   })
   return out
+}
+
+/** A word of a changed §'s word diff, removed ones included, with the row it stands in: a Bund § group joins its rows' diffs with a space of their own (`annexStrict.ts`). */
+interface DiffWord { word: string; kind: LawDiffSegment['type']; row: number }
+
+/** The words of a changed §'s word diff in order, as `shownTokens` counts them (`Marked.at`). */
+function diffWords(segments: readonly LawDiffSegment[]): DiffWord[] {
+  let row = 0
+  return segments.flatMap((s) => {
+    if (!s.text.trim()) row++
+    return markedTokens(s.text).map((t) => ({ word: t.word, kind: s.type, row }))
+  })
+}
+
+/**
+ * Whether each run of kept words a pairing crosses is a trivial equality, as
+ * a word diff's semantic cleanup has it: a whole kept stretch between two
+ * edits, no longer than the larger side (removed or new) of the edit on
+ * either hand. A longer one is the text's own, and the twin is at another
+ * place (`keptElsewhere`).
+ */
+function trivial(diff: readonly DiffWord[], crossed: readonly number[]): boolean {
+  const edits = (from: number, step: number): number => {
+    let ins = 0
+    let del = 0
+    for (let k = from; k >= 0 && k < diff.length && diff[k]!.kind !== 'equal' && diff[k]!.row === diff[from - step]!.row; k += step) {
+      if (diff[k]!.kind === 'inserted') ins++
+      else del++
+    }
+    return Math.max(ins, del)
+  }
+  for (let i = 0; i < crossed.length;) {
+    let j = i
+    while (j + 1 < crossed.length && crossed[j + 1] === crossed[j]! + 1) j++
+    const [a, b] = [crossed[i]!, crossed[j]!]
+    if (diff[a - 1]?.kind === 'equal' || diff[b + 1]?.kind === 'equal') return false
+    if (b - a + 1 > Math.min(edits(a - 1, -1), edits(b + 1, 1))) return false
+    i = j + 1
+  }
+  return true
+}
+
+/**
+ * KEPT WORDS THE WORD DIFF SHOWS AS NEW (22.11.2026). A row's word diff
+ * keeps the longest common sequence of words, and where a few short words
+ * stand on both sides it keeps those and shows a word of the left column as
+ * new at another place: „Filterbetthöhe [in] der [Phase] der [Wasserspülung]
+ * dauerhaft [erforderlich.]" against „Filterbetthöhe erforderlich. Zur … der
+ * … der … dauerhaft …" (Bäderhygieneverordnung, § 36). The same two columns
+ * read as well with „erforderlich." kept and „in der Phase der Wasserspülung
+ * dauerhaft" new — which is what the draft writes.
+ *
+ * For each stretch of new words the check could not account for (`runs`,
+ * places in `diff`): the same words in the left column of the same row, in
+ * order, removed or kept. Read so, the stretch is kept, and every kept word
+ * the pairing crosses, and the new place of a kept twin, is new instead — to
+ * be found in the draft's wording like any other. Of several twins the one
+ * that crosses fewest. Null where a stretch has no twin, or two pairings
+ * cross, or a crossed run is no trivial equality (`trivial`): without that
+ * guard 12 §§ more moved on GP XXVIII, twins across longer kept text (BWG
+ * § 20b: an „oder" of a new Abs. 5 paired with one of Abs. 1). It never
+ * accounts for a word the left column lacks, and the § holds only where
+ * every word new in that reading is the draft's (`strictCheck`).
+ *
+ * Measured on GP XXVIII (22.11.2026): 29 §§ of the Bund's annexes (both
+ * paths) go from „differs" to „holds", every one read and the reading the
+ * draft's; one § of the Länder (Oö. 2026-16124, § 29). Of the §§ the
+ * oracle confirms and this check objected to, 96 → 81.
+ */
+function keptElsewhere(diff: readonly DiffWord[], runs: readonly number[][]): Set<number> | null {
+  const old = diff.flatMap((d, q) => (d.kind === 'inserted' ? [] : [q]))
+  const kept = diff.flatMap((d, r) => (d.kind === 'equal' ? [r] : []))
+  const pairs: { o: number[]; n: number[] }[] = []
+  const flip = new Set<number>()
+  for (const n of runs) {
+    const row = diff[n[0]!]!.row
+    let best: { o: number[]; turned: number[]; distance: number } | null = null
+    for (let s = 0; s + n.length <= old.length; s++) {
+      const o = old.slice(s, s + n.length)
+      if (o.some((q, x) => diff[q]!.row !== row || diff[q]!.word !== diff[n[x]!]!.word)) continue
+      // A kept word not of the twin stands before both or after both; else the pairings cross, and it is new.
+      const turned = kept.filter((r) => o.includes(r) || (r < o[0]!) !== (r < n[0]!))
+      if (!trivial(diff, turned.filter((r) => !o.includes(r)))) continue
+      const distance = Math.abs(o[0]! - n[0]!)
+      if (!best || turned.length < best.turned.length || (turned.length === best.turned.length && distance < best.distance)) best = { o, turned, distance }
+    }
+    if (!best) return null
+    if (pairs.some((p) => p.o.some((q) => best.o.includes(q)) || (p.o[0]! < best.o[0]!) !== (p.n[0]! < n[0]!))) return null
+    pairs.push({ o: best.o, n })
+    for (const p of [...n, ...best.turned]) flip.add(p)
+  }
+  return flip
 }
 
 /**
@@ -830,6 +932,8 @@ function placesOf(hay: readonly string[], needle: readonly string[]): number[] {
 /**
  * Hold one § of the comparison against the draft's wording for it
  * (`draftWording`, under the §'s own number and, renumbered, its old one).
+ * `flip` is set by the check alone: the other reading of the §'s word diff
+ * (`keptElsewhere`).
  */
 export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording | undefined)[], law: {
   general: readonly Wording[]
@@ -845,8 +949,8 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
    * missing from it.
    */
   layout?: (words: readonly string[], marked: readonly boolean[]) => { notText: boolean[]; elided: boolean[] }
-} = { general: [], elsewhere: [] }): StrictCheck {
-  const shown = shownTokens(unit)
+} = { general: [], elsewhere: [] }, flip: ReadonlySet<number> | null = null): StrictCheck {
+  const shown = shownTokens(unit, flip ?? undefined)
   if (!shown) return unchecked(unit.change === 'changed' ? STRICT_UNCHECKED.undiffed : STRICT_UNCHECKED.nothingNew)
   const found = wording.filter((w): w is DraftWording => w !== undefined)
   if (!found.length) return unchecked(STRICT_UNCHECKED.unnamed)
@@ -944,6 +1048,23 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     }
   }
   const notInDraft = shown.filter((t, i) => t.marked && !accounted[i]).map((t) => t.word)
+  // New words the row's word diff may have placed off their twins in the left column (`keptElsewhere`): read the
+  // other way, the § holds where every word new in that reading is the draft's; else it stands as read.
+  if (!flip && notInDraft.length && unit.segments) {
+    const runs: number[][] = []
+    let whole = true
+    shown.forEach((t, i) => {
+      if (!whole || !t.marked || accounted[i]) return
+      // A heading's word, or one `respace` parted or joined, has no place of its own in the diff.
+      // Nor a designation the column prints beside a new one („(11)(10)", Tiroler Naturschutzgesetz § 3): the old one a renumbering replaces.
+      if (t.at === undefined || (t.designation && /^\d+[a-z]*$/.test(t.word) && shown[i + 1]?.designation && /^\d+[a-z]*$/.test(shown[i + 1]!.word))) whole = false
+      else if (i > 0 && shown[i - 1]!.marked && !accounted[i - 1]) runs.at(-1)!.push(t.at)
+      else runs.push([t.at])
+    })
+    const turn = whole ? keptElsewhere(diffWords(unit.segments), runs) : null
+    const again = turn ? strictCheck(unit, wording, law, turn) : null
+    if (again?.state === 'holds') return again
+  }
   // A word of the draft's wording the column leaves out where it says it does (`layout.elided`): between the
   // column words its aligned neighbours stand at, an elision. That is not missing, as the gate reads it.
   const behindElision = (j: number): boolean => {

@@ -226,6 +226,22 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     expect(check(full.replace('Die Organe der Behörde haben an der Vollziehung des § 18 mitzuwirken durch ', '')).state).toBe('differs')
   })
 
+  it('reads a word the row\'s diff shows as new as kept, where the left column carries it at that place and the draft writes the rest', () => {
+    // Asylgesetz § 3a (22.11.2026): the diff keeps „der Status" and shows the old „oder" as new; read with „oder" kept, every new word is the draft's.
+    const blocks = [...DRAFT.slice(0, 3), ...parseRisXml('<absatz typ="novao1">1. In § 3a wird die Wortfolge „der Status des Asylberechtigten“ durch die Wortfolge „die Flüchtlingseigenschaft“ und die Wortfolge „des subsidiär Schutzberechtigten“ durch die Wortfolge „der Status subsidiären Schutzes“ ersetzt.</absatz>')]
+    const current = 'Einem Fremden ist von Amts wegen der Status des Asylberechtigten oder des subsidiär Schutzberechtigten zuzuerkennen.'
+    const check = (proposed: string) => annexStrictChecks([row({ law: LAW, gld: '§ 3a.', para: '§ 3a.', current, proposed })], { ...draft, blocks }).get(`${LAW}#§ 3a.`)!
+    expect(check('Einem Fremden ist von Amts wegen die Flüchtlingseigenschaft oder der Status subsidiären Schutzes zuzuerkennen.')).toMatchObject({ state: 'holds', notInDraft: [] })
+    // A word the left column carries only across a stretch of kept text is no kept word at that place: „Fremden" stays new, and not the draft's.
+    expect(check('Einem Fremden ist von Amts wegen die Flüchtlingseigenschaft Fremden der Status subsidiären Schutzes zuzuerkennen.')).toMatchObject({ state: 'differs', notInDraft: ['fremden'] })
+    // A word the left column lacks stays new.
+    expect(check('Einem Fremden ist von Amts wegen die Flüchtlingseigenschaft sowie der Status subsidiären Schutzes zuzuerkennen.')).toMatchObject({ state: 'differs', notInDraft: ['sowie'] })
+    // Nor the old designation a renumbering replaces, printed beside the new one (Tiroler Naturschutzgesetz § 3: „(11)(10)").
+    const renumbering = [...DRAFT.slice(0, 3), ...parseRisXml('<absatz typ="novao1">1. § 3 Abs. 10 entfällt; Abs. 11 erhält die Absatzbezeichnung „(10)“.</absatz>')]
+    const renumbered = annexStrictChecks([row({ law: LAW, gld: '§ 3.', para: '§ 3.', current: '(9) Die Behörde ist zuständig. (10) Die Anlage ist zu melden. (11) Die Frist beträgt vier Wochen.', proposed: '(9) Die Behörde ist zuständig. (11)(10) Die Frist beträgt vier Wochen.' })], { ...draft, blocks: renumbering }).get(`${LAW}#§ 3.`)!
+    expect(renumbered).toMatchObject({ state: 'differs', notInDraft: ['11'] })
+  })
+
   it('reads the annex\'s elision as it says: its designations are no text, and what it leaves out is not missing', () => {
     // „§ 9 Abs. 3 lautet:" restates the whole Absatz; the annex leaves its unchanged first sentence out.
     const blocks = [...DRAFT.slice(0, 3), novao('1. § 9 Abs. 3 lautet:'), abs('"(3) Die Behörde hat den Antrag zu prüfen. Sie entscheidet binnen 14 Tagen."')]
