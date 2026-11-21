@@ -10,6 +10,7 @@
  * ordinary, ink station.
  */
 import { gapDe, gapLabelDe } from '#shared/utils/gaps'
+import { LAND_CONSOLIDATION_DAYS } from '#shared/utils/laender'
 import type { BgblLawsResponse, LandCode, LandLaw } from '#shared/types'
 import { fassungFacts, type FassungFact } from './geltendeFassung'
 
@@ -71,9 +72,6 @@ export function landLawBegutachtungFacts(law: Pick<LandLaw, 'land' | 'route' | '
   return unknown('kein Beleg')
 }
 
-/** How long RIS's consolidation may trail a Kundmachung before „noch nicht eingearbeitet" stops being the likely reading. */
-const CONSOLIDATION_DAYS = 60
-
 /**
  * The Bund's three cases (`fassungFacts`) for a Landesgesetz — with one
  * difference: a law RIS has not consolidated after two months may never
@@ -83,7 +81,7 @@ const CONSOLIDATION_DAYS = 60
  */
 export function landFassungFacts(fassung: BgblLawsResponse | null | undefined, kundgemacht: string | null, today: string = new Date().toISOString().slice(0, 10)): FassungFact[] {
   const facts = fassungFacts(fassung, 'Gesetze')
-  const old = kundgemacht !== null && Date.parse(today) - Date.parse(kundgemacht) > CONSOLIDATION_DAYS * 86_400_000
+  const old = kundgemacht !== null && Date.parse(today) - Date.parse(kundgemacht) > LAND_CONSOLIDATION_DAYS * 86_400_000
   return facts.map((f) => (f.key === 'fassung' && f.text && old
     ? { ...f, text: gapDe('notPublished', 'Eine konsolidierte Fassung, die dieses Landesgesetzblatt nennt, verzeichnet das RIS nicht.') }
     : f))

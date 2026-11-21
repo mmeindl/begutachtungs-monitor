@@ -12,6 +12,14 @@
 import { gapDe } from './gaps'
 import type { DraftStation, LandCode, LandTextStation } from '../types'
 
+/**
+ * How long RIS's consolidation may trail a Landesgesetzblatt's Kundmachung
+ * before „noch nicht eingearbeitet" stops being the likely reading — the
+ * list's facts (`landFassungFacts`) and the § comparison
+ * (`landLawChangesService.ts`) by one number.
+ */
+export const LAND_CONSOLIDATION_DAYS = 60
+
 /** Display order — the order the chips stand in: alphabetical, as the Länder are listed everywhere. */
 export const LAND_CODES: readonly LandCode[] = ['bgld', 'ktn', 'noe', 'ooe', 'sbg', 'stmk', 't', 'vbg', 'w']
 

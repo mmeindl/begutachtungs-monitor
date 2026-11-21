@@ -41,7 +41,9 @@
  * (`harnessStamp`, reach, counts). `--against <dir>` prints every § whose
  * outcome or text moved since that run and fails on a move whose transition
  * `--erwartet` does not name („withheld:unpaired→withheld:lawUnmatched",
- * „text" for a text move of a § shown both times).
+ * „text" for a text move of a § shown both times), and on every move of the
+ * section's own state („Abschnitt: aus „Nicht veröffentlicht“→verglichen“),
+ * which a section off with no § RIS ties to it shows alone.
  *
  * Runs with `-c vitest.config.ts`: the services import `#shared`.
  */
@@ -93,7 +95,7 @@ Object.assign(globalThis, {
   DERIVED_CACHE,
   createError: (input: { statusCode?: number; statusMessage?: string }) => Object.assign(new Error(input.statusMessage ?? 'upstream'), input),
 })
-const { compareLandLawChanges } = await import('../../server/utils/laender/landLawChangesService')
+const { compareLandLawChanges, NOT_CONSOLIDATED_YET_DE } = await import('../../server/utils/laender/landLawChangesService')
 const { fetchLgblIndex, lgblRecord } = await import('../../server/utils/laender/lgblIndex')
 const { isLawEntry } = await import('../../server/utils/laender/landLaws')
 const { konsRefsOfLgbl, lgblNummer } = await import('../../server/utils/laender/landKonsLaws')
@@ -197,7 +199,8 @@ for (const land of LANDS.filter((l) => !onlyLand || l === onlyLand)) {
         line.reason = value.unavailableReason
         line.complete = complete
         Object.assign(line, outcomes(value, await tiedParagraphs(land, e.nr)))
-        if (!complete) unreached.push({ id: `${land}:${e.nr}`, cause: 'unvollständig (eine Quelle antwortete nicht)' })
+        // Not held on purpose where RIS has not consolidated yet; any other incomplete answer rests on a failed read.
+        if (!complete && value.unavailableReason !== NOT_CONSOLIDATED_YET_DE) unreached.push({ id: `${land}:${e.nr}`, cause: 'unvollständig (eine Quelle antwortete nicht)' })
       }
     } catch (err) {
       line.error = (err as Error).message
@@ -247,9 +250,11 @@ if (against) {
     process.exit(1)
   }
   const old = new Map<string, ParagraphLine>()
-  const oldLgbl = new Set<string>()
+  const oldLgbl = new Map<string, LgblLine>()
+  // The section's own state: a section off with no § RIS ties to it moves in its sentence alone.
+  const section = (l: LgblLine) => (!l.offered ? 'nicht angeboten' : l.available ? 'verglichen' : `aus „${(l.reason ?? '').split(':')[0]}“`)
   for (const l of readFileSync(file, 'utf8').split('\n').filter(Boolean).map((s) => JSON.parse(s) as LgblLine)) {
-    oldLgbl.add(`${l.land} ${l.nr}`)
+    oldLgbl.set(`${l.land} ${l.nr}`, l)
     for (const p of l.paragraphs) old.set(`${l.land} ${l.nr} ${p.law} ${p.id}`, p)
   }
   const moves: string[] = []
@@ -258,6 +263,13 @@ if (against) {
     if (!oldLgbl.has(`${l.land} ${l.nr}`)) {
       moves.push(`${l.land} ${l.nr}: nur in diesem Lauf`)
       continue
+    }
+    const was = section(oldLgbl.get(`${l.land} ${l.nr}`)!)
+    if (was !== section(l)) {
+      const t = `Abschnitt: ${was}→${section(l)}`
+      transitions.push(t)
+      if (!expected.has(t)) unexplained++
+      moves.push(`${l.land} ${l.nr}: ${t}${expected.has(t) ? '' : ' (UNERKLÄRT)'}`)
     }
     for (const p of l.paragraphs) {
       const key = `${l.land} ${l.nr} ${p.law} ${p.id}`

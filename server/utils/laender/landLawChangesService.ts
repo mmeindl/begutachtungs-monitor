@@ -9,9 +9,12 @@
  * time. Past `MAX_PARAGRAPHS` the section is off for that law, said in a
  * sentence — a Sammelnovelle of hundreds of §§ is the Landesgesetzblatt's to
  * read. The answer, a few kB per §, is held a week; one that rests on a
- * failed read is not held (`onlyComplete`).
+ * failed read is not held (`onlyComplete`), nor one RIS's consolidation may
+ * still overtake (`NOT_CONSOLIDATED_YET_DE`).
  */
+import { todayIso } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
+import { LAND_CONSOLIDATION_DAYS } from '#shared/utils/laender'
 import type { LandCode, LandLawDiffResponse } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
@@ -48,6 +51,16 @@ function off(reason: string): Gathered<LandLawDiffResponse> {
   }
 }
 
+/**
+ * Where RIS ties no consolidated version to a Landesgesetzblatt kundgemacht
+ * within `LAND_CONSOLIDATION_DAYS` (20.11.2026): the consolidation is late,
+ * as the list above says in the same words (`NOT_CONSOLIDATED_YET`), and the
+ * answer is not held. Until then „Nicht veröffentlicht" stood here, held a
+ * week, beside the list's „noch nicht eingearbeitet" (Kärnten LGBl. Nr.
+ * 67/2026, 31 days after its Kundmachung).
+ */
+export const NOT_CONSOLIDATED_YET_DE = 'Im RIS noch nicht eingearbeitet: Die konsolidierte Fassung, die dieser Vergleich liest, folgt der Kundmachung mit einigen Tagen Verzug.'
+
 /** The § text of one version, from its XML; null where it could not be read or holds none. */
 async function unitOf(v: LandKonsVersion): Promise<LawUnit | null> {
   if (!v.xmlUrl) return null
@@ -68,6 +81,8 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   const news = versions.filter((v) => namesAsLast(v.organ, nummer))
   const repeals = versions.filter((v) => repealedBy(v.organ, nummer))
   if (!news.length && !repeals.length) {
+    const young = promulgated !== null && Date.parse(todayIso()) - Date.parse(promulgated) <= LAND_CONSOLIDATION_DAYS * 86_400_000
+    if (young) return { ...off(NOT_CONSOLIDATED_YET_DE), complete: false }
     return { ...off(gapDe('notPublished', 'Eine konsolidierte Fassung, die dieses Landesgesetzblatt nennt, verzeichnet das RIS nicht.')), complete: searchComplete }
   }
 

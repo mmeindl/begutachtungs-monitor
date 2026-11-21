@@ -81,6 +81,44 @@ describe('compareLandLawChanges — RIS’s two versions of one § are one unit 
   })
 })
 
+describe('compareLandLawChanges — a Landesgesetzblatt RIS has not consolidated (20.11.2026)', () => {
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
+
+  it('says „noch nicht eingearbeitet“ within the window the list says it for, and keeps nothing', async () => {
+    konsRefsOfLgbl.mockResolvedValue({ refs: [], complete: true })
+    const { value, complete } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(31))
+    expect(value.available).toBe(false)
+    expect(value.unavailableReason).toMatch(/^Im RIS noch nicht eingearbeitet: /)
+    expect(complete).toBe(false)
+  })
+
+  it('says „Nicht veröffentlicht“ only after it, and holds that', async () => {
+    konsRefsOfLgbl.mockResolvedValue({ refs: [], complete: true })
+    const { value, complete } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(61))
+    expect(value.unavailableReason).toMatch(/^Nicht veröffentlicht: /)
+    expect(complete).toBe(true)
+  })
+})
+
+describe('compareLandLawChanges — a Landesgesetzblatt RIS has not consolidated (20.11.2026)', () => {
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
+
+  it('says „noch nicht eingearbeitet“ within the window the list says it for, and keeps nothing', async () => {
+    konsRefsOfLgbl.mockResolvedValue({ refs: [], complete: true })
+    const { value, complete } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(31))
+    expect(value.available).toBe(false)
+    expect(value.unavailableReason).toMatch(/^Im RIS noch nicht eingearbeitet: /)
+    expect(complete).toBe(false)
+  })
+
+  it('says „Nicht veröffentlicht“ only after it, and holds that', async () => {
+    konsRefsOfLgbl.mockResolvedValue({ refs: [], complete: true })
+    const { value, complete } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(61))
+    expect(value.unavailableReason).toMatch(/^Nicht veröffentlicht: /)
+    expect(complete).toBe(true)
+  })
+})
+
 describe('compareLandLawChanges — a law no instruction could be matched to (20.11.2026)', () => {
   it('names its §§ as such, never as §§ an instruction names', async () => {
     // A Novelle of a law LGBl. Nr. 12/2001 enacted, whose Landesgesetzblatt yields no instruction the monitor reads.
