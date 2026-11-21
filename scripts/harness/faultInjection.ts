@@ -48,14 +48,36 @@
  *
  * **And the reader's faults in the right column** (21.11.2026), the Länder
  * harness's classes, built by the same edits (`lib/rightColumnFaults.ts`), in
- * every § the left check confirms: **Zahl** (the first number of the new text
- * plus seven), **Wort** (its longest word swapped), **Satz-weg** (its last
- * sentence gone), and **R-weg**, a sentence the draft keeps lost from the
- * right column, which the page then shows struck. Both right-column rules
- * read new words against bags, from floors up (`MIN_NEW_WORDS`,
- * `MIN_MISSING_WORDS`), and no rule reads struck text: these were the
- * Länder's blind spot until 20.11.2026, and the run says what they are for
- * the Bund.
+ * every § the left check confirms: **Zahl** (the first figure of the new text
+ * plus seven — a figure, not a label), **Spalte-Bezeichnung** (its first
+ * Absatz, Ziffer or Litera label moved by one), **Wort** (its longest word
+ * swapped), **Satz-weg** (its last sentence gone), and **R-weg**, a sentence
+ * the draft keeps lost from the right column, which the page then shows
+ * struck. Both right-column rules read new words against bags, from floors
+ * up (`MIN_NEW_WORDS`, `MIN_MISSING_WORDS`), and no rule reads struck text:
+ * these were the Länder's blind spot until 20.11.2026, and the run says what
+ * they are for the Bund. The same faulted rows are held by the oracle
+ * against the unchanged result too („Lesefehler in der rechten Spalte",
+ * record field `column`), since 21.11.2026: there they are the annex's
+ * column the page would show, and the question is whether it is marked.
+ *
+ * | 21.11.2026, GP XXVIII | Tor PDF | Tor Tabelle | Orakel PDF | Orakel Tabelle |
+ * |---|---:|---:|---:|---:|
+ * | Zahl               | 34/1382 | 1/770 | 1021/1024 (99,7 %) | 698/699 (99,9 %) |
+ * | Spalte-Bezeichnung | 28/701  | 1/408 |  356/613 (58,1 %)  | 285/452 (63,1 %) |
+ * | Satz-weg           | 11/335  | 0/172 |  257/259 (99,2 %)  | 153/157 (97,5 %) |
+ * | R-weg              | 10/1162 | 2/845 |  670/722 (92,8 %)  | 521/557 (93,5 %) |
+ *
+ * Until these builders said what they build, the oracle stood at 89,3 and
+ * 87,8 % for Zahl, 95,9 and 96,0 % for Satz-weg and 73,2 and 98,1 % for
+ * R-weg: Zahl changed labels (96 of the 115 PDF misses a Ziffer or Absatz
+ * marker), and the edit landed at the first place the stretch's text
+ * occurred, inside „§ 139." for a stretch „1"; Satz-weg dropped a bare „(3)"
+ * or cut a date after its day; R-weg struck the heading stack before
+ * „§ 31.". The table path's R-weg fell: its old „sentence" took the
+ * Absatz's „(1)" with it, and check 5 missed the marker, not the words; the
+ * marker stays now and only the sentence goes (`withKeptSentenceLost`). Spalte-Bezeichnung is caught by check 5 where the label is
+ * an Absatz's, and nowhere else.
  *
  * The left column is untouched in both R faults, so "die linke Prüfung
  * besteht" reads 100 % there by construction — that is the statement, not a
@@ -334,7 +356,7 @@ import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
 import { diffTokens } from '../../server/utils/diff/wordDiff'
 import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
-import { normalizeText } from '../../server/utils/lawtext/normalize'
+import { displayTokens, normalizeText } from '../../server/utils/lawtext/normalize'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { articleBlocks, draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { getText, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
@@ -357,7 +379,7 @@ import { argAssigned, argFlag } from '../lib/args'
 import { corpusReach, floorOf, harnessStamp, type FloorStatus } from '../lib/harnessRecord'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
-import { donorSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
+import { bumpedDesignation, donorSentence, isSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
 import { chainedAbsaetze } from '../lib/faultSites'
 import { annexSources, resolveKonsLaw } from '../lib/productionSources'
 
@@ -518,23 +540,35 @@ function withMirroredRow(rows: readonly ComparisonRow[], like: ComparisonRow, te
  * A row the annex prints as inserted has its column edited; in a changed row
  * the first inserted stretch the edit applies to is found in the proposed
  * column and edited there, and the row is re-diffed as the reader would
- * diff it. Null where no new text has anything to break.
+ * diff it. Null where no new text has anything to break. The edit is told
+ * what the column prints before the stretch: whether „1." is a Ziffer's
+ * label depends on what stands in front of it.
  */
-function withNewTextEdited(rows: readonly ComparisonRow[], edit: (text: string) => string | null): ComparisonRow[] | null {
+function withNewTextEdited(rows: readonly ComparisonRow[], edit: (text: string, before: string) => string | null): ComparisonRow[] | null {
   for (const row of rows) {
     if (row.kind !== 'pair' || row.elided) continue
     if (row.change === 'inserted') {
-      const proposed = edit(row.proposed)
+      const proposed = edit(row.proposed, '')
       if (proposed !== null) return withRow(rows, row, { ...row, proposed })
       continue
     }
     if (row.change !== 'changed' || !row.segments) continue
+    // Where the stretch stands, by the diff's own words: the proposed
+    // column's display words run index for index with the equal and inserted
+    // segments. Until 21.11.2026 the first occurrence of the stretch's text
+    // was edited, and a stretch „1" or „3" landed in „§ 139." or „§ 83."
+    // before it — 13 of the 115 misses of „Zahl" on the PDF path.
+    const words = displayTokens(row.proposed)
+    let j = 0
     for (const segment of row.segments) {
-      if (segment.type !== 'inserted') continue
-      const edited = edit(segment.text)
-      const at = row.proposed.indexOf(segment.text)
-      if (edited === null || at < 0) continue
-      const proposed = `${row.proposed.slice(0, at)}${edited}${row.proposed.slice(at + segment.text.length)}`
+      if (segment.type === 'removed') continue
+      const n = segment.text.split(' ').length
+      const at = j
+      j += n
+      if (segment.type !== 'inserted' || words.slice(at, at + n).join(' ') !== segment.text) continue
+      const edited = edit(segment.text, at > 0 ? `${words.slice(0, at).join(' ')} ` : '')
+      if (edited === null) continue
+      const proposed = [...words.slice(0, at), edited, ...words.slice(at + n)].join(' ')
       return withRow(rows, row, { ...row, proposed, segments: diffTokens(row.current, proposed).segments })
     }
   }
@@ -548,11 +582,19 @@ function withNewTextEdited(rows: readonly ComparisonRow[], edit: (text: string) 
  * the proposed one, and the row re-diffed. The page then shows the draft
  * striking a sentence it leaves alone. No rule reads struck text, so the
  * gate is blind to it by construction; the run states it as a figure.
+ *
+ * **A sentence of the law's text (21.11.2026)**: on the PDF path a row's
+ * first „sentence" by the splitter is the heading stack with the § opening
+ * („Allgemeines § 31. (1) Die …"), and 199 of the oracle's 218 misses were
+ * that stack struck, not a sentence. What stands before the § designation
+ * and the markers after it are cut off, and what is left has to be a
+ * sentence (`isSentence`).
  */
 function withKeptSentenceLost(rows: readonly ComparisonRow[]): ComparisonRow[] | null {
+  const lawSentence = (s: string): string => s.replace(/^.*§+\.?\s*\d+[a-z]*\.(?:\s+|$)/su, '').replace(/^(?:(?:\(\d+[a-z]?\)|\d+[a-z]?\.|[a-z]{1,2}\)|…|\.\.\.)\s*)+/, '')
   for (const row of rows) {
     if (row.kind !== 'pair' || row.elided || (row.change !== 'changed' && row.change !== 'unchanged')) continue
-    const kept = sentencesOf(row.proposed).find((s) => toks(s).length >= MIN_STANDING_STRETCH && row.current.includes(s))
+    const kept = sentencesOf(row.proposed).map(lawSentence).find((s) => isSentence(s) && toks(s).length >= MIN_STANDING_STRETCH && row.current.includes(s))
     if (!kept) continue
     const proposed = row.proposed.replace(kept, '').replace(/\s{2,}/g, ' ').trim()
     return withRow(rows, row, { ...row, proposed, change: 'changed', segments: diffTokens(row.current, proposed).segments })
@@ -757,7 +799,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
     // The right column's new text misread, and a kept sentence lost from it
     // (21.11.2026): every § the left check confirms, as the Länder harness
     // asks every § it shows — not only those with a site for the faults below.
-    const edits = [[faults.Zahl, raisedNumber], [faults.Wort, swappedWord], [faults.SatzWeg, (t: string) => lastSentenceGone(t, SENTENCE_SPLIT)]] as const
+    const edits = [[faults.Zahl, raisedNumber], [faults.Bezeichnung, bumpedDesignation], [faults.Wort, swappedWord], [faults.SatzWeg, (t: string) => lastSentenceGone(t, SENTENCE_SPLIT)]] as const
     for (const [into, edit] of edits) {
       const faulted = withNewTextEdited(para.rows, edit)
       if (faulted) record(into, judge(faulted, para.standing, wide, bagOf(para)), baseVerdict)
@@ -1624,6 +1666,30 @@ async function injectIntoResults(
       }
       if (report.verdict !== 'bestätigt' || before === null) continue
       results.confirmed++
+      // The reader's faults in the annex's right column (21.11.2026), built as
+      // the gate's are (`withNewTextEdited`, `withKeptSentenceLost`) and held
+      // against the unchanged result: does the oracle see that the column
+      // the page shows is not the draft? Without the witness, which settles
+      // the result and not the column.
+      for (const [into, faulted] of [
+        [oracleFaults.SpalteZahl, withNewTextEdited(paraRows, raisedNumber)],
+        [oracleFaults.SpalteBezeichnung, withNewTextEdited(paraRows, bumpedDesignation)],
+        [oracleFaults.SpalteSatzWeg, withNewTextEdited(paraRows, (t: string) => lastSentenceGone(t, SENTENCE_SPLIT))],
+        [oracleFaults.SpalteRweg, withKeptSentenceLost(paraRows)],
+      ] as const) {
+        if (!faulted) continue
+        into.tried++
+        const judged = oracleVerdict(id, before, got, faulted, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
+        if (judged.verdict !== 'bestätigt') {
+          into.caught++
+          into.byCheck.set(checkOf(judged.note), (into.byCheck.get(checkOf(judged.note)) ?? 0) + 1)
+          continue
+        }
+        const row = faulted.find((r, i) => r !== paraRows[i])
+        const was = row ? paraRows[faulted.indexOf(row)]!.proposed : ''
+        const at = row ? [...row.proposed].findIndex((ch, i) => ch !== was[i]) : -1
+        into.misses.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — „…${was.slice(Math.max(0, at - 70), at + 50)}…" → „…${row ? row.proposed.slice(Math.max(0, at - 70), at + 50) : ''}…"`)
+      }
       // The reverse (20.11.2026): a fault in the annex's proposed column of a
       // confirmed § — a figure changed — contradicts our result, and the
       // witness may then show it. The result is the unfaulted one, so a
@@ -1906,7 +1972,8 @@ const faults = {
   Rold: tally('R-alt fremder geltender Satz rechts'),
   Rnew: tally('R-neu fremder Entwurfssatz rechts'),
   U: tally('U     fremder Satz beidspaltig gleich'),
-  Zahl: tally('Zahl  erste Zahl im neuen Text +7'),
+  Zahl: tally('Zahl  erste Zahl des Textes, neu, +7'),
+  Bezeichnung: tally('Spalte-Bezeichnung erste Marke, neu, +1'),
   Wort: tally('Wort  längstes neues Wort getauscht'),
   SatzWeg: tally('Satz-weg letzter neuer Satz fehlt'),
   Rweg: tally('R-weg Satz rechts verloren'),
@@ -1939,7 +2006,13 @@ const oracleFaults = {
   UngedrucktKomma: oracleTally('Ungedruckt-Komma Komma fehlt'),
   Payload: oracleTally('Payload neuer Text falsch gelesen'),
   BeilageZahl: oracleTally('Beilage-Zahl Zahl in der Beilage'),
+  SpalteZahl: oracleTally('Spalte-Zahl erste Zahl des Textes +7'),
+  SpalteBezeichnung: oracleTally('Spalte-Bezeichnung erste Marke +1'),
+  SpalteSatzWeg: oracleTally('Spalte-Satz-weg letzter neuer Satz fehlt'),
+  SpalteRweg: oracleTally('Spalte-R-weg Satz rechts verloren'),
 }
+/** The reader's faults in the annex's right column, held by the oracle against the unchanged result. */
+const columnClasses = [oracleFaults.SpalteZahl, oracleFaults.SpalteBezeichnung, oracleFaults.SpalteSatzWeg, oracleFaults.SpalteRweg]
 /** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
 const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich, oracleFaults.Bezeichnung, oracleFaults.Komma, oracleFaults.UngedrucktKomma]
 /** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
@@ -2085,6 +2158,12 @@ for (const fault of wordClasses) {
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})   ${by('P1')} ${by('P2')} ${by('P2r')} ${by('P3')} ${by('P3o')} ${by('P4')} ${by('P5')}`)
   for (const [kind, [tried, caught]] of fault.kinds) console.log(`      ${kind.padEnd(22)} ${String(tried).padStart(4)}   ${String(caught).padStart(6)} (${pct(caught, tried)})`)
 }
+console.log(`\n  Lesefehler in der rechten Spalte der Beilage, vom Orakel gegen das unveränderte Ergebnis gehalten — gefangen von Prüfung 1 bis 5`)
+console.log(`  Fehler                                §§   gefangen               P1     P2    P2r     P3    P3o     P4     P5`)
+for (const fault of columnClasses) {
+  const by = (check: string): string => String(fault.byCheck.get(check) ?? 0).padStart(6)
+  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})   ${by('P1')} ${by('P2')} ${by('P2r')} ${by('P3')} ${by('P3o')} ${by('P4')} ${by('P5')}`)
+}
 // The second witness (20.11.2026): §§ the oracle contradicts and the draft's
 // PDF settles, and what a misread payload does there.
 console.log(`\n  Zweiter Zeuge (Gesetzestext im PDF des Entwurfs): ${results.witnessed} widersprochene Paragraphen gezeigt`)
@@ -2098,7 +2177,7 @@ for (const fault of [oracleFaults.Payload, oracleFaults.BeilageZahl]) {
 console.log(`\n  Ergebnisse mit einer Absatznummer zweimal: ${results.dupAbs.length}`)
 for (const line of results.dupAbs) console.log(`      · ${line}`)
 if (argFlag('misses')) {
-  for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses]) {
+  for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses, ...columnClasses]) {
     for (const line of fault.misses) console.log(`    ${line.startsWith('        ') ? '' : `${fault.label.split(' ')[0]} durchgelassen: `}${line}`)
   }
 }
@@ -2198,6 +2277,8 @@ if (jsonPath) {
       // Why the class cannot occur on this path, where its floor says „nicht anwendbar".
       ...(floor?.status.get(keyOf(f.label)) === 'nicht anwendbar' && floored.has(f) ? { notApplicable: notApplicableOf(keyOf(f.label)) } : {}),
     })),
+    // The annex's right column misread, as the oracle sees it against the unchanged result.
+    column: columnClasses.map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f), ...(floor && floored.has(f) ? { floor: floor.status.get(keyOf(f.label)) } : {}) })),
   }
   writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonPath}`)
