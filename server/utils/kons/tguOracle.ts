@@ -1550,10 +1550,18 @@ function regionsOf(runs: readonly TokenRun[]): Region[] {
  * the PDF path) and raised the corpus alarms over both paths from five to
  * seventeen („die Bezeichnung des", „Der Sparkassenrat kann": old wording of a
  * replaced sentence, standing by chance at the edge of the next one). The
- * words have to be the ones *this* region strikes. They are read off the
- * result rather than off the region's start, because where a row rewrites
- * one sentence and drops the next the region holds both, and the struck
- * sentence is its second half (Sektenfragen-Gesetz § 11).
+ * words have to be ones *this row* strikes, as one run of one striking
+ * region. They are read off the result rather than off the region's start,
+ * because where a row rewrites one sentence and drops the next the region
+ * holds both, and the struck sentence is its second half (Sektenfragen-Gesetz
+ * § 11). And any striking region of the row may hold them, not only the one
+ * asked about (21.11.2026): where the struck sentence shares words with the
+ * new one, the word diff cuts it in two, and what stands at the stretch's
+ * edge is the half the other region holds — Strafvollzugsgesetz § 98 was
+ * confirmed without the sentence the right column lost. Measured before it
+ * was built: 0 of 2,813 (PDF) and 2,026 (table) unfaulted verdicts and none
+ * of the bench's moved; „Spalte-R-weg" caught 670 → 674 of 722 and 521 →
+ * 528 of 557.
  *
  * Not asked: a region where the proposed column sets a mark the current one
  * does not — the ressort leaving text out, not striking it; and, before the
@@ -1599,11 +1607,13 @@ export function keptDeletion(got: string, rows: readonly ComparisonRow[]): strin
     // Words the result carries beside a stretch are struck text still
     // standing when one piece of the region strikes those very words and the
     // § prints them nowhere on the right.
-    const standing = (beside: string[], region: Region): boolean =>
-      beside.length >= MIN_KEPT && region.pieces.some((piece) => runAt(piece, beside) >= 0) && runAt(shownRight, beside) < 0
+    const regions = regionsOf(runs)
+    const struck = regions.filter((r) => r.strikes && !r.elided).flatMap((r) => r.pieces)
+    const standing = (beside: string[]): boolean =>
+      beside.length >= MIN_KEPT && struck.some((piece) => runAt(piece, beside) >= 0) && runAt(shownRight, beside) < 0
     const heading = headingOf(row.current)
 
-    for (const region of regionsOf(runs)) {
+    for (const region of regions) {
       if (!region.strikes || region.elided) continue
       const leftPrinted = region.from > 0 && proposed[region.from - 1] !== ELISION
       const rightPrinted = region.to < proposed.length && proposed[region.to] !== ELISION
@@ -1629,13 +1639,13 @@ export function keptDeletion(got: string, rows: readonly ComparisonRow[]): strin
       const end = !rightPrinted && (leftPrinted || inserted) ? ends[stretchOf[region.to - 1]!] : null
       if (end != null) {
         const beside = gotTokens.slice(end, end + width)
-        if (standing(beside, region)) return beside.join(' ')
+        if (standing(beside)) return beside.join(' ')
       }
       // The stretch the region opens: the words before it.
       const start = !leftPrinted && (rightPrinted || inserted) ? starts[stretchOf[region.from]!] : null
       if (start != null) {
         const beside = gotTokens.slice(Math.max(0, start - width), start)
-        if (standing(beside, region) && runAt(heading, beside) < 0) return beside.join(' ')
+        if (standing(beside) && runAt(heading, beside) < 0) return beside.join(' ')
       }
       // Pieces with no printed word beside them inside the region and none
       // at its edge: between the current column's own marks, or where the

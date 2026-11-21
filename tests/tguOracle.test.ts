@@ -1414,3 +1414,20 @@ describe('check 6: the labels below the Absatz (21.11.2026)', () => {
     expect(labelBroken(row(printed.replace('2. die Arten', 'gemäß Abs. 2. die Arten')), units, containmentKey(got))).toBeNull()
   })
 })
+
+describe('a kept sentence struck where the word diff splits it on words it shares with the new one (21.11.2026)', () => {
+  // Strafvollzugsgesetz § 98 (Strafvollzugsnovelle 2026), fault „Satz rechts
+  // verloren": the right column lost the first sentence, which the law keeps.
+  // „Behörde oder Sicherheitsdienststelle" stands in both sentences, so the
+  // word diff cut the struck one in two regions; the words the result carries
+  // before the stretch are the struck sentence's END, which only the second
+  // region holds, and check 4 asked the first.
+  const kept = 'Ein Strafgefangener darf ausgeführt werden, wenn eine inländische Behörde oder Sicherheitsdienststelle darum ersucht oder wenn dazu aus Vollzugs- oder anderen Verwaltungsgründen Veranlassung besteht.'
+  const added = 'Von einer Ausführung ist abzusehen, wenn ihr Zweck aus Sicht der ersuchenden Behörde oder Sicherheitsdienststelle durch ein Vorgehen nach § 97 oder durch die Verwendung technischer Einrichtungen zur Wort- und Bildübertragung erreicht werden kann.'
+  const rows = [{ ...pair(`(1) ${kept}`, `(1) ${added}`, '§ 98.'), change: 'changed' as const }]
+
+  it('reads the struck text of every region of the row beside the stretch', () => {
+    expect(keptDeletion(`${kept} ${added}`, rows)).toMatch(/Veranlassung besteht/)
+    expect(keptDeletion(added, rows)).toBeNull()
+  })
+})
