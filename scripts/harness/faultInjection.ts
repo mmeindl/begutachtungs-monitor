@@ -353,7 +353,7 @@ import { windowLine, windowOf } from '../lib/annexReport'
 import { renditionOfPages, witnessVerdict, type DraftRendition, type WitnessInstruction, type WitnessPlace } from '../../server/utils/kons/draftWitness'
 import { writeFileSync } from 'node:fs'
 import { argAssigned, argFlag } from '../lib/args'
-import { corpusReach, floorOf, harnessStamp } from '../lib/harnessRecord'
+import { corpusReach, floorOf, harnessStamp, type FloorStatus } from '../lib/harnessRecord'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
 import { lastSentenceGone, raisedNumber, swappedWord } from '../lib/rightColumnFaults'
@@ -2042,6 +2042,30 @@ if (floor) {
 }
 
 /**
+ * The annex gate's classes under the same flag (21.11.2026), each at its own
+ * floor: the gate catches 60 to 80 % of them by design, so 95 % would fail
+ * every run, and with no floor a change that weakens the left check or a
+ * right-column rule showed only as a smaller figure on /genauigkeit after a
+ * round. Each floor is the class's lower measured share over both paths,
+ * rounded down to five (20.11.2026: L 62,9 % PDF, 66,5 % table; R-alt 68,9 /
+ * 79,4 %; R-neu 79,5 / 76,0 %). U and the reader's faults in the right
+ * column are blind spots by construction, measured near 0 %, and not held.
+ */
+const GATE_FLOORS: Record<string, number> = { L: 60, 'R-alt': 65, 'R-neu': 75 }
+const gateStatus = (f: FaultTally): FloorStatus => {
+  const key = keyOf(f.label)
+  return floorOf([{ key, tried: f.tried, caught: f.shipped }], GATE_FLOORS[key]!).status.get(key)!
+}
+const gateFloor = floor && new Map(Object.values(faults).filter((f) => keyOf(f.label) in GATE_FLOORS).map((f) => [keyOf(f.label), gateStatus(f)] as const))
+for (const [key, status] of gateFloor ?? []) {
+  const f = Object.values(faults).find((x) => keyOf(x.label) === key)!
+  if (status === 'verfehlt') console.log(`  ✗ Tor unter ${GATE_FLOORS[key]} %: ${f.label.trim()} — ${f.shipped}/${f.tried}`)
+  if (status === 'nicht gehalten') console.log(`  · Tor nicht gehalten (unter 20 Versuchen): ${f.label.trim()} — ${f.shipped}/${f.tried}`)
+}
+const gatePassed = ![...(gateFloor?.values() ?? [])].includes('verfehlt')
+if (gateFloor && gatePassed) console.log(`  ✓ das Tor fängt L, R-alt und R-neu mindestens zu ${Object.entries(GATE_FLOORS).map(([k, v]) => `${k} ${v} %`).join(', ')}`)
+
+/**
  * `--json=<file>`: the tallies above as a record (19.11.2026), for
  * `scripts/harness/genauigkeit.ts`, which writes the figures `/genauigkeit`
  * shows. Each class with its key (the label's first word), its label, how
@@ -2049,7 +2073,8 @@ if (floor) {
  * catches (`shipped`) and how many of those it withheld without the fault
  * too (`alreadyWithheld`). `floored` marks the classes `--mindestens` holds,
  * `floor` what it made of each, and the record's `floor` the outcome — null
- * where the run had no floor, which the builder refuses.
+ * where the run had no floor, which the builder refuses. An annex class the
+ * gate's floor holds (`GATE_FLOORS`) carries its `floorMin` and its `floor`.
  */
 const jsonPath = argAssigned('json')
 if (jsonPath) {
@@ -2064,7 +2089,14 @@ if (jsonPath) {
     window: listWindow,
     drafts,
     floor: floor ? { min: floor.min, passed: floor.passed, failed: floor.failed, unheld: floor.unheld } : null,
-    annex: Object.values(faults).map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.shipped, alreadyWithheld: f.shippedAlready })),
+    annex: Object.values(faults).map((f) => ({
+      key: keyOf(f.label),
+      label: f.label.trim(),
+      tried: f.tried,
+      caught: f.shipped,
+      alreadyWithheld: f.shippedAlready,
+      ...(gateFloor?.has(keyOf(f.label)) ? { floorMin: GATE_FLOORS[keyOf(f.label)], floor: gateFloor.get(keyOf(f.label)) } : {}),
+    })),
     result: [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses, oracleFaults.Payload].map((f) => ({
       key: keyOf(f.label),
       label: f.label.trim(),
@@ -2077,4 +2109,4 @@ if (jsonPath) {
   writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonPath}`)
 }
-if (floor && !floor.passed) process.exit(1)
+if ((floor && !floor.passed) || !gatePassed) process.exit(1)
