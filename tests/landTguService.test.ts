@@ -520,7 +520,8 @@ describe('compareTgu — the right column held against the draft\'s own text (12
     rows(row('§ 5.', `Begriffe § 5. ${TEXT_5.slice('Begriffe '.length)}`, 'Begriffe § 5. (1) Begriffe sind in diesem Gesetz so zu verstehen, wie sie hier stehen und gelten.'))
     const r = (await compareTgu('sbg', sbg())).value
     expect(r.units.map((u) => [u.id, u.change])).toEqual([['§5', 'changed']])
-    expect(r.withheld).toEqual([])
+    // § 5 is not withheld. The draft repeals § 7, which the comparison does not print: named, not dropped (21.11.2026).
+    expect(r.withheld).toEqual([{ law: SBG_LAW, id: '§7', reason: 'unprinted' }])
   })
 
   it('withholds nothing and stores nothing where the draft could not be read', async () => {
