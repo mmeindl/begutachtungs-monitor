@@ -51,7 +51,7 @@ export const TERMS = {
   'nicht-geprueft': {
     label: 'nicht geprüft',
     definition:
-      'Die Prüfung ließ sich nicht durchführen: Das RIS führt das Gesetz oder den Paragraphen nicht oder lässt seine Absätze nicht auseinanderhalten, oder die Beilage selbst gibt zu wenig her: zu wenig geltenden Text für den Vergleich mit dem RIS oder zu wenig neuen Text für den Abgleich mit dem vorgeschlagenen Gesetzestext. Das ist kein Befund über den Entwurf, sondern einer über die Prüfbarkeit; der Grund steht beim Gesetz.',
+      'Die Prüfung ließ sich nicht durchführen, etwa weil das RIS das Gesetz oder den Paragraphen nicht führt oder seine Absätze nicht auseinanderhalten lässt, oder weil die Beilage zu wenig Text hergibt: zu wenig geltenden für den Vergleich mit dem RIS oder zu wenig neuen für den Abgleich mit dem vorgeschlagenen Gesetzestext. Das ist kein Befund über den Entwurf, sondern einer über die Prüfbarkeit; der Grund steht beim Gesetz.',
   },
   /** A Land's Textgegenüberstellung: the new text against the draft's own Gesetzestext (`landUnchecked.ts`). */
   'nicht-geprueft-entwurf': {
