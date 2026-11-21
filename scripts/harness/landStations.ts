@@ -31,7 +31,8 @@
  * of them is fetched through `landPdfBytes` at one request per second and
  * kept (`--cached-only`: not fetched, the pair counted as missing). RIS — the
  * Landesgesetzblatt's record and XML — goes through the harness fetch cache
- * (`HARNESS_CACHE`, default `.harness-cache`).
+ * (`HARNESS_CACHE`, default `.harness-cache`); with `--cached-only` a record
+ * or XML not on disk is not asked for either, and its pair ends as „Fehler".
  *
  * THE INVARIANTS. Each counts what the page would show and must not:
  *  - `#dup`: a unit id the parser marked as a repeat — the page prints it
@@ -75,6 +76,20 @@
  * run found 12 long units whose words stood unmarked past the word diff's
  * ceiling.
  *
+ * A NULL COMPARISON (21.11.2026), as `station.ts` holds the Bund's last
+ * parliamentary text against the Kundmachung: where the committee's report
+ * carries the text (Oberösterreich, `LAND_COMMITTEE_TEXT`), that text
+ * against the Landesgesetzblatt, through `compareReadTexts`. Nothing may
+ * change, unless the Landtag or the editing for publication changed it.
+ * Every unit not unchanged is a residue, printed with its pieces and
+ * compared for equality with `landStationsNullBaseline.json`, which names
+ * for each one not editorial why it stands; one that came or went fails the
+ * run. A residue is told apart by reading both documents' raw text at its
+ * place: the source's where the texts themselves differ, the reader's where
+ * both carry the same words and a reader put them elsewhere. RIS holds the
+ * Landesgesetzblatt as its authentic PDF too, but no cache does: XML against
+ * PDF, one document read twice, waits for a run with network.
+ *
  * Counted beside them, not asserted: the instructions a pair withholds or
  * names as unread because one side or both did not read what they announce
  * (`announcedText.ts`, 19.11.2026), per pair in `comparisons.jsonl` and
@@ -99,8 +114,8 @@ import { harnessStamp } from '../lib/harnessRecord'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
-import { landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPerLand, recurringRuns, type PairState } from '../lib/landStationChecks'
-import type { Breach } from '../lib/stationChecks'
+import { baselineMoves, landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPerLand, recurringRuns, type PairState } from '../lib/landStationChecks'
+import { residuesOf, type Breach, type Residue } from '../lib/stationChecks'
 import { comparedText, diffLandDraft } from '../../server/utils/laender/landLawDiff'
 import type { LawUnit } from '../../server/utils/lawtext/lawUnits'
 import { MUTATION_KINDS, MUTATION_LABELS, isMiss, mutations, mutationOutcome, type MutationKind, type MutationOutcome } from '../lib/stationMutations'
@@ -115,6 +130,10 @@ if (!outDir) {
   process.exit(1)
 }
 mkdirSync(outDir, { recursive: true })
+// `--cached-only` keeps RIS offline too (21.11.2026): the fetch cache fetches
+// what it does not hold, and a record or XML not on disk would have been
+// asked for. Throwing underneath it, a miss fails its pair as „Fehler".
+if (cachedOnly) globalThis.fetch = (async (input: unknown) => { throw new Error(`nicht im Cache (--cached-only): ${String(input)}`) }) as typeof fetch
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 // The comparison's module defines its Nitro cache at load: the identity
@@ -132,6 +151,8 @@ const EU = '.cache/eu-laender'
 const OWN_DOCS = '.harness-cache/land-stations-docs'
 /** The invariant hits read and found to be the documents' own, each with why (committed). */
 const ACCEPTED = 'scripts/harness/landStationsAccepted.json'
+/** The null comparison's residues, compared for equality, each that is not editorial with why it stands (committed). */
+const NULL_BASELINE = 'scripts/harness/landStationsNullBaseline.json'
 mkdirSync(OWN_DOCS, { recursive: true })
 
 // --- Bytes: cached wherever they are, else fetched at 1 request/s ---------
@@ -206,6 +227,13 @@ interface ComparisonLine {
   droppedPages?: number
 }
 const lines: ComparisonLine[] = []
+/**
+ * The null comparison (21.11.2026): the committee's text against the
+ * Landesgesetzblatt, where the committee's report carries the text
+ * (Oberösterreich) — the Bund's „last parliamentary text against the
+ * Kundmachung" in a Land's shape. Kept apart from the pairs the page offers.
+ */
+const nullLines: (ComparisonLine & { residues: Residue[] })[] = []
 /** Every distinct unit of a pair's later text, by its text, with its pair and where it stands — for the fault injection below. */
 const laterUnits = new Map<string, { unit: LawUnit; from: LandTextStation; to: LandTextStation; where: string }>()
 /** Every draft of the population: its detail in the cache, and the pairs it offers (`pairsPerLand`). */
@@ -270,6 +298,24 @@ for (const item of items) {
       const said = (b: Breach) => `${b.kind} | ${b.unit} | ${b.detail}`
       line.breaches = checks.breaches.map(said)
       line.symmetry = back.available ? checks.symmetry.map(said) : [`rückwärts nicht verfügbar | ${back.unavailableReason ?? ''}`]
+    } catch (err) {
+      line.state = /nicht im Cache/.test(String(err)) ? 'fehlt' : 'Fehler'
+      line.reason = String(err).slice(0, 200)
+    }
+  }
+  // The null comparison: nothing may change between the committee's text and the Kundmachung, unless the Landtag changed it.
+  if (sources.ausschuss && sources.lgbl) {
+    const line = { land: item.land, draft: item.id, pair: 'ausschuss→lgbl', state: 'verglichen' as PairState, reason: null as string | null, from: null, to: null, stats: null as LandLawDiffResponse['stats'] | null, units: [], withheld: [], unread: [], breaches: [], symmetry: [], residues: [] as Residue[] }
+    nullLines.push(line)
+    try {
+      const value = compareReadTexts('ausschuss', 'lgbl', [await sources.ausschuss.read(), await sources.lgbl.read()], [sources.ausschuss.document, sources.lgbl.document])
+      if (!value.available) {
+        line.state = 'nicht verfügbar'
+        line.reason = value.unavailableReason
+      } else {
+        line.stats = value.stats
+        line.residues = residuesOf(value.units)
+      }
     } catch (err) {
       line.state = /nicht im Cache/.test(String(err)) ? 'fehlt' : 'Fehler'
       line.reason = String(err).slice(0, 200)
@@ -380,6 +426,27 @@ for (const k of MUTATION_KINDS) {
 }
 out.push(`- zurückgehalten (announcedText.ts): ${faultsWithheld}`)
 for (const miss of faults.misses) out.push(`- [Mutation verfehlt] ${MUTATION_LABELS[miss.kind]} → ${miss.outcome}: ${miss.unit} „${miss.before}" → „${miss.after}"`)
+// --- The null comparison against its baseline ------------------------------
+const residueLine = (l: (typeof nullLines)[number], r: Residue) => `${l.draft} ${l.pair} ${r.change}${r.editorial ? ' (redaktionell)' : ''} ${r.unit}`
+const nullBaseline = JSON.parse(readFileSync(NULL_BASELINE, 'utf8')) as { note: string; pairs: number; residues: string[]; reasons: Record<string, string> }
+const nullNow = nullLines.flatMap((l) => l.residues.map((r) => residueLine(l, r)))
+const { came: nullCame, went: nullWent } = baselineMoves(nullNow, nullBaseline.residues, new Set(nullLines.map((l) => l.draft)))
+const nullCompared = nullLines.filter((l) => l.state === 'verglichen')
+const nullUnits = nullCompared.reduce((n, l) => n + (l.stats?.total ?? 0), 0)
+const nullResidues = nullLines.flatMap((l) => l.residues)
+out.push('')
+out.push(`## Nullvergleich: Ausschusstext → Landesgesetzblatt (${NULL_BASELINE})`)
+out.push('')
+out.push(`${nullLines.length} Paare, ${nullCompared.length} verglichen${nullLines.length - nullCompared.length ? ` (${nullLines.filter((l) => l.state !== 'verglichen').map((l) => `${l.draft}: ${l.state}`).join(', ')})` : ''}; ${nullResidues.length} Reste in ${nullUnits} Einheiten, davon ${nullResidues.filter((r) => !r.editorial).length} nicht redaktionell; gegen die Baseline ${nullCame.length} neu, ${nullWent.length} weg`)
+out.push('')
+for (const l of nullLines) {
+  for (const r of l.residues) {
+    const key = residueLine(l, r)
+    out.push(`- ${nullCame.includes(key) ? '[neu] ' : ''}${key}${nullBaseline.reasons[key] ? ` — ${nullBaseline.reasons[key]}` : ''}`)
+    for (const p of r.pieces.slice(0, 6)) out.push(`  - ${p}`)
+  }
+}
+for (const r of nullWent) out.push(`- [weg] ${r}${nullBaseline.reasons[r] ? ` (war: ${nullBaseline.reasons[r]})` : ''}`)
 const errors = lines.filter((l) => l.state === 'Fehler')
 if (errors.length) {
   out.push('')
@@ -442,7 +509,9 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   unreadPairs: lines.filter((l) => l.unread.length).length,
   // Per class: tried and how the comparison answered, as `station.ts --mutationen` writes it; the misses to read.
   mutations: { ...faults, withheld: faultsWithheld },
+  // The committee's text against the Landesgesetzblatt: pairs, those compared, units held against each other, residues (not unchanged) and those not editorial; against the baseline.
+  nullComparison: { pairs: nullLines.length, compared: nullCompared.length, units: nullUnits, residues: nullResidues.length, substantive: nullResidues.filter((r) => !r.editorial).length, came: nullCame.length, went: nullWent.length },
 }, null, 1)}\n`)
 console.log(out.join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)
-process.exit(hits.length || stale.length || breachLines.length || faults.misses.length ? 1 : 0)
+process.exit(hits.length || stale.length || breachLines.length || faults.misses.length || nullCame.length || nullWent.length ? 1 : 0)

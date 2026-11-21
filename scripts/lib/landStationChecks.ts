@@ -202,3 +202,20 @@ export function pairsPerLand(drafts: readonly { land: string; cached: boolean; p
 export function lgblNoneUnchanged<T extends { pair: string; state: PairState; stats: { unchanged: number } | null }>(lines: readonly T[]): T[] {
   return lines.filter((l) => l.pair.endsWith('→lgbl') && l.state === 'verglichen' && l.stats?.unchanged === 0)
 }
+
+/**
+ * The null comparison's residues against its committed baseline
+ * (`landStationsNullBaseline.json`, 21.11.2026), compared for equality as
+ * `station.ts --baseline` compares the Bund's: a residue that came or went
+ * fails the run, so a change that moves the reading moves the record in the
+ * same commit. A residue line opens with its draft; one of a draft the run
+ * did not reach (`--land`, `--show`) has not gone.
+ */
+export function baselineMoves(now: readonly string[], baseline: readonly string[], ran: ReadonlySet<string>): { came: string[]; went: string[] } {
+  const was = new Set(baseline)
+  const is = new Set(now)
+  return {
+    came: now.filter((r) => !was.has(r)),
+    went: baseline.filter((r) => ran.has(r.split(' ')[0]!) && !is.has(r)),
+  }
+}

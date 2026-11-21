@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPerLand, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
+import { baselineMoves, landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPerLand, recurringRuns, type RunUnit } from '../scripts/lib/landStationChecks'
 import { summarizeDiff } from '../server/utils/diff/lawDiff'
 import { comparedText, diffLandDraft, landDraftUnits } from '../server/utils/laender/landLawDiff'
 import type { LawUnit } from '../server/utils/lawtext/lawUnits'
@@ -171,5 +172,26 @@ describe('lgblNoneUnchanged — the pairs to the Landesgesetzblatt with no unit 
 
   it('leaves out pairs with a unit unchanged, pairs to another station and pairs not compared', () => {
     expect(lgblNoneUnchanged([line('rv→lgbl', { unchanged: 1 }), line('entwurf→rv', { unchanged: 0 }), line('rv→lgbl', null, 'fehlt')])).toEqual([])
+  })
+})
+
+describe('baselineMoves — the null comparison against its committed residues (21.11.2026)', () => {
+  const was = ['ooe-1 ausschuss→lgbl changed Artikel I · Z1→Z1', 'ooe-2 ausschuss→lgbl changed Artikel I · Z4→Z4']
+
+  it('names a residue that came and one that went, in either direction a move', () => {
+    expect(baselineMoves(['ooe-1 ausschuss→lgbl changed Artikel I · Z1→Z1', 'ooe-1 ausschuss→lgbl inserted Artikel I · —→Z2'], was, new Set(['ooe-1', 'ooe-2']))).toEqual({
+      came: ['ooe-1 ausschuss→lgbl inserted Artikel I · —→Z2'],
+      went: ['ooe-2 ausschuss→lgbl changed Artikel I · Z4→Z4'],
+    })
+  })
+
+  it('does not call a residue gone whose draft the run did not reach', () => {
+    expect(baselineMoves([was[0]!], was, new Set(['ooe-1']))).toEqual({ came: [], went: [] })
+  })
+
+  it('the committed baseline gives every residue that is not editorial its reason, and no reason without its residue', () => {
+    const baseline = JSON.parse(readFileSync(new URL('../scripts/harness/landStationsNullBaseline.json', import.meta.url), 'utf8')) as { residues: string[]; reasons: Record<string, string> }
+    expect(baseline.residues.filter((r) => !r.includes('(redaktionell)') && !baseline.reasons[r])).toEqual([])
+    expect(Object.keys(baseline.reasons).filter((k) => !baseline.residues.includes(k))).toEqual([])
   })
 })
