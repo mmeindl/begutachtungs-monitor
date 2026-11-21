@@ -381,6 +381,15 @@ function opened(line: TguLine, law: string | null, prev: string): { old: TguPara
   // RIS nicht wortgleich". Over the 23 cached one-column documents of
   // Oberösterreich that one line is the only § opener after a run-on line.
   const ended = !RUNS_ON_RE.test(prev)
+  // „§ 8483": one sign, the new number underlined, the old struck — each side
+  // reads as a § of its own (2026-16114, the Statuten of Linz, Steyr and Wels,
+  // § 83 → § 84; 21.11.2026). Taken whole, it named a § 8483 that does not exist.
+  const struck = line.marked ? PARA_RE.exec(line.old)?.[1] : undefined
+  const underlined = line.marked ? PARA_RE.exec(line.neu)?.[1] : undefined
+  if (ended && struck && underlined && struck !== underlined) {
+    const p = unit(underlined, { changed: true, from: struck })
+    return { old: p, neu: p }
+  }
   const para = ended ? PARA_RE.exec(line.raw) : null
   if (para) {
     const p = unit(para[1]!)

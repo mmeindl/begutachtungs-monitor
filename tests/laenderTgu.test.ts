@@ -200,6 +200,14 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
     expect([from[0]!.id, to[0]!.id, from[0]!.heading === to[0]!.heading]).toEqual(['§14', '§10', true])
   })
 
+  it('reads „§ 8483" — one sign, the new number underlined, the old struck — as § 83 renumbered to § 84, never as a § 8483 (2026-16114; 21.11.2026)', () => {
+    const paras = mergeParagraphs(tguParagraphs([
+      law, ins('§ 83'), ins('Verweise'), ins('(1) Neu.'),
+      { raw: '§ 8483', old: '§ 83', neu: '§ 84', marked: true }, line('Schlußbestimmungen'), line('(1) Dieses Landesgesetz tritt in Kraft.'),
+    ]))
+    expect(paras.map((p) => [p.from ?? null, p.number])).toEqual([[null, '83'], ['83', '84']])
+  })
+
   it('names both numbers of a renumbered § as unsure where the marks do not say which is which', () => {
     const paras = tguParagraphs([law, { raw: '§ 61§ 57d', old: '§ 61§ 57d', neu: '§ 61§ 57d', marked: true }, line('(1) Text.')])
     expect(paras.map((p) => [p.number, p.unread, p.because])).toEqual([['61', true, 'unsure'], ['57d', true, 'unsure']])
