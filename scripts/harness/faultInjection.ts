@@ -68,6 +68,28 @@
  * | Satz-weg           | 11/335  | 0/172 |  257/259 (99,2 %)  | 153/157 (97,5 %) |
  * | R-weg              | 10/1162 | 2/845 |  670/722 (92,8 %)  | 521/557 (93,5 %) |
  *
+ * **And the whole chain the page runs** (21.11.2026, `judgeChain`): the same
+ * faults, and Satz links verloren (fault L), judged by the gate and then by
+ * the table of `annex/annexMark.ts` — the draft check over the faulted rows,
+ * the oracle again over the same result with the faulted rows in the annex.
+ * Over the §§ the page showed without a mark before the fault: withheld,
+ * marked (either pill), shown without a mark; under both values of
+ * `OBJECTION_OVER_CONFIRMATION`. GP XXVIII, approved rule (other variant):
+ *
+ * | 21.11.2026 | PDF | Tabelle |
+ * |---|---:|---:|
+ * | Zahl im Text       | 1080/1093 (98,8 %; 99,5) | 618/626 (98,7 %; 99,5) |
+ * | Bezeichnung        |  446/496 (89,9 %; 90,9)  | 266/298 (89,3 %; 93,0) |
+ * | Wort getauscht     | 1369/1390 (98,5 %; 99,3) | 887/896 (99,0 %; 99,8) |
+ * | neuer Satz fehlt   |  207/238 (87,0 %; 88,2)  | 123/131 (93,9 %; 99,2) |
+ * | behaltener Satz gestrichen | 224/955 (23,5 %; 23,7) | 165/698 (23,6 %; 24,5) |
+ * | Satz links verloren | 795/1041 (76,4 %; 81,6) | 250/314 (79,6 %; 79,9) |
+ *
+ * A kept sentence struck passes wherever the draft check held before the
+ * fault: it reads no old text, and under either rule its holding keeps the §
+ * clean. Zahl, Wort and neuer Satz fehlt are held to 95 % on both paths
+ * under `--mindestens` (`CHAIN_FLOORED`); neuer Satz fehlt does not hold.
+ *
  * Until these builders said what they build, the oracle stood at 89,3 and
  * 87,8 % for Zahl, 95,9 and 96,0 % for Satz-weg and 73,2 and 98,1 % for
  * R-weg: Zahl changed labels (96 of the 115 PDF misses a Ziffer or Absatz
@@ -385,6 +407,10 @@ import { asArray, pickTextComparisons } from '../lib/ris'
 import { bumpedDesignation, donorSentence, isSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
 import { chainedAbsaetze } from '../lib/faultSites'
 import { annexSources, resolveKonsLaw } from '../lib/productionSources'
+import { annexStrictChecks } from '../../server/utils/annex/annexStrict'
+import { markOf, OBJECTION_OVER_CONFIRMATION } from '../../server/utils/annex/annexMark'
+import { insertedStretches } from '../../server/utils/annex/rightColumn'
+import type { StrictCheck } from '../../server/utils/laender/landTguStrict'
 
 // The Begut list is fetched afresh; `--liste-aus-cache` replays the cached one on purpose (`lib/harnessCache.ts`).
 const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
@@ -611,6 +637,61 @@ interface DraftResult {
   injected: number
 }
 
+// --- The whole chain the page runs: gate, then the table (`annexMark.ts`) ---
+/**
+ * A fault in the annex judged as the page judges it (21.11.2026): the gate
+ * (`judge`), then the table of `annex/annexMark.ts` — the draft check on the
+ * faulted rows and the oracle on them — with three outcomes: withheld,
+ * marked (either pill), shown without a mark. Over the §§ the page shows
+ * without a mark before the fault, and under both values of the table's one
+ * open cell (`OBJECTION_OVER_CONFIRMATION`).
+ *
+ * The gate is `judge` per § (the left check and both rules against the §'s
+ * instructions), so the states the whole annex adds — a change too long for
+ * the word diff, the repeal rule, a § printed twice — are not modelled; none
+ * applies to a § the gate verified before the fault. The oracle judges again
+ * the § of our result it confirmed, the annex's rows swapped for the faulted
+ * ones (`chainOracle`); where the rows it reads for that § hold no faulted
+ * row (another cut of the §), its confirmation stands — which can only
+ * understate what is caught, and is counted (`oracleAsked`).
+ */
+type ChainKey = 'zahl' | 'bezeichnung' | 'wort' | 'satzweg' | 'rweg' | 'links'
+interface ChainTally {
+  label: string
+  tried: number
+  withheld: number
+  marked: number
+  unmarked: number
+  /** The same faults under the other value of `OBJECTION_OVER_CONFIRMATION` (withheld does not move). */
+  markedOther: number
+  unmarkedOther: number
+  /** Faults in §§ the oracle confirmed before, and of those the ones where it read the faulted row again — in the rest its confirmation stands. */
+  oracleBefore: number
+  oracleAsked: number
+  /** What got through unmarked, for `--misses`: the §, and which check let it pass. */
+  misses: string[]
+}
+const chainTally = (label: string): ChainTally => ({ label, tried: 0, withheld: 0, marked: 0, unmarked: 0, markedOther: 0, unmarkedOther: 0, oracleBefore: 0, oracleAsked: 0, misses: [] })
+const chainFaults: Record<ChainKey, ChainTally> = {
+  zahl: chainTally('Zahl im Text, rechts'),
+  bezeichnung: chainTally('Bezeichnung, rechts'),
+  wort: chainTally('Wort getauscht, rechts'),
+  satzweg: chainTally('neuer Satz fehlt, rechts'),
+  rweg: chainTally('behaltener Satz rechts gestrichen'),
+  links: chainTally('Satz links verloren'),
+}
+/** The classes held to 95 % on both paths under `--mindestens` (withheld or marked, approved rule). */
+const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg']
+const CHAIN_FLOOR = 95
+/**
+ * What the oracle says per draft (`injectIntoResults`): for every § group of
+ * the annex it confirmed, the oracle again over the same result with some of
+ * the annex's rows swapped for faulted ones — whether it still confirms, and
+ * whether a swapped row was among the rows it reads at all.
+ */
+const chainOracle = { judges: new Map<string, ((swap: ReadonlyMap<ComparisonRow, ComparisonRow>) => { confirms: boolean; read: boolean })[]>() }
+const showsChangeOf = (rows: readonly ComparisonRow[]): boolean => insertedStretches(rows).length > 0 || rows.some(isDisplayedChange)
+
 async function inject(doc: any): Promise<DraftResult | null> {
   const meta = doc?.Data?.Metadaten
   const begut = meta?.Bundesrecht?.Begut
@@ -797,18 +878,27 @@ async function inject(doc: any): Promise<DraftResult | null> {
 
   let injected = 0
   const confirmed = judgedParas.filter((p) => p.leftPasses)
+  /** The faults of this draft for the chain, judged by the gate; the table judges them once the oracle has spoken. */
+  const chain: { key: ChainKey; para: Judged; rows: ComparisonRow[]; verdict: Verdict }[] = []
   for (const para of confirmed) {
     const baseVerdict = base.get(para)!
     // The right column's new text misread, and a kept sentence lost from it
     // (21.11.2026): every § the left check confirms, as the Länder harness
     // asks every § it shows — not only those with a site for the faults below.
-    const edits = [[faults.Zahl, raisedNumber], [faults.Bezeichnung, bumpedDesignation], [faults.Wort, swappedWord], [faults.SatzWeg, (t: string) => lastSentenceGone(t, SENTENCE_SPLIT)]] as const
-    for (const [into, edit] of edits) {
+    const edits = [[faults.Zahl, raisedNumber, 'zahl'], [faults.Bezeichnung, bumpedDesignation, 'bezeichnung'], [faults.Wort, swappedWord, 'wort'], [faults.SatzWeg, (t: string) => lastSentenceGone(t, SENTENCE_SPLIT), 'satzweg']] as const
+    for (const [into, edit, key] of edits) {
       const faulted = withNewTextEdited(para.rows, edit)
-      if (faulted) record(into, judge(faulted, para.standing, wide, bagOf(para)), baseVerdict)
+      if (!faulted) continue
+      const verdict = judge(faulted, para.standing, wide, bagOf(para))
+      record(into, verdict, baseVerdict)
+      chain.push({ key, para, rows: faulted, verdict })
     }
     const lostRight = withKeptSentenceLost(para.rows)
-    if (lostRight) record(faults.Rweg, judge(lostRight, para.standing, wide, bagOf(para)), baseVerdict)
+    if (lostRight) {
+      const verdict = judge(lostRight, para.standing, wide, bagOf(para))
+      record(faults.Rweg, verdict, baseVerdict)
+      chain.push({ key: 'rweg', para, rows: lostRight, verdict })
+    }
     // The injection site: a row the page shows as a word diff, whose left
     // column is long enough that losing one sentence of it still leaves a
     // judgeable §. A row picked without those conditions would measure the
@@ -825,7 +915,9 @@ async function inject(doc: any): Promise<DraftResult | null> {
     // recomputed, exactly as it would have been had the parser lost the line.
     const lostCurrent = secondSentenceGone(site.current, SENTENCE_SPLIT, toks)!
     const faultL = withRow(para.rows, site, { ...site, current: lostCurrent, segments: diffTokens(lostCurrent, site.proposed).segments })
-    record(faults.L, judge(faultL, para.standing, wide, bagOf(para)), baseVerdict)
+    const verdictL = judge(faultL, para.standing, wide, bagOf(para))
+    record(faults.L, verdictL, baseVerdict)
+    chain.push({ key: 'links', para, rows: faultL, verdict: verdictL })
 
     // Both R faults take their donor from another § of the same law that the
     // gate also confirmed — one from the standing text RIS holds for it, one
@@ -854,8 +946,56 @@ async function inject(doc: any): Promise<DraftResult | null> {
   }
   // The draft's PDF in the same record: the second witness's reading (`kons/draftRendition.ts`).
   const mainPdf = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
+  chainOracle.judges.clear()
   await injectIntoResults(cite, draftBlocks, amending.length, parsed.rows, (key) => lawOf(key, true), () => renditionOf(mainPdf))
+  judgeChain(cite, parsed.rows, { articles, blocks: draftBlocks }, base, chain)
   return { cite, judged: confirmed.length, injected }
+}
+
+/**
+ * The table over this draft's faults (`chainFaults`). The draft check runs
+ * once per class over the whole annex with every faulted § in place — its
+ * § groups are judged each on their own, so the faults do not meet — and
+ * once over the rows as parsed for the state before the fault.
+ */
+function judgeChain(cite: string, rows: readonly ComparisonRow[], draft: { articles: readonly DraftArticle[]; blocks: ReturnType<typeof parseRisXml> }, base: ReadonlyMap<Judged, Verdict>, chain: readonly { key: ChainKey; para: Judged; rows: ComparisonRow[]; verdict: Verdict }[]): void {
+  const withheld = (v: Verdict): boolean => !v.leftPasses || v.rule1 || v.rule2Para
+  const before = annexStrictChecks(rows, draft)
+  const after = new Map<ChainKey, Map<string, StrictCheck>>()
+  for (const key of new Set(chain.map((c) => c.key))) {
+    const mine = chain.filter((c) => c.key === key)
+    const faulted = new Set(mine.map((c) => annexParagraphKey(c.para.law, c.para.para)))
+    const others = rows.filter((r) => r.kind !== 'pair' || !(r.gld ?? r.para) || !faulted.has(annexParagraphKey(r.law, (r.gld ?? r.para)!)))
+    after.set(key, annexStrictChecks([...others, ...mine.flatMap((c) => c.rows)], draft))
+  }
+  for (const c of chain) {
+    const groupKey = annexParagraphKey(c.para.law, c.para.para)
+    if (withheld(base.get(c.para)!)) continue
+    const oracleBefore = chainOracle.judges.has(groupKey)
+    const cleanBefore = markOf({ verdict: 'verified', uncheckedReason: null, showsNewText: insertedStretches(c.para.rows).length > 0, showsChange: showsChangeOf(c.para.rows), strict: before.get(groupKey), oracleConfirmed: oracleBefore }).kind === 'gate'
+    if (!cleanBefore) continue
+    const tally = chainFaults[c.key]
+    tally.tried++
+    if (withheld(c.verdict)) {
+      tally.withheld++
+      continue
+    }
+    const swap = new Map<ComparisonRow, ComparisonRow>()
+    c.para.rows.forEach((r, i) => {
+      if (c.rows[i] !== r && c.rows[i]) swap.set(r, c.rows[i]!)
+    })
+    const again = oracleBefore ? (chainOracle.judges.get(groupKey) ?? []).map((judge) => judge(swap)) : []
+    const oracleAfter = oracleBefore && again.every((a) => a.confirms)
+    if (oracleBefore) tally.oracleBefore++
+    if (again.some((a) => a.read)) tally.oracleAsked++
+    const input = { verdict: 'verified' as const, uncheckedReason: null, showsNewText: insertedStretches(c.rows).length > 0, showsChange: showsChangeOf(c.rows), strict: after.get(c.key)!.get(groupKey), oracleConfirmed: oracleAfter }
+    if (markOf(input).kind === 'gate') {
+      tally.unmarked++
+      tally.misses.push(`${cite} ${c.para.para}${c.para.law ? ` [${c.para.law.slice(0, 28)}]` : ''} — Entwurfsprüfung ${input.strict?.state ?? '—'}${input.strict?.state === 'holds' ? ` (${input.strict.newWords} neue Wörter)` : ''}, Orakel ${oracleAfter ? 'bestätigt' : 'nicht'}`)
+    } else tally.marked++
+    if (markOf(input, OBJECTION_OVER_CONFIRMATION === 'clean' ? 'unconfirmed' : 'clean').kind === 'gate') tally.unmarkedOther++
+    else tally.markedOther++
+  }
 }
 
 // --- Faults in the RESULT: the oracle (`kons/tguOracle.ts`) ------------------
@@ -1670,6 +1810,19 @@ async function injectIntoResults(
         const ref = Object.values(resolved.paragraphs).find((r) => r.id === (origin ?? id))
         if (ref?.xmlUrl) console.log(`     RIS-Dokument ${ref.xmlUrl}\n       gldsym: ${[...(await getText(ref.xmlUrl)).matchAll(/<gldsym>([^<]*)<\/gldsym>/g)].map((m) => m[1]).join(' ')}\n       Baum  : ${beforeNode ? absOf(beforeNode).join(', ') : '—'}`)
       }
+      if (report.verdict === 'bestätigt') {
+        // For the whole chain (`judgeChain`): this § again, the annex's rows swapped for faulted ones.
+        const judgeAgain = (swap: ReadonlyMap<ComparisonRow, ComparisonRow>) => {
+          const swapped = paraRows.map((r) => swap.get(r) ?? r)
+          const read = swapped.some((r, i) => r !== paraRows[i])
+          return { read, confirms: !read || oracleVerdict(id, before, got, swapped, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node)).verdict === 'bestätigt' }
+        }
+        for (const r of paraRows) {
+          if (r.kind !== 'pair' || !(r.gld ?? r.para)) continue
+          const k = annexParagraphKey(r.law, (r.gld ?? r.para)!)
+          chainOracle.judges.set(k, [...(chainOracle.judges.get(k) ?? []), judgeAgain])
+        }
+      }
       if (report.verdict !== 'bestätigt' || before === null) continue
       results.confirmed++
       // The reader's faults in the annex's right column (21.11.2026), built as
@@ -1680,6 +1833,7 @@ async function injectIntoResults(
       for (const [into, faulted] of [
         [oracleFaults.SpalteZahl, withNewTextEdited(paraRows, raisedNumber)],
         [oracleFaults.SpalteBezeichnung, withNewTextEdited(paraRows, bumpedDesignation)],
+        [oracleFaults.SpalteWort, withNewTextEdited(paraRows, swappedWord)],
         [oracleFaults.SpalteSatzWeg, withNewTextEdited(paraRows, (t: string) => lastSentenceGone(t, SENTENCE_SPLIT))],
         [oracleFaults.SpalteRweg, withKeptSentenceLost(paraRows)],
       ] as const) {
@@ -2014,11 +2168,12 @@ const oracleFaults = {
   BeilageZahl: oracleTally('Beilage-Zahl Zahl in der Beilage'),
   SpalteZahl: oracleTally('Spalte-Zahl erste Zahl des Textes +7'),
   SpalteBezeichnung: oracleTally('Spalte-Bezeichnung erste Marke +1'),
+  SpalteWort: oracleTally('Spalte-Wort längstes neues Wort getauscht'),
   SpalteSatzWeg: oracleTally('Spalte-Satz-weg letzter neuer Satz fehlt'),
   SpalteRweg: oracleTally('Spalte-R-weg Satz rechts verloren'),
 }
 /** The reader's faults in the annex's right column, held by the oracle against the unchanged result. */
-const columnClasses = [oracleFaults.SpalteZahl, oracleFaults.SpalteBezeichnung, oracleFaults.SpalteSatzWeg, oracleFaults.SpalteRweg]
+const columnClasses = [oracleFaults.SpalteZahl, oracleFaults.SpalteBezeichnung, oracleFaults.SpalteWort, oracleFaults.SpalteSatzWeg, oracleFaults.SpalteRweg]
 /** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
 const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich, oracleFaults.Bezeichnung, oracleFaults.Komma, oracleFaults.UngedrucktKomma]
 /** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
@@ -2241,6 +2396,22 @@ for (const [key, status] of gateFloor ?? []) {
   if (status === 'nicht gehalten') console.log(`  · Tor nicht gehalten (unter 20 Versuchen): ${f.label.trim()} — ${f.shipped}/${f.tried}`)
 }
 const gatePassed = ![...(gateFloor?.values() ?? [])].includes('verfehlt')
+
+// The whole chain (`judgeChain`): withheld, marked, shown without a mark — over the §§ shown unmarked before the fault.
+console.log(`\n  Die ganze Kette der Seite (Tor, dann Wort für Wort): Fehler in Paragraphen, die vorher ohne Markierung gezeigt wurden`)
+console.log(`    Klasse                              Versuche  einbehalten  markiert  ohne Markierung   (andere Variante: markiert / ohne)`)
+for (const t of Object.values(chainFaults)) {
+  console.log(`    ${t.label.padEnd(36)}${String(t.tried).padStart(8)}${String(t.withheld).padStart(13)}${String(t.marked).padStart(10)}${String(t.unmarked).padStart(17)}   ${pct(t.withheld + t.marked, t.tried)} gefangen   (${t.markedOther} / ${t.unmarkedOther}, ${pct(t.withheld + t.markedOther, t.tried)}); Orakel vorher bestätigt ${t.oracleBefore}, danach gefragt ${t.oracleAsked}`)
+}
+if (argFlag('misses')) for (const t of Object.values(chainFaults)) for (const m of t.misses) console.log(`      ${t.label}: ${m}`)
+const chainFloor = floor && floorOf(CHAIN_FLOORED.map((k) => ({ key: k, tried: chainFaults[k].tried, caught: chainFaults[k].withheld + chainFaults[k].marked })), CHAIN_FLOOR)
+for (const k of CHAIN_FLOORED) {
+  const status = chainFloor?.status.get(k)
+  if (status === 'verfehlt') console.log(`  ✗ Kette unter ${CHAIN_FLOOR} %: ${chainFaults[k].label} — ${chainFaults[k].withheld + chainFaults[k].marked}/${chainFaults[k].tried}`)
+  if (status === 'nicht gehalten') console.log(`  · Kette nicht gehalten (unter 20 Versuchen): ${chainFaults[k].label}`)
+}
+if (chainFloor?.passed) console.log(`  ✓ die Kette fängt ${CHAIN_FLOORED.map((k) => chainFaults[k].label).join(', ')} zu mindestens ${CHAIN_FLOOR} %`)
+const chainPassed = !chainFloor || chainFloor.passed
 if (gateFloor && gatePassed) console.log(`  ✓ das Tor fängt L, R-alt und R-neu mindestens zu ${Object.entries(GATE_FLOORS).map(([k, v]) => `${k} ${v} %`).join(', ')}`)
 
 /**
@@ -2287,8 +2458,11 @@ if (jsonPath) {
     })),
     // The annex's right column misread, as the oracle sees it against the unchanged result.
     column: columnClasses.map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f), ...(floor && floored.has(f) ? { floor: floor.status.get(keyOf(f.label)) } : {}) })),
+    // The whole chain the page runs, gate then table (`judgeChain`, 21.11.2026), under both rule variants.
+    chain: (Object.entries(chainFaults) as [ChainKey, ChainTally][]).map(([key, t]) => ({ key, label: t.label, tried: t.tried, withheld: t.withheld, marked: t.marked, unmarked: t.unmarked, markedOther: t.markedOther, unmarkedOther: t.unmarkedOther, oracleBefore: t.oracleBefore, oracleAsked: t.oracleAsked, floored: CHAIN_FLOORED.includes(key), ...(chainFloor && CHAIN_FLOORED.includes(key) ? { floorMin: CHAIN_FLOOR, floor: chainFloor.status.get(key) } : {}) })),
+    chainRule: OBJECTION_OVER_CONFIRMATION,
   }
   writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonPath}`)
 }
-if ((floor && !floor.passed) || !gatePassed) process.exit(1)
+if ((floor && !floor.passed) || !gatePassed || !chainPassed) process.exit(1)
