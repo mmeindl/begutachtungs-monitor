@@ -299,8 +299,22 @@ export function notHeld(guard: TguGuard): Map<number, LandDraftUncheckedReason> 
   return out
 }
 
-/** „§ 24 b" in an instruction line (`guardTguUnits`). */
+/** „§ 24 b" in an instruction line (`readableBlocks`). */
 const SPLIT_DESIGNATION_RE = /(§\s*\d+)\s([a-eg-z])(?=\s)/g
+
+/**
+ * The draft's blocks as the guard reads their addresses — and the Land
+ * guard's accounting with it (21.11.2026): an instruction line's §
+ * designation with a space before its letter is read joined. „5. Im § 24 b
+ * wird nach Abs 13 folgender Abs xx angefügt:" (Salzburg 32075) named § 24,
+ * and no instruction § 24b. Here and not in the draft reader, whose text the
+ * station pages compare with the Landesgesetzblatt, which prints „§ 24 b"
+ * too. Not „f" — after a § number, „und folgende" („§§ 46 f"). Over the 731
+ * cached Land PDFs, two instruction lines print such a designation.
+ */
+export function readableBlocks(blocks: readonly TextBlock[]): TextBlock[] {
+  return blocks.map((b) => (b.kind === 'novao' ? { ...b, text: b.text.replace(SPLIT_DESIGNATION_RE, '$1$2') } : b))
+}
 
 /** A law key no draft carries: `draftReference` answers it with the whole draft. */
 const WHOLE_DRAFT = '\u0000whole-draft'
@@ -364,17 +378,9 @@ export interface TguGuard {
  * the draft could not be read, and the rule is disarmed — never a failure of
  * every §. `only`: ask the rules of that one § alone, the others still
  * saying what the document shows (the fault injection's repeated question).
- *
- * An instruction line's § designation with a space before its letter is
- * read joined (21.11.2026): „5. Im § 24 b wird nach Abs 13 folgender Abs xx
- * angefügt:" (Salzburg 32075) named § 24, and no instruction § 24b. Here
- * and not in the draft reader, whose text the station pages compare with
- * the Landesgesetzblatt, which prints „§ 24 b" too. Not „f" — after a §
- * number, „und folgende" („§§ 46 f"). Over the 731 cached Land PDFs, two
- * instruction lines print such a designation.
  */
 export function guardTguUnits(units: readonly LawDiffUnit[], printed: readonly TextBlock[] | null, only?: number): TguGuard {
-  const blocks = printed?.map((b) => (b.kind === 'novao' ? { ...b, text: b.text.replace(SPLIT_DESIGNATION_RE, '$1$2') } : b)) ?? null
+  const blocks = printed && readableBlocks(printed)
   const bags: DraftBags | null = blocks?.length ? landDraftBags(blocks) : null
   const checks = new Map<number, RightColumnCheck>()
   if (!bags) {

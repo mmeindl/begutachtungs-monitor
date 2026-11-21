@@ -102,7 +102,7 @@ import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, fl
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
-import { articleClauses, draftLawKey, guardTguUnits, landDraftBags, notHeld, undrafted } from '../../server/utils/laender/landTguGuard'
+import { articleClauses, draftLawKey, guardTguUnits, landDraftBags, notHeld, readableBlocks, undrafted } from '../../server/utils/laender/landTguGuard'
 import { lawInForce, paragraphText } from '../../server/utils/laender/landKons'
 import { comparableWords, cutShort, standsInRis } from '../../server/utils/laender/landTgu'
 import { draftUnits } from '../../server/utils/annex/annexDraft'
@@ -277,8 +277,9 @@ const accountings: AccountingRecord[] = []
 /** How far each document of the population got (`Reach`), and whether every read beneath its answer answered (`Gathered.complete`). */
 const reached: { land: LandCode; reach: Reach; complete: boolean }[] = []
 
-/** The §§ the draft's instructions name, per law, against those the comparison shows or withholds — both by `designationKey`, the laws matched as the guard matches them (`draftLawKey`). */
-function instructedOf(blocks: readonly TextBlock[], laws: readonly (string | null)[], accounted: readonly { law: string | null; id: string; fromId?: string | null }[]): AccountingRecord['instructed'] {
+/** The §§ the draft's instructions name, per law, against those the comparison shows or withholds — both by `designationKey`, the laws matched as the guard matches them (`draftLawKey`), the addresses read as the guard reads them (`readableBlocks`). */
+function instructedOf(printed: readonly TextBlock[], laws: readonly (string | null)[], accounted: readonly { law: string | null; id: string; fromId?: string | null }[]): AccountingRecord['instructed'] {
+  const blocks = readableBlocks(printed)
   const units = draftUnits(blocks)
   const bags = landDraftBags(blocks)
   const keys = [...new Set([...bags.byLaw.keys(), ...bags.general.keys()])]

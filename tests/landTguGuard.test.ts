@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { draftUnits } from '../server/utils/annex/annexDraft'
-import { articleClauses, draftLawKey, draftUncheckedReason, guardTguUnits, installedDesignations, notHeld, refusedAddress, repeatsItsNumber } from '../server/utils/laender/landTguGuard'
+import { articleClauses, draftLawKey, draftUncheckedReason, guardTguUnits, installedDesignations, notHeld, readableBlocks, refusedAddress, repeatsItsNumber } from '../server/utils/laender/landTguGuard'
 import { STRICT_UNCHECKED } from '../server/utils/laender/landTguStrict'
 
 const unit = (over: Partial<LawDiffUnit>): LawDiffUnit => ({
@@ -81,6 +81,13 @@ describe('refusedAddress — the § an instruction opens with, where the draft r
 })
 
 describe('an instruction\'s „§ 24 b" (Salzburg 32075; 21.11.2026)', () => {
+  it('is read so by the guard and by the Land guard\'s accounting alike, the printed text left as it is (readableBlocks)', () => {
+    const printed = lawBlocksFromPdfPages([['Der Salzburger Landtag hat beschlossen:', 'Das Baupolizeigesetz 1997 wird geändert wie folgt:', '1. Im § 24 b wird nach Abs 13 folgender Abs 14 angefügt:', '„(14) Die §§ 46 f gelten.“'].join('\n')])!
+    expect(draftUnits(readableBlocks(printed))[0]!.paras).toEqual(['§ 24b'])
+    expect(printed.find((b) => b.kind === 'novao')!.text).toContain('§ 24 b')
+    expect(readableBlocks(printed).at(-1)!.text).toBe('„(14) Die §§ 46 f gelten.“')
+  })
+
   it('is read as § 24b, never as § 24, and „§§ 46 f" stays „und folgende"', () => {
     const draft = lawBlocksFromPdfPages([[
       'Gesetz vom ……, mit dem das Baupolizeigesetz 1997 geändert wird', 'Der Salzburger Landtag hat beschlossen:', 'Das Baupolizeigesetz 1997 wird geändert wie folgt:',
