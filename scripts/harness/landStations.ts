@@ -57,7 +57,13 @@
  *    or remove, too
  *    (`recurringRuns`, 20.11.2026) — a page's furniture read as law, known
  *    by its recurrence rather than its shape: Kärnten's session stamp
- *    „REG.SITZG." stood in 198 units, and `Kopfzeile` knows Salzburg's head.
+ *    „REG.SITZG." stood in 198 units, and `Kopfzeile` knows Salzburg's head;
+ *  - `Fehlgelesenes Zeichen`: a sign a misread font leaves and no German law
+ *    text carries („ã", „Ò", „Ð", „¸", „ˆ", „‹", „‰" before a letter, a run
+ *    of „É") in a unit's text (21.11.2026). The PDF reader repairs the fonts
+ *    it knows (`repairMisreadFonts`); this sees the next document it does
+ *    not. Until then 56 units of Tirol's 575/2026 carried such signs on the
+ *    page, and nothing failed.
  * A hit fails the run (exit 1) and is printed with its comparison — unless
  * `landStationsAccepted.json` names it with the reason it is the documents'
  * own (19.11.2026: K-TDBG § 10 enumerates in the Landesgesetzblatt what the
@@ -223,8 +229,10 @@ const pagesOf = (url: string) => {
 }
 
 // --- The invariants ------------------------------------------------------
-type Invariant = '#dup' | 'Nur Ziffern neu' | 'Nur Ziffern weg' | 'Kopfzeile' | 'Unteranweisung neu' | 'Wiederkehrender Einschub'
-const INVARIANTS: Invariant[] = ['#dup', 'Nur Ziffern neu', 'Nur Ziffern weg', 'Kopfzeile', 'Unteranweisung neu', 'Wiederkehrender Einschub']
+type Invariant = '#dup' | 'Nur Ziffern neu' | 'Nur Ziffern weg' | 'Kopfzeile' | 'Unteranweisung neu' | 'Wiederkehrender Einschub' | 'Fehlgelesenes Zeichen'
+const INVARIANTS: Invariant[] = ['#dup', 'Nur Ziffern neu', 'Nur Ziffern weg', 'Kopfzeile', 'Unteranweisung neu', 'Wiederkehrender Einschub', 'Fehlgelesenes Zeichen']
+/** A sign a misread font leaves (`repairMisreadFonts`, `repairMacRoman`): none is a letter of a German law text; „‰" after a number is the per mille sign. */
+const MISREAD_SIGN_RE = /[ãÒÐ¸ˆ‹]|‰(?=\p{L})|ÉÉ/u
 /** A running head of Salzburg's template: a drive or network path, or Word's save stamp „….docx \ 27.11.2025 07:29:00". */
 const HEAD_RE = /(?:^|\s)(?:[A-Z]:\\|\\\\)\S|\.docx?\s*\\\s*\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}/
 /** What the instruction's number leaves when the parser takes only its first level: „1.1. In der Z 6", „1a. …", „2 Abs 3". */
@@ -237,6 +245,7 @@ function violations(u: LawDiffUnit): Invariant[] {
   if (numbers) out.push(numbers === 'neu' ? 'Nur Ziffern neu' : 'Nur Ziffern weg')
   if (HEAD_RE.test(u.fromText ?? '') || HEAD_RE.test(u.toText ?? '')) out.push('Kopfzeile')
   if (u.change === 'inserted' && /^Z\d+[a-z]*#dup/.test(u.id) && SUB_REST_RE.test(u.toText ?? '')) out.push('Unteranweisung neu')
+  if (MISREAD_SIGN_RE.test(u.fromText ?? '') || MISREAD_SIGN_RE.test(u.toText ?? '')) out.push('Fehlgelesenes Zeichen')
   return out
 }
 

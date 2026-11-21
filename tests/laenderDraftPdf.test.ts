@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { diffLandDraft, landDraftUnits, lgblUnits, packageChanges } from '../server/utils/laender/landLawDiff'
-import { draftByContent, draftCandidates, draftDocument, draftSource, notADraft, repairMacRoman } from '../server/utils/laender/texts/read'
+import { draftByContent, draftCandidates, draftDocument, draftSource, notADraft, repairMacRoman, repairMisreadFonts, type TextRun } from '../server/utils/laender/texts/read'
 
 /* Pages as the PDF's text layer gives them: one string per page, a line per
    printed line, „Seite n" on top. The texts are built for the rules, each
@@ -548,6 +548,53 @@ describe('repairMacRoman — a „§" read as „ß"', () => {
 
   it('leaves a „ß" inside a word alone, also before a number', () => {
     expect(repairMacRoman(['Das Maß 3 gilt; die Straße 12 ist gesperrt.'])).toEqual(['Das Maß 3 gilt; die Straße 12 ist gesperrt.'])
+  })
+})
+
+// Tirol 575/2026 (21.11.2026): a draft set in a misread font and sound ones,
+// often within a line, as pdf.js gives the runs unnormalised (`fontName`
+// as pdf.js names them); and the page's footer with a Geschäftszahl of
+// three parts. Runs of the draft.
+describe('repairMisreadFonts — a misread font repaired run by run', () => {
+  const run = (fontName: string, str: string): TextRun => ({ str, fontName })
+  const texts = (pages: TextRun[][]) => pages.map((page) => page.map((r) => r.str))
+
+  it('repairs every run of the misread font, „ﬂ" for „ß" too, and leaves the quotes of the sound fonts alone', () => {
+    const pages = [[
+      run('g_d0_f1', '2. Im ß 106 Abs. 6 werden der erste Satz aufgehoben und im bisherigen zweiten Satz das Wort '),
+      run('g_d0_f4', '„Sie“'),
+      run('g_d0_f1', 'c) die ‹berwachung der bestimmungsgem‰ﬂen Verwendung der Zusch¸sse'),
+      run('g_d0_f1', 'Grundst¸cksver‰uﬂerungen'),
+      run('g_d0_f5', '„(2) Die Beschlussfassung über den Rechnungsabschluss und '),
+      run('g_d0_f1', '¸ber den T‰tigkeitsbericht hat zeitlich'),
+      run('g_d0_f4', 'das Wort „umfaßt“ – BGBl. I Nr. 98/2025 …'),
+    ]]
+    expect(texts(repairMisreadFonts(pages))).toEqual([[
+      '2. Im § 106 Abs. 6 werden der erste Satz aufgehoben und im bisherigen zweiten Satz das Wort ',
+      '„Sie“',
+      'c) die Überwachung der bestimmungsgemäßen Verwendung der Zuschüsse',
+      'Grundstücksveräußerungen',
+      '„(2) Die Beschlussfassung über den Rechnungsabschluss und ',
+      'über den Tätigkeitsbericht hat zeitlich',
+      'das Wort „umfaßt“ – BGBl. I Nr. 98/2025 …',
+    ]])
+  })
+
+  it('leaves a font alone that sets a real umlaut or „§" beside a sign, and a per mille sign after a number', () => {
+    const pages = [[
+      run('g_d1_f5', 'Rohstoﬀvorkommen, Oberﬂächenwasser'),
+      run('g_d2_f1', 'qualitativer Hinsicht¸ bei der Personalbeschaffung gemäß § 3'),
+      run('g_d3_f5', 'A 3,58 ‰ 3,78 ‰ 3,98 ‰'),
+    ]]
+    expect(texts(repairMisreadFonts(pages))).toEqual(texts(pages))
+  })
+
+  it('drops the footer with a Geschäftszahl of three parts', () => {
+    const pages = [
+      page('Der Landtag hat beschlossen:', 'Artikel I', 'Das Gesetz wird wie folgt geändert:', '1. Im § 3 wird das Wort „alt“ durch das Wort „neu“ ersetzt.', 'VD-1590/1/33-2026 Fassung vom 24. August 2026'),
+      page('2. § 4 entfällt.', 'VD-173/2-2026 Fassung vom 9. März 2026'),
+    ]
+    expect(landDraftUnits(pages)!.map((u) => u.text)).toEqual(['Im § 3 wird das Wort „alt“ durch das Wort „neu“ ersetzt.', '§ 4 entfällt.'])
   })
 })
 

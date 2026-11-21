@@ -27,8 +27,10 @@ import type { TextBlock } from '../lawtext/lawUnits'
 import { RUNS_ON_RE } from './landTgu'
 
 /** Running header and footer lines of the Land's draft template. */
-/* Tirol's running head is its Geschäftszahl and version: „VD-173/2-2026 Fassung vom 9. März 2026" (23.10.2026). */
-export const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+|[A-Z]:\\.*\.docx?\b.*|E n t w u r f|[A-Z]{2,5}-\d+\/\d+-\d{4} Fassung vom \d{1,2}\. \p{L}+ \d{4})$/u
+/* Tirol's running head is its Geschäftszahl and version: „VD-173/2-2026 Fassung vom 9. März 2026" (23.10.2026),
+   and a Geschäftszahl of three parts, „VD-1590/1/33-2026 Fassung vom 24. August 2026" (21.11.2026: 26 lines in the
+   1,365 cached Land PDFs, read as law in 575/2026's §§ until then; every other line with „Fassung vom" runs on). */
+export const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+|[A-Z]:\\.*\.docx?\b.*|E n t w u r f|[A-Z]{2,5}-\d+(?:\/\d+){1,2}-\d{4} Fassung vom \d{1,2}\. \p{L}+ \d{4})$/u
 
 /**
  * A page's number, standing alone: page furniture only as the page's first

@@ -88,14 +88,58 @@ export async function pdfPages(url: string): Promise<string[]> {
 /** A Land PDF's text per page, from bytes already read — `pdfPages` without the fetch. */
 export async function pagesOfBytes(bytes: Uint8Array): Promise<string[]> {
   return repairMacRoman(await withPdf(bytes, async (doc) => {
-    const pages: string[] = []
-    for (let n = 1; n <= doc.numPages; n++) pages.push(pageText((await (await doc.getPage(n)).getTextContent()).items as TextRun[]))
-    return pages
+    // Unnormalised, so a misread font's „ﬂ" is still there to be read as its „ß"; normalised below as pdf.js would have.
+    const runs: TextRun[][] = []
+    for (let n = 1; n <= doc.numPages; n++) runs.push((await (await doc.getPage(n)).getTextContent({ disableNormalization: true })).items as TextRun[])
+    const { getResolvedPDFJS } = await import('unpdf')
+    const { normalizeUnicode } = await getResolvedPDFJS()
+    return repairMisreadFonts(runs).map((page) => pageText(page.map((run) => (run.str == null ? run : { ...run, str: normalizeUnicode(run.str) }))))
   }))
 }
 
-/** A text run as pdf.js gives it: its text, its matrix, its height. */
-interface TextRun { str?: string; transform?: number[]; height?: number; hasEOL?: boolean }
+/** A text run as pdf.js gives it: its text, its matrix, its height, its font. */
+export interface TextRun { str?: string; transform?: number[]; height?: number; hasEOL?: boolean; fontName?: string }
+
+/**
+ * The fonts of a document set in Windows-1252 and read as Mac Roman
+ * (21.11.2026): a font whose runs carry the misread signs — „¸", „ˆ", „‹",
+ * „÷", „ƒ", „ﬂ", „‰" before a letter, „ß" before a number — and not one real
+ * umlaut or „§". Repaired run by run (`fromMacRoman`), as the Bund's annex
+ * reader repairs its runs (`annexPdfPages.ts`), before the document's lines
+ * are weighed (`repairMacRoman`).
+ *
+ * The line was too coarse: Tirol sets a draft in one misread font and two
+ * sound ones, often within a line. A line with a real umlaut kept its
+ * misread signs („¸ber den T‰tigkeitsbericht"), a line without one was
+ * repaired whole, and the sound font's „„", „“", „–", „…" and „ß" turned
+ * into „ã", „Ò", „Ð", „É" and „§" („das Wort ãSieÒ", „umfa§t"); Tirol's
+ * 575/2026 showed 63 of its 81 changed units for nothing else. And the
+ * normalised text layer gives a misread „ß" as „fl" („verstoflen"), which
+ * no rule tells from a real one; unnormalised, it is the misread font's
+ * „ﬂ".
+ *
+ * Measured over the 1,365 cached Land PDFs: 20 fonts in eight documents
+ * of Tirol's 575, 576, 590 and 722/2026 are such fonts, and no other; only
+ * those eight documents read otherwise than before, and every word that
+ * moved is restored. A sound font sets a real „ﬂ" ligature (a Salzburg
+ * document, „Oberﬂächenwasser") or a stray sign (a cedilla for a comma in
+ * a Salzburg Vorlage, which its Landesgesetzblatt prints too), but umlauts
+ * beside it; a table's per mille sign stands after a number.
+ */
+export function repairMisreadFonts(pages: readonly (readonly TextRun[])[]): TextRun[][] {
+  const signs = new Set<string>()
+  const sound = new Set<string>()
+  for (const { str, fontName } of pages.flat()) {
+    if (!str || !fontName) continue
+    if (MISREAD_SIGN_RE.test(str)) signs.add(fontName)
+    if (/[äöüÄÖÜ§]/.test(str)) sound.add(fontName)
+  }
+  const misread = new Set([...signs].filter((font) => !sound.has(font)))
+  return pages.map((page) => page.map((run) => (run.str != null && misread.has(run.fontName ?? '') ? { ...run, str: fromMacRoman(run.str) } : run)))
+}
+
+/** A sign a misread font sets (`repairMisreadFonts`) — `fromMacRoman`'s, but „‰" only before a letter: after a number it is the per mille sign. */
+const MISREAD_SIGN_RE = /[¸ˆ‹÷ƒﬂ]|‰(?=\p{L})|ß\s*\d/u
 
 /**
  * A page's runs joined as unpdf's `extractText` joins them — a line closed
@@ -147,7 +191,10 @@ function isRaised(run: TextRun, before: TextRun): boolean {
  * with „ß" for each of its 58 „§" (24.10.2026), and no § of it could be
  * found. Decided for the document, as there; a „ß" the reading turned into
  * „ﬂ" is lost to the normalisation here („Strafle") — what is restored is
- * every „§" and every umlaut.
+ * every „§" and every umlaut. Since the runs of a misread font are repaired
+ * first (`repairMisreadFonts`, 21.11.2026), this decides for none of the 1,365
+ * cached Land PDFs: it stays for a document whose misread font that rule
+ * does not know.
  *
  * And in every document, a „ß" standing alone before a number: no German
  * word is „ß", so it is a „§" set in the misread font — in a line the repair
