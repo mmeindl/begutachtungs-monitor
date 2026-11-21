@@ -4,7 +4,7 @@
  * instrument the station path lacked until 19.11.2026 (`lib/stationChecks.ts`
  * says what each check means).
  *
- * Usage:  npx vite-node -c vitest.config.ts scripts/harness/station.ts [--gp=XXVIII] [--only=80] [--cache]
+ * Usage:  npx vite-node -c vitest.config.ts scripts/harness/station.ts [--gp=XXVIII] [--only=80[,81,…]] [--cache]
  *                                                                     [--json=<file>] [--baseline=<file>] [--zeige=<text>] [--mutationen]
  *
  * Every station text of every draft of the period that reached a
@@ -101,7 +101,8 @@ if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-c
 
 const SCRIPT = 'harness/station'
 const gp = argAssigned('gp') ?? 'XXVIII'
-const only = Number(argAssigned('only')) || 0
+/** `--only=80` or `--only=1,3,4`: these numbers of the list only. */
+const only = new Set((argAssigned('only') ?? '').split(',').map(Number).filter((n) => n > 0))
 const jsonPath = argAssigned('json')
 const baselinePath = argAssigned('baseline')
 /** `--zeige=<text>`: the pieces of every changed unit whose line contains the text, to read one case. */
@@ -399,7 +400,7 @@ const unreached: { id: string; cause: string }[] = []
 const record: Record_ = { gp, ...(population ? { population } : {}), drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, refused: [], withoutRv: 0, viaObjection: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
 /** With `--mutationen`: every distinct unit of a later text, by its text, with where it stands. */
 const laterUnits = new Map<string, { unit: LawUnit; where: string }>()
-const requested = targets.filter((x) => !only || x.inr === only)
+const requested = targets.filter((x) => !only.size || only.has(x.inr))
 for (const target of requested) {
   let d: Draft | null
   try {
