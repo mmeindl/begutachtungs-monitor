@@ -47,6 +47,8 @@ export interface LandKonsVersion {
   xmlUrl: string | null
   /** The Stammnorm's number („57/2019"). */
   stammnorm: string | null
+  /** The law's abbreviation, as RIS gives it apart from the Kurztitel („K-BV"). */
+  abbreviation: string | null
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '')
@@ -82,6 +84,7 @@ export function konsVersionOf(ref: any): LandKonsVersion | null {
     organ: str(k?.Kundmachungsorgan),
     xmlUrl,
     stammnorm: str(k?.StammnormBgblnummer) || null,
+    abbreviation: str(k?.Abkuerzung) || null,
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -298,13 +301,14 @@ export function instructionLawFor(kurztitel: string, laws: readonly (string | nu
   if (laws.length === 1 && risLaws === 1) return laws[0]!
   const words = lgblWords(kurztitel)
   if (!words.size) return undefined
-  // A word of the Kurztitel, or its genitive in the Artikel („…gesetz" → „…gesetzes").
-  const holds = (title: string) => {
-    const there = [...lgblWords(title)]
-    return [...words].every((w) => there.some((t) => t === w || t === `${w}s` || t === `${w}es`))
-  }
-  const hits = laws.filter((l): l is string => l !== null && holds(l))
+  const hits = laws.filter((l): l is string => l !== null && holdsAll(l, words))
   return hits.length === 1 ? hits[0]! : undefined
+}
+
+/** Whether a title holds every word: as it stands, or in its genitive („…gesetz" → „…gesetzes"). */
+function holdsAll(title: string, words: ReadonlySet<string>): boolean {
+  const there = [...lgblWords(title)]
+  return [...words].every((w) => there.some((t) => t === w || t === `${w}s` || t === `${w}es`))
 }
 
 /** „Artikel II Änderung des …" → „II", „Artikel 3" → „3"; null for anything else. */
@@ -354,8 +358,19 @@ const UNTITLED_RE = /^Art(?:ikel|\.)\s*(?:[IVXLC]+|\d+[a-z]?)$/
  * any law, and every § of the law it amends was withheld as `lawUnmatched`
  * — 251 of the 509 in the harness (Vorarlberg 156, Wien 87, Salzburg 8;
  * „Artikel I" … „Artikel VIII" of Wien's LGBl. Nr. 42/2019).
+ *
+ * THEN A LAW UNDER ANOTHER NAME (22.11.2026). RIS's Kurztitel carries an
+ * abbreviation the Artikel's title does not („Kärntner Bauvorschriften- K-BV"
+ * against „Änderung der Kärntner Bauvorschriften", 86 §§ of four Kärnten
+ * LGBl, 7 of Steiermark), or the law bears a name the Landesgesetzblatt
+ * gives it itself (Salzburg's 76/2019 renames its law in Artikel I). Such a
+ * law still unmatched and an Artikel no law took meet where the title holds
+ * the Kurztitel's words once RIS's abbreviation and a closing bracket are
+ * out, or where the Artikel's clause cites, with its year, the Stammnorm
+ * RIS gives the law — and they are paired only where each is the other's
+ * only one. Two candidates, or none, stay unmatched.
  */
-export function instructionLawsOf(versions: readonly Pick<LandKonsVersion, 'law'>[], units: readonly LawUnit[], xml: string): Map<string, string | null | undefined> {
+export function instructionLawsOf(versions: readonly Pick<LandKonsVersion, 'law' | 'abbreviation' | 'stammnorm'>[], units: readonly LawUnit[], xml: string): Map<string, string | null | undefined> {
   const keys = [...lgblInstructedParagraphs(units).keys()]
   const clauses = lgblArticleClauses(xml)
   const titleOf = (key: string | null) => {
@@ -365,8 +380,27 @@ export function instructionLawsOf(versions: readonly Pick<LandKonsVersion, 'law'
   }
   const titles = keys.map(titleOf)
   const laws = [...new Set(versions.map((v) => v.law))]
-  return new Map(laws.map((law) => {
+  const out = new Map(laws.map((law) => {
     const title = instructionLawFor(law, titles, laws.length)
     return [law, title === undefined || title === null ? title : keys[titles.indexOf(title)]!]
   }))
+
+  const open = laws.filter((law) => out.get(law) === undefined)
+  const taken = new Set(out.values())
+  const free = keys.filter((k): k is string => k !== null && !taken.has(k))
+  const meets = (law: string, key: string) => {
+    const mine = versions.filter((v) => v.law === law)
+    const abbreviation = mine.find((v) => v.abbreviation)?.abbreviation
+    const name = (abbreviation ? law.replace(new RegExp(`(?<![\\p{L}\\d])${abbreviation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\d])`, 'u'), ' ') : law).replace(/\([^()]*\)\s*$/, '')
+    const words = lgblWords(name)
+    if (words.size && holdsAll(titleOf(key)!, words)) return true
+    const cites = clauses.get(articleDesignation(units.find((u) => u.article === key)?.articleNumber ?? key) ?? '')?.cites
+    return !!cites && mine.some((v) => /^\d+\/\d{4}/.exec(v.stammnorm ?? '')?.[0] === cites)
+  }
+  const candidates = new Map(open.map((law) => [law, free.filter((key) => meets(law, key))]))
+  for (const law of open) {
+    const [key, ...more] = candidates.get(law)!
+    if (key !== undefined && !more.length && open.filter((other) => candidates.get(other)!.includes(key)).length === 1) out.set(law, key)
+  }
+  return out
 }

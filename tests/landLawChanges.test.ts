@@ -1,9 +1,9 @@
 /** What a Landesgesetz changed, § by § (`landLawChanges.ts`): every doubt is a § not compared. */
 import { describe, expect, it } from 'vitest'
-import { diffLandDraft } from '../server/utils/laender/landLawDiff'
-import { instructionLawFor, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
+import { diffLandDraft, lgblUnits } from '../server/utils/laender/landLawDiff'
+import { instructionLawFor, instructionLawsOf, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
 
-const v = (over: Partial<LandKonsVersion>): LandKonsVersion => ({ gesetzesnummer: '20001217', law: 'Salzburger Kinderbildungs- und -betreuungsgesetz 2019', key: '§5', from: null, to: null, organ: '', xmlUrl: 'x', stammnorm: '57/2019', ...over })
+const v = (over: Partial<LandKonsVersion>): LandKonsVersion => ({ gesetzesnummer: '20001217', law: 'Salzburger Kinderbildungs- und -betreuungsgesetz 2019', key: '§5', from: null, to: null, organ: '', xmlUrl: 'x', stammnorm: '57/2019', abbreviation: null, ...over })
 
 describe('versions', () => {
   it('keys §§ and Artikel, not § 0 or Anlagen', () => {
@@ -71,6 +71,56 @@ describe('lgblArticleClauses', () => {
       II: { name: 'Pflichtschulorganisationsgesetz', cites: '17/1984' },
       2: { name: 'Steiermärkische Pensionsgesetz 2009', cites: '10/2009' },
     })
+  })
+})
+
+describe('instructionLawsOf — a law under another name (22.11.2026)', () => {
+  /** An Artikel of a Landesgesetzblatt: its heading, its clause, one instruction. */
+  const art = (heading: string, clause: string, instruction: string) =>
+    `<ueberschrift typ="art" halign="c">${heading}</ueberschrift><absatz typ="promkleinlsatz" halign="j">${clause}</absatz><absatz typ="novao2" halign="j">1. ${instruction}</absatz>`
+  const match = (xml: string, laws: { law: string; abbreviation?: string; stammnorm: string }[]) => {
+    const doc = `<risdok><nutzdaten>${xml}</nutzdaten></risdok>`
+    return Object.fromEntries(instructionLawsOf(laws.map((l) => ({ abbreviation: null, ...l })), lgblUnits(doc), doc))
+  }
+
+  it('holds the Kurztitel without the abbreviation RIS gives it (Kärnten LGBl. Nr. 73/2019)', () => {
+    const xml = art('Artikel I<br />Änderung der Kärntner Gefahrenpolizei- und Feuerpolizeiordnung', 'Die Kärntner Gefahrenpolizei- und Feuerpolizeiordnung – K-GFPO, LGBl. Nr. 67/2000, zuletzt geändert durch LGBl. Nr. 71/2018, wird wie folgt geändert:', '§ 15 Abs. 1 lautet: „(1) Text.“') +
+      art('Artikel II<br />Änderung der Kärntner Bauvorschriften', 'Die Kärntner Bauvorschriften – K-BV, LGBl. Nr. 56/1986, zuletzt geändert durch LGBl. Nr. 71/2018, werden wie folgt geändert:', '§ 14 Abs. 2 lautet: „(2) Text.“')
+    expect(match(xml, [
+      { law: 'Kärntner Gefahrenpolizei- und Feuerpolizeiordnung 2000 - K-GFPO', abbreviation: 'K-GFPO', stammnorm: '67/2000' },
+      { law: 'Kärntner Bauvorschriften- K-BV', abbreviation: 'K-BV', stammnorm: '56/1985' },
+    ])).toEqual({
+      'Kärntner Gefahrenpolizei- und Feuerpolizeiordnung 2000 - K-GFPO': 'Artikel I Änderung der Kärntner Gefahrenpolizei- und Feuerpolizeiordnung',
+      'Kärntner Bauvorschriften- K-BV': 'Artikel II Änderung der Kärntner Bauvorschriften',
+    })
+  })
+
+  it('takes the Stammnorm the clause cites where the names differ (Kärnten LGBl. Nr. 89/2020)', () => {
+    const xml = art('Artikel I<br />Änderung des Kärntner EU-Umwelt-Begleitgesetzes', 'Das Gesetz über begleitende Maßnahmen zur Durchführung von Verordnungen im Bereich des Landesrechts, LGBl. Nr. 58/2018, wird wie folgt geändert:', '§ 1 lautet: „§ 1 Text.“') +
+      art('Artikel II<br />Änderung des Kärntner Dienstleistungsgesetzes', 'Das Kärntner Dienstleistungsgesetz – K-DLG, LGBl. Nr. 23/2012, zuletzt geändert durch LGBl. Nr. 71/2018, wird wie folgt geändert:', '§ 3 lautet: „§ 3 Text.“')
+    expect(match(xml, [
+      { law: 'Kärntner EU-Verordnungen-Begleitgesetz – K-EUBG', abbreviation: 'K-EUBG', stammnorm: '58/2018' },
+      { law: 'Kärntner Dienstleistungsgesetz - K-DLG', abbreviation: 'K-DLG', stammnorm: '23/2012' },
+    ])).toEqual({
+      'Kärntner EU-Verordnungen-Begleitgesetz – K-EUBG': 'Artikel I Änderung des Kärntner EU-Umwelt-Begleitgesetzes',
+      'Kärntner Dienstleistungsgesetz - K-DLG': 'Artikel II Änderung des Kärntner Dienstleistungsgesetzes',
+    })
+  })
+
+  it('pairs a law with the one Artikel left to it, and never where two remain (Wien LGBl. Nr. 37/2026, Vorarlberg LGBl. Nr. 72/2022)', () => {
+    const wien = art('Artikel V', 'Das Wiener Gleichbehandlungsgesetz, LGBl. für Wien Nr. 18/1996, zuletzt geändert durch das Gesetz LGBl. für Wien Nr. 39/2025, wird wie folgt geändert:', 'In § 27 Abs. 1 entfällt die Wortfolge „im Sinn“.') +
+      art('Artikel VI', 'Das Wiener Landeslehrerinnen- und Landeslehrer-Gleichbehandlungsgesetz, LGBl. für Wien Nr. 41/2009, zuletzt geändert durch das Gesetz LGBl. für Wien Nr. 63/2018, wird wie folgt geändert:', '§ 4 Abs. 1 lautet: „(1) Text.“')
+    expect(match(wien, [
+      { law: 'Wiener Gleichbehandlungsgesetz', stammnorm: '18/1996' },
+      { law: 'Wiener Landeslehrerinnen- und Landeslehrer-Gleichbehandlungsgesetz', stammnorm: '41/2009' },
+    ])).toEqual({ 'Wiener Gleichbehandlungsgesetz': 'Artikel V', 'Wiener Landeslehrerinnen- und Landeslehrer-Gleichbehandlungsgesetz': 'Artikel VI' })
+    // Both names hold both Artikel (the years are no word), and only one clause cites its law's Stammnorm: neither is taken.
+    const vbg = art('Artikel III', 'Das Landesbedienstetengesetz 1988, LGBl.Nr. 1/1988, in der Fassung LGBl.Nr. 28/1991, wird wie folgt geändert:', '§ 120 lautet: „§ 120 Text.“') +
+      art('Artikel IV', 'Das Landesbedienstetengesetz 2000, LGBl.Nr. 50/2000, in der Fassung LGBl.Nr. 15/2001, wird wie folgt geändert:', '§ 2 lautet: „§ 2 Text.“')
+    expect(match(vbg, [
+      { law: 'Landesbedienstetengesetz 1988', stammnorm: '1/1988' },
+      { law: 'Landesbedienstetengesetz 2000', stammnorm: '44/2013' },
+    ])).toEqual({ 'Landesbedienstetengesetz 1988': undefined, 'Landesbedienstetengesetz 2000': undefined })
   })
 })
 
