@@ -1912,8 +1912,14 @@ function ownPart(cell: string, own: string | null): string {
   return symbol ? cell.slice(symbol.index) : cell
 }
 
-/** A marker where one can stand, and the chain „bis"/„und" may hang on it. */
-const ABSATZ_RUN_RE = /(?:^|(?<=[.:;…]\s*)|(?<=\.\.\.\s*))\(\d{1,3}[a-z]?\)(?:\s+(?:bis|und)\s+\(\d{1,3}[a-z]?\))*(?=\s|$)/g
+/**
+ * A marker where one can stand, and the chain „bis"/„und" may hang on it —
+ * or a dash („(1) - (41) …"), and the chain's „…" may be glued to its last
+ * marker („(1) bis (8)… (9a)"). Both stood in 50 of the fault injection's
+ * 1,538 „Fehlt" sites on 21.11.2026, the Absatz dropped from the result in
+ * each and confirmed: check 5 read neither shape as a chain.
+ */
+const ABSATZ_RUN_RE = /(?:^|(?<=[.:;…]\s*)|(?<=\.\.\.\s*))\(\d{1,3}[a-z]?\)(?:\s+(?:bis|und|-|–)\s+\(\d{1,3}[a-z]?\))*(?=\s|$|…|\.\.\.)/g
 
 /**
  * Check 5: the Absätze the annex prints in its proposed column — every row
@@ -2020,7 +2026,7 @@ function markersOpeningText(cell: string, own: string | null): string[] {
   const text = ownPart(markedOmissions(cell), own)
   const out: string[] = []
   for (const m of text.matchAll(ABSATZ_RUN_RE)) {
-    if (/\s(?:bis|und)\s/.test(m[0])) continue
+    if (/\s(?:bis|und|-|–)\s/.test(m[0])) continue
     const rest = text.slice(m.index! + m[0].length)
     if (!/^\s*\p{L}/u.test(rest) || /^\s*(?:Aufgehoben|\(aufgehoben\)|entfällt|bis|und)(?!\p{L})/iu.test(rest)) continue
     out.push(/\((\d{1,3}[a-z]?)\)/.exec(m[0])![1]!)

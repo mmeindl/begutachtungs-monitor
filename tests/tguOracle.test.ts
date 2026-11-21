@@ -1359,3 +1359,18 @@ describe('check 3 in place: a change stands in the annex where the engine made i
     expect(oracleVerdict('1', before, 'Begriffe: Börse: ein Markt. MTF: ein multilaterales Handelssystem gemäß § 1 Z 24 WAG 2018. OTF: ein organisiertes Handelssystem.', chained)).toMatchObject({ verdict: 'bestätigt' })
   })
 })
+
+// The two chain shapes check 5 did not read (21.11.2026): a dash range and
+// a „…" glued to the chain's last marker. Fault injection „Fehlt" dropped
+// the Absatz at the end of such a chain from the result 50 times, and the
+// oracle confirmed each.
+describe('check 5 reads a dash range and a glued „…" as a chain', () => {
+  const row = (proposed: string): ComparisonRow => ({ kind: 'pair', law: null, para: '§ 5', gld: '§ 5.', current: proposed, proposed, change: 'changed', elided: false, segments: null, editorial: false }) as unknown as ComparisonRow
+  it('names the Absatz a „(1) - (4) …" chain ends with when the result lacks it', () => {
+    expect(absatzOrderBroken([row('§ 5. (1) - (4) … (5) Neu ist dieser Absatz.')], ['1', '2', '3', '5'])).toMatchObject({ note: '(4) fehlt im Ergebnis' })
+    expect(absatzOrderBroken([row('§ 5. (1) - (4) … (5) Neu ist dieser Absatz.')], ['1', '2', '3', '4', '5'])).toBeNull()
+  })
+  it('names it behind „(1) bis (4)… (5)", the „…" glued to the marker', () => {
+    expect(absatzOrderBroken([row('§ 5. (1) bis (4)… (5) Neu ist dieser Absatz.')], ['1', '2', '3', '5'])).toMatchObject({ note: '(4) fehlt im Ergebnis' })
+  })
+})
