@@ -44,6 +44,29 @@ describe('compareReasoningByParagraph — der §-Join', () => {
     expect(out.entries['§ 7']!.changed).toBe(false)
   })
 
+  // A Land's Begründungsvergleich Entwurf → Regierungsvorlage runs this join
+  // alone, and until 21.11.2026 a change whose Begründung it could not attach
+  // stood silent beside one whose Begründung stayed the same: the page's
+  // grammar for „unverändert". The Bund's joins say so since 19.11.2026.
+  it('gibt jeder Änderung beider Texte ohne Eintrag ihre Zeile, und nur ihr', () => {
+    const units = [
+      unit(SNG, 'Z2', 'In § 6 Abs. 3 wird das Zitat "246" durch das Zitat "247" ersetzt.'),
+      unit(SNG, 'Z3', 'In § 8 Abs. 4 entfällt die Wortfolge "oder mündlich".'),
+      unit(SNG, 'Z4', 'In § 9 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.', 'unchanged'),
+      unit(SNG, 'Z5', 'Nach § 10 wird folgender § 10a eingefügt:', 'inserted'),
+      unit(SNG, 'Z6', 'In § 15 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.'),
+      unit(BVWG, 'Z1', 'In § 15 Abs. 2 entfällt die Wortfolge "in der Regel".'),
+    ]
+    const before = new Map([['6', 'Die Bestimmung dient der Umsetzung.'], ['15', 'Eine.']])
+    const after = new Map([['6', 'Die Bestimmung dient nunmehr der Umsetzung.'], ['8', 'Nur in der Vorlage.'], ['15', 'Andere.']])
+
+    const out = compareReasoningByParagraph(units, before, after)
+
+    // § 8 has a passage on one side only, § 15 two laws of the draft share:
+    // neither proves the document silent, so the line says the monitor could not tell.
+    expect(out.gaps).toEqual({ [`${SNG}|Z3|changed`]: 'unread', [`${SNG}|Z6|changed`]: 'unread', [`${BVWG}|Z1|changed`]: 'unread' })
+  })
+
   it('zeigt nichts, wo zwei Artikel dieselbe Paragraphennummer ändern', () => {
     const units = [
       unit(SNG, 'Z9', 'In § 15 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.'),

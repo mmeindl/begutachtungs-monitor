@@ -516,7 +516,7 @@ function namesSeveralLaws(heading: string): boolean {
  * changed Begründung but a gap in the document, and showing that as
  * „geändert" would be wrong.
  */
-export function compareReasoningByParagraph(units: readonly LawDiffUnit[], before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null = null): ReasoningComparison {
+export function compareReasoningByParagraph(units: readonly LawDiffUnit[], before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null = null): ReasoningComparison & { gaps: Record<string, ReasoningGap> } {
   const read = readings()
   const ambiguous = ambiguousParagraphs(units, read)
   const f = filling(units)
@@ -527,7 +527,18 @@ export function compareReasoningByParagraph(units: readonly LawDiffUnit[], befor
   // would have lost Begründungen they have today.
   const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(read.addressed(u) ?? '')
   joinAtParagraph(f, [...units.filter((u) => !isAmbiguous(u)), ...units.filter(isAmbiguous)], ambiguous, textsByNumber(before, after, byArticle), read)
-  return finish(f.out)
+  // Every change on both sides that ended without an entry (21.11.2026), as
+  // `compareReasoning` says it since 19.11.2026: a Land's Begründungsvergleich
+  // runs this join alone, and its changes stood silent — „unverändert" to the
+  // eye. Always „unread": the texts per § hold only the passages whose § was
+  // read, so a § missing from them proves nothing about the document. None
+  // where the ceiling turned the Begründung away, and none at an unchanged §.
+  const gaps: Record<string, ReasoningGap> = {}
+  for (const unit of units) {
+    const key = diffUnitKey(unit)
+    if (unit.change === 'changed' && !f.out.units[key] && !f.capped.has(key)) gaps[key] = 'unread'
+  }
+  return { ...finish(f.out), gaps }
 }
 
 function finish(out: ReasoningComparison): ReasoningComparison {

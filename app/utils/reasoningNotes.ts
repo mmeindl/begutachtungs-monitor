@@ -103,7 +103,10 @@ const REASONING_FAILED_DE = {
  * that shows no Begründung read as „the reasons did not change".
  *
  * The service's own gap sentence where it gives one; where both texts were
- * read and share no Paragraph, that. Nothing while the comparison found
+ * read and the § join found no Paragraph explained in both, that — of what
+ * the monitor found, not of the documents (21.11.2026): the join reads no
+ * new law's § by its own designation, and „decken keinen gemeinsamen
+ * Paragraphen ab" stood under new laws explained § by § in both texts. Nothing while the comparison found
  * Begründungen to hold against each other, and nothing for a reason that is
  * no gap sentence — the comparison under it says that one itself. Where the
  * request failed and the list shows changes, that it is not to be had now
@@ -118,7 +121,7 @@ export function landReasoningGapNote(
   if (r.available) {
     return r.stats.compared
       ? null
-      : gapDe('outOfScope', 'ein Vergleich der Begründungen. Die Erläuterungen beider Texte decken keinen gemeinsamen Paragraphen ab.')
+      : gapDe('outOfScope', 'ein Vergleich der Begründungen. Zu keiner Änderung fand der Monitor in beiden Texten eine Begründung zum selben Paragraphen.')
   }
   return splitGap(r.unavailableReason) ? `${r.unavailableReason} Die Begründungen sind deshalb nicht verglichen.` : null
 }

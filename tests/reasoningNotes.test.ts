@@ -33,9 +33,13 @@ describe('landReasoningGapNote (17.11.2026)', () => {
     expect(landReasoningGapNote({ available: true, unavailableReason: null, stats: stats(4) })).toBeNull()
   })
 
-  it('says that two read texts share no Paragraph', () => {
+  // „Die Erläuterungen beider Texte decken keinen gemeinsamen Paragraphen ab"
+  // until 21.11.2026: a claim about the documents the join cannot carry — it
+  // stood under Salzburg's new Landesbedienstetengesetz, whose Entwurf
+  // explains 161 §§ one by one, because the § join reads no new law's §.
+  it('says that the monitor found no Begründung on the same Paragraph in both texts', () => {
     expect(landReasoningGapNote({ available: true, unavailableReason: null, stats: stats(0) })).toBe(
-      'Nicht im Monitor: ein Vergleich der Begründungen. Die Erläuterungen beider Texte decken keinen gemeinsamen Paragraphen ab.',
+      'Nicht im Monitor: ein Vergleich der Begründungen. Zu keiner Änderung fand der Monitor in beiden Texten eine Begründung zum selben Paragraphen.',
     )
   })
 

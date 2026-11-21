@@ -1,5 +1,5 @@
 import type { EuMarker } from './eu'
-import type { LawDiffUnit, ReasoningDiffEntry } from './lawDiff'
+import type { LawDiffUnit, ReasoningDiffEntry, ReasoningGap } from './lawDiff'
 
 /**
  * Begutachtungen der Länder (22.10.2026).
@@ -499,6 +499,14 @@ export interface LandReasoningResponse {
   units: Record<string, string>
   entries: Record<string, ReasoningDiffEntry>
   stats: { compared: number; changed: number; editorial: number; uncompared: number }
+  /**
+   * `diffUnitKey` → why that change got no Begründung (21.11.2026): every
+   * change on both sides the § join left without an entry, where it compared
+   * any (`compareReasoningByParagraph`); where it compared none, the
+   * sentence above the list says it once (`landReasoningGapNote`). Absent in
+   * an answer cached before.
+   */
+  gaps?: Record<string, ReasoningGap>
 }
 
 /* ------------------------------------------------------------------ *

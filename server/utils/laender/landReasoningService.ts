@@ -77,6 +77,10 @@ export async function compareLandReasoning(
     units: result.units,
     entries: result.entries,
     stats: result.stats,
+    // A line at each change only beside Begründungen compared: where none
+    // was, one sentence above the list says so (`landReasoningGapNote`), and
+    // the same line at every change would repeat it.
+    gaps: result.stats.compared ? result.gaps : {},
   }
 }
 

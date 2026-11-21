@@ -10,7 +10,7 @@ import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
-import { landReasoningGapNote } from '~/utils/reasoningNotes'
+import { landReasoningGapNote, reasoningGapNote } from '~/utils/reasoningNotes'
 import { comparisonLaws, landReasonsAt, unplacedLandReasons } from '~/utils/landReasons'
 import { unitList } from '~/utils/lesefassung'
 import { citeLineDe, dividedText, landTextCiteDe, lawUnitCiteDe } from '#shared/utils/citations'
@@ -129,6 +129,12 @@ function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
   const entry = key ? reasoning.value?.entries?.[key] : null
   return entry && (entry.changed || !entry.comparable) ? entry : null
 }
+/* Why a change shows no Begründung although both texts carry Erläuterungen
+   (21.11.2026; silence before, „unverändert" to the eye): one line where the
+   disclosure would be, as at the Bund's (`LawDiffSection.gapOf`). */
+function gapOf(u: LawDiffUnit): string | null {
+  return vorlageStep ? reasoningGapNote(reasoning.value?.gaps?.[diffUnitKey(u)]) : null
+}
 
 /**
  * „Zitieren" at a unit (11.11.2026), as at the Bund's (`LawDiffSection.unitCite`):
@@ -226,7 +232,7 @@ interface UnitView { unit: LawDiffUnit; label: string | null }
    reason): the template asked for the Begründung up to five times a row, on
    every keystroke of the search. */
 type Block =
-  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; reasons: ReturnType<typeof reasonsFor>; cite: { text: string; subject: string } | null } & UnitView)
+  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; gap: string | null; reasons: ReturnType<typeof reasonsFor>; cite: { text: string; subject: string } | null } & UnitView)
   | { kind: 'context'; units: UnitView[] }
 
 const viewOf = (u: LawDiffUnit): UnitView => ({ unit: u, label: unitName(u, null, diffUnitKey(u)) ?? extraHeading(u) })
@@ -346,6 +352,7 @@ const groups = computed(() => {
         ...splitSegments(u.segments, u.fromText, u.toText),
         split: readsSideBySide(u.segments),
         reasoning: reasoningOf(u),
+        gap: gapOf(u),
         reasons: reasonsFor(u),
         cite: unitCite(u),
       })
@@ -528,6 +535,9 @@ const hasUnits = computed(() => units.value.length > 0)
                     <DiffText :segments="b.reasoning.segments ?? []" />
                   </p>
                 </Disclosure>
+                <!-- No Begründung could be attached: said in the disclosure's
+                     place and size, as at the Bund's (`LawDiffSection`). -->
+                <GapNote v-else-if="b.gap" class="mt-2 text-xs text-ink-secondary" :text="b.gap" />
               </DiffBody>
             </div>
           </template>
