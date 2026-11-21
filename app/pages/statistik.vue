@@ -107,11 +107,22 @@ const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
           </p>
           <template v-else>
             <p>
-              Gezählt seit {{ formatDateDe(stats.seit) }}:
+              Gezählt {{ stats.stand
+                ? `vom ${formatDateDe(stats.seit)} bis ${formatDateTimeDe(stats.stand)} Uhr`
+                : `seit ${formatDateDe(stats.seit)}` }}:
               <strong class="font-semibold text-ink">{{ formatNumberDe(stats.gesamt.seiten) }}
                 Seitenaufrufe</strong>,
               dazu {{ formatNumberDe(stats.gesamt.feedKalender) }} Abrufe von
-              Abonnements und {{ formatNumberDe(stats.gesamt.bots) }} Zugriffe von Programmen.
+              Abonnements (RSS-Feed und Kalender) und
+              {{ formatNumberDe(stats.gesamt.bots) }} Zugriffe von Programmen
+              wie Suchmaschinen.
+            </p>
+            <p>
+              Das sind keine Personen: Wer wiederkommt, zählt erneut, und ein
+              Feedreader fragt mehrmals am Tag nach. Klicks innerhalb des
+              Monitors fehlen meist, und nicht jedes Programm gibt sich zu
+              erkennen, ein Teil der Seitenaufrufe kann also von Software
+              stammen.
             </p>
             <StatistikChart :tage="stats.tage" class="mt-6" />
             <!-- The frame clips, the table scrolls inside it, so the pager
@@ -151,27 +162,10 @@ const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
                 @all="tage.all()"
               />
             </div>
-            <p class="text-sm">
-              Tage nach UTC. Der Tag, an dem die Zählung begann, fehlt in
-              allen Zahlen dieser Seite: Sie begann im Lauf des Tages, er ist
-              nur zum Teil gezählt. „Abonnements“ sind Abrufe des RSS-Feeds und
-              der Kalenderdateien, die Feedreader und Kalender-Apps von sich
-              aus in festen Abständen stellen – sie sind keine Seitenaufrufe
-              und darin nicht enthalten. „Programme“ sind Suchmaschinen, Vorschaudienste und
-              andere Software, die sich als solche zu erkennen gibt; auch sie
-              zählen in keiner der beiden anderen Spalten. Der laufende Tag steht mit
-              dem Stand der letzten Speicherung<template v-if="stats.stand">
-                ({{ formatDateTimeDe(stats.stand) }})</template>.
-            </p>
           </template>
         </ProseSection>
 
         <ProseSection v-if="stats.seit" id="stat-seiten" heading="Was aufgerufen wird">
-          <p>
-            Seit Beginn der Zählung nach Art der Seite, darunter die Abrufe des
-            Feeds und der Kalenderdateien. Gezählt wird die Art, nicht die
-            Adresse: welcher Entwurf gelesen wurde, steht nirgends.
-          </p>
           <div
             v-for="(tabelle, i) in [
               { kopf: 'Seite', zahl: 'Aufrufe', caption: 'Seitenaufrufe seit Beginn der Zählung nach Art der Seite', zeilen: stats.nachSeite },
@@ -212,11 +206,10 @@ const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
 
         <ProseSection v-if="stats.seit" id="stat-herkunft" heading="Woher Besuche kommen">
           <p>
-            Die Domains der Seiten, über deren Links Besuche seit Beginn der
-            Zählung kamen – nur die Domain, ohne Pfad, und erst ab fünf Besuchen,
-            damit ein einzelner Link von einer privaten Seite nicht hier
-            erscheint. Besuche ohne solche
-            Angabe, etwa über ein Lesezeichen oder eine App, fehlen hier.
+            Domains erscheinen ab fünf Besuchen, damit ein einzelner Link von
+            einer privaten Seite hier nicht auftaucht. Gezählt sind nur Besuche
+            über einen Link: Wer über ein Lesezeichen oder eine App kommt, fehlt
+            hier.
           </p>
           <p v-if="!stats.herkunft.length">
             Bisher ist keine verweisende Domain gezählt.
@@ -240,29 +233,6 @@ const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
               </tbody>
             </table>
           </div>
-        </ProseSection>
-
-        <ProseSection id="stat-grenzen" heading="Was die Zahlen nicht sagen">
-          <ul>
-            <li>
-              Seitenaufrufe sind keine Personen: Wer drei Entwürfe liest,
-              zählt dreimal, wer zweimal kommt, ebenso.
-            </li>
-            <li>
-              Gezählt wird jede Seite, die der Server ausliefert. Wer
-              innerhalb des Monitors weiterklickt, lädt die nächste Seite
-              meist nicht neu – diese Klicks fehlen in den Zahlen.
-            </li>
-            <li>
-              Abonnements zählen Abrufe, nicht Abonnentinnen und Abonnenten:
-              Ein Feedreader oder Kalender fragt mehrmals am Tag nach. Wie
-              viele Menschen abonniert haben, bleibt unbekannt.
-            </li>
-            <li>
-              Nicht jedes Programm gibt sich zu erkennen; ein Teil der
-              Seitenaufrufe kann deshalb trotzdem von Software stammen.
-            </li>
-          </ul>
         </ProseSection>
       </template>
     </FetchGate>

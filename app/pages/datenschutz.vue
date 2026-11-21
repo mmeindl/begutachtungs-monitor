@@ -98,7 +98,8 @@ const contact = useContact()
 
     <ProseSection id="dse-zaehlung" heading="Zählung der Seitenaufrufe">
       <p>
-        Der Monitor zählt Seitenaufrufe je Seite und Tag, und er zählt, von
+        Der Monitor zählt Seitenaufrufe je Art der Seite und Tag – etwa
+        „Entwürfe des Bundes“, nicht den einzelnen Entwurf –, und er zählt, von
         welcher Domain ein Besuch kam – die Adresse der verweisenden Seite
         ohne Pfad, also etwa <code>www.parlament.gv.at</code>, nicht die
         Unterseite. Gespeichert werden dabei keine IP-Adresse, kein Cookie,
