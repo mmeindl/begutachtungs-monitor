@@ -102,6 +102,7 @@ import { designationKey, comparableTokens } from '../../server/utils/annex/annex
 import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { MIN_NEW_WORDS, draftBags, draftWordBag } from '../../server/utils/annex/rightColumn'
 import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
+import { lastSentenceGone, raisedNumber, swappedWord } from '../lib/rightColumnFaults'
 
 const LANDS: LandCode[] = ['ooe', 'sbg', 't', 'w']
 /* Kärnten's answers are dumped too (`tgu.jsonl`): the RIS check is the same
@@ -532,17 +533,11 @@ for (const [n, site] of sites.entries()) {
   const foreign = other ? sentenceOf(other.unit.toText) : null
   push('R-fremd', foreign ? appended(unit, foreign) : null, foreign ?? '')
   // Zahl: the first number of the inserted text, plus seven.
-  push('Zahl', rewritten(unit, (s) => (/\d+/.test(s) ? s.replace(/\d+/, (d) => String(Number(d) + 7)) : null)), '')
+  push('Zahl', rewritten(unit, raisedNumber), '')
   // Wort: the longest word of the inserted text swapped for one the draft does not use.
-  push('Wort', rewritten(unit, (s) => {
-    const longest = s.split(/\s+/).filter((w) => /^\p{L}{6,}$/u.test(w)).sort((a, b) => b.length - a.length)[0]
-    return longest ? s.replace(longest, 'Bewilligungsvoraussetzung') : null
-  }), '')
+  push('Wort', rewritten(unit, swappedWord), '')
   // Satz weg: the inserted text's last sentence gone (the rule reads only what is shown as new: outside its reach).
-  push('Satz weg', rewritten(unit, (s) => {
-    const parts = s.split(SENTENCE_SPLIT)
-    return parts.length > 1 ? parts.slice(0, -1).join(' ') : null
-  }), '')
+  push('Satz weg', rewritten(unit, (s) => lastSentenceGone(s, SENTENCE_SPLIT)), '')
 }
 
 // --- Fault: both columns cut (the left column's check) --------------------

@@ -46,6 +46,17 @@
  *   running it: the blind spot is stated as a measured 0 %, not assumed. What
  *   the run does decide is `silenced` (below).
  *
+ * **And the reader's faults in the right column** (21.11.2026), the Länder
+ * harness's classes, built by the same edits (`lib/rightColumnFaults.ts`), in
+ * every § the left check confirms: **Zahl** (the first number of the new text
+ * plus seven), **Wort** (its longest word swapped), **Satz-weg** (its last
+ * sentence gone), and **R-weg**, a sentence the draft keeps lost from the
+ * right column, which the page then shows struck. Both right-column rules
+ * read new words against bags, from floors up (`MIN_NEW_WORDS`,
+ * `MIN_MISSING_WORDS`), and no rule reads struck text: these were the
+ * Länder's blind spot until 20.11.2026, and the run says what they are for
+ * the Bund.
+ *
  * The left column is untouched in both R faults, so "die linke Prüfung
  * besteht" reads 100 % there by construction — that is the statement, not a
  * defect of the run. Fault U reads 100 % there for a different reason: its row
@@ -345,6 +356,7 @@ import { argAssigned, argFlag } from '../lib/args'
 import { corpusReach, floorOf, harnessStamp } from '../lib/harnessRecord'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
+import { lastSentenceGone, raisedNumber, swappedWord } from '../lib/rightColumnFaults'
 
 // The Begut list is fetched afresh; `--liste-aus-cache` replays the cached one on purpose (`lib/harnessCache.ts`).
 const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
@@ -502,6 +514,54 @@ function withRow(rows: readonly ComparisonRow[], at: ComparisonRow, replacement:
  */
 function withMirroredRow(rows: readonly ComparisonRow[], like: ComparisonRow, text: string): ComparisonRow[] {
   return [...rows, { ...like, gld: null, current: text, proposed: text, change: 'unchanged', elided: false, segments: null, editorial: false }]
+}
+
+/**
+ * The § with the first new text `edit` can break broken — Zahl, Wort,
+ * Satz-weg (21.11.2026), the Länder's faults (`lib/rightColumnFaults.ts`).
+ * A row the annex prints as inserted has its column edited; in a changed row
+ * the first inserted stretch the edit applies to is found in the proposed
+ * column and edited there, and the row is re-diffed as the reader would
+ * diff it. Null where no new text has anything to break.
+ */
+function withNewTextEdited(rows: readonly ComparisonRow[], edit: (text: string) => string | null): ComparisonRow[] | null {
+  for (const row of rows) {
+    if (row.kind !== 'pair' || row.elided) continue
+    if (row.change === 'inserted') {
+      const proposed = edit(row.proposed)
+      if (proposed !== null) return withRow(rows, row, { ...row, proposed })
+      continue
+    }
+    if (row.change !== 'changed' || !row.segments) continue
+    for (const segment of row.segments) {
+      if (segment.type !== 'inserted') continue
+      const edited = edit(segment.text)
+      const at = row.proposed.indexOf(segment.text)
+      if (edited === null || at < 0) continue
+      const proposed = `${row.proposed.slice(0, at)}${edited}${row.proposed.slice(at + segment.text.length)}`
+      return withRow(rows, row, { ...row, proposed, segments: diffTokens(row.current, proposed).segments })
+    }
+  }
+  return null
+}
+
+/**
+ * The § with a sentence it keeps lost from the right column — R-weg
+ * (21.11.2026): the first sentence of a row that stands alike in both
+ * columns, long enough to be a sentence (`MIN_STANDING_STRETCH`), gone from
+ * the proposed one, and the row re-diffed. The page then shows the draft
+ * striking a sentence it leaves alone. No rule reads struck text, so the
+ * gate is blind to it by construction; the run states it as a figure.
+ */
+function withKeptSentenceLost(rows: readonly ComparisonRow[]): ComparisonRow[] | null {
+  for (const row of rows) {
+    if (row.kind !== 'pair' || row.elided || (row.change !== 'changed' && row.change !== 'unchanged')) continue
+    const kept = sentencesOf(row.proposed).find((s) => toks(s).length >= MIN_STANDING_STRETCH && row.current.includes(s))
+    if (!kept) continue
+    const proposed = row.proposed.replace(kept, '').replace(/\s{2,}/g, ' ').trim()
+    return withRow(rows, row, { ...row, proposed, change: 'changed', segments: diffTokens(row.current, proposed).segments })
+  }
+  return null
 }
 
 interface DraftResult {
@@ -687,6 +747,16 @@ async function inject(doc: any): Promise<DraftResult | null> {
   const confirmed = judgedParas.filter((p) => p.leftPasses)
   for (const para of confirmed) {
     const baseVerdict = base.get(para)!
+    // The right column's new text misread, and a kept sentence lost from it
+    // (21.11.2026): every § the left check confirms, as the Länder harness
+    // asks every § it shows — not only those with a site for the faults below.
+    const edits = [[faults.Zahl, raisedNumber], [faults.Wort, swappedWord], [faults.SatzWeg, (t: string) => lastSentenceGone(t, SENTENCE_SPLIT)]] as const
+    for (const [into, edit] of edits) {
+      const faulted = withNewTextEdited(para.rows, edit)
+      if (faulted) record(into, judge(faulted, para.standing, wide, bagOf(para)), baseVerdict)
+    }
+    const lostRight = withKeptSentenceLost(para.rows)
+    if (lostRight) record(faults.Rweg, judge(lostRight, para.standing, wide, bagOf(para)), baseVerdict)
     // The injection site: a row the page shows as a word diff, whose left
     // column is long enough that losing one sentence of it still leaves a
     // judgeable §. A row picked without those conditions would measure the
@@ -1761,6 +1831,10 @@ const faults = {
   Rold: tally('R-alt fremder geltender Satz rechts'),
   Rnew: tally('R-neu fremder Entwurfssatz rechts'),
   U: tally('U     fremder Satz beidspaltig gleich'),
+  Zahl: tally('Zahl  erste Zahl im neuen Text +7'),
+  Wort: tally('Wort  längstes neues Wort getauscht'),
+  SatzWeg: tally('Satz-weg letzter neuer Satz fehlt'),
+  Rweg: tally('R-weg Satz rechts verloren'),
 }
 /** The engine's result as the oracle judged it, without any fault. */
 const results = { witnessed: 0, verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[], dupAbs: [] as string[], rowOrder: [] as string[], placeAlarms: [] as string[] }
@@ -1874,21 +1948,21 @@ for (const [reason, n] of [...coverage.reasons].sort((a, b) => b[1] - a[1])) {
 
 console.log(`\n  Mit Injektion, je Fehler ("nicht im Entwurf" mit beiden Bezügen)`)
 console.log(`  Fehler                                §§   linke Prüfung besteht   „bereits geltend"    n.i.E. ganz         n.i.E. je §         beide ganz          beide je §          Tor, wie ausgeliefert`)
-for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
+for (const fault of Object.values(faults)) {
   const cell = (n: number): string => `${String(n).padStart(6)} (${pct(n, fault.tried)})`
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.leftPasses)}   ${cell(fault.rule1)}   ${cell(fault.rule2Wide)}   ${cell(fault.rule2Para)}   ${cell(fault.eitherWide)}   ${cell(fault.eitherPara)}   ${cell(fault.shipped)}`)
 }
 // A rule that was already firing on the sound § did not catch the fault; it
 // was there before it. Small by construction (the false-positive rate above),
 // and printed rather than assumed.
-for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
+for (const fault of Object.values(faults)) {
   if (fault.rule1Already === 0 && fault.rule2WideAlready === 0 && fault.rule2ParaAlready === 0 && fault.shippedAlready === 0) continue
   console.log(`    ${fault.label.trim()}: davon schon ohne Injektion gemeldet — Regel 1 ${fault.rule1Already}, Regel 2 ganz ${fault.rule2WideAlready}, je § ${fault.rule2ParaAlready}, Tor wie ausgeliefert ${fault.shippedAlready}`)
 }
 // And the other direction: a fault that takes an alarm *away*. Zero is the
 // claim, not the assumption — the left column exempts the right one, so text
 // smuggled left is an alibi.
-for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
+for (const fault of Object.values(faults)) {
   if (fault.silenced === 0) continue
   console.log(`    ${fault.label.trim()}: bringt eine vorher feuernde Regel zum Schweigen — ${fault.silenced}`)
 }
@@ -1990,7 +2064,7 @@ if (jsonPath) {
     window: listWindow,
     drafts,
     floor: floor ? { min: floor.min, passed: floor.passed, failed: floor.failed, unheld: floor.unheld } : null,
-    annex: [faults.L, faults.Rold, faults.Rnew, faults.U].map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.shipped, alreadyWithheld: f.shippedAlready })),
+    annex: Object.values(faults).map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.shipped, alreadyWithheld: f.shippedAlready })),
     result: [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses, oracleFaults.Payload].map((f) => ({
       key: keyOf(f.label),
       label: f.label.trim(),
