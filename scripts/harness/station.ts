@@ -68,6 +68,11 @@
  * record says when that list was measured (`population`). Null comparison 2
  * has no draft to read.
  *
+ * `--zensus` (21.11.2026): what the readers leave out of each document they
+ * read — the body's words no block carries (`lib/readerCensus.ts`). Listed
+ * per document above a few words, the largest with their lost runs; a
+ * census, read by hand, not failed.
+ *
  * `--mutationen` (20.11.2026): fault injection for what the comparison
  * forgives. Every distinct unit of every later text (Vorlage, Ausschuss,
  * Plenum, Kundmachung) is compared through `diffLawUnits` against itself with
@@ -83,7 +88,10 @@ import { LAW_STATION_ORDER, isLawStationPair } from '../../shared/utils/lawStati
 import { EBR_DOKTYP, bundlesOtherDrafts, extractBgblLink, findBundesratObjection, findComparisonRvLink, findRvLinks, lawOfEbr, parseStages } from '../../server/utils/parliament/detailJson'
 import { mapDraftRow } from '../../server/utils/parliament/list81'
 import { dedupeMeRows, joinRisToMe, toMeListRows } from '../../server/utils/ris/risJoin'
-import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
+import { segmentUnits, type LawUnit } from '../../server/utils/lawtext/lawUnits'
+import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { htmlBodyText, readerLoss, risBodyText, type ReaderLoss } from '../lib/readerCensus'
 import { diffLawPackage, diffLawUnits, isCommencementArticle } from '../../server/utils/diff/lawDiff'
 import { compareStationPair, cutsToDraft, type StationPairRefusal } from '../../server/utils/diff/stationPair'
 import { compareWords } from '../../server/utils/diff/wordDiff'
@@ -112,6 +120,10 @@ const mutate = argFlag('mutationen')
 /** `--ohne-begutachtung`: the laws without a draft instead of the drafts (see above). */
 const withoutDraft = argFlag('ohne-begutachtung')
 const SKIPPED_LIST = `.cache/begutachtung-skipped/${gp}-skipped.json`
+/** `--zensus`: what the readers leave out of each document (see above). */
+const zensus = argFlag('zensus')
+/** A census line is worth reading above this many lost words. */
+const CENSUS_FEW_WORDS = 5
 const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) => 1_200 * retry, timeoutMs: 60_000, retryOnHttpError: true }
 const getJson = <T = unknown>(url: string): Promise<T> => fetchJson<T>(url, { ...PATIENT, onExhausted: (u) => new Error(`nicht erreichbar: ${u}`) })
 const getText = (url: string): Promise<string> => fetchText(url, { script: SCRIPT, timeoutMs: 60_000 })
@@ -159,6 +171,21 @@ async function bgblXmlUrl(nummer: string): Promise<string | null> {
     if (xml) return String(xml)
   }
   return null
+}
+
+/** With `--zensus`: per document read, what its reader left out. */
+const readerLosses: ({ doc: string; url: string } & ReaderLoss)[] = []
+
+/**
+ * One station's text as units, read as the page reads it: Parliament's HTML
+ * through `parseParliamentHtml`, RIS's XML through `parseRisXml` — and with
+ * `--zensus`, the document's body held against the blocks.
+ */
+async function readUnits(doc: string, url: string, kind: 'html' | 'xml'): Promise<LawUnit[]> {
+  const raw = kind === 'html' ? await getHtml(url) : await getText(url)
+  const blocks = kind === 'html' ? parseParliamentHtml(raw) : parseRisXml(raw)
+  if (zensus && !readerLosses.some((r) => r.url === url)) readerLosses.push({ doc, url, ...readerLoss(kind === 'html' ? htmlBodyText(raw) : risBodyText(raw), blocks) })
+  return segmentUnits(blocks)
 }
 
 /**
@@ -229,10 +256,10 @@ async function loadDraft(inr: number, risXmlOf: (inr: number) => Promise<string 
   const stations = new Map<LawStationId, LawUnit[]>()
   for (const id of ['me', 'rv', 'ausschuss', 'plenum'] as const) {
     const html = found.get(id)?.html
-    if (html) stations.set(id, parseLawUnits(await getHtml(html)))
+    if (html) stations.set(id, await readUnits(`${inr}/ME ${id}`, html, 'html'))
   }
   const xml = await risXmlOf(inr)
-  const meFromRis = xml ? parseLawUnitsFromRis(await getText(xml)) : null
+  const meFromRis = xml ? await readUnits(`${inr}/ME me (RIS)`, xml, 'xml') : null
   // The page reads the RIS text where Parliament has the draft as PDF only.
   if (!stations.has('me') && found.has('me') && meFromRis) stations.set('me', meFromRis)
   const draft: Draft = { label: `${inr}/ME`, stations, present: new Set(found.keys()), viaObjection: false, meFromRis: stations.get('me') === meFromRis ? null : meFromRis, bundled: null, rvCount: 0 }
@@ -262,7 +289,7 @@ async function loadDraft(inr: number, risXmlOf: (inr: number) => Promise<string 
 async function addKundmachung(draft: Draft, nummer: string | null): Promise<void> {
   const url = nummer ? await bgblXmlUrl(nummer) : null
   if (url) {
-    draft.stations.set('bgbl', parseLawUnitsFromRis(await getText(url)))
+    draft.stations.set('bgbl', await readUnits(`${draft.label} bgbl`, url, 'xml'))
     draft.present.add('bgbl')
   }
 }
@@ -282,7 +309,7 @@ async function loadItem(ityp: 'I' | 'A', inr: number): Promise<Draft | null> {
   const stations = new Map<LawStationId, LawUnit[]>()
   for (const id of ['antrag', 'rv', 'ausschuss', 'plenum'] as const) {
     const html = found.get(id)?.html
-    if (html) stations.set(id, parseLawUnits(await getHtml(html)))
+    if (html) stations.set(id, await readUnits(`${inr}/${ityp} ${id}`, html, 'html'))
   }
   const draft: Draft = { label: `${inr}/${ityp}`, stations, present: new Set(found.keys()), viaObjection: false, meFromRis: null, bundled: false, rvCount: 0 }
   let nummer = extractBgblLink(content.status?.bgbllinks)?.number ?? null
@@ -342,6 +369,12 @@ interface Record_ extends Partial<HarnessStamp>, Partial<CorpusReach> {
   verdicts: Record<string, 'geändert' | 'redaktionell' | 'ohne Wortdiff'>
   /** In a committed baseline (`stationBaseline.json`): why each residue that is not editorial stands. */
   reasons?: Record<string, string>
+  /**
+   * With `--zensus`: how many documents were read, and every one whose reader
+   * left more than `CENSUS_FEW_WORDS` of its body's words in no block, with
+   * the lost runs.
+   */
+  readerCensus?: { documents: number; overFewWords: ({ doc: string; url: string } & ReaderLoss)[] }
   /** With `--mutationen`: per class, how the comparison answered a fault, and the misses to read. */
   mutations?: {
     units: number
@@ -509,6 +542,18 @@ console.log(`\n── 4. Wortdiff am Deckel (keine Markierung möglich): ${recor
 for (const c of record.ceiling) console.log(`   ${c.pair} ${c.unit} (${c.fromWords}/${c.toWords} Wörter)`)
 const slowest = slow.sort((x, y) => y.ms - x.ms).slice(0, 5)
 console.log(`\n── Dauer: die langsamsten Paare (diffLawPackage) — ${slowest.map((x) => `${x.pair} ${Math.round(x.ms)} ms`).join(' · ')}`)
+
+if (zensus) {
+  const over = readerLosses.filter((r) => r.lost > CENSUS_FEW_WORDS).sort((a, b) => b.lost - a.lost)
+  record.readerCensus = { documents: readerLosses.length, overFewWords: over }
+  const words = readerLosses.reduce((n, r) => n + r.bodyWords, 0)
+  const lost = readerLosses.reduce((n, r) => n + r.lost, 0)
+  console.log(`\n── Zensus der Leser: ${readerLosses.length} Dokumente, ${lost} von ${words} Wörtern in keinem Block, ${over.length} Dokumente mit mehr als ${CENSUS_FEW_WORDS}`)
+  for (const r of over.slice(0, 10)) {
+    console.log(`   ${r.doc}: ${r.lost} von ${r.bodyWords} Wörtern — ${r.url}`)
+    for (const run of r.runs.slice(0, 4)) console.log(`        „${run.slice(0, 200)}"`)
+  }
+}
 
 if (mutate) {
   const empty = (): { tried: number } & Record<MutationOutcome, number> => ({ tried: 0, änderung: 0, redaktionell: 0, unverändert: 0, unsichtbar: 0, ungepaart: 0 })
