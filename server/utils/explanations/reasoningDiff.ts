@@ -515,8 +515,21 @@ function namesSeveralLaws(heading: string): boolean {
  * Compared only where BOTH sides carry a Begründung. A missing one is no
  * changed Begründung but a gap in the document, and showing that as
  * „geändert" would be wrong.
+ *
+ * `own`: both documents' passages, for the § of a new law by its own
+ * designation (`joinOwnParagraph`, 21.11.2026) — a Land's
+ * Begründungsvergleich runs this join, and until then compared no §
+ * of a law enacted anew: 185 changed §§ of 13 drafts, 168 of them with a
+ * passage titled by their § in both texts. After the § join, as in
+ * `compareReasoning`.
  */
-export function compareReasoningByParagraph(units: readonly LawDiffUnit[], before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null = null): ReasoningComparison & { gaps: Record<string, ReasoningGap> } {
+export function compareReasoningByParagraph(
+  units: readonly LawDiffUnit[],
+  before: Texts,
+  after: Texts,
+  byArticle: { before: Texts; after: Texts } | null = null,
+  own: { before: HtmlExplanations; after: HtmlExplanations } | null = null,
+): ReasoningComparison & { gaps: Record<string, ReasoningGap> } {
   const read = readings()
   const ambiguous = ambiguousParagraphs(units, read)
   const f = filling(units)
@@ -527,6 +540,7 @@ export function compareReasoningByParagraph(units: readonly LawDiffUnit[], befor
   // would have lost Begründungen they have today.
   const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(read.addressed(u) ?? '')
   joinAtParagraph(f, [...units.filter((u) => !isAmbiguous(u)), ...units.filter(isAmbiguous)], ambiguous, textsByNumber(before, after, byArticle), read)
+  if (own) joinOwnParagraph(f, units, units.filter(isParagraphUnit), own.before, own.after, read)
   // Every change on both sides that ended without an entry (21.11.2026), as
   // `compareReasoning` says it since 19.11.2026: a Land's Begründungsvergleich
   // runs this join alone, and its changes stood silent — „unverändert" to the

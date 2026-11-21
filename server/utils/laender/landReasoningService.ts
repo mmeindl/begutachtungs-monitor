@@ -4,14 +4,19 @@
  * Begründungsvergleich for a Land's draft. Both documents carry
  * their Erläuterungen (`landExplanations.ts`); each side's passages per §
  * go to the Bund's § join (`compareReasoningByParagraph`), which compares
- * only where BOTH sides have one.
+ * only where BOTH sides have one — and, for the § of a law enacted anew,
+ * the passages titled by its own designation (`ownPassages`, 21.11.2026).
  */
 import { gapDe } from '#shared/utils/gaps'
-import type { LandCode, LandDraftDetail, LandExplanationsResponse, LandLawDiffResponse, LandReasoningResponse, LandTextDocument } from '#shared/types'
+import type { LandCode, LandDraftDetail, LandExplanationsResponse, LandLawDiffResponse, LandReasoningResponse, LandTextDocument, LawDiffUnit } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
+import { isParagraphUnit } from '#shared/utils/unitName'
 import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
+import type { HtmlExplanations } from '../explanations/explanationsHtml'
 import { compareReasoningByParagraph } from '../explanations/reasoningDiff'
+import { ziffernOf } from '../explanations/risExplanations'
+import { articleNumberKey } from '../text/designation'
 import { landDraftUnits } from './landLawDiff'
 import { cachedLandComparison } from './landLawDiffService'
 import { parseLandExplanations } from './landExplanations'
@@ -48,6 +53,44 @@ function reasonsByParagraph(entries: readonly LandReasoningEntry[]): Map<string,
     for (const p of e.paras) out.set(p.toLowerCase(), [out.get(p.toLowerCase()), ...e.text].filter(Boolean).join(' '))
   }
   return out
+}
+
+/**
+ * One text's entries as the passages of the join by a new law's own §
+ * (`joinOwnParagraph`, the Bund's since 01.10.2026), read the Land's way
+ * (21.11.2026). The Bund's rules hold: a § present on both sides takes the
+ * passages titled by its own designation on each, compared only where both
+ * sides' passages cover the same §§, and in a package only under its own
+ * Artikel. Three readings are the Land's:
+ *
+ *  - The Artikel is the entry's own or the one of the „Zu Art I (…)" heading
+ *    above it (`ParticularExplanation.article`), keyed as the units key
+ *    theirs („I" → „1"), never the title's list of laws: a law the draft
+ *    enacts has no place there (`explainedParagraphs`).
+ *  - A „Zu Z 1 („Drittstaat mit hohem Risiko“):" is an instruction's passage
+ *    only under an Artikel whose units on this side include instructions. In
+ *    a law enacted anew it is a numbered item of the § above it — Salzburg's
+ *    31605 explains § 3's definitions so —, and read as an instruction's, it
+ *    was left out of that §'s Begründung, which then compared its first lines
+ *    alone.
+ *  - In a package (the side's units carry two Artikel or more) an entry
+ *    under no Artikel joins nothing, whatever its § (the Bund takes one whose
+ *    number no other law of the draft carries): its law is not certain, and
+ *    one law's Begründung at another law's § is worse than none.
+ */
+function ownPassages(entries: readonly LandReasoningEntry[], units: readonly LawDiffUnit[], side: 'before' | 'after'): HtmlExplanations {
+  const present = units.filter((u) => (side === 'after' ? u.change !== 'removed' : u.change !== 'inserted'))
+  const articleOf = (u: LawDiffUnit) => (side === 'after' ? u.articleKey : u.fromArticleKey)
+  const instructed = new Set(present.filter((u) => !isParagraphUnit(u)).map((u) => articleOf(u) ?? ''))
+  const several = new Set(present.flatMap((u) => articleOf(u) ?? [])).size > 1
+  const special = entries.flatMap((e) => {
+    const article = e.article ? articleNumberKey(e.article) : null
+    if (several && !article) return []
+    const instructions = instructed.has(article ?? '') || (article === null ? instructed.size > 0 : instructed.has(''))
+    const ziffern = instructions ? ziffernOf(e.heading).map((z) => ({ article: z.article ?? article, ziffer: z.ziffer })) : []
+    return [{ heading: e.heading, paragraphs: e.paras.map((p) => `§ ${p}`), text: e.text, article, ziffern, section: null, law: e.law }]
+  })
+  return { general: [], special }
 }
 
 /** An entry of a text's Erläuterungen as the Begründungsvergleich reads it: the page's entry and its Artikel („I", „2"), null under none. */
@@ -102,7 +145,8 @@ export async function compareLandReasoning(
   const before = reasonsByParagraph(inputs.before)
   const after = reasonsByParagraph(inputs.after)
   if (!before.size || !after.size) return unavailable(gapDe('unreadable', 'In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen.'))
-  const result = compareReasoningByParagraph(inputs.comparison.units, before, after)
+  const units = inputs.comparison.units
+  const result = compareReasoningByParagraph(units, before, after, null, { before: ownPassages(inputs.before, units, 'before'), after: ownPassages(inputs.after, units, 'after') })
   return {
     available: true,
     unavailableReason: null,
