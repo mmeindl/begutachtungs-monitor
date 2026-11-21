@@ -42,6 +42,8 @@ export interface AnnexGroup {
   withheld: number
   /** §§ shown with a change the check could not reach (`nicht geprüft`). */
   unchecked: number
+  /** §§ shown whose new text the word-for-word check did not confirm (`nicht bestätigt`, `check: 'unconfirmed'`). */
+  unconfirmed: number
   /** Why, as the server worded it — distinct, first seen first. */
   uncheckedReasons: Set<string>
 }
@@ -163,14 +165,14 @@ export function groupAnnexRows(
 
   const out: AnnexGroup[] = []
   const start = (row: TextComparisonRow): AnnexGroup => {
-    const group: AnnexGroup = { key: row.law ?? `#${out.length}`, article: row.kind === 'article' ? (row.heading ?? '') : '', rows: [], counts: noCounts(), withheld: 0, unchecked: 0, uncheckedReasons: new Set() }
+    const group: AnnexGroup = { key: row.law ?? `#${out.length}`, article: row.kind === 'article' ? (row.heading ?? '') : '', rows: [], counts: noCounts(), withheld: 0, unchecked: 0, unconfirmed: 0, uncheckedReasons: new Set() }
     out.push(group)
     return group
   }
   let current: AnnexGroup | null = null
   /* Per group and §: the pills of its shown rows, and the check's state.
    * The verdict is per §, so a § is withheld or unchecked as a whole. */
-  const paras = new Map<AnnexGroup, Map<string, { badges: Set<DiffBadge>; withheld: boolean; unchecked: boolean }>>()
+  const paras = new Map<AnnexGroup, Map<string, { badges: Set<DiffBadge>; withheld: boolean; unchecked: boolean; unconfirmed: boolean }>>()
   for (const { row, index } of kept) {
     if (row.kind === 'article') {
       current = start(row)
@@ -186,7 +188,7 @@ export function groupAnnexRows(
     if (!byPara) paras.set(current, (byPara = new Map()))
     const key = paragraphKeyOf(row, index)
     let p = byPara.get(key)
-    if (!p) byPara.set(key, (p = { badges: new Set(standing.has(paragraphIdOf(row, index)) ? ['unchanged'] : []), withheld: false, unchecked: false }))
+    if (!p) byPara.set(key, (p = { badges: new Set(standing.has(paragraphIdOf(row, index)) ? ['unchanged'] : []), withheld: false, unchecked: false, unconfirmed: false }))
     // A withheld row keeps its `change` but lost its text, so counting it
     // would put a change in the header pill that the block below says is not
     // shown — and `stats` already leaves those rows out. It is counted as
@@ -199,6 +201,7 @@ export function groupAnnexRows(
       p.unchecked = true
       if (row.uncheckedReason) current.uncheckedReasons.add(row.uncheckedReason)
     }
+    if (row.check === 'unconfirmed') p.unconfirmed = true
   }
   // In §§ since 02.10.2026, not rows: every pill counts the same unit, so a
   // law's pills add up to its §§ (`paragraphBadge`).
@@ -207,6 +210,7 @@ export function groupAnnexRows(
       if (p.withheld) group.withheld++
       else group.counts[paragraphBadge(p.badges)]++
       if (p.unchecked) group.unchecked++
+      if (p.unconfirmed) group.unconfirmed++
     }
   }
   return { groups: out.filter((g) => g.rows.length > 0), kindCounts }
@@ -226,7 +230,7 @@ export function annexLawKeys(rows: readonly TextComparisonRow[]): Set<string> {
 export type AnnexBlock =
   /** The two columns come along computed: the template asked for each of them
    *  twice per row, on every render, and a render happens per keystroke. */
-  | { kind: 'row'; row: TextComparisonRow; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; unchecked: boolean }
+  | { kind: 'row'; row: TextComparisonRow; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; unchecked: boolean; unconfirmed: boolean }
   | { kind: 'context'; rows: TextComparisonRow[] }
   /**
    * Changes the RIS check would not vouch for. The server sends these rows
@@ -292,7 +296,7 @@ export interface AnnexPara {
    * the word every sentence at this block takes (`ParaPlacement.unit`).
    */
   unit: UnitKind
-  /** Whether a row of this § already carries the „nicht geprüft" pill. */
+  /** Whether a row of this § already carries its pill: „nicht geprüft" or „nicht bestätigt" (a § carries one of the two at most). */
   uncheckedMarked: boolean
 }
 
@@ -437,8 +441,10 @@ export function annexParas(g: AnnexGroup, { limit, folding, placed }: AnnexParaO
       // itself. At the first SHOWN row that owed a check, so a fold cannot
       // swallow it. A row without a § is a unit of its own and always gets it.
       const unchecked = isUnchecked(row) && (row.para === null || !current.uncheckedMarked)
-      if (unchecked && row.para !== null) current.uncheckedMarked = true
-      current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed), split: readsSideBySide(row.segments), unchecked })
+      // „nicht bestätigt" the same way, once per § (21.11.2026): the server's state, never read off a reason.
+      const unconfirmed = row.check === 'unconfirmed' && !current.uncheckedMarked
+      if ((unchecked || unconfirmed) && row.para !== null) current.uncheckedMarked = true
+      current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed), split: readsSideBySide(row.segments), unchecked, unconfirmed })
       shown++
     }
     flush()

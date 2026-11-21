@@ -14,6 +14,7 @@
  * so first.
  */
 import { gapDe } from '#shared/utils/gaps'
+import { DRAFT_CHECK_LEAD_DE, DRAFT_CHECK_REASON_DE } from '#shared/utils/draftCheckReasons'
 import type { AnnexWithheldCause, TextComparisonResponse } from '#shared/types'
 import { UNIT_WORD_DE, type UnitKind, type UnitWordDe } from '#shared/utils/unitWord'
 
@@ -40,8 +41,16 @@ type ReadFrom = TextComparisonResponse['readFrom']
  * written to follow a colon; first seen first.
  */
 export function annexUncheckedNote(reasons: readonly string[]): string | null {
-  return reasons.length ? `Nicht geprüft: ${reasons.join('; ')}.` : null
+  // The reasons of the word-for-word check (21.11.2026) in the Länder's
+  // line, the fact being the same (`draftCheckReasons.ts`); the gate's and
+  // the rest behind the plain „Nicht geprüft:".
+  const own = reasons.filter((r) => !DRAFT_CHECK_REASONS.has(r))
+  const word = reasons.filter((r) => DRAFT_CHECK_REASONS.has(r))
+  const lines = [own.length ? `Nicht geprüft: ${own.join('; ')}.` : null, word.length ? `${DRAFT_CHECK_LEAD_DE}: ${word.join('; ')}.` : null]
+  return lines.filter((l) => l !== null).join(' ') || null
 }
+
+const DRAFT_CHECK_REASONS: ReadonlySet<string> = new Set(Object.values(DRAFT_CHECK_REASON_DE))
 
 /**
  * What a withheld block says it found, and who might be at fault for it.

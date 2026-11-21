@@ -51,7 +51,13 @@ export const TERMS = {
   'nicht-geprueft': {
     label: 'nicht geprüft',
     definition:
-      'Die Prüfung ließ sich nicht durchführen, etwa weil das RIS das Gesetz oder den Paragraphen nicht führt oder seine Absätze nicht auseinanderhalten lässt, oder weil die Beilage zu wenig Text hergibt: zu wenig geltenden für den Vergleich mit dem RIS oder zu wenig neuen für den Abgleich mit dem vorgeschlagenen Gesetzestext. Das ist kein Befund über den Entwurf, sondern einer über die Prüfbarkeit; der Grund steht beim Gesetz.',
+      'Die Prüfung ließ sich nicht durchführen, etwa weil das RIS das Gesetz oder den Paragraphen nicht führt oder seine Absätze nicht auseinanderhalten lässt, oder weil die Beilage zu wenig Text hergibt: zu wenig geltenden für den Vergleich mit dem RIS oder zu wenig neuen für den Abgleich mit dem vorgeschlagenen Gesetzestext. Den neuen Text hält der Monitor außerdem Wort für Wort gegen den Gesetzestext des Entwurfs oder gegen seine eigene Lesung des ganzen Paragraphen nach dem Entwurf; ließ sich der Abgleich mit dem Gesetzestext nicht durchführen und bestätigt auch die eigene Lesung den Paragraphen nicht, steht ebenfalls „nicht geprüft“. Das ist kein Befund über den Entwurf, sondern einer über die Prüfbarkeit; der Grund steht beim Gesetz.',
+  },
+  /** The Bund's Textgegenüberstellung: the word-for-word check ran and the texts do not agree (`annexMark.ts`, 21.11.2026). */
+  'nicht-bestaetigt': {
+    label: 'nicht bestätigt',
+    definition:
+      'Der neue Text dieses Paragraphen ließ sich nicht bestätigen: An mindestens einer Stelle steht in der Textgegenüberstellung etwas anderes als im Gesetzestext des Entwurfs, oder der Abgleich des Monitors irrt. Gezeigt wird der Paragraph trotzdem, so wie ihn die Textgegenüberstellung druckt. Was der Entwurf ändern will, sagt sein Gesetzestext; die Textgegenüberstellung ist die Lesehilfe dazu.',
   },
   /** A Land's Textgegenüberstellung: the new text against the draft's own Gesetzestext (`landUnchecked.ts`). */
   'nicht-geprueft-entwurf': {

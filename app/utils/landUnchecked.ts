@@ -12,22 +12,15 @@
  */
 import type { LandDraftUncheckedReason, LandLawDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
+import { DRAFT_CHECK_LEAD_DE, DRAFT_CHECK_REASON_DE } from '#shared/utils/draftCheckReasons'
 
 /** The marks by the unit they stand at (`diffUnitKey`): a removed § of the same number is another unit. */
 export function landUncheckedMarks(marks: LandLawDiffResponse['draftUnchecked']): Map<string, LandDraftUncheckedReason> {
   return new Map((marks ?? []).map((m) => [diffUnitKey({ article: m.law, id: m.id, change: m.change }), m.reason]))
 }
 
-/* Written to follow the colon, and to hold for several §§ of one law at once. */
-const REASON_DE: Record<LandDraftUncheckedReason, string> = {
-  unassigned: 'den neuen Text konnte der Monitor keiner Anordnung des Entwurfs sicher zuordnen',
-  wording: 'eine Anordnung des Entwurfs konnte der Monitor nicht Wort für Wort lesen',
-  long: 'für den wortweisen Abgleich ist der Text zu lang',
-  draftUnread: 'den Gesetzestext des Entwurfs fand der Monitor nicht oder konnte ihn nicht lesen',
-}
-
 /** The line under a law's „nicht geprüft" pill, or null where none of its §§ carries the mark. */
 export function landUncheckedNote(reasons: readonly LandDraftUncheckedReason[]): string | null {
   const distinct = [...new Set(reasons)]
-  return distinct.length ? `Nicht geprüft, ob der neue Text Wort für Wort im Entwurf steht: ${distinct.map((r) => REASON_DE[r]).join('; ')}.` : null
+  return distinct.length ? `${DRAFT_CHECK_LEAD_DE}: ${distinct.map((r) => DRAFT_CHECK_REASON_DE[r]).join('; ')}.` : null
 }

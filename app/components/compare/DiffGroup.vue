@@ -40,6 +40,8 @@ const props = defineProps<{
    *  same unit as the pills (Textgegenüberstellung only). */
   withheld?: number
   unchecked?: number
+  /** §§ shown whose new text the word-for-word check did not confirm (`nicht bestätigt`). */
+  unconfirmed?: number
   /** Why the „nicht geprüft" §§ went unchecked, said once at the top of the
    *  open group (`annexUncheckedNote`). */
   uncheckedNote?: string | null
@@ -225,6 +227,11 @@ async function showMore(event: MouseEvent) {
         </span>
         <span v-if="unchecked" :class="UNCHECKED_PILL">
           {{ unchecked }} nicht geprüft
+        </span>
+        <!-- The same quiet outline (21.11.2026): shown, its new text not
+             confirmed word for word — nothing is missing either. -->
+        <span v-if="unconfirmed" :class="UNCHECKED_PILL">
+          {{ unconfirmed }} nicht bestätigt
         </span>
       </span>
     </button>

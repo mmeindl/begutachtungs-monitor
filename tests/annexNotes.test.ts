@@ -10,6 +10,8 @@ import {
   annexWithheldLead,
   annexWithheldText,
 } from '../app/utils/annexNotes'
+import { landUncheckedNote } from '../app/utils/landUnchecked'
+import { DRAFT_CHECK_REASON_DE } from '#shared/utils/draftCheckReasons'
 
 describe('annexUncheckedNote — why a law\'s §§ went unchecked, under its pill (03.10.2026)', () => {
   it('names the group\'s reasons after a colon, in the order given', () => {
@@ -20,6 +22,12 @@ describe('annexUncheckedNote — why a law\'s §§ went unchecked, under its pil
 
   it('says nothing where the group recorded no reason', () => {
     expect(annexUncheckedNote([])).toBeNull()
+  })
+
+  it('names the word-for-word check\'s reasons in the Länder\'s line, after the gate\'s (21.11.2026)', () => {
+    const word = DRAFT_CHECK_REASON_DE.wording
+    expect(annexUncheckedNote([word])).toBe(landUncheckedNote(['wording']))
+    expect(annexUncheckedNote([word, 'a'])).toBe(`Nicht geprüft: a. Nicht geprüft, ob der neue Text Wort für Wort im Entwurf steht: ${word}.`)
   })
 })
 

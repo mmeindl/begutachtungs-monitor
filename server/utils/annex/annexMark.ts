@@ -35,6 +35,7 @@
  *    - it could not run: clean where the oracle confirms, else „nicht
  *      geprüft" with the reason in the Länder's words.
  */
+import { DRAFT_CHECK_REASON_DE } from '../../../shared/utils/draftCheckReasons'
 import type { StrictCheck } from '../laender/landTguStrict'
 import { draftUncheckedReason } from '../laender/landTguGuard'
 import type { ComparisonRow } from './comparisonRows'
@@ -56,15 +57,15 @@ export const OBJECTION_OVER_CONFIRMATION: 'clean' | 'unconfirmed' = 'clean'
 
 /*
  * Why a § the draft check could not hold carries „nicht geprüft" — written
- * to follow „Nicht geprüft:", in the Länder's words where the fact is the
- * same (`landUnchecked.ts`; tests/annexMark.test.ts holds them equal).
+ * to follow „Nicht geprüft:", in the Länder's words (`draftCheckReasons.ts`):
+ * the fact is the same.
  */
-export const MARK_UNASSIGNED = 'den neuen Text konnte der Monitor keiner Anordnung des Entwurfs sicher zuordnen'
-export const MARK_WORDING = 'eine Anordnung des Entwurfs konnte der Monitor nicht Wort für Wort lesen'
-export const MARK_LONG = 'für den wortweisen Abgleich ist der Text zu lang'
-export const MARK_DRAFT_UNREAD = 'den Gesetzestext des Entwurfs fand der Monitor nicht oder konnte ihn nicht lesen'
-/** The draft check reads new text only; a § that shows nothing new is no § it can confirm. */
-export const MARK_DELETIONS = 'hier zeigt die Gegenüberstellung nur Streichungen, und der Abgleich Wort für Wort liest nur neuen Text'
+export const MARK_UNASSIGNED = DRAFT_CHECK_REASON_DE.unassigned
+export const MARK_WORDING = DRAFT_CHECK_REASON_DE.wording
+export const MARK_LONG = DRAFT_CHECK_REASON_DE.long
+export const MARK_DRAFT_UNREAD = DRAFT_CHECK_REASON_DE.draftUnread
+/** The draft check reads new text only; a § that shows no new wording is no § it can confirm. True of a § that only strikes, and of one whose new tokens are notation alone. */
+export const MARK_DELETIONS = 'die Gegenüberstellung zeigt hier keinen neuen Wortlaut, und Streichungen liest der Abgleich Wort für Wort nicht'
 
 /** What the page shows of a §: as the gate says, „nicht geprüft" with a reason, or „nicht bestätigt". */
 export type AnnexMark = { kind: 'gate' } | { kind: 'unchecked'; reason: string } | { kind: 'unconfirmed' }

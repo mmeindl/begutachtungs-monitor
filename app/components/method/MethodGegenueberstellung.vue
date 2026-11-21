@@ -109,11 +109,19 @@ const copy = computed(() => COPY[props.kind])
           </li>
           <li>Was rechts als neu markiert ist, steht nicht schon im Gesetz.</li>
           <li>Was rechts als neu markiert ist, steht auch im Gesetzestext {{ copy.item }}.</li>
+          <li>
+            Was rechts als neu markiert ist, steht Wort für Wort und in derselben
+            Reihenfolge im Gesetzestext {{ copy.item }}<template v-if="kind === 'entwurf'">, oder unsere eigene
+              Lesung des ganzen Paragraphen nach dem Entwurf bestätigt ihn</template>.
+          </li>
           <li>Zeigt die rechte Spalte von einem Paragraphen nichts, hebt der Gesetzestext {{ copy.item }} ihn auch auf.</li>
         </ul>
-        Einem neuen Paragraphen steht links nichts gegenüber; bei ihm zählt nur
-        der dritte Punkt. Ließ sich etwas davon nicht prüfen, steht beim
-        Paragraphen „nicht geprüft“.
+        Einem neuen Paragraphen steht links nichts gegenüber; bei ihm zählen nur
+        der dritte und der vierte Punkt. Ließ sich etwas davon nicht prüfen, steht beim
+        Paragraphen „nicht geprüft“. Stimmt der neue Text beim wortweisen
+        Abgleich nicht mit dem Gesetzestext überein<template v-if="kind === 'entwurf'"> und bestätigt
+          ihn auch unsere eigene Lesung nicht</template>, steht „nicht bestätigt“;
+        gezeigt wird der Paragraph trotzdem.
       </dd>
     </div>
     <div>

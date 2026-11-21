@@ -476,6 +476,7 @@ function withheldReason(cause: AnnexWithheldCause | null, unit: UnitKind): strin
           :badges="badgeCounts(g.counts, BADGE_LABEL)"
           :withheld="g.withheld"
           :unchecked="g.unchecked"
+          :unconfirmed="g.unconfirmed"
           :unchecked-note="annexUncheckedNote([...g.uncheckedReasons])"
           :open="groupOpen(g.key)"
           :more="g.hidden"
@@ -601,6 +602,13 @@ function withheldReason(cause: AnnexWithheldCause | null, unit: UnitKind): strin
                 <template v-if="b.unchecked" #pill-after>
                   <TermNote term="nicht-geprueft" class="ml-1.5">
                     <span :class="UNCHECKED_PILL">nicht geprüft</span>
+                  </TermNote>
+                </template>
+                <!-- Its new text held word for word and not confirmed
+                     (21.11.2026): the same pill, its own term. -->
+                <template v-else-if="b.unconfirmed" #pill-after>
+                  <TermNote term="nicht-bestaetigt" class="ml-1.5">
+                    <span :class="UNCHECKED_PILL">nicht bestätigt</span>
                   </TermNote>
                 </template>
                 <!-- Both columns are the annex's own notation and reach

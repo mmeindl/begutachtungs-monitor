@@ -96,6 +96,16 @@ describe('groupAnnexRows', () => {
     expect([...groups[0]!.uncheckedReasons]).toEqual(['kein RIS', 'ohne §'])
   })
 
+  it('counts „nicht bestätigt" per § beside „nicht geprüft", from the row\'s state (21.11.2026)', () => {
+    const { groups } = groupAnnexRows([
+      row('§ 1', { check: 'unconfirmed' }),
+      row('§ 1', { check: 'unconfirmed', change: 'unchanged' }),
+      row('§ 2', { check: 'unconfirmed' }),
+      row('§ 3', { check: 'unchecked', uncheckedReason: 'kein RIS' }),
+    ], all)
+    expect([groups[0]!.unconfirmed, groups[0]!.unchecked]).toEqual([2, 1])
+  })
+
   it('keeps only the rows the search matches, and the legend counts only those', () => {
     const rows = [article('A'), row('§ 1', { law: 'A', proposed: 'Verwaltungsstrafe' }), row('§ 2', { law: 'A', change: 'inserted' })]
     const { groups, kindCounts } = groupAnnexRows(rows, { matches: (r) => r.proposed.includes('Verwaltungsstrafe'), hidden: [] })
@@ -172,6 +182,17 @@ describe('annexParas', () => {
     ])
     const marks = paras.flatMap((p) => p.blocks.flatMap((b) => (b.kind === 'row' ? [b.unchecked] : [])))
     expect(marks).toEqual([true, false, true, true])
+  })
+
+  it('marks „nicht bestätigt" once per § from the row\'s own state, never beside „nicht geprüft" (21.11.2026)', () => {
+    const { paras } = parasOf([
+      row('§ 1', { check: 'unconfirmed' }),
+      row('§ 1', { check: 'unconfirmed' }),
+      row('§ 2', { check: 'unconfirmed', uncheckedReason: 'kein RIS' }),
+      row('§ 3', { check: 'unchecked' }),
+    ])
+    const marks = paras.flatMap((p) => p.blocks.flatMap((b) => (b.kind === 'row' ? [[b.unchecked, b.unconfirmed]] : [])))
+    expect(marks).toEqual([[false, true], [false, false], [false, true], [true, false]])
   })
 
   it('prints up to the limit and counts the rest — nothing of a § past it, not even its unchanged fold', () => {
