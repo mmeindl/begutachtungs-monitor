@@ -42,7 +42,13 @@ import { isScanned } from './tableCells'
 
 /**
  * The page's sentence where no source carries an annex — a fact about the
- * document and nothing else (30.09.2026).
+ * document lists and nothing else (30.09.2026).
+ *
+ * Under „Nicht lesbar" since 21.11.2026: a list without the entry proves no
+ * absence (the ministry may print its Gegenüberstellung inside another
+ * document or under another name), so „hat das Ministerium nicht
+ * veröffentlicht" claimed more than the lists show. The rule and its
+ * precedent, a missing Erläuterungen document: `shared/utils/gaps.ts`.
  *
  * It used to add „Sie ist nicht verpflichtend, und ein neues Gesetz hat
  * nichts gegenüberzustellen": two reasons joined by „und" as if both applied,
@@ -51,7 +57,7 @@ import { isScanned } from './tableCells'
  * background about the procedure and stands on
  * /so-funktionierts#gegenueberstellung.
  */
-export const NO_ANNEX = gapDe('notPublished', 'Eine Textgegenüberstellung hat das Ministerium zu diesem Entwurf nicht veröffentlicht.')
+export const NO_ANNEX = gapDe('unreadable', 'Unter den Dokumenten zu diesem Entwurf ist keine Textgegenüberstellung.')
 
 /**
  * The annex on Parliament's own document list for this ME, in the formats it

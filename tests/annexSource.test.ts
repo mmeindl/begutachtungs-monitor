@@ -73,3 +73,17 @@ describe('annexSource — the Parliament copy stays linked, not read', () => {
     expect(src).toMatch(/source: parl\.html, publisher: 'parlament'/)
   })
 })
+
+describe('annexSource — no annex among the documents (21.11.2026)', () => {
+  // A document list without a Textgegenüberstellung proves no absence: the
+  // ministry may have published one under another name, inside another
+  // document, or not on this list. So the sentence says what the lists
+  // show, under „Nicht lesbar", never „Nicht veröffentlicht" (the rule for a
+  // missing Erläuterungen document, `shared/utils/gaps.ts`). A source scan,
+  // for the reason above.
+  it('words the missing annex as what the lists show', () => {
+    const line = src.split('\n').find((l) => l.startsWith('export const NO_ANNEX'))!
+    expect(line).toContain("gapDe('unreadable', ")
+    expect(line).not.toContain('nicht veröffentlicht')
+  })
+})
