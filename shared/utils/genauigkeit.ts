@@ -318,10 +318,15 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         `Die Probe: ${n(bench.bgbl)} Bundesgesetzblätter, deren Text nach dem Inkrafttreten im RIS steht. Von ${n(bench.shown)} Paragraphen, die der Monitor gezeigt hätte, sind ${n(bench.identical)} Wort für Wort das Gesetz.${notLaw ? ` ${restSentence(bench)}` : ''} Ein Wort, das nicht im Gesetz steht, hat${bench.invented ? ` ${bench.invented === 1 ? 'einer' : n(bench.invented)}` : ' keiner'}.`,
         // What „ohne" leaves in force (20.11.2026): the rules that judge each instruction and its result by themselves still decide.
         `Ohne die Prüfung gegen die Gegenüberstellung – jeder Paragraph, bei dem sich alle Anweisungen anwenden ließen und das Ergebnis für sich stimmig ist – wären es ${n(bench.ungated.identical)} von ${n(bench.ungated.shown)} gewesen.`,
+        // The §§ the second reading releases, on the same bench (20.11.2026): the page shows such §§ since that day, and the figure above left them out.
+        ...(bench.witnessed?.shown
+          ? [`Wo die Gegenüberstellung anders lautet, zeigt der Monitor einen Paragraphen nach einer zweiten Lesung am PDF: in dieser Probe ${n(bench.witnessed.shown)} weitere, ${bench.witnessed.identical === bench.witnessed.shown ? 'alle' : `${n(bench.witnessed.identical)} davon`} Wort für Wort das Gesetz.`]
+          : []),
       ],
       missed: [
         `Fehlt unserem Ergebnis ein Teil, den auch der geltende Text im RIS nicht hat und den die Gegenüberstellung stillschweigend überspringt, fällt das kaum auf: ${blind.caught === 0 ? 'keiner' : n(blind.caught)} von ${n(blind.tried)} Versuchen gefangen.`,
         'Bei der zweiten Lesung am PDF: eine Ziffer in einem Platzhalter für ein künftiges Bundesgesetzblatt („BGBl. I Nr. xxx/2025“) vergleicht keine der Prüfungen.',
+        'Liest der Monitor den neuen Text an genau der Stelle falsch, an der auch die Textgegenüberstellung vom Gesetzestext abweicht, bestätigt sie den Fehler.',
       ],
     },
     {
@@ -344,7 +349,8 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Die linke Spalte muss dem RIS am Stichtag entsprechen; was rechts als neu markiert ist, darf nicht schon im Gesetz stehen und muss im Gesetzestext des Entwurfs stehen.',
       measured: [
         `In ${n(r.annex.drafts)} Entwürfen der ${r.gp}. Gesetzgebungsperiode: ${n(r.annex.confirmed)} Paragraphen bestätigt, ${n(r.annex.withheld)} nicht gezeigt, und ${n(r.annex.unchecked)} gezeigt, ohne dass die Prüfung sie bestätigen konnte – etwa weil sie nur neuen Text enthalten, dem nichts Geltendes gegenübersteht.`,
-        `Bei ${ofParagraphs(r.annex.withheldStanding)} der nicht gezeigten steht schon die geltende Fassung der Gegenüberstellung so nicht im RIS: ein Fehler der Beilage, den die Prüfung fängt.`,
+        // Whose deviation it is was never measured per case (20.11.2026): the sister check found most such §§ to be the monitor's own reading.
+        `Bei ${ofParagraphs(r.annex.withheldStanding)} der nicht gezeigten steht die geltende Fassung der Gegenüberstellung so nicht im RIS. Ob die Beilage abweicht oder der Monitor sie falsch liest, entscheidet die Prüfung nicht; gezeigt wird der Paragraph in beiden Fällen nicht.`,
       ],
       missed: [
         `Ein fremder Satz, der in beiden Spalten gleich steht: ${rangeDe(annexBlind)} zurückgehalten. Er ist nicht als Änderung markiert, steht aber beim falschen Paragraphen. Was beide Spalten gleich zeigen, gilt als unverändert und wird nicht geprüft.`,
@@ -357,7 +363,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       against: 'Geprüft mit festen Regeln und mit Texten, die gleich sein müssen.',
       result: [
         `${n(st.pairs)} Vergleiche, ${breaches(st.breaches)}. Eine Regel lautet zum Beispiel: Jede als geändert markierte Stelle muss eine sichtbare Änderung zeigen.`,
-        `Im Test mit Texten, die gleich sein müssen, zeigte der Monitor ${st.nullSubstantive === 0 ? 'keinen' : st.nullSubstantive === 1 ? 'einen' : n(st.nullSubstantive)} von ${n(st.nullUnits)} Textteilen fälschlich als geändert.`,
+        nullSentence(st),
       ],
       // Held to faults since 20.11.2026 (`station.ts --mutationen`): one token changed in a unit of a real text must read as a change of substance.
       faults: st.faults?.length ? [bar('Eine Ziffer, ein Zeichen oder ein Wort wie „nicht“ in einem der beiden Texte geändert', st.faults)] : [],
@@ -369,7 +375,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         ...(stFaults
           ? [`${n(stFaults.tried)} eingebaute Änderungen – eine Ziffer, ein Vorzeichen, „nicht“, „und“ statt „oder“ –: ${stFaults.caught === stFaults.tried ? 'Der Vergleich zeigt jede als Änderung' : `Der Vergleich zeigt ${n(stFaults.caught)} als Änderung`}.`]
           : []),
-        `Texte, die gleich sein müssen – die letzte Fassung des Parlaments und das Bundesgesetzblatt, derselbe Entwurf aus zwei Quellen –: in ${n(st.nullUnits)} Einheiten ${n(st.nullResidues)} Unterschiede, ${st.nullSubstantive ? `alle als „redaktionell“ markiert bis auf ${n(st.nullSubstantive)}; ${st.nullSubstantive === 1 ? 'dieser erscheint' : 'diese erscheinen'} als Änderung` : 'alle als „redaktionell“ markiert'}.`,
+        `Texte, die gleich sein sollten – die letzte Fassung des Parlaments und das Bundesgesetzblatt, derselbe Entwurf aus zwei Quellen –: in ${n(st.nullUnits)} Einheiten ${n(st.nullResidues)} Unterschiede, ${st.nullSubstantive ? `alle als „redaktionell“ markiert bis auf ${n(st.nullSubstantive)}; ${st.nullSubstantive === 1 ? 'dieser erscheint' : 'diese erscheinen'} als Änderung` : 'alle als „redaktionell“ markiert'}. Ob ein Unterschied aus den Quellen kommt oder aus dem Lesen, entscheidet der Test nicht.`,
       ],
       missed: [
         'Liest der Monitor ein Wort in einem der beiden Texte falsch, zeigt er eine Änderung, die es nicht gibt; wie oft, zeigt der Test oben. Liest er dasselbe Wort in beiden Texten gleich falsch, bemerkt das niemand.',
@@ -421,6 +427,20 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
   ]
 }
 
+/**
+ * What the null comparisons found, said whole (20.11.2026). Until then
+ * „zeigte der Monitor 4 von 9.542 Textteilen fälschlich als geändert": the
+ * 454 differences badged „redaktionell" are differences the page shows too,
+ * and whether one is false the test does not decide — the two sources of a
+ * text do differ in places.
+ */
+function nullSentence(st: GenauigkeitRecord['stations']): string {
+  const editorial = st.nullResidues - st.nullSubstantive
+  if (st.nullResidues === 0) return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen keinen Unterschied.`
+  const substantive = st.nullSubstantive === 0 ? 'keiner' : st.nullSubstantive === 1 ? 'einer' : n(st.nullSubstantive)
+  return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen ${n(st.nullResidues)} Unterschiede: ${n(editorial)} nur in Schreibweise oder Satzzeichen, als „redaktionell“ markiert, ${substantive} als Änderung.`
+}
+
 /** „Einem fehlt ein Teil.", „2 fehlt ein Teil, einer ist nur halb angewendet." */
 function restSentence(bench: GenauigkeitRecord['lesefassung']['bench']): string {
   const parts: string[] = []
@@ -449,9 +469,9 @@ export function genauigkeitKurz(r: GenauigkeitRecord = GENAUIGKEIT): { shows: st
   const tgu = r.laender.tgu
   return {
     shows: [
-      'Zu einem Entwurf gehört meist eine Textgegenüberstellung des Ministeriums: eine Tabelle mit altem und neuem Text nebeneinander. Der Monitor übernimmt sie Wort für Wort und markiert nur die Änderungen in Farbe.',
+      'Zu einem Entwurf gehört meist eine Textgegenüberstellung des Ministeriums: eine Tabelle mit altem und neuem Text nebeneinander. Der Monitor übernimmt ihren Text Wort für Wort und markiert die Änderungen in Farbe. Lesen muss er sie aus einem PDF oder einer Tabelle; dabei kann ein Satz verloren gehen oder beim falschen Paragraphen landen.',
       `Zusätzlich schreibt der Monitor ganze Paragraphen so aus, wie sie nach der Änderung lauten würden. Getestet an ${n(bench.bgbl)} Gesetzen, die inzwischen gültig sind: Der Monitor hätte dort ${n(bench.shown)} ganze Paragraphen gezeigt, ${n(bench.identical)} davon stimmen Wort für Wort mit dem Gesetz überein.`,
-      `Der Monitor vergleicht auch, wie sich ein Bundesgesetz vom Entwurf bis zum Beschluss ändert. Im Test mit Texten, die gleich sein müssen, zeigte er ${st.nullSubstantive === 0 ? 'keinen' : st.nullSubstantive === 1 ? 'einen' : n(st.nullSubstantive)} von ${n(st.nullUnits)} Textteilen fälschlich als geändert.`,
+      `Der Monitor vergleicht auch, wie sich ein Bundesgesetz vom Entwurf bis zum Beschluss ändert. ${nullSentence(st)}`,
     ],
     check: [
       'Ein Paragraph mit der Marke „nicht geprüft“ ist gezeigt, aber nicht bestätigt.',
@@ -502,7 +522,7 @@ export const FUNNEL_GROUP_WHY_DE: Record<Exclude<FunnelGroup, 'nichts'>, string>
   geltend: 'Manchmal findet der Monitor das Gesetz oder den Paragraphen im RIS nicht eindeutig. Dann schreibt er den ganzen Paragraphen nicht aus.',
   anweisung: 'Nicht jede Anweisung ist so einfach wie diese. Der Monitor wendet eine Anweisung nur an, wenn er sie sicher lesen kann und sie im geltenden Text auf genau eine Stelle passt. Sonst rät er nicht.',
   pruefung: 'Passen unser Ergebnis und die Textgegenüberstellung nicht zusammen, liest der Monitor den Gesetzestext des Entwurfs ein zweites Mal, aus seinem PDF. Steht dort genau unser Ergebnis, zeigt er den Paragraphen und nennt beide Wortlaute. Sonst zeigt er ihn nicht.',
-  beilage: 'Oft zeigt die Textgegenüberstellung nur Ausschnitte eines Paragraphen. Für den Rest gibt es nichts, womit der Monitor sein Ergebnis vergleichen kann.',
+  beilage: 'Oft zeigt die Textgegenüberstellung nur Ausschnitte eines Paragraphen, oder ihr geltender Text lässt sich im RIS nicht wiederfinden. Dann gibt es nichts, womit der Monitor sein Ergebnis vergleichen kann.',
 }
 
 export const FUNNEL_GROUP_DE: Record<FunnelGroup, string> = {
@@ -601,7 +621,7 @@ export function measuredLineDe(r: GenauigkeitRecord = GENAUIGKEIT): string {
 
 /** „Was die Zahlen nicht sagen", one sentence each. */
 export const GENAUIGKEIT_GRENZEN: readonly string[] = [
-  'Am fertigen Gesetz messen lässt sich nur, wo ein Gesetz schon kundgemacht ist. Bei einem laufenden Entwurf steht der endgültige Text noch nicht fest; dort prüft der Monitor nur mit der Textgegenüberstellung des Ministeriums.',
+  'Am fertigen Gesetz messen lässt sich nur, wo ein Gesetz schon kundgemacht ist. Bei einem laufenden Entwurf steht der endgültige Text noch nicht fest; dort prüft der Monitor mit der Textgegenüberstellung des Ministeriums und dem Gesetzestext des Entwurfs.',
   'Eingebaut sind die Fehler, die wir kennen. Einen Fehler einer Art, die niemand eingebaut hat, zählt keine dieser Zahlen.',
   'Texte der EU vergleicht der Monitor nicht. Für einen Vorschlag der Kommission und den beschlossenen Rechtsakt, etwa eine Richtlinie, gibt es keine amtliche Textgegenüberstellung. Von der EU liest der Monitor Angaben zum Ablauf, keine Texte; welche, steht unter Datenlage.',
   'Die Zahlen sagen, wie oft der Monitor richtig liest und vergleicht. Ob ein Entwurf gut ist oder was eine Stellungnahme bewirkt hat, sagen sie nicht.',

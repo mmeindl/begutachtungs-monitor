@@ -69,9 +69,10 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
       Wie genau der Monitor vergleicht
     </h1>
     <p class="mt-3 leading-relaxed text-ink-secondary">
-      Der Monitor vergleicht Gesetzestexte und prüft jeden Vergleich an
-      amtlichen Texten. Diese Seite sagt, woran er prüft, wie oft er
-      richtig liegt und welche Fehler die Prüfung übersieht.
+      Der Monitor vergleicht Gesetzestexte und prüft seine Vergleiche: an
+      amtlichen Texten, wo es einen dritten Text gibt, sonst mit festen
+      Regeln. Diese Seite sagt, woran er prüft, wie oft er richtig liegt,
+      welche Fehler die Prüfung übersieht und was nicht gemessen ist.
     </p>
     <p class="mt-2 text-sm text-ink-secondary">
       {{ measuredLineDe() }}
@@ -109,8 +110,8 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         zusätzlich ganze Paragraphen aus: so, wie sie lauten, wenn der
         Entwurf unverändert Gesetz wird. Das betrifft
         {{ formatNumberDe(funnel.total) }} Paragraphen. Den ganzen
-        Paragraphen zeigt der Monitor nur, wenn alle Prüfungen bestanden
-        sind: bei {{ formatNumberDe(funnel.shown) }}, das sind
+        Paragraphen zeigt der Monitor nur, wenn er ihn bestätigen konnte:
+        bei {{ formatNumberDe(funnel.shown) }}, das sind
         {{ shareDe(funnel.shown, funnel.total) }}&nbsp;%.
       </p>
       <p>
@@ -132,9 +133,9 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         <div class="mt-1 space-y-2 text-sm">
           <p v-if="funnel.outside">
             {{ formatNumberDe(funnel.outside) }} Paragraphen sind nicht
-            mitgezählt: Ein Entwurf streicht sie ganz oder schreibt sie mit
-            einem neuen Gesetz neu. Dort gibt es keinen alten Text, den der
-            Monitor ändern könnte.
+            mitgezählt: Ein Entwurf streicht sie ganz, dann gibt es keinen
+            neuen Text, oder er schreibt sie mit einem neuen Gesetz neu,
+            dann gibt es keinen alten, den der Monitor ändern könnte.
           </p>
           <p>
             Entwürfe, die nur im RIS stehen und nicht beim Parlament, sind

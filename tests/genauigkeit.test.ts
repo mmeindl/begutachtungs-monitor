@@ -133,8 +133,9 @@ describe('genauigkeitArten', () => {
     expect(all).toContain('sind 10 Wort für Wort das Gesetz. Ein Wort, das nicht im Gesetz steht, hat keiner.')
     expect(all).toContain('keiner verletzt diese Regeln')
     expect(all).toContain('kein Regelverstoß.')
-    expect(all).toContain('zeigte der Monitor keinen von')
     expect(all).toContain('alle als „redaktionell“ markiert.')
+    zero.stations = { ...zero.stations, nullResidues: 0 }
+    expect(lines(zero).join(' ')).toContain('Textteilen keinen Unterschied.')
     expect(all).not.toMatch(/bis auf 0|\b0 Stellen/)
   })
 
@@ -164,6 +165,28 @@ describe('genauigkeitArten', () => {
     expect(art.rule).toContain('Dazu ändern wir in echten Texten je eine Stelle')
     r.stations.faults = [{ key: 'ziffer', tried: 40, caught: 40 }]
     expect(genauigkeitArten(r)[2]!.measured.join(' ')).toContain('Der Vergleich zeigt jede als Änderung.')
+  })
+
+  it('says the null comparison whole: every difference found, and how many of them read as a change', () => {
+    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+    r.stations = { ...r.stations, nullUnits: 9542, nullResidues: 458, nullSubstantive: 4 }
+    const result = genauigkeitArten(r)[2]!.result.join(' ')
+    expect(result).toContain('in 9.542 Textteilen 458 Unterschiede: 454 nur in Schreibweise oder Satzzeichen, als „redaktionell“ markiert, 4 als Änderung.')
+    expect(result).not.toContain('fälschlich')
+    r.stations.nullSubstantive = 0
+    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('458 nur in Schreibweise oder Satzzeichen, als „redaktionell“ markiert, keiner als Änderung.')
+  })
+
+  it('says of the annex\'s refused standing text what was measured, never whose error it is', () => {
+    expect(genauigkeitArten()[1]!.measured.join(' ')).not.toMatch(/Fehler der Beilage/)
+  })
+
+  it('names the §§ the second reading would have shown on the bench, once a round counts them', () => {
+    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+    r.lesefassung.bench.witnessed = { shown: 152, identical: 152 }
+    expect(genauigkeitArten(r)[0]!.measured.join(' ')).toContain('in dieser Probe 152 weitere, alle Wort für Wort das Gesetz.')
+    r.lesefassung.bench.witnessed = { shown: 152, identical: 150 }
+    expect(genauigkeitArten(r)[0]!.measured.join(' ')).toContain('152 weitere, 150 davon Wort für Wort das Gesetz.')
   })
 
   it('says what a check does not catch in words, where no fault can be injected', () => {
