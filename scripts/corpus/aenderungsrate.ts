@@ -15,6 +15,7 @@
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --pairs | --unpaired
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVIII --phantoms   (lists the phantom pairs)
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVIII --candidates [--candidates-out file]   (removed × inserted pairs as JSON)
+ *          npx vite-node -c vitest.config.ts scripts/corpus/aenderungsrate.ts -- --gp XXVIII --readers [--cache]   (RIS XML against Parliament HTML of the same Erläuterungen)
  *
  * WHY THE SHIPPED COMPARISON AND NOT A NEW ONE. A base rate the page cannot
  * reproduce is a second opinion, not a number about the page. So every draft
@@ -96,7 +97,7 @@ import { argFlag, argPair } from '../lib/args'
 import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
 import { compareReasoning, compareReasoningByParagraph, passageTexts } from '../../server/utils/explanations/reasoningDiff'
 import { compareWords, diffTokens, isAddressOnlyDifference, tokenSimilarity } from '../../server/utils/diff/wordDiff'
-import { headingAddress, isAddressHeading, splitHeading } from '../../server/utils/explanations/risExplanations'
+import { headingAddress, isAddressHeading, parseExplanations, splitHeading } from '../../server/utils/explanations/risExplanations'
 import { addressedParagraphOf, instructionParagraphs } from '../../server/utils/lawtext/instructionAddress'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
@@ -292,7 +293,7 @@ function fetchDocument(url: string): Promise<string> {
 }
 
 /** inr → the joined RIS record, as `getRisMapForGp` builds it. Lazy: only PDF-only drafts need it. */
-let risMap: Map<number, { risId: string | null; xml: string | null; url: string | null }> | null = null
+let risMap: Map<number, { risId: string | null; xml: string | null; url: string | null; explanations: string | null }> | null = null
 async function risRowFor(rows: unknown[][], inr: number) {
   if (!risMap) {
     const corpus = await cachedJson<{ records: RisBegutFlat[] }>(join(CACHE, 'ris-begut-corpus.json'), () =>
@@ -303,7 +304,7 @@ async function risRowFor(rows: unknown[][], inr: number) {
     risMap = new Map()
     for (const r of joinRisToMe(mes, corpus.records)) {
       const rec = r.risId ? byId.get(r.risId) ?? null : null
-      risMap.set(r.inr, { risId: r.risId, xml: rec?.mainDocument?.xml ?? null, url: r.risId })
+      risMap.set(r.inr, { risId: r.risId, xml: rec?.mainDocument?.xml ?? null, url: r.risId, explanations: rec?.explanations?.xml ?? null })
     }
   }
   return risMap.get(inr) ?? null
@@ -1559,6 +1560,7 @@ if (argFlag('multi')) await multiReport()
 if (argFlag('pairs')) pairsReport()
 if (argFlag('unpaired')) unpairedReport()
 if (argFlag('candidates')) candidatesReport()
+if (argFlag('readers')) await readersReport()
 
 /** The §§ an article's Novellierungsanordnungen address, as a set. */
 function addressesOf(units: readonly LawUnit[], article: string | null): Set<string> {
@@ -1821,4 +1823,89 @@ function candidatesReport(): void {
   const file = argPair('candidates-out') ?? join(outDir, `${gp}-candidates.json`)
   writeFileSync(file, JSON.stringify({ gp, drafts }))
   console.log(`\nKandidaten: ${file}`)
+}
+
+/**
+ * `--readers` (21.11.2026): the null comparison of the two readers of one
+ * Ministerialentwurf's Erläuterungen. The page reads them twice — the RIS
+ * XML for the Begründung at the annex's § (`parseExplanations`,
+ * `explanationsService.ts`) and Parliament's HTML for the Begründungsvergleich
+ * ME → RV (`parseExplanationsHtml`, `reasoningDiffService.ts`) — and a passage
+ * the two read with other §§ or Ziffern stands at another § in one section
+ * than in the other, unseen. The law text has had this check since
+ * `harness/station.ts`; the Erläuterungen had none.
+ *
+ * Per draft with both documents: the passages of the Besonderer Teil paired
+ * by their heading (whitespace and the closing colon aside, in order), and
+ * printed are every passage only one reader has and every pair whose §§ or
+ * Ziffern differ. Read each one: it is either one reader's fault or the two
+ * documents' difference. The RIS XML through the fetch only, never into the
+ * disk cache: with `--cache` from the harness cache.
+ */
+async function readersReport(): Promise<void> {
+  const key = (h: string | null) => (h ?? '').replace(/\s+/g, '').replace(/:$/, '').toLowerCase()
+  const t = { drafts: 0, missing: 0, ris: 0, html: 0, paired: 0, onlyRis: 0, onlyHtml: 0, paras: 0, ziffern: 0 }
+  const lines: string[] = []
+  for (const inr of [...byInr.keys()].sort((a, b) => a - b)) {
+    const meUrl = explanationsUrl((await detailOf(inr)).documents)
+    const xmlUrl = (await risRowFor(rows, inr))?.explanations ?? null
+    if (!meUrl || !xmlUrl) continue
+    let html: string
+    let xml: string
+    try {
+      html = await fetchDocument(meUrl)
+      const body = await upstreamBytes(xmlUrl, { timeoutMs: 45_000, retries: 0, maxBytes: 8 * 1024 * 1024, userAgent: scriptUserAgent(SCRIPT) })
+      xml = new TextDecoder('utf-8').decode(body.bytes)
+    } catch {
+      t.missing++
+      continue
+    }
+    t.drafts++
+    const ris = parseExplanations(xml).special?.passages.filter((p) => p.heading) ?? []
+    const htm = parseExplanationsHtml(html).special
+    t.ris += ris.length
+    t.html += htm.length
+    // Pairs in order by heading: the longest common run of keys.
+    const a = ris.map((p) => key(p.heading))
+    const b = htm.map((p) => key(p.heading))
+    const dp = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0))
+    for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) dp[i]![j] = a[i] === b[j] ? dp[i + 1]![j + 1]! + 1 : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!)
+    const out: string[] = []
+    let i = 0
+    let j = 0
+    const short = (h: string | null) => (h ?? '').replace(/\s+/g, ' ').slice(0, 110)
+    while (i < a.length || j < b.length) {
+      if (i < a.length && j < b.length && a[i] === b[j]) {
+        t.paired++
+        const r = ris[i]!
+        const h = htm[j]!
+        const rp = [...r.paragraphs].sort().join(', ')
+        const hp = [...h.paragraphs].sort().join(', ')
+        const rz = [...r.items].sort().join(', ')
+        const hz = [...new Set(h.ziffern.map((z) => `Z ${z.ziffer}`))].sort().join(', ')
+        if (rp !== hp) {
+          t.paras++
+          out.push(`§§ anders  «${short(r.heading)}»\n        RIS ${rp || '–'} · Parlament ${hp || '–'}`)
+        }
+        if (rz !== hz) {
+          t.ziffern++
+          out.push(`Z anders   «${short(r.heading)}»\n        RIS ${rz || '–'} · Parlament ${hz || '–'}`)
+        }
+        i++
+        j++
+      } else if (j >= b.length || (i < a.length && dp[i + 1]![j]! >= dp[i]![j + 1]!)) {
+        t.onlyRis++
+        out.push(`nur RIS   «${short(ris[i]!.heading)}» [${ris[i]!.paragraphs.join(', ') || '–'} | ${ris[i]!.items.join(', ') || '–'}]`)
+        i++
+      } else {
+        t.onlyHtml++
+        out.push(`nur Parl. «${short(htm[j]!.heading)}» [${htm[j]!.paragraphs.join(', ') || '–'} | ${htm[j]!.ziffern.map((z) => `Z ${z.ziffer}`).join(', ') || '–'}]`)
+        j++
+      }
+    }
+    if (out.length) lines.push(`${inr}/ME (RIS ${ris.length}, Parlament ${htm.length} Passagen)\n      ${out.join('\n      ')}`)
+  }
+  console.log(`\nGP ${gp} — Erläuterungen des Entwurfs, RIS-XML gegen Parlaments-HTML: ${t.drafts} Entwürfe mit beiden (${t.missing} nicht im Cache)`)
+  console.log(`  Passagen des Besonderen Teils: RIS ${t.ris}, Parlament ${t.html}, gepaart ${t.paired} · nur RIS ${t.onlyRis} · nur Parlament ${t.onlyHtml} · §§ anders ${t.paras} · Ziffern anders ${t.ziffern}`)
+  console.log(`    ${lines.join('\n    ')}`)
 }
