@@ -158,6 +158,37 @@ function withRenumberedRange(w: DraftWording): DraftWording {
   return { ...w, wordings: [...w.wordings, ...[...new Set(added)].map((t) => ({ tokens: [t], optional: [false], repeats: true }))] }
 }
 
+/** The annex's marks for a stretch it leaves out („(2) bis (4) …", „[…]"), as `elision.ts` reads them. */
+const ELISION_RUN_RE = /\[\s*(?:\.{2,}|…+)\s*\]|\.{2,}|…+/g
+/** What an elision mark is read as: a word no law prints, which the layout says is none of the §'s text. */
+export const ELISION_WORD = 'auslassungszeichen'
+/** A designation's part as `strictTokens` reads it: „(2)", „4.", „b)", „Abs.", „xx". */
+const CHAIN_WORD_RE = /^(?:\d+[a-z]*|[a-z]{1,2}|x{2,4}|bis|und|sowie|abs|z|lit|§)$/
+const CHAIN_JOIN = new Set(['bis', 'und', 'sowie'])
+
+/**
+ * The designations that introduce an elision mark — „(1) bis (56)" in „(1) bis
+ * (56) …", „Abs. 1 bis 3" (21.11.2026): the annex's notation for what it
+ * leaves out, as `elision.ts` reads it, not text of the §. Where the ressort
+ * leaves one Absatz more or less out, the word diff shows the chain as new
+ * („(1) bis [(56)] …" against „(57)"). Only a chain that joins two
+ * designations (bis, und), or a single designation that follows another mark
+ * or opens the column: „beträgt 14 …" ends in a figure of the law.
+ */
+export function elisionChains(words: readonly string[]): boolean[] {
+  const out = words.map(() => false)
+  words.forEach((w, i) => {
+    if (w !== ELISION_WORD) return
+    let k = i
+    while (k > 0 && i - k < 9 && CHAIN_WORD_RE.test(words[k - 1]!) && words[k - 1] !== ELISION_WORD) k--
+    while (k < i && CHAIN_JOIN.has(words[k]!)) k++
+    if (k === i) return
+    const chain = words.slice(k, i)
+    if (chain.some((c) => CHAIN_JOIN.has(c)) || (chain.length === 1 && (k === 0 || words[k - 1] === ELISION_WORD))) for (let x = k; x < i; x++) out[x] = true
+  })
+  return out
+}
+
 /** Blocks whose text keys a law (`segmentUnits`): read as folded, as the rows' law is. */
 const HEADING_KINDS = new Set<TextBlock['kind']>(['title', 'article', 'section'])
 
@@ -202,6 +233,8 @@ function shownUnit(group: Group, key: string, afters: readonly string[]): LawDif
     else if (row.segments) segments.push(...row.segments)
     else return null
   }
+  // The annex's elision marks, as a word of their own the layout reads (`elisionChains`).
+  const shown = segments.map((s) => ({ ...s, text: s.text.replace(ELISION_RUN_RE, ` ${ELISION_WORD} `) }))
   return {
     article: group.law,
     articleKey: null,
@@ -213,8 +246,8 @@ function shownUnit(group: Group, key: string, afters: readonly string[]): LawDif
     change: allNew ? 'inserted' : 'changed',
     editorial: false,
     fromText: rows.map((r) => r.current).join(' '),
-    toText: allNew ? rows.map((r) => r.proposed).join(' ') : segments.filter((s) => s.type !== 'removed').map((s) => s.text).join(''),
-    segments: allNew ? null : segments,
+    toText: shown.filter((s) => s.type !== 'removed').map((s) => s.text).join(''),
+    segments: allNew ? null : shown,
   }
 }
 
@@ -290,8 +323,13 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
     const elsewhere = [...(law?.generalText ?? []), ...[...(law?.byKey ?? [])].filter(([k]) => !printed.has(k)).flatMap(([, w]) => [...w.wordings.map((x) => x.tokens), ...w.text])]
     const wordings = keys.map((k) => law?.byKey.get(k)).map((w) => w && withRenumberedRange(w))
     const head = payloadHead(wordings, own)
-    const aboveParagraph = (words: readonly string[], marked: readonly boolean[]) => divisionStack(words, marked, own, head)
-    out.set(groupKey, strictCheck(unit, wordings, { general: law?.general ?? [], elsewhere, placeholders: bgblPlaceholders, aboveParagraph }))
+    const layout = (words: readonly string[], marked: readonly boolean[]) => {
+      const elided = words.map((w) => w === ELISION_WORD)
+      const stack = divisionStack(words, marked, own, head)
+      const chains = elisionChains(words)
+      return { notText: words.map((_, i) => stack[i]! || elided[i]! || chains[i]!), elided }
+    }
+    out.set(groupKey, strictCheck(unit, wordings, { general: law?.general ?? [], elsewhere, placeholders: bgblPlaceholders, layout }))
   }
   return out
 }

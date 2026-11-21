@@ -524,12 +524,14 @@ const NEW_WEIGHT = 4096
  * weighs `NEW_WEIGHT`, so among all in-order alignments the one that
  * accounts for most new words wins, and among those the longest.
  */
-export function align(shown: readonly Marked[], draft: readonly string[], wild?: Placeholders): { shown: boolean[]; draft: boolean[] } {
+export function align(shown: readonly Marked[], draft: readonly string[], wild?: Placeholders): { shown: boolean[]; draft: boolean[]; at: number[] } {
   const n = shown.length
   const m = draft.length
   const inShown = new Array<boolean>(n).fill(false)
   const inDraft = new Array<boolean>(m).fill(false)
-  if (!n || !m) return { shown: inShown, draft: inDraft }
+  /** Draft word → the word of `shown` it is aligned with, or -1. */
+  const at = new Array<number>(m).fill(-1)
+  if (!n || !m) return { shown: inShown, draft: inDraft, at }
   // A placeholder on one side stands for a figure or a placeholder on the other (`Placeholders`).
   const figureS = wild ? shown.map((t, i) => wild.shown[i]! || /^\d+$/.test(t.word)) : null
   const figureD = wild ? draft.map((w, j) => wild.draft[j]! || /^\d+$/.test(w)) : null
@@ -567,12 +569,13 @@ export function align(shown: readonly Marked[], draft: readonly string[], wild?:
     if (how === 2) {
       inShown[i] = true
       inDraft[j] = true
+      at[j] = i
       i++
       j++
     } else if (how === 1) j++
     else i++
   }
-  return { shown: inShown, draft: inDraft }
+  return { shown: inShown, draft: inDraft, at }
 }
 
 // ---------------------------------------------------------------------------
@@ -706,8 +709,16 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   general: readonly Wording[]
   elsewhere: readonly string[][]
   placeholders?: (tokens: readonly string[]) => boolean[]
-  /** The words of the right column (as aligned, with whether each is marked new) that stand above the §, not in it — a division heading the Bund's annex prints over a § (`annex/annexStrict.ts`). The Länder pass none. */
-  aboveParagraph?: (words: readonly string[], marked: readonly boolean[]) => boolean[]
+  /**
+   * How the caller reads the right column's layout (`annex/annexStrict.ts`;
+   * the Länder pass none), given its words as aligned and whether each is
+   * marked new: `notText`, the words that are no text of the § — a division
+   * heading printed above it, the annex's own notation for a stretch it
+   * leaves out — which are never new text of it; `elided`, where the column
+   * leaves a stretch out, behind which no word of the draft's wording is
+   * missing from it.
+   */
+  layout?: (words: readonly string[], marked: readonly boolean[]) => { notText: boolean[]; elided: boolean[] }
 } = { general: [], elsewhere: [] }): StrictCheck {
   const shown = shownTokens(unit)
   if (!shown) return unchecked(unit.change === 'changed' ? STRICT_UNCHECKED.undiffed : STRICT_UNCHECKED.nothingNew)
@@ -724,10 +735,10 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   // The §'s own designation is no text of it: the page prints it above, and a payload or a column may print it once more.
   const own = new Set([unit.id, unit.fromId ?? unit.id].map((id) => id.replace(/^§\s*/, '').toLowerCase()))
   const ownAt = (list: readonly string[], i: number) => (list[i] === '§' && own.has(list[i + 1] ?? '')) || (list[i - 1] === '§' && own.has(list[i] ?? ''))
-  // What the caller reads as printed above the §, not as its text (`aboveParagraph`): never new text of it.
-  const above = law.aboveParagraph?.(words, shown.map((t) => t.marked))
+  // What the caller reads as no text of the § (`layout`): never new text of it.
+  const layout = law.layout?.(words, shown.map((t) => t.marked))
   shown.forEach((t, i) => {
-    if (ownAt(words, i) || above?.[i]) t.marked = false
+    if (ownAt(words, i) || layout?.notText[i]) t.marked = false
   })
   // „(2) entfallen": how a column prints a repealed Absatz — the instruction's verb, not text of the law.
   const repeals = found.some((f) => f.text.some((t) => t.some((w) => REPEALING.has(w))))
@@ -797,7 +808,20 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     }
   }
   const notInDraft = shown.filter((t, i) => t.marked && !accounted[i]).map((t) => t.word)
-  const notShown = draft.filter((_, j) => !optional[j] && !aligned.draft[j])
+  // A word of the draft's wording the column leaves out where it says it does (`layout.elided`): between the
+  // column words its aligned neighbours stand at, an elision. That is not missing, as the gate reads it.
+  const behindElision = (j: number): boolean => {
+    if (!layout) return false
+    let before = j - 1
+    while (before >= 0 && aligned.at[before]! < 0) before--
+    let after = j + 1
+    while (after < draft.length && aligned.at[after]! < 0) after++
+    const from = before >= 0 ? aligned.at[before]! : -1
+    const to = after < draft.length ? aligned.at[after]! : shown.length
+    for (let i = from + 1; i < to; i++) if (layout.elided[i]) return true
+    return false
+  }
+  const notShown = draft.filter((_, j) => !optional[j] && !aligned.draft[j] && !behindElision(j))
   for (const w of all) if (w.repeats && w.once && !contains(words, w.tokens)) notShown.push(...w.tokens)
   // New text the draft writes elsewhere — for a § the document prints no
   // block of its own for, or in an instruction whose address was not read:
