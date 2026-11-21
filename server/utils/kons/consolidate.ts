@@ -42,7 +42,7 @@ import { articleBlocks, draftArticles, type ClauseName, type DraftArticle } from
 import { addressesWholeText, createdParagraphs, createdUnits, opAddress } from './novao'
 import { mapWithConcurrency } from '../pool'
 import type { ComparisonRow } from '../annex/comparisonRows'
-import { absatzSequence, standingUnitsOf, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
+import { absatzSequence, designatedUnitsOf, standingUnitsOf, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
 import { witnessVerdict, type DraftRendition } from './draftWitness'
 
 /**
@@ -643,7 +643,7 @@ export async function consolidate(
         // With the Absätze as the page displays them, so check 5 can hold the
         // annex's markers against them (`absatzOrderBroken`, 26.10.2026).
         const annex = annexOf(w.article)
-        const report = oracleVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null)
+        const report = oracleVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node))
         const gate = gateParagraph({
           refused: refusedIds.has(id),
           plausible: guard.plausible,
@@ -654,7 +654,7 @@ export async function consolidate(
         // where the two part (`kons/draftWitness.ts`, 20.11.2026). It then
         // carries those places, and is never counted as confirmed.
         const witness = gate.cause === 'anhang-widerspricht' && sources.draftRendition
-          ? witnessVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), await draftRendition(), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null)
+          ? witnessVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), await draftRendition(), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node))
           : null
         if (!gate.show && !witness?.released) {
           hold(id, gate.cause!)

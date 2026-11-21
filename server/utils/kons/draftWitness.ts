@@ -46,7 +46,7 @@ import type { ComparisonRow } from '../annex/comparisonRows'
 import { printedLayout } from '../annex/elision'
 import { normalizeText } from '../lawtext/normalize'
 import type { NovaoOp } from './novao'
-import { comparisonText, oracleVerdict, type StandingUnits } from './tguOracle'
+import { comparisonText, oracleVerdict, type DesignatedUnit, type StandingUnits } from './tguOracle'
 
 /** Tokens of instruction text on either side of a stretch, as the PDF has to carry them. */
 export const CONTEXT = 4
@@ -345,6 +345,7 @@ export function witnessVerdict(
   resultAbsaetze?: readonly string[],
   standingAbsaetze?: readonly string[] | null,
   standingUnits: StandingUnits | null = null,
+  resultUnits: readonly DesignatedUnit[] | null = null,
 ): WitnessOutcome {
   if (!rendition) return { released: false, reason: 'keine-fassung' }
   const gotTokens = tokensOf(got)
@@ -425,7 +426,7 @@ export function witnessVerdict(
     patched.push(text === base ? row : { ...row, proposed: text })
   }
   if (places.length === 0) return { released: false, reason: 'keine-stelle' }
-  const report = oracleVerdict(id, before, got, patched, resultAbsaetze, standingAbsaetze, standingUnits)
+  const report = oracleVerdict(id, before, got, patched, resultAbsaetze, standingAbsaetze, standingUnits, resultUnits)
   return report.verdict === 'bestätigt' ? { released: true, places } : { released: false, reason: 'pruefung' }
 }
 

@@ -2205,6 +2205,114 @@ function opensWith(cell: string, marker: { end: number }, opening: string): bool
 }
 
 /**
+ * A unit of the result with a label — an Absatz, a Ziffer, a Litera —, its
+ * label and its own text, without its children's (`designatedUnitsOf`), for
+ * check 6 (`labelBroken`).
+ */
+export interface DesignatedUnit {
+  level: 'abs' | 'z' | 'lit'
+  marker: string
+  text: string
+}
+
+/** How many of a unit's first words check 6 looks for at least, more where these stand twice in the result. */
+const LABEL_OPENING_WORDS = 6
+/** …and how long their comparison form has to be to be a unit's words and not a stray phrase. */
+const MIN_LABEL_OPENING = 12
+
+/** The labelled units of a result, in order, with their labels and their own text. */
+export function designatedUnitsOf(node: LawNode): DesignatedUnit[] {
+  const out: DesignatedUnit[] = []
+  const walk = (n: LawNode): void => {
+    for (const c of n.children) {
+      if ((c.level === 'abs' || c.level === 'z' || c.level === 'lit') && c.marker.trim() && c.text.trim()) out.push({ level: c.level, marker: c.marker.replace(/\s+/g, ''), text: c.text.trim() })
+      walk(c)
+    }
+  }
+  walk(node)
+  return out
+}
+
+/** How check 6's report opens. */
+export const LABEL_NOTE = 'Bezeichnung der Beilage nicht im Ergebnis'
+
+/** A unit's label printed directly before its words, „(2)", „3." or „b)", as the last thing of a stretch's head. */
+const LABEL_BEFORE_RE = /(?:^|\s)(\(\d+[a-z]*\)|\d+[a-z]*\.|[a-z]{1,3}\))\s*$/
+
+/** „(2)" an Absatz's label, „3." a Ziffer's, „b)" a Litera's. */
+function labelKind(label: string): DesignatedUnit['level'] {
+  return label.startsWith('(') ? 'abs' : /^\d/.test(label) ? 'z' : 'lit'
+}
+
+/**
+ * Check 6 (21.11.2026): where the annex's proposed column prints a unit of
+ * the result with its label, it is the same label. The first that is not,
+ * or null.
+ *
+ * **Checks 1 to 4 cannot see a label at all, and check 5 only an Absatz
+ * out of order.** They compare the text without its designations
+ * (`stripMarkers`), so a result whose Ziffer carries the wrong number was
+ * confirmed: fault class „Bezeichnung" (`harness/faultInjection.ts`) got
+ * 510 of 510 past the oracle on the PDF path and 349 of 349 on the table
+ * path. Its mirror image, an annex column that prints a wrong label
+ * („Spalte-Bezeichnung"), passed wherever the label was a Ziffer's or a
+ * Litera's, and where an Absatz's „(1)" read „(2)" with a (2) still to come.
+ *
+ * For each unit, the shortest run of its first words (at least
+ * `LABEL_OPENING_WORDS`) that stands exactly once in the result; where that
+ * run stands exactly once in the stretches a changed row prints
+ * (`printedStretches`) too, what the column prints directly before it is
+ * read. Where that is a label of the unit's kind and not the unit's own, the
+ * § is contradicted. **No statement wherever the check cannot know**: the
+ * column abbreviates the unit away or prints its words without a label;
+ * the words stand twice, or too few of them to be the unit's
+ * (`MIN_LABEL_OPENING`); the label is one of two of its kind in a row (a
+ * renumbering printed with the old label beside the new), or a citation's
+ * number ending a sentence („nach Abs. 2."); the label is of another kind.
+ * A label glued to its word is unglued before (`unglued`).
+ */
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+export function labelBroken(rows: readonly ComparisonRow[], units: readonly DesignatedUnit[], gotKey: string): string | null {
+  const stretches = rows
+    .filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged' && r.proposed)
+    .flatMap((r) => printedStretches(normalizeText(r.proposed)))
+  if (stretches.length === 0) return null
+  const hay = stretches.map(key).join('\u0000')
+  for (const unit of units) {
+    const all = normalizeText(unit.text).split(/\s+/).filter(Boolean)
+    let words: string[] | null = null
+    for (let n = Math.min(LABEL_OPENING_WORDS, all.length); n <= all.length; n++) {
+      const opening = key(all.slice(0, n).join(' '))
+      if (opening.length < MIN_LABEL_OPENING) continue
+      if (occurrences(gotKey, opening) === 1) {
+        words = occurrences(hay, opening) === 1 ? all.slice(0, n) : null
+        break
+      }
+    }
+    if (!words) continue
+    const pattern = new RegExp(`(?<![\\p{L}\\d])${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+')}`, 'gu')
+    const places = stretches.flatMap((s) => [...s.matchAll(pattern)].map((m) => ({ head: s.slice(0, m.index) })))
+    if (places.length !== 1) continue
+    const { head } = places[0]!
+    const label = LABEL_BEFORE_RE.exec(head)
+    if (!label) continue
+    const printed = label[1]!
+    if (labelKind(printed) !== unit.level) continue
+    const prior = head.slice(0, label.index)
+    // A citation's number ending a sentence („nach Abs. 2."), and the old
+    // label printed beside the new one („4. 5.") — not a citation's number
+    // in front of the label („… ABl. Nr. L 208 S. 22. 10. Richtlinie …").
+    const citation = (before: string): boolean => /(?:(?<!\p{L})(?:Abs|Art|lit|Nr|Z|Ziff|Pkt|S)\.?|§+)\s*$/u.test(before)
+    if (citation(prior)) continue
+    const other = LABEL_BEFORE_RE.exec(prior)
+    if (other && labelKind(other[1]!) === labelKind(printed) && !citation(prior.slice(0, other.index))) continue
+    if (printed === unit.marker) continue
+    return `„${printed}" vor „${unit.text.slice(0, 40)}", im Ergebnis „${unit.marker}"`
+  }
+  return null
+}
+
+/**
  * The oracle's verdict on one §: `before` and `got` as `plainText` gives
  * them (`before` null for a § the draft creates), `rows` the annex rows of
  * that §, and `resultAbsaetze` the result's `absatzSequence` for check 5
@@ -2213,9 +2321,11 @@ function opensWith(cell: string, marker: { end: number }, opening: string): bool
  * Absatz the engine lost from one the annex assumes and RIS never had.
  * `standingUnits` (`standingUnitsOf` of the standing §) lets the oracle read
  * an omission the annex makes without its „…" (`silentOmissions`); left out,
- * such a row is read as before.
+ * such a row is read as before. `resultUnits` (`designatedUnitsOf` of the
+ * result) are the labels check 6 holds the annex's against
+ * (`labelBroken`); left out, check 6 is not made.
  */
-export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null, standingUnits: StandingUnits | null = null): OracleReport {
+export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null, standingUnits: StandingUnits | null = null, resultUnits: readonly DesignatedUnit[] | null = null): OracleReport {
   // An omission without its „…", written out where the standing § proves it
   // (`silentOmissions`) — every check below then reads it as an omission.
   rows = withoutHeldGroupTitle(withoutNextGroup(silentOmissions(rows, standingUnits).rows), before)
@@ -2355,5 +2465,8 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   if (broken !== null) {
     return { para: id, verdict: broken.foreign ? 'fremd' : 'widersprochen', rows: rows.length, note: `${ABSATZ_ORDER_NOTE}: ${broken.note}` }
   }
+  // Check 6, last for the same reason.
+  const label = resultUnits ? labelBroken(rows, resultUnits, gotKey) : null
+  if (label !== null) return { para: id, verdict: 'widersprochen', rows: rows.length, note: `${LABEL_NOTE}: ${label}` }
   return { para: id, verdict: 'bestätigt', rows: rows.length, note: null }
 }

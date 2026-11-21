@@ -40,7 +40,11 @@ describe('right-column faults', () => {
   })
 
   it('moves the first label of a unit below the § by one', () => {
-    expect(bumpedDesignation('§ 51. (1) bis (6) … (7) Abweichend von Abs. 3 Z 2 ist')).toBe('§ 51. (2) bis (6) … (7) Abweichend von Abs. 3 Z 2 ist')
+    // The labels of an omission's chain are no unit's: the first printed with its words is (7).
+    expect(bumpedDesignation('§ 51. (1) bis (6) … (7) Abweichend von Abs. 3 Z 2 ist')).toBe('§ 51. (1) bis (6) … (8) Abweichend von Abs. 3 Z 2 ist')
+    // „gemäß § 20." ends a sentence with a citation; „4. Abschnitt" stands after the stretch.
+    expect(bumpedDesignation('20. (8) Die Prüfung umfasst', 'das mündliche Modul gemäß § ')).toBe('20. (9) Die Prüfung umfasst')
+    expect(bumpedDesignation('4.', '', ' Abschnitt Technische Unterstützung')).toBeNull()
     expect(bumpedDesignation('1. die Art des Zivilflugplatzes,', 'hat zu bestimmen ')).toBe('2. die Art des Zivilflugplatzes,')
     expect(bumpedDesignation('gemäß lit. b) und c) die Frist')).toBe('gemäß lit. b) und d) die Frist')
     expect(bumpedDesignation('4. Abschnitt Technische Unterstützung')).toBeNull()

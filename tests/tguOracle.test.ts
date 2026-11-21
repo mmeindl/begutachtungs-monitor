@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KEPT_DELETION_NOTE, PLACE_NOTE, absatzOrderBroken, absatzSequence, annexChangedUnits, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, silentOmissions, someDrawers, standingUnitsOf, stripMarkers } from '../server/utils/kons/tguOracle'
+import { KEPT_DELETION_NOTE, LABEL_NOTE, containmentKey, PLACE_NOTE, absatzOrderBroken, absatzSequence, annexChangedUnits, designatedUnitsOf, keptDeletion, labelBroken, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, silentOmissions, someDrawers, standingUnitsOf, stripMarkers } from '../server/utils/kons/tguOracle'
 import type { LawNode } from '../server/utils/lawtext/konsTree'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
@@ -1372,5 +1372,45 @@ describe('check 5 reads a dash range and a glued „…" as a chain', () => {
   })
   it('names it behind „(1) bis (4)… (5)", the „…" glued to the marker', () => {
     expect(absatzOrderBroken([row('§ 5. (1) bis (4)… (5) Neu ist dieser Absatz.')], ['1', '2', '3', '5'])).toMatchObject({ note: '(4) fehlt im Ergebnis' })
+  })
+})
+
+describe('check 6: the labels below the Absatz (21.11.2026)', () => {
+  // Luftfahrtgesetz § 72 (RIS C118A7EB): the Bescheid's list, as the annex
+  // prints it and as the result holds it. Checks 1 to 5 read the text
+  // without its labels, so a Ziffer numbered wrong passed all of them.
+  const z = (id: string, text: string): LawNode => ({ level: 'z', id, marker: `${id}.`, heading: null, context: [], text, children: [] })
+  const result = (labels: [string, string]): LawNode => ({
+    level: 'para', id: '72', marker: '§ 72.', heading: null, context: [], text: '',
+    children: [{ level: 'abs', id: '1', marker: '(1)', heading: null, context: [], text: 'Der Bescheid über die Zivilflugplatz-Bewilligung hat zu bestimmen', children: [z(labels[0], 'die Art des Zivilflugplatzes (§§ 63 bis 65),'), z(labels[1], 'die Arten der Luftfahrzeuge, die diesen Zivilflugplatz benützen dürfen,')] }],
+  })
+  const before = 'Der Bescheid über die Zivilflugplatz-Bewilligung hat zu bestimmen die Art des Zivilflugplatzes, die Arten der Luftfahrzeuge, die diesen Zivilflugplatz benützen dürfen,'
+  const got = 'Der Bescheid über die Zivilflugplatz-Bewilligung hat zu bestimmen die Art des Zivilflugplatzes (§§ 63 bis 65), die Arten der Luftfahrzeuge, die diesen Zivilflugplatz benützen dürfen,'
+  const row = (proposed: string) => [pair('§ 72. (1) Der Bescheid über die Zivilflugplatz-Bewilligung hat zu bestimmen a) die Art des Zivilflugplatzes, b) die Arten der Luftfahrzeuge, die diesen Zivilflugplatz benützen dürfen,', proposed, '§ 72.')]
+  const printed = '§ 72. (1) Der Bescheid über die Zivilflugplatz-Bewilligung hat zu bestimmen 1. die Art des Zivilflugplatzes (§§ 63 bis 65), 2. die Arten der Luftfahrzeuge, die diesen Zivilflugplatz benützen dürfen,'
+
+  it('confirms a result whose Ziffern carry the labels the annex prints', () => {
+    expect(designatedUnitsOf(result(['1', '2'])).map((u) => u.marker)).toEqual(['(1)', '1.', '2.'])
+    expect(oracleVerdict('72', before, got, row(printed), undefined, null, null, designatedUnitsOf(result(['1', '2'])))).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('contradicts a result whose Ziffer carries another label than the annex prints', () => {
+    expect(oracleVerdict('72', before, got, row(printed), undefined, null, null, designatedUnitsOf(result(['1', '3'])))).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining(`${LABEL_NOTE}: „2." vor „die Arten der Luftfahrzeuge`) })
+    // …and an annex that misprints the label, against the right result.
+    expect(oracleVerdict('72', before, got, row(printed.replace('2. die Arten', '3. die Arten')), undefined, null, null, designatedUnitsOf(result(['1', '2'])))).toMatchObject({ verdict: 'widersprochen' })
+    // Without the units, no check 6.
+    expect(oracleVerdict('72', before, got, row(printed), undefined, null, null)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('says nothing where it cannot know which label the annex gives the unit', () => {
+    const units = designatedUnitsOf(result(['1', '3']))
+    // The same row with the label it gives: the check speaks there.
+    expect(labelBroken(row(printed), units, containmentKey(got))).not.toBeNull()
+    // The words without a label of their own.
+    expect(labelBroken(row(printed.replace('2. die Arten', 'die Arten')), units, containmentKey(got))).toBeNull()
+    // The old label printed beside the new one: a renumbering shown.
+    expect(labelBroken(row(printed.replace('2. die Arten', '2. 3. die Arten')), units, containmentKey(got))).toBeNull()
+    // A citation's number ending a sentence is no label.
+    expect(labelBroken(row(printed.replace('2. die Arten', 'gemäß Abs. 2. die Arten')), units, containmentKey(got))).toBeNull()
   })
 })

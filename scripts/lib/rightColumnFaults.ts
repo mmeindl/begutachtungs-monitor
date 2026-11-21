@@ -35,28 +35,36 @@ const DIVISION_AFTER_RE = /^\s*(?:Teil|Abschnitt|Hauptstück|Unterabschnitt|Kapi
  * ordinal after an article, a year), and the number of a division „4.
  * Abschnitt" (kind `division`). In order, with where each stands.
  */
-function labelsOf(text: string, before: string): { at: number; end: number; kind: 'abs' | 'z' | 'lit' | 'para' | 'division' | 'chain'; label: string }[] {
+function labelsOf(text: string, before: string, behind = ''): { at: number; end: number; kind: 'abs' | 'z' | 'lit' | 'para' | 'division' | 'chain'; label: string }[] {
   const out: { at: number; end: number; kind: 'abs' | 'z' | 'lit' | 'para' | 'division' | 'chain'; label: string }[] = []
   for (const m of text.matchAll(/§+\.?\s*\d+[a-z]*\.|\(\s*\d+[a-z]?\s*\)(?=\s|$|…|\.\.)|(?<![\p{L}\d.,/])\d+[a-z]?\.(?=\s|$|…|\.\.)|(?<![\p{L}\d.,/])\d+[a-z]?(?=\s*(?:…|\.\.\.))|(?<![\p{L}\d])[a-z]{1,2}\)(?=\s)/gu)) {
     const head = before + text.slice(0, m.index)
-    const after = text.slice(m.index! + m[0].length)
+    const after = text.slice(m.index! + m[0].length) + behind
     const label = m[0]
-    if (label.startsWith('§')) out.push({ at: m.index!, end: m.index! + label.length, kind: 'para', label })
-    // „Abs. 1 bis 8…", „1. bis 6……": the last number of an omission's chain, which no stretch prints.
-    else if (/^\d+[a-z]?$/.test(label)) out.push({ at: m.index!, end: m.index! + label.length, kind: 'chain', label })
+    const at = { at: m.index!, end: m.index! + label.length, label }
+    if (label.startsWith('§')) out.push({ ...at, kind: 'para' })
+    // „Abs. 1 bis 8…", „1. bis 6……", „(1) bis (56) ...", „3. … 3a.": a label
+    // of an omission or of its chain, which no unit's words follow.
+    else if (/^\d+[a-z]?$/.test(label) || CHAIN_AFTER_RE.test(after) || CHAIN_BEFORE_RE.test(head)) out.push({ ...at, kind: 'chain' })
     else if (!/(?:^|\s)$/.test(head)) continue
-    else if (label.startsWith('(')) out.push({ at: m.index!, end: m.index! + label.length, kind: 'abs', label })
+    else if (label.startsWith('(')) out.push({ ...at, kind: 'abs' })
     // „lit. b)" is a citation.
     else if (label.endsWith(')')) {
-      if (!/lit\.\s*$/.test(head)) out.push({ at: m.index!, end: m.index! + label.length, kind: 'lit', label })
+      if (!/lit\.\s*$/.test(head)) out.push({ ...at, kind: 'lit' })
     } else {
       const num = label.slice(0, -1)
-      if (MONTH_RE.test(after) || DESIGNATOR_BEFORE_RE.test(head) || /^\d{4,}/.test(num) || (num !== '1' && DETERMINER_BEFORE_RE.test(head))) continue
-      out.push({ at: m.index!, end: m.index! + label.length, kind: DIVISION_AFTER_RE.test(after) ? 'division' : 'z', label })
+      if (MONTH_RE.test(after) || DESIGNATOR_BEFORE_RE.test(head) || CITATION_CHAIN_BEFORE_RE.test(head) || /^\d{4,}/.test(num) || (num !== '1' && DETERMINER_BEFORE_RE.test(head))) continue
+      out.push({ ...at, kind: DIVISION_AFTER_RE.test(after) ? 'division' : 'z' })
     }
   }
   return out
 }
+/** What follows a label of an omission or a chain: the mark, or the chain's join. */
+const CHAIN_AFTER_RE = /^\s*(?:…|\.\.|bis(?!\p{L})|und(?!\p{L})|-|–)/u
+/** …and what precedes the chain's last label: a label and the join. */
+const CHAIN_BEFORE_RE = /(?:\(\s*\d+[a-z]?\s*\)|(?<![\p{L}\d])\d+[a-z]?\.)\s*(?:bis|und|-|–)\s*$/u
+/** „gemäß § 60.", „§§ 105 und 105a.", „Anlage 9.": the number of a citation ending a sentence. */
+const CITATION_CHAIN_BEFORE_RE = /(?:§+|Anlage|Anhang|Artikel)\s*(?:\d+[a-z]*\s*(?:,|und|bis|oder)\s*)*$/u
 
 /** „xx/2026", „XXX/202#": a Bundesgesetzblatt not yet issued — read by the oracle as a placeholder (`PLACEHOLDER_RE`), no figure. */
 function isPlaceholder(text: string, at: number, digits: string): boolean {
@@ -69,9 +77,9 @@ function inNote(text: string, at: number): boolean {
   return [...text.matchAll(/\(Anm\.?\s*:[^()]*(?:\([^()]*\)[^()]*)*\)/g)].some((n) => at >= n.index! && at < n.index! + n[0].length)
 }
 
-/** Zahl: the first figure of the text — no label (`labelsOf`), no placeholder — plus seven. `before`: what the column prints in front of the text. */
-export function raisedNumber(text: string, before = ''): string | null {
-  const labels = labelsOf(text, before)
+/** Zahl: the first figure of the text — no label (`labelsOf`), no placeholder — plus seven. `before` and `behind`: what the column prints around the text. */
+export function raisedNumber(text: string, before = '', behind = ''): string | null {
+  const labels = labelsOf(text, before, behind)
   for (const m of text.matchAll(/\d+/g)) {
     if (labels.some((l) => m.index! >= l.at && m.index! < l.end) || isPlaceholder(text, m.index!, m[0]) || inNote(before + text, before.length + m.index!)) continue
     return `${text.slice(0, m.index)}${Number(m[0]) + 7}${text.slice(m.index! + m[0].length)}`
@@ -86,8 +94,8 @@ export function raisedNumber(text: string, before = ''): string | null {
  * side. Not the § designation, which keys the row the text is filed under,
  * and not a division's number, which no result carries.
  */
-export function bumpedDesignation(text: string, before = ''): string | null {
-  const site = labelsOf(text, before).find((l) => l.kind === 'abs' || l.kind === 'z' || l.kind === 'lit')
+export function bumpedDesignation(text: string, before = '', behind = ''): string | null {
+  const site = labelsOf(text, before, behind).find((l) => l.kind === 'abs' || l.kind === 'z' || l.kind === 'lit')
   if (!site) return null
   const moved = site.label.replace(/\d+|^[a-z]+(?=\))/, (m) => (/\d/.test(m) ? String(Number(m) + 1) : m.slice(0, -1) + String.fromCharCode(m.charCodeAt(m.length - 1) + 1)))
   return `${text.slice(0, site.at)}${moved}${text.slice(site.end)}`
