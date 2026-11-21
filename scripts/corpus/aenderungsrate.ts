@@ -1362,7 +1362,13 @@ async function zifferReport(): Promise<void> {
       if (a === b) continue
       const newKey = neu.units[key]
       const route = fb ? `Rückfall ${fb}` : newKey?.startsWith('Z ') || newKey?.startsWith('N ') ? 'Ziffer' : newKey?.startsWith('P ') || newKey?.startsWith('PN ') ? '§-Einheit' : '§-Join wie bisher'
-      if (route === '§-Join wie bisher') paragraphRouteFlips++
+      // The invariant (21.11.2026): a verdict the old § join showed does not
+      // change where the new one joins by the same key. Not a gain (old had
+      // none), not a loss (new has none: no key, so no route — the gate above
+      // counts those), and not the key scoped by Artikel („§ 12 (Art. 6|6)"),
+      // which holds apart what the old join mixed: those 60 flips of GP
+      // XXVI–XXVIII were counted here until then, and the line read 49.
+      if (route === '§-Join wie bisher' && a !== 'keine' && b !== 'keine' && !newKey?.includes('(Art.')) paragraphRouteFlips++
       const oldKey = old.units[key]
       // Whose Begründung did the old join show? Its passages on each side,
       // and whether any of them names this unit's own Ziffer there.
@@ -1403,6 +1409,12 @@ async function zifferReport(): Promise<void> {
   console.log(`  §-Wache: ${t.guarded} Zuordnungen einer Ziffer-Passage verworfen, deren §§ die Anweisung nicht ändert`)
   for (const l of guardLines.sort().filter((_, i) => i % Math.max(1, Math.floor(guardLines.length / 8)) === 0).slice(0, 8)) console.log(`    ${l}`)
   console.log(`  Entwürfe an der Obergrenze (alt 250, neu 350): ${t.ceiling} · Urteilswechsel auf dem §-Join wie bisher (muss 0 sein): ${paragraphRouteFlips}`)
+  // Both pass lines fail the run (21.11.2026): printed only, a regression
+  // of either passed with exit code 0.
+  if (t.lost > t.caught || paragraphRouteFlips > 0) {
+    console.error(`  ${SCRIPT}: ${t.lost > t.caught ? `Tor hält nicht (${t.lost} verloren, ${t.caught} aufgefangen)` : ''}${t.lost > t.caught && paragraphRouteFlips ? ' · ' : ''}${paragraphRouteFlips ? `${paragraphRouteFlips} Urteilswechsel auf dem §-Join wie bisher` : ''}`)
+    process.exitCode = 1
+  }
   const total = [...flips.values()].reduce((n, l) => n + l.length, 0)
   console.log(`  (c) Urteil gekippt: ${total} Einheiten`)
   for (const [k, l] of [...flips].sort((a, b) => b[1].length - a[1].length)) console.log(`    ${String(l.length).padStart(5)}  ${k}`)
