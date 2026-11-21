@@ -40,6 +40,32 @@ import { STRICT_UNCHECKED, draftWording, strictCheck, type StrictCheck } from '.
 /** Why a § was not held, beside `STRICT_UNCHECKED`: the draft's Gesetzestext could not be read at all. */
 export const DRAFT_UNREAD = 'der Gesetzestext des Entwurfs ließ sich nicht lesen'
 
+/** „xx", „xxx", „yyyy", „202x", „20xx": a figure written as letters, as a ministry writes what it cannot know yet. */
+const PLACEHOLDER_RE = /^(?:\d{0,3}[xy]{1,4}|[xy]{2,4})$/
+/** The organ of a Bundesgesetzblatt citation as `strictTokens` reads it: „bgbl", then „i", „ii" or „iii". */
+const PART_RE = /^(?:i|ii|iii)$/
+
+/**
+ * The placeholders of a token list (`Placeholders`): a placeholder that is a
+ * Bundesgesetzblatt's number or year — „BGBl. I Nr. xxx/202x", „BGBl. II Nr.
+ * xx/xxxx" — the Nr. and the year of the act the draft itself will be
+ * promulgated as, which neither document knows when it is written. Nowhere
+ * else: a placeholder for a figure of the law's own text („(xx)" for an
+ * Absatz, an amount) is the text, and a difference.
+ *
+ * Measured on GP XXVIII (21.11.2026): of the 209 §§ the oracle confirms and
+ * the strict check objected to, 28 differ in nothing but such a citation —
+ * „xx/2025" against „xxx/202x", „xxx/2026" against „xxx/202x".
+ */
+export function bgblPlaceholders(tokens: readonly string[]): boolean[] {
+  return tokens.map((t, i) => {
+    if (!PLACEHOLDER_RE.test(t)) return false
+    const nr = tokens[i - 1] === 'nr' ? i - 1 : tokens[i - 2] === 'nr' ? i - 2 : -1
+    if (nr < 0) return false
+    return tokens[nr - 1] === 'bgbl' || (PART_RE.test(tokens[nr - 1] ?? '') && tokens[nr - 2] === 'bgbl')
+  })
+}
+
 /** Blocks whose text keys a law (`segmentUnits`): read as folded, as the rows' law is. */
 const HEADING_KINDS = new Set<TextBlock['kind']>(['title', 'article', 'section'])
 
@@ -170,7 +196,7 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
     const law = wording.get(lawKey)
     const printed = shown.get(group.law) ?? new Set<string>()
     const elsewhere = [...(law?.generalText ?? []), ...[...(law?.byKey ?? [])].filter(([k]) => !printed.has(k)).flatMap(([, w]) => [...w.wordings.map((x) => x.tokens), ...w.text])]
-    out.set(groupKey, strictCheck(unit, keys.map((k) => law?.byKey.get(k)), { general: law?.general ?? [], elsewhere }))
+    out.set(groupKey, strictCheck(unit, keys.map((k) => law?.byKey.get(k)), { general: law?.general ?? [], elsewhere, placeholders: bgblPlaceholders }))
   }
   return out
 }

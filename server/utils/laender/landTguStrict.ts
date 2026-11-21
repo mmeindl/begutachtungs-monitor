@@ -505,6 +505,16 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
 export const MIN_FOREIGN_RUN = 4
 /** Above this many cells the alignment is not run, and the § not held strictly. */
 export const MAX_ALIGN_CELLS = 30_000_000
+/**
+ * Which tokens of the right column (`shown`) and of the draft's wording
+ * (`draft`) are a placeholder for a figure the document does not know yet —
+ * a Bundesgesetzblatt's number or year („BGBl. I Nr. xxx/202x"). Such a token
+ * is aligned with any figure or placeholder at its place; every other token
+ * only with itself. Given by the caller (`annex/annexStrict.ts`); the Länder
+ * pass none.
+ */
+export interface Placeholders { shown: readonly boolean[]; draft: readonly boolean[] }
+
 /** A word the page shows as new outweighs any number of others: the alignment first accounts for those. */
 const NEW_WEIGHT = 4096
 
@@ -514,12 +524,16 @@ const NEW_WEIGHT = 4096
  * weighs `NEW_WEIGHT`, so among all in-order alignments the one that
  * accounts for most new words wins, and among those the longest.
  */
-export function align(shown: readonly Marked[], draft: readonly string[]): { shown: boolean[]; draft: boolean[] } {
+export function align(shown: readonly Marked[], draft: readonly string[], wild?: Placeholders): { shown: boolean[]; draft: boolean[] } {
   const n = shown.length
   const m = draft.length
   const inShown = new Array<boolean>(n).fill(false)
   const inDraft = new Array<boolean>(m).fill(false)
   if (!n || !m) return { shown: inShown, draft: inDraft }
+  // A placeholder on one side stands for a figure or a placeholder on the other (`Placeholders`).
+  const figureS = wild ? shown.map((t, i) => wild.shown[i]! || /^\d+$/.test(t.word)) : null
+  const figureD = wild ? draft.map((w, j) => wild.draft[j]! || /^\d+$/.test(w)) : null
+  const same = (i: number, j: number): boolean => shown[i]!.word === draft[j] || (wild !== undefined && ((wild.shown[i]! && figureD![j]!) || (wild.draft[j]! && figureS![i]!)))
   // 0 = skip shown[i], 1 = skip draft[j], 2 = match
   const step = new Uint8Array(n * m)
   let below = new Int32Array(m + 1)
@@ -534,7 +548,7 @@ export function align(shown: readonly Marked[], draft: readonly string[]): { sho
         best = row[j + 1]!
         how = 1
       }
-      if (word === draft[j] && below[j + 1]! + weight >= best) {
+      if ((word === draft[j] || (wild !== undefined && same(i, j))) && below[j + 1]! + weight >= best) {
         best = below[j + 1]! + weight
         how = 2
       }
@@ -688,7 +702,7 @@ function placesOf(hay: readonly string[], needle: readonly string[]): number[] {
  * Hold one § of the comparison against the draft's wording for it
  * (`draftWording`, under the §'s own number and, renumbered, its old one).
  */
-export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording | undefined)[], law: { general: readonly Wording[]; elsewhere: readonly string[][] } = { general: [], elsewhere: [] }): StrictCheck {
+export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording | undefined)[], law: { general: readonly Wording[]; elsewhere: readonly string[][]; placeholders?: (tokens: readonly string[]) => boolean[] } = { general: [], elsewhere: [] }): StrictCheck {
   const shown = shownTokens(unit)
   if (!shown) return unchecked(unit.change === 'changed' ? STRICT_UNCHECKED.undiffed : STRICT_UNCHECKED.nothingNew)
   const found = wording.filter((w): w is DraftWording => w !== undefined)
@@ -728,7 +742,8 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     for (const at of placesOf(words, w.tokens)) for (let k = 0; k < w.tokens.length; k++) placed[at + k] = true
   }
   // …and the payloads are aligned with what is left: a new word accounted for must not pull a payload's word out of its place.
-  const aligned = align(shown.map((t, i) => ({ word: t.word, marked: t.marked && !placed[i] })), draft)
+  const wild = law.placeholders ? { shown: law.placeholders(words), draft: law.placeholders(draft) } : undefined
+  const aligned = align(shown.map((t, i) => ({ word: t.word, marked: t.marked && !placed[i] })), draft, wild)
   const accounted = shown.map((_, i) => placed[i]! || aligned.shown[i]!)
   const quoted = [...all.filter((x) => x.repeats), ...general].map((w) => w.tokens)
   // A new stretch between two equal words can be cut one word earlier or
