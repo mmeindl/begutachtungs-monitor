@@ -188,8 +188,12 @@ export interface AnnexDraft {
   asOf: string
   /**
    * The draft's own Gesetzestext, as blocks, for rule 2 — empty where the
-   * draft's XML could not be read, which disarms that rule instead of
-   * condemning every §.
+   * draft's XML could not be read. Every caller reads `articles` from these
+   * same blocks (`draftArticles`), so an unread draft has no Artikel either:
+   * the gate stops at `REASON_NO_ARTICLES` and every § stays unchecked, no
+   * rule is asked. That a rule would be disarmed by empty blocks, not
+   * condemn every §, is the fallback for a caller that broke this, never a
+   * path to a confirmation (corrected 21.11.2026).
    *
    * The blocks rather than the joined string, because the rule needs to know
    * *which* Novellierungsanordnung wrote which words: the whole draft as one
@@ -787,8 +791,9 @@ export async function verifyAnnex(
   // as confirmed repeals, every one of them a § the draft rewrites. Withheld
   // with its own cause, from wherever the check stood, unless the draft's
   // instructions for that law repeal the § whole (`annex/repeals.ts`) —
-  // the rule the Länder reader already keeps (`draftDeletes`). A draft
-  // whose text could not be read disarms the rule, as it does rule 2.
+  // the rule the Länder reader already keeps (`draftDeletes`). The guard
+  // below is the fallback of `AnnexDraft.blocks`: an unread draft has no
+  // Artikel, so the gate has already left every § unchecked.
   if (draft.blocks.length > 0) {
     const repealed = new Map<string | null, DraftRepeals>()
     const repealsIn = (law: string | null): DraftRepeals => {
