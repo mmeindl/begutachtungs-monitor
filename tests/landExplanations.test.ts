@@ -48,6 +48,28 @@ describe('a Land\'s Erläuterungen', () => {
     ])
   })
 
+  // 21.11.2026: Salzburg's 34234 lost „werden." from a § of its Vorlage, and
+  // „Zu Abs 1:" vanished wherever a document wrote it three times.
+  it('drops only what stands at the same place of three pages: never a sub-heading or a sentence\'s last word that recurs', () => {
+    const page = (n: number, ...lines: string[]) => [`Seite ${n}`, '2025-0.123.456', ...lines, 'Amt der Salzburger Landesregierung'].join('\n')
+    const parse = parseLandExplanations([
+      page(1, 'Erläuterungen', '1. Allgemeines:', 'Die Novelle passt das Gesetz an.', '2. Zu den einzelnen Bestimmungen:', 'Zu § 4:', 'Zu Abs 1:', 'Die Frist soll verlängert', 'werden.'),
+      page(2, 'Zu Abs 2:', 'Die Behörde soll verständigt', 'werden.', 'Zu § 5:', 'Zu Abs 1:', 'Der Antrag soll schriftlich gestellt'),
+      page(3, 'werden.', 'Zu § 6:', 'Zu Abs 1:', 'Die Gebühr soll angehoben', 'werden.'),
+    ])!
+    expect(parse.particular.map((e) => [e.heading, e.paras, e.text.join(' ')])).toEqual([
+      ['Zu § 4:', ['4'], 'Zu Abs 1: Die Frist soll verlängert werden. Zu Abs 2: Die Behörde soll verständigt werden.'],
+      ['Zu § 5:', ['5'], 'Zu Abs 1: Der Antrag soll schriftlich gestellt werden.'],
+      ['Zu § 6:', ['6'], 'Zu Abs 1: Die Gebühr soll angehoben werden.'],
+    ])
+    expect(parse.general.flatMap((p) => p.text).join(' ')).not.toMatch(/2025-0\.123\.456|Amt der/)
+  })
+
+  it('opens an entry at „Zu Abs" where no § stands above it', () => {
+    const parse = parseLandExplanations(['Erläuterungen\n1. Allgemeines:\nDie Verordnung regelt die Gebühr.\n2. Zu den einzelnen Bestimmungen:\nZu Abs 1:\nDie Gebühr wird angehoben.\nZu Abs 2:\nDie Frist bleibt.'])!
+    expect(parse.particular.map((e) => e.heading)).toEqual(['Zu Abs 1:', 'Zu Abs 2:'])
+  })
+
   it('takes no line of prose for the title „Erläuterungen" (16120)', () => {
     const parse = parseLandExplanations([[
       'A. Allgemeiner Teil',

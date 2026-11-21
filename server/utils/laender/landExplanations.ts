@@ -89,12 +89,36 @@ interface Line {
  */
 const REPEATED_LABEL_RE = /^Umsetzungshinweise?(?:\s+zu\s+[^:]{1,40})?:$/
 
-/** Lines a document repeats on most pages — address, file number, date — are page furniture, not prose. */
-function withoutFurniture(lines: readonly Line[]): Line[] {
-  const counts = new Map<string, number>()
-  for (const l of lines) counts.set(l.text, (counts.get(l.text) ?? 0) + 1)
-  return lines.filter(({ text: l }) => l && !PAGE_NOISE_RE.test(l) && !(l.length < 80 && (counts.get(l) ?? 0) >= 3 && !REPEATED_LABEL_RE.test(l)))
+/**
+ * Lines a document repeats at the same place of its pages — address, file
+ * number, date, the running head over or the footer under the text — are
+ * page furniture, not prose: a short line standing at the same place from a
+ * page's top or bottom on three pages or more, dropped where it stands so.
+ *
+ * Until 21.11.2026 any line under 80 characters met three times anywhere was
+ * dropped, and with it the Land's own prose that recurs: the sub-heading
+ * „Zu Abs 1:" (82 times), „Zu Z 1:" (26), the line „werden." that ends a
+ * sentence (25), in 56 of the 180 documents the census of the Land's
+ * Begründungen reads. Salzburg's 34234 lost „werden." from a § of its
+ * Vorlage, and the Begründung of § 13 read „geändert". A running head
+ * stands within the first two lines of its page (Salzburg's wraps onto
+ * two), a footer within the last two, once the page number is set aside.
+ */
+function withoutFurniture(pages: readonly (readonly Line[])[]): Line[] {
+  const lines = pages.map((page) => page.filter(({ text }) => text && !PAGE_NOISE_RE.test(text)))
+  const placeOf = (k: number, n: number) => (k < EDGE ? `oben ${k}` : k >= n - EDGE ? `unten ${n - 1 - k}` : null)
+  const pagesAt = new Map<string, number>()
+  for (const page of lines) {
+    page.forEach(({ text }, k) => {
+      const place = placeOf(k, page.length)
+      if (place && text.length < 80 && !REPEATED_LABEL_RE.test(text)) pagesAt.set(`${place}|${text}`, (pagesAt.get(`${place}|${text}`) ?? 0) + 1)
+    })
+  }
+  return lines.flatMap((page) => page.filter(({ text }, k) => (pagesAt.get(`${placeOf(k, page.length)}|${text}`) ?? 0) < 3))
 }
+
+/** How many lines from its page's top or bottom a running head or a footer stands (`withoutFurniture`). */
+const EDGE = 2
 
 /**
  * A heading only its weight tells (23.10.2026): Wien sets those of its
@@ -262,6 +286,21 @@ function ownArticles(heading: string): { article: string | null; several: boolea
 }
 
 /**
+ * „Zu Abs 1:", „Zu Abs 3 und 4:", „Zu Abs 1 – Einleitungssatz:" under an entry
+ * whose heading names a §: a sub-heading of that §'s Begründung, part of its
+ * text, as the Bund's join owns such a passage (`ownedPassages`). An entry
+ * of its own, it named no § — and the § join (`reasonsByParagraph`) lost its
+ * text. Until 21.11.2026 the furniture rule dropped the line where a
+ * document repeats it three times (`withoutFurniture`), and its text stood
+ * in the § above by accident; elsewhere it opened an entry.
+ */
+function isSubHeading(line: string, above: string): boolean {
+  if (!/^Zu\s+Abs\b/.test(line) || !headingParas(above).length || headingParas(line).length) return false
+  const own = ownArticles(line)
+  return !own.article && !own.several
+}
+
+/**
  * The particular part from its first entry on: one entry per „Zu …"
  * heading (`entry`), up to the document's end marker (`END_RE`).
  */
@@ -292,6 +331,11 @@ function particularOf(lines: readonly Line[], entry: RegExp): ParticularExplanat
   let headingOpen = false
   for (const l of body) {
     const line = l.text
+    if (current && isSubHeading(line, current.heading)) {
+      headingOpen = false
+      current.lines.push(l)
+      continue
+    }
     if (entry.test(line)) {
       flush()
       current = { heading: line, lines: [] }
@@ -363,7 +407,7 @@ export function parseLandExplanations(
   bold?: readonly (readonly boolean[])[],
   options: { vorblatt?: boolean } = {},
 ): LandExplanationsParse | null {
-  const lines = withoutFurniture(pageTexts.flatMap((p, n) => p.split('\n').map((l, i) => ({ text: l.replace(/\s+/g, ' ').trim(), bold: bold?.[n]?.[i] ?? false }))))
+  const lines = withoutFurniture(pageTexts.map((p, n) => p.split('\n').map((l, i) => ({ text: l.replace(/\s+/g, ' ').trim(), bold: bold?.[n]?.[i] ?? false }))))
   const title = lines.findIndex((l) => TITLE_RE.test(l.text))
   if (options.vorblatt) {
     const parse = vorblattParse(lines, title)
