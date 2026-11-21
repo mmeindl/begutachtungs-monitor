@@ -96,6 +96,15 @@ describe('Begründungsvergleich eines Landes — der § eines neuen Gesetzes (21
     expect(r.stats.compared).toBe(0)
   })
 
+  it('beside a regrouping alone, says at a change whose Begründung it could not attach that it could not', async () => {
+    const one = unit('§1')
+    const two = unit('§2')
+    const three = unit('§3')
+    const r = await compare([one, two, three], 'Zu § 1:\nDer Zweck.\nZu § 2:\nDie Begriffe.', 'Zu §§ 1 und 2:\nDer Zweck und die Begriffe.')
+    expect(r.stats).toMatchObject({ compared: 0, uncompared: 2 })
+    expect(r.gaps).toEqual({ [diffUnitKey(three)]: 'unread' })
+  })
+
   it('reads a new law\'s „Zu Z 1 („…“):" below its § as part of that §\'s Begründung, not as an instruction\'s passage', async () => {
     const definitions = unit('§3')
     const items = (word: string) => `Zu § 3 (Begriffsbestimmungen):\nDie Begriffe werden bestimmt.\nZu Z 1 („Spielkunde“):\nDer Begriff umfasst jede Person, ${word}.\nZu Z 2 („Transaktion“):\nDer Begriff folgt der Richtlinie.`

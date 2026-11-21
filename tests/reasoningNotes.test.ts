@@ -43,6 +43,11 @@ describe('landReasoningGapNote (17.11.2026)', () => {
     )
   })
 
+  // 21.11.2026: the own-§ join shows a regrouping without a verdict, and both texts explain the § it shows.
+  it('says nothing where passages are shown without a verdict', () => {
+    expect(landReasoningGapNote({ available: true, unavailableReason: null, stats: { ...stats(0), uncompared: 2 } })).toBeNull()
+  })
+
   it('carries the service\'s gap sentence and what follows from it', () => {
     expect(landReasoningGapNote({ available: false, unavailableReason: 'Nicht lesbar: In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen.', stats: stats(0) })).toBe(
       'Nicht lesbar: In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen. Die Begründungen sind deshalb nicht verglichen.',

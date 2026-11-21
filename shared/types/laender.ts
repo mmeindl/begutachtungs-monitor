@@ -522,8 +522,8 @@ export interface LandReasoningResponse {
   stats: { compared: number; changed: number; editorial: number; uncompared: number }
   /**
    * `diffUnitKey` → why that change got no Begründung (21.11.2026): every
-   * change on both sides the § join left without an entry, where it compared
-   * any (`compareReasoningByParagraph`); where it compared none, the
+   * change on both sides the joins left without an entry, where they compared
+   * or showed any (`compareReasoningByParagraph`); where they did neither, the
    * sentence above the list says it once (`landReasoningGapNote`). Absent in
    * an answer cached before.
    */
