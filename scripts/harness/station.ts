@@ -9,8 +9,12 @@
  *
  * Every station text of every draft of the period that reached a
  * Regierungsvorlage, read through the page's own parsers, and every pair the
- * station chooser offers compared through `diffLawPackage` with the
- * service's options (`scopeToDraft`, `keepAddedLaws`, `keepDroppedLaws`):
+ * station chooser offers made ready and compared by the service's own
+ * `compareStationPair` (`server/utils/diff/stationPair.ts`, 21.11.2026: the
+ * cut to the draft's laws, the laws kept, the pairs refused). A pair the page
+ * refuses — a text only as PDF, one that parses into no §, Artikel that pair
+ * with none of the other text — is counted and listed (`refused`), never
+ * skipped unsaid:
  *
  *  1. **Invariants**, which must hold without exception: reconstruction,
  *     completeness, a visible change in every „geändert" unit, and every
@@ -65,11 +69,12 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { LawStationId } from '../../shared/types'
 import { isLawStationPair } from '../../shared/utils/lawStations'
-import { bundlesOtherDrafts, extractBgblLink, findComparisonRvLink, findRvLinks, parseStages } from '../../server/utils/parliament/detailJson'
+import { EBR_DOKTYP, bundlesOtherDrafts, extractBgblLink, findBundesratObjection, findComparisonRvLink, findRvLinks, lawOfEbr, parseStages } from '../../server/utils/parliament/detailJson'
 import { mapDraftRow } from '../../server/utils/parliament/list81'
 import { dedupeMeRows, joinRisToMe, toMeListRows } from '../../server/utils/ris/risJoin'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
-import { diffLawPackage, diffLawUnits, isCommencementArticle, scopeToDraft } from '../../server/utils/diff/lawDiff'
+import { diffLawPackage, diffLawUnits, isCommencementArticle } from '../../server/utils/diff/lawDiff'
+import { compareStationPair, cutsToDraft, type StationPairRefusal } from '../../server/utils/diff/stationPair'
 import { compareWords } from '../../server/utils/diff/wordDiff'
 import { findLawStations } from '../../server/utils/diff/stationDocuments'
 import { badgeMoves, completeness, headingBreaches, reconstructionBreaches, residuesOf, symmetryBreaches, type Breach, type Residue } from '../lib/stationChecks'
@@ -128,9 +133,58 @@ async function bgblXmlUrl(nummer: string): Promise<string | null> {
   return null
 }
 
+/**
+ * The period's EBR items with the law each objects to, as
+ * `getEbrIndexForGp` reads them (list 101, document type EBR) — loaded only
+ * when a Vorlage's Verlauf names an Einspruch without linking its EBR.
+ */
+let ebrIndex: Promise<{ ebr: { gp: string; inr: number }; law: { gp: string; ityp: string; inr: number } | null }[]> | null = null
+function ebrsOfPeriod() {
+  ebrIndex ??= (async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body = await fetchJson<any>(`${PARLIAMENT}/Filter/api/filter/data/101?js=eval&showAll=true`, { script: SCRIPT, method: 'POST', body: { GP_CODE: [gp], ITYP: ['I'], DOKTYP: [EBR_DOKTYP] }, timeoutMs: 60_000 })
+    const rows: unknown[][] = (body?.rows ?? []).filter((r: unknown[]) => Array.isArray(r) && r[11] === EBR_DOKTYP)
+    const out = []
+    for (const row of rows) {
+      const inr = Number(row[2])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const content: any = (await getJson<any>(`${PARLIAMENT}/gegenstand/${gp}/I/${inr}?json=True`))?.content ?? {}
+      out.push({ ebr: { gp, inr }, law: lawOfEbr(content.reference) })
+    }
+    return out
+  })()
+  return ebrIndex
+}
+
+/**
+ * The Kundmachung's Fundstelle where the Vorlage links none and the Bundesrat
+ * objected: Parliament links it on the Einspruch's own item
+ * (`bgblViaObjection`). The Verlauf's stage names the EBR, else the period's
+ * list does. One difference stays: the service asks the list for every
+ * Vorlage without a Fundstelle, also where its Verlauf names no Einspruch at
+ * all (a stage the reader missed); here only where the stage stands without
+ * its EBR, so that a run over the cache does not ask for the list of every
+ * period. List 101 held no EBR for GP XXVIII on 14.11.2026.
+ */
+async function bgblViaObjectionOf(rv: { phase?: unknown }, item: { gp: string; inr: number }): Promise<string | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anchor = findBundesratObjection(rv.phase as any)
+  if (!anchor) return null
+  const ebr = anchor.ebr ?? (await ebrsOfPeriod()).find((e) => e.law?.gp === item.gp && e.law.ityp === 'I' && e.law.inr === item.inr)?.ebr
+  if (!ebr) return null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const content: any = (await getJson<any>(`${PARLIAMENT}/gegenstand/${ebr.gp}/I/${ebr.inr}?json=True`))?.content ?? {}
+  return extractBgblLink(content.status?.bgbllinks)?.number ?? null
+}
+
 interface Draft {
   inr: number
+  /** The texts the comparison reads, by station: Parliament's HTML, RIS's XML for the draft and the Kundmachung. */
   stations: Map<LawStationId, LawUnit[]>
+  /** Every station the record names, readable or not — a station only as PDF is offered and refused. */
+  present: Set<LawStationId>
+  /** The Kundmachung was found through the Bundesrat's Einspruch. */
+  viaObjection: boolean
   /** The draft read from RIS XML, beside its HTML reading — for null comparison 2. */
   meFromRis: LawUnit[] | null
   bundled: boolean | null
@@ -152,7 +206,7 @@ async function loadDraft(inr: number, risXmlOf: (inr: number) => Promise<string 
   const meFromRis = xml ? parseLawUnitsFromRis(await getText(xml)) : null
   // The page reads the RIS text where Parliament has the draft as PDF only.
   if (!stations.has('me') && found.has('me') && meFromRis) stations.set('me', meFromRis)
-  const draft: Draft = { inr, stations, meFromRis: stations.get('me') === meFromRis ? null : meFromRis, bundled: null, rvCount: 0 }
+  const draft: Draft = { inr, stations, present: new Set(found.keys()), viaObjection: false, meFromRis: stations.get('me') === meFromRis ? null : meFromRis, bundled: null, rvCount: 0 }
   const stages = parseStages(content.stages)
   try {
     draft.rvCount = new Set(findRvLinks(stages).map((l) => `${l.gp}/${l.inr}`)).size
@@ -165,28 +219,30 @@ async function loadDraft(inr: number, risXmlOf: (inr: number) => Promise<string 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rv: any = (await getJson<any>(`${PARLIAMENT}/gegenstand/${rvLink.gp}/I/${rvLink.inr}?json=True`))?.content ?? {}
     draft.bundled = bundlesOtherDrafts(rv.preconst, gp, inr)
-    const nummer = extractBgblLink(rv.status?.bgbllinks)?.number ?? null
+    let nummer = extractBgblLink(rv.status?.bgbllinks)?.number ?? null
+    if (!nummer) {
+      nummer = await bgblViaObjectionOf(rv, rvLink)
+      draft.viaObjection = nummer !== null
+    }
     const url = nummer ? await bgblXmlUrl(nummer) : null
-    if (url) stations.set('bgbl', parseLawUnitsFromRis(await getText(url)))
+    if (url) {
+      stations.set('bgbl', parseLawUnitsFromRis(await getText(url)))
+      draft.present.add('bgbl')
+    }
   }
   return draft
 }
 
 const ORDER: readonly LawStationId[] = ['me', 'rv', 'ausschuss', 'plenum', 'bgbl']
 
-/** The two texts of a pair as the service hands them to `diffLawPackage`, with its options. */
-function pairInput(d: Draft, from: LawStationId, to: LawStationId) {
-  let f = d.stations.get(from)!
-  let t = d.stations.get(to)!
-  const draft = d.stations.get('me')
-  if (from !== 'me' && d.bundled === true && draft?.length) {
-    const scoped = scopeToDraft(draft, f, t)
-    f = scoped.from
-    t = scoped.to
-  }
-  const keepAddedLaws = from === 'me' && to === 'rv' && d.bundled === false
-  return { f, t, options: { keepAddedLaws, keepDroppedLaws: keepAddedLaws && d.rvCount === 1, beyondCeiling: true } }
+/** One pair as the service compares it (`compareStationPair`), or why the page refuses it. */
+function comparePair(d: Draft, from: LawStationId, to: LawStationId) {
+  const facts = { from, to, bundled: d.bundled, rvCount: d.rvCount }
+  return compareStationPair(d.stations.get(from)!, d.stations.get(to)!, facts, cutsToDraft(facts) ? (d.stations.get('me') ?? null) : null)
 }
+
+/** Why a pair the station chooser offers shows no § list: the service's refusals, and a text only as PDF. */
+type RefusalCause = 'nur PDF' | StationPairRefusal['refused']
 
 interface Record_ extends Partial<HarnessStamp>, Partial<CorpusReach> {
   gp: string
@@ -195,6 +251,16 @@ interface Record_ extends Partial<HarnessStamp>, Partial<CorpusReach> {
   breaches: (Breach & { pair: string })[]
   symmetry: (Breach & { pair: string })[]
   commencementLeftOut: number
+  /**
+   * Every pair the chooser offers and the page answers with a sentence
+   * instead of a § list (21.11.2026), with why: not in `pairs`. Absent in a
+   * record written before.
+   */
+  refused?: { pair: string; cause: RefusalCause }[]
+  /** Drafts of the list loaded and not compared, because they reached no Vorlage with a Gesetzestext. Absent before 21.11.2026. */
+  withoutRv?: number
+  /** Drafts whose Kundmachung was found through the Bundesrat's Einspruch (`bgblViaObjection`). Absent before 21.11.2026. */
+  viaObjection?: number
   ceiling: { pair: string; unit: string; fromWords: number; toWords: number }[]
   residues: { kind: 'parlament-bgbl' | 'html-xml'; pair: string; residue: Residue }[]
   /**
@@ -238,7 +304,7 @@ const slow: { pair: string; ms: number }[] = []
 const piecesOf = new Map<string, string[]>()
 /** The drafts of list 81 that could not be loaded, with why. */
 const unreached: { id: string; cause: string }[] = []
-const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
+const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, refused: [], withoutRv: 0, viaObjection: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
 /** With `--mutationen`: every distinct unit of a later text, by its text, with where it stands. */
 const laterUnits = new Map<string, { unit: LawUnit; where: string }>()
 const requested = numbers.filter((inr) => !only || inr === only)
@@ -251,8 +317,12 @@ for (const inr of requested) {
     unreached.push({ id: `${inr}/ME`, cause: String(err).slice(0, 200) })
     continue
   }
-  if (!d) continue
+  if (!d) {
+    record.withoutRv!++
+    continue
+  }
   record.drafts++
+  if (d.viaObjection) record.viaObjection!++
   if (mutate) {
     for (const id of ['rv', 'ausschuss', 'plenum', 'bgbl'] as const) {
       for (const unit of d.stations.get(id) ?? []) if (!laterUnits.has(unit.text)) laterUnits.set(unit.text, { unit, where: `${inr}/ME ${id} ${(unit.article ?? '—').slice(0, 50)} · ${unit.id}` })
@@ -261,13 +331,20 @@ for (const inr of requested) {
   process.stderr.write(`\r${record.drafts} Entwürfe · ${inr}/ME   `)
   for (const from of ORDER) {
     for (const to of ORDER) {
-      if (!isLawStationPair(from, to) || !d.stations.get(from)?.length || !d.stations.get(to)?.length) continue
+      if (!isLawStationPair(from, to) || !d.present.has(from) || !d.present.has(to)) continue
       const pair = `${inr}/ME ${from}>${to}`
-      const { f, t, options } = pairInput(d, from, to)
+      if (!d.stations.has(from) || !d.stations.has(to)) {
+        record.refused!.push({ pair, cause: 'nur PDF' })
+        continue
+      }
       const started = performance.now()
-      const diff = diffLawPackage(f, t, options)
+      const compared = comparePair(d, from, to)
       slow.push({ pair, ms: performance.now() - started })
-      if (diff.unpaired) continue
+      if (compared.refused) {
+        record.refused!.push({ pair, cause: compared.refused })
+        continue
+      }
+      const { from: f, to: t, options, diff } = compared
       record.pairs++
       const whole = completeness(f, t, diff, isCommencementArticle)
       record.commencementLeftOut += whole.commencementLeftOut.reduce((n, c) => n + c.units, 0)
@@ -290,11 +367,10 @@ for (const inr of requested) {
   // Null comparison 1: the last parliamentary text against the Kundmachung.
   const last = (['plenum', 'ausschuss', 'rv'] as const).find((id) => d!.stations.get(id)?.length)
   if (last && d.stations.get('bgbl')?.length) {
-    const { f, t, options } = pairInput(d, last, 'bgbl')
-    const diff = diffLawPackage(f, t, options)
-    if (!diff.unpaired) {
-      record.nullUnits!['parlament-bgbl'] += diff.units.length
-      for (const residue of residuesOf(diff.units)) record.residues.push({ kind: 'parlament-bgbl', pair: `${inr}/ME ${last}>bgbl`, residue })
+    const compared = comparePair(d, last, 'bgbl')
+    if (!compared.refused) {
+      record.nullUnits!['parlament-bgbl'] += compared.diff.units.length
+      for (const residue of residuesOf(compared.diff.units)) record.residues.push({ kind: 'parlament-bgbl', pair: `${inr}/ME ${last}>bgbl`, residue })
     }
   }
   // Null comparison 2: one draft, two readers.
@@ -314,7 +390,10 @@ process.stderr.write('\n')
 const residueLine = (r: Record_['residues'][number]): string =>
   `${r.pair} ${r.residue.change}${r.residue.editorial ? ' (redaktionell)' : ''}${r.residue.ceiling ? ' (Deckel)' : ''} ${r.residue.unit}`
 
-console.log(`\nGP ${gp}: ${record.drafts} Entwürfe mit Regierungsvorlage, ${record.pairs} Stationspaare verglichen`)
+console.log(`\nGP ${gp}: ${requested.length - unreached.length} von ${requested.length} Entwürfen der Liste geladen, ${record.drafts} mit Regierungsvorlage (${record.withoutRv} ohne), ${record.pairs} Stationspaare verglichen, ${record.refused!.length} vom Dienst abgelehnt${record.viaObjection ? `, ${record.viaObjection} Kundmachungen über den Einspruch des Bundesrats` : ''}`)
+const refusedBy = new Map<string, string[]>()
+for (const r of record.refused!) refusedBy.set(r.cause, [...(refusedBy.get(r.cause) ?? []), r.pair])
+for (const [cause, pairs] of refusedBy) console.log(`   abgelehnt (${cause}): ${pairs.length} — ${pairs.slice(0, 12).join(' · ')}${pairs.length > 12 ? ' …' : ''}`)
 console.log(`\n── 1. Invarianten (müssen 0 sein): ${record.breaches.length}`)
 for (const b of record.breaches.slice(0, 60)) console.log(`   ✗ ${b.kind} ${b.pair} ${b.unit} — ${b.detail}`)
 console.log(`   Inkrafttretens-Artikel nur einer Seite, absichtlich nicht gezeigt (lawsOf): ${record.commencementLeftOut} Einheiten`)

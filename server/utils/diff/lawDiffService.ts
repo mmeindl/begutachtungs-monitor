@@ -32,12 +32,13 @@
  * not stored (`cache/gathered.ts`).
  */
 
-import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, ProcedureRoot, TraceLink, TreatyKind } from '#shared/types'
+import type { LawDiffResponse, LawStationId, LawStationOption, ProcedureRoot, TraceLink, TreatyKind } from '#shared/types'
 import { bgblShort } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
 import { meRoot, rootKey } from '#shared/utils/procedureRoot'
 import { LAW_STATION_ORDER, firstTextNameOf, lawStationGenitiveDe, lawStationLabelOf } from '#shared/utils/lawStations'
-import { diffLawPackage, scopeToDraft, summarizeDiff } from './lawDiff'
+import { summarizeDiff } from './lawDiff'
+import { compareStationPair, cutsToDraft } from './stationPair'
 import { findLawStations, missingStationReason, motionTextOf } from './stationDocuments'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../lawtext/lawUnits'
 import { bgblViaObjection } from '../parliament/bundesratObjection'
@@ -289,8 +290,33 @@ const readLawDiff = defineCachedFunction(
       fetchDocument(fromHtml ?? found.get(from)!.xml!),
       fetchDocument(toHtml ?? found.get(to)!.xml!),
     ])
-    let fromUnits = fromHtml ? parseLawUnits(fromDoc) : parseLawUnitsFromRis(fromDoc)
-    let toUnits = toHtml ? parseLawUnits(toDoc) : parseLawUnitsFromRis(toDoc)
+    const fromUnits = fromHtml ? parseLawUnits(fromDoc) : parseLawUnitsFromRis(fromDoc)
+    const toUnits = toHtml ? parseLawUnits(toDoc) : parseLawUnitsFromRis(toDoc)
+
+    // Whether the draft went into one Vorlage or was split (`keepDroppedLaws`).
+    let rvCount = 0
+    try {
+      if (isMe) rvCount = new Set(findRvLinks(parseStages(content.stages)).map((l) => `${l.gp}/${l.inr}`)).size
+    } catch {
+      // An unreadable stage record proves nothing; the law stays named, not shown.
+    }
+    const facts = { from, to, bundled, rvCount }
+    /*
+     * Between two LATER stations of a Vorlage that bundles this draft with
+     * others, only the draft's laws (30.09.2026). Both sides then carry the
+     * whole Sammelgesetz, every Artikel pairs, and `diffLawPackage` has
+     * nothing to cut — 17/ME XXVIII counted 629 units of the
+     * Informationsfreiheits-Anpassungsgesetz for a draft that brought 39 of
+     * them. Only where Parliament's record says the Vorlage bundles other
+     * drafts: a law the Ressort added to its own Vorlage is part of THIS
+     * Vorlage. Where nothing can be cut — the draft's text unreadable, or its
+     * laws the whole text (XXVII 6/ME and 11/ME: one law, two drafts) — the
+     * counts stay those of the whole text, and `bundledWithOtherDrafts` lets
+     * the page say so. The rest of the decision is `compareStationPair`'s,
+     * which the harness calls too.
+     */
+    const draft = cutsToDraft(facts) && fromUnits.length && toUnits.length ? await readDraftUnits(found.get('me')) : null
+    const compared = compareStationPair(fromUnits, toUnits, facts, draft)
 
     /*
      * A text that parses into no § at all, said for that text (19.11.2026).
@@ -298,66 +324,16 @@ const readLawDiff = defineCachedFunction(
      * units, so one empty side went through and the page showed the other
      * text whole as „neu" or „entfallen" — every § of 43/ME XXVIII's
      * Vorlage as new, read against a draft page without the template's
-     * classes. Asked of the texts as read, before `scopeToDraft`: a later
-     * pair cut to the draft's laws may rightly leave one side empty (the
-     * committee dropped the draft's law), and that is a finding, not a gap.
+     * classes.
      */
-    if (!fromUnits.length || !toUnits.length) {
+    if (compared.refused === 'unparsed') {
       const side = (id: LawStationId) => `Der Gesetzestext ${lawStationGenitiveDe(id, first)} ließ sich nicht in Paragraphen gliedern.`
       return answer(
-        gapDe('unreadable', !fromUnits.length && !toUnits.length ? 'Der Gesetzestext ließ sich nicht in Paragraphen gliedern.' : side(fromUnits.length ? to : from)),
+        gapDe('unreadable', compared.side === 'both' ? 'Der Gesetzestext ließ sich nicht in Paragraphen gliedern.' : side(compared.side === 'from' ? from : to)),
         { fromSource, toSource },
       )
     }
-
-    /*
-     * Between two LATER stations of a Vorlage that bundles this draft with
-     * others, only the draft's laws (30.09.2026). Both sides then carry the whole Sammelgesetz, every
-     * Artikel pairs, and `diffLawPackage` has nothing to cut — 17/ME XXVIII
-     * counted 629 units of the Informationsfreiheits-Anpassungsgesetz for a
-     * draft that brought 39 of them.
-     *
-     * Only where Parliament's record says the Vorlage bundles other drafts:
-     * a law the Ressort added to its own Vorlage is part of THIS Vorlage, and
-     * what the committee did to it belongs in the committee's comparison.
-     * Where nothing can be cut — the draft's text unreadable, or its laws
-     * the whole text (XXVII 6/ME and 11/ME: one law, two drafts) — the
-     * counts stay those of the whole text, and `bundledWithOtherDrafts`
-     * lets the page say so.
-     */
-    let lawsOutsideDraft: LawPackageEntry[] = []
-    if (from !== 'me' && bundled === true) {
-      const draft = await readDraftUnits(found.get('me'))
-      if (draft) {
-        const scoped = scopeToDraft(draft, fromUnits, toUnits)
-        fromUnits = scoped.from
-        toUnits = scoped.to
-        lawsOutsideDraft = scoped.outside
-      }
-    }
-    // Named only where the draft is one part of the act; a Kundmachung of
-    // the draft's own Vorlage needs no introduction.
-    const largerAct = to === 'bgbl' && bundled === true ? act : null
-
-    // A Vorlage built from this draft alone: the laws it adds are the
-    // Ressort's own, and stay in the comparison (`keepAddedLaws`). Only for
-    // ME→RV — a law that appears later may be a committee's, and a later
-    // Vorlage merged in there is no part of this record.
-    const keepAddedLaws = from === 'me' && to === 'rv' && bundled === false
-    // A law the draft carried and the Vorlage does not is the Ressort's
-    // cut only where the draft went into this one Vorlage: a draft split
-    // into two (XXVII 21/ME, XXVIII 74/ME) can carry it in the other.
-    let rvCount = 0
-    try {
-      if (isMe) rvCount = new Set(findRvLinks(parseStages(content.stages)).map((l) => `${l.gp}/${l.inr}`)).size
-    } catch {
-      // An unreadable stage record proves nothing; the law stays named, not shown.
-    }
-    const keepDroppedLaws = keepAddedLaws && rvCount === 1
-    // `beyondCeiling`: a long § is shown with its changed words marked, not
-    // struck and inserted whole (`DiffOptions`, 19.11.2026).
-    const { units, lawsOnlyInTo, lawsOnlyInFrom, addedLaws, droppedLaws, unpaired } = diffLawPackage(fromUnits, toUnits, { keepAddedLaws, keepDroppedLaws, beyondCeiling: true })
-    if (unpaired) {
+    if (compared.refused === 'unpaired') {
       // Showing the units here would put the whole draft under „entfallen"
       // and the whole later text under „neu" — a claim about the draft the
       // documents do not make.
@@ -366,9 +342,14 @@ const readLawDiff = defineCachedFunction(
         { fromSource, toSource },
       )
     }
-    if (units.length === 0) {
+    if (compared.refused === 'empty') {
       return answer(gapDe('unreadable', 'Der Gesetzestext ließ sich nicht in Paragraphen gliedern.'), { fromSource, toSource })
     }
+    // Named only where the draft is one part of the act; a Kundmachung of
+    // the draft's own Vorlage needs no introduction.
+    const largerAct = to === 'bgbl' && bundled === true ? act : null
+    const { units, lawsOnlyInTo, lawsOnlyInFrom, addedLaws, droppedLaws } = compared.diff
+    const lawsOutsideDraft = compared.outside
     return answer(null, {
       fromSource,
       toSource,
