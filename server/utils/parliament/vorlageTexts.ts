@@ -79,6 +79,8 @@ export const getVorlageTextComparison = defineCachedFunction(
       draft,
       { parsed, source, publisher: 'parlament', readFrom: 'table', droppedPages: 0 },
       annex.pdf,
+      // No Lesefassung of a Vorlage's annex: the draft check stands alone.
+      async () => null,
       // Its (GP, Nummer) is a draft's too: the verification is cached under the root.
       rootKey(root),
     )

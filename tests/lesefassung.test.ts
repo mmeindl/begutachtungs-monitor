@@ -11,11 +11,11 @@ import {
   lesefassungNotRunText,
   mergesIntoNotice,
   NO_PART_IN_ANNEX_DE,
-  outcomeIndex,
   unitList,
   unplacedText,
   witnessNote,
 } from '../app/utils/lesefassung'
+import { outcomeIndex } from '#shared/utils/annexOutcomes'
 
 /** A pair row of § `para`, changed unless told otherwise. */
 function row(para: string | null, over: Partial<TextComparisonRow> = {}): TextComparisonRow {

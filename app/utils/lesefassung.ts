@@ -18,28 +18,9 @@
  */
 import { gapDe, type GapKind } from '#shared/utils/gaps'
 import { formatDateDe } from '#shared/utils/format'
-import type { AnnexWithheldCause, ConsolidatedLaterAmendment, ConsolidatedNotRun, ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheldCause, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
-import { annexUnitId, explanationKey } from '#shared/utils/explanationKey'
+import type { AnnexWithheldCause, ConsolidatedLaterAmendment, ConsolidatedNotRun, ConsolidatedParagraph, ConsolidatedTextResponse, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
+import type { Lesefassung, LesefassungCause } from '#shared/utils/annexOutcomes'
 import { UNIT_WORD_DE, type UnitKind, type UnitWordDe } from '#shared/utils/unitWord'
-
-/**
- * Why a § carries no Lesefassung: the server's causes, and one only the page
- * can see — the annex shows a change at a § for which the draft's
- * instructions, as we read them, name none (`nicht-gefunden`).
- */
-export type LesefassungCause = ConsolidatedWithheldCause | 'nicht-gefunden'
-
-export type Lesefassung =
-  | { kind: 'shown'; paragraph: ConsolidatedParagraph }
-  | { kind: 'withheld'; cause: LesefassungCause; laterAmendment?: ConsolidatedLaterAmendment }
-
-/** One outcome of the server, as the placement takes it. */
-export interface Outcome {
-  /** As the server keys it: „12", „Anl. 1". */
-  id: string
-  law: string | null
-  lesefassung: Lesefassung
-}
 
 /** An outcome no § block of the annex took, kept for the end of its law. */
 export interface UnplacedOutcome {
@@ -57,91 +38,6 @@ export interface LawEnd {
   explanations: ParagraphExplanationView[]
   /** What the law's units are, where they are not Paragraphen (`unitWord.ts`); absent for a law of §§. */
   unit?: UnitKind
-}
-
-/**
- * The server's outcomes, looked up by the law and designation a § block
- * stands for — and taken once a block has them, so what is left at the end
- * is exactly what no block took. Null while there is nothing to place: no
- * response yet, or a run that did not happen (`notRun`, said once by
- * `lesefassungNotRunText`).
- */
-export interface OutcomeIndex {
-  /**
-   * The outcome a § block of `law` with designation `designation` stands
-   * for, or null. The lookups, in order, and why each:
-   *  1. law and unit, the key the gate asked the annex with (`annexLaw`);
-   *  2. the unit alone where the server filed the § under no law — a
-   *     single-law Novelle asks the annex without one, while its row carries
-   *     one anyway;
-   *  3. the unnumbered schedule („Anl.") at the law's numbered one: an
-   *     instruction „des Anhangs" can only mean a law's only schedule, and the
-   *     annex prints its number — so only where the annex prints one schedule
-   *     for that law (`soleSchedule`). Without that condition the one outcome
-   *     stood at every numbered schedule of a law: the refusal of 571847EF's
-   *     unnumbered „Anlage" also at its Anhänge 2 and 4, which no instruction
-   *     touches (19.11.2026);
-   *  4. a block without a law in a package — the annex does not divide its
-   *     laws (`boundaryNote`): the § number alone, which only says something
-   *     where a single law of the package has such a §, and otherwise says
-   *     exactly that (`anhang-ungeteilt`).
-   */
-  at(law: string | null, designation: string | null): { lesefassung: Lesefassung; outcomes: Outcome[] } | null
-  /** Mark outcomes as placed. */
-  take(outcomes: readonly Outcome[]): void
-  /** Everything not placed, in the server's order. */
-  untaken(): Outcome[]
-}
-
-/** What the annex rows say about a law, for `outcomeIndex`. */
-export interface AnnexLawShape {
-  /**
-   * Whether a law (as the annex rows name it) prints exactly one schedule —
-   * the condition of lookup 3. Without it, no block takes the unnumbered
-   * „Anl.", and it stands at the end of its law.
-   */
-  soleSchedule?: (law: string | null) => boolean
-  /**
-   * The laws whose units are Artikel (`articleUnitLaws`, the oracle's own
-   * decision): there a block designated „Artikel 53." stands for the unit
-   * „53".
-   */
-  articleLaws?: ReadonlySet<string>
-}
-
-export function outcomeIndex(response: ConsolidatedTextResponse | null, { soleSchedule = () => false, articleLaws = new Set() }: AnnexLawShape = {}): OutcomeIndex | null {
-  if (!response || response.notRun) return null
-  const all: Outcome[] = [
-    ...response.paragraphs.map((p): Outcome => ({ id: p.id, law: p.annexLaw, lesefassung: { kind: 'shown', paragraph: p } })),
-    ...(response.withheld ?? []).map((w): Outcome => ({ id: w.id, law: w.annexLaw, lesefassung: { kind: 'withheld', cause: w.cause, ...(w.laterAmendment ? { laterAmendment: w.laterAmendment } : {}) } })),
-  ]
-  const byKey = new Map<string, Outcome>()
-  const byUnit = new Map<string, Outcome[]>()
-  for (const o of all) {
-    const unit = o.id.toLowerCase()
-    const key = explanationKey(o.law, unit)
-    if (!byKey.has(key)) byKey.set(key, o)
-    byUnit.set(unit, [...(byUnit.get(unit) ?? []), o])
-  }
-  const taken = new Set<Outcome>()
-  return {
-    at(law, designation) {
-      const unit = annexUnitId(designation, articleLaws.has(law ?? ''))
-      if (!unit) return null
-      const found = byKey.get(explanationKey(law, unit)) ??
-        (law !== null ? byKey.get(explanationKey(null, unit)) : undefined) ??
-        (unit.startsWith('anl. ') && soleSchedule(law) ? (byKey.get(explanationKey(law, 'anl.')) ?? byKey.get(explanationKey(null, 'anl.'))) : undefined)
-      if (found) return { lesefassung: found.lesefassung, outcomes: [found] }
-      if (law !== null) return null
-      const candidates = (byUnit.get(unit) ?? []).filter((o) => o.law !== null)
-      if (candidates.length === 0) return null
-      return { lesefassung: candidates.length === 1 ? candidates[0]!.lesefassung : { kind: 'withheld', cause: 'anhang-ungeteilt' }, outcomes: candidates }
-    },
-    take(outcomes) {
-      for (const o of outcomes) taken.add(o)
-    },
-    untaken: () => all.filter((o) => !taken.has(o)),
-  }
 }
 
 /**

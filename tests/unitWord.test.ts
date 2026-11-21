@@ -14,8 +14,8 @@ import {
   undividedText,
   unitList,
   unplacedText,
-  type LesefassungCause,
 } from '../app/utils/lesefassung'
+import type { LesefassungCause } from '#shared/utils/annexOutcomes'
 
 /**
  * THE UNIT'S WORD (20.11.2026). In a law whose units are Artikel — the B-VG;

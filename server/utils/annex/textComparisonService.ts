@@ -35,10 +35,14 @@
  */
 
 import { gapDe } from '#shared/utils/gaps'
-import type { TextComparisonResponse, TraceLink } from '#shared/types'
+import type { ConsolidatedTextResponse, TextComparisonResponse, TraceLink } from '#shared/types'
+import { oracleConfirmedRows } from '#shared/utils/annexOutcomes'
 import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, offersAnnex, parliamentAnnex, READ_PARLIAMENT_COPY } from './annexSource'
 import { checkAnnexRows } from './gateRows'
 import { getAnnexVerification } from './annexGuardService'
+import { annexStrictChecks } from './annexStrict'
+import { annexMarks } from './annexMark'
+import { getConsolidatedText, getRisConsolidatedText } from '../kons/konsService'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { getRisConsultation } from '../ris/risOnly'
@@ -80,6 +84,15 @@ export async function readAndCheck(
   draft: DraftText,
   chosen: Awaited<ReturnType<typeof annexSourceFor>>,
   pdfFallback: TraceLink | null,
+  /**
+   * Our Lesefassung of the same draft (`kons/konsService.ts`), whose oracle
+   * may confirm a § word for word (`annexMark.ts`) — asked only once the
+   * annex is read. Null where there is none to ask: the annex of a Vorlage
+   * without a Begutachtung, or Parliament's copy; then the draft check
+   * stands alone. A run that throws throws through: what the page would
+   * mark without it is shaped by the failure, and must not be cached.
+   */
+  lesefassung: () => Promise<ConsolidatedTextResponse | null>,
   /** The verification's cache key — the draft's identity by default. A
    *  Vorlage without a Begutachtung passes its `rootKey`, because its
    *  (GP, Nummer) is a draft's too (10.11.2026). */
@@ -95,8 +108,13 @@ export async function readAndCheck(
   // the Begutachtungsfrist — the day the ministry wrote the annex, not
   // today. Called even without one: `verifyAnnex` then reports why it could
   // check nothing, which the page needs to be able to say.
-  const verification = await getAnnexVerification(cacheKey, asOf, rows, draft.articles, draft.blocks)
-  const checked = checkAnnexRows(rows, verification)
+  const [verification, consolidated] = await Promise.all([getAnnexVerification(cacheKey, asOf, rows, draft.articles, draft.blocks), lesefassung()])
+  // What the gate let through is clean only where its new text is confirmed
+  // word for word (21.11.2026): by the draft check, on the rows as parsed —
+  // before the gate empties the withheld ones — and the draft text the gate
+  // has; or by the oracle of the Lesefassung (`annexMark.ts`).
+  const marks = annexMarks(rows, verification, annexStrictChecks(rows, draft), oracleConfirmedRows(rows, consolidated))
+  const checked = checkAnnexRows(rows, verification, marks)
   return {
     ...who,
     available: true,
@@ -242,7 +260,9 @@ export const getTextComparison = defineCachedFunction(
     // document for this draft at all — and then Parliament's PDF is the only
     // one a reader can open.
     const pdfLink = pdf ?? (chosen.publisher === 'parlament' ? (await parliamentAnnex(gp, inr)).pdf : null)
-    const out = await readAndCheck(who, row.textComparisonParts ?? [], row.risBeginn ?? '', draft, chosen, pdfLink)
+    // Parliament's copy has no Lesefassung of its own to vouch for it: the draft check stands alone there.
+    const lesefassung = chosen.publisher === 'parlament' ? async () => null : () => getConsolidatedText(gp, inr)
+    const out = await readAndCheck(who, row.textComparisonParts ?? [], row.risBeginn ?? '', draft, chosen, pdfLink, lesefassung)
     return typeof out === 'string' ? empty(out, null, pdfLink) : out
   },
   { name: 'text-comparison', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
@@ -286,7 +306,7 @@ export const getRisTextComparison = defineCachedFunction(
     const xml = detail.mainDocument.xml
     const draft = xml ? await draftArticlesOfXml(xml) : { blocks: [], articles: [] }
     const chosen = await annexSourceFor(documents, draft.articles)
-    const out = await readAndCheck(who, parts, detail.startedAt ?? '', draft, chosen, pdf)
+    const out = await readAndCheck(who, parts, detail.startedAt ?? '', draft, chosen, pdf, () => getRisConsolidatedText(id))
     return typeof out === 'string' ? emptyComparison(who, out, null, pdf) : out
   },
   { name: 'text-comparison-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },

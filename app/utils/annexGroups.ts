@@ -15,7 +15,8 @@ import { annexUnitId, articleUnitLaws, explanationKey, explanationParaId, number
 import { unitKindOf, type UnitKind } from '#shared/utils/unitWord'
 import { type DiffBadge, paragraphBadge } from './diffBadges'
 import { readsSideBySide, splitSegments } from './diffSides'
-import { outcomeIndex, showsInstructedChange, type LawEnd, type Lesefassung, type Outcome } from './lesefassung'
+import { annexAddressedParagraphs, lookUp, outcomeIndex, paragraphRuns, type Lesefassung, type Outcome, type UnitNumber } from '#shared/utils/annexOutcomes'
+import { showsInstructedChange, type LawEnd } from './lesefassung'
 
 /**
  * A row whose two columns are nothing but the annex's elision notation, reaching
@@ -336,110 +337,6 @@ export interface AnnexParaOptions {
   placed: ReadonlyMap<TextComparisonRow, ParaPlacement> | null
 }
 
-/** One § as the annex prints it: a contiguous stretch of rows under one `para`. */
-interface ParagraphRun {
-  key: string
-  rows: TextComparisonRow[]
-}
-
-function paragraphRuns(rows: readonly TextComparisonRow[]): ParagraphRun[] {
-  const runs: ParagraphRun[] = []
-  for (const row of rows) {
-    const key = row.para ?? ''
-    const last = runs[runs.length - 1]
-    if (last && last.key === key) last.rows.push(row)
-    else runs.push({ key, rows: [row] })
-  }
-  return runs
-}
-
-/**
- * The §§ a run opens, each with the designation it carries AFTER the draft —
- * the one the Erläuterungen and the Lesefassung address it by.
- *
- * The server decides that per § (`TextComparisonRow.paraAfter`, from the
- * right column's own Gliederungssymbol) and writes it onto every row of it,
- * so a run splits where it changes. Usually it does not. It does where the
- * annex opens the same `para` twice in a row: 2/ME XXVIII pairs the standing
- * § 2 Abs. 1 to 3 with the new § 1a („§ 2." left, „§ 1a." right) and then
- * prints § 2 itself — one run, two §§ after the draft, each with its own
- * Begründung. Until 26.10.2026 the page read „§ 22." back out of the proposed
- * column's text, which a withheld row no longer has.
- */
-function openedParagraphs(rows: readonly TextComparisonRow[]): TextComparisonRow[][] {
-  const out: TextComparisonRow[][] = []
-  for (const row of rows) {
-    const last = out[out.length - 1]
-    if (last && last[0]!.paraAfter === row.paraAfter) last.push(row)
-    else out.push([row])
-  }
-  return out
-}
-
-/**
- * The number a designation of one law carries, as the placement compares it
- * (`numberedUnitId`): a §'s, and an Artikel's in a law whose units are
- * Artikel. Through `explanationParaId` alone „Artikel 90a." and „Artikel
- * 94a." were both nothing, so equal, and 127/ME XXVIII's renumbered Artikel
- * were placed as if they kept their number: the vacated Art. 90a stood at
- * the law's end as a unit the annex prints no rows for (20.11.2026). Not a
- * schedule's number: a schedule is not renumbered into a §'s place.
- */
-type UnitNumber = (designation: string | null) => string | null
-
-/** A § as the Erläuterungen and the Lesefassung may address it. */
-interface Addressed {
-  /** The designation after the draft (`TextComparisonRow.paraAfter`); null where it is repealed. */
-  after: string | null
-  /** Its designation before — the row's `para`. */
-  own: string | null
-  /** Whether another § of the law carries `own` after the draft. */
-  ownTaken: boolean
-}
-
-/**
- * Who each run is, for the two lookups: one entry per § it opens.
- *
- * The designation after the draft comes first, and the one before is the
- * fallback — because the corpus addresses a renumbered § both ways. 51/ME
- * XXVIII re-enacts the law and writes „Zu § 22: § 14 wird zum § 22"; 2/ME
- * amends § 14a and renumbers it afterwards, and writes „Zu Z 33 und 34
- * (§ 14a Abs. 3 …)" with nothing under § 15. So: what stands under the new
- * number, else what stands under the old one — but the old one only where no
- * other § of the law carries it after the draft. Where one does (51/ME: the
- * new § 14), „Zu § 14" explains that one, and the renumbered or repealed §
- * gets nothing rather than its successor's Begründung.
- *
- * `numberIn` reads a designation's number in the run's law (`UnitNumber`):
- * in a law whose units are Artikel, the Artikel's.
- */
-function addressedParagraphs(runs: readonly ParagraphRun[], numberIn: (law: string | null) => UnitNumber): Addressed[][] {
-  const opened = runs.map((run) => openedParagraphs(run.rows).map((rows) => ({ own: rows[0]!.para, after: rows[0]!.paraAfter, numberOf: numberIn(run.rows[0]!.law) })))
-  /** How many §§ of the law carry each number after the draft. */
-  const carriers = new Map<string, number>()
-  for (const { after, numberOf } of opened.flat()) {
-    const id = numberOf(after)
-    if (id !== null) carriers.set(id, (carriers.get(id) ?? 0) + 1)
-  }
-  return opened.map((paragraphs) =>
-    paragraphs.map(({ own, after, numberOf }) => {
-      const id = numberOf(own)
-      const others = (carriers.get(id ?? '') ?? 0) - (id !== null && numberOf(after) === id ? 1 : 0)
-      return { own, after, ownTaken: others > 0 }
-    }),
-  )
-}
-
-/** What one addressed § finds under `lookup` (see `addressedParagraphs`). */
-function lookUp<T>(law: string | null, p: Addressed, numberOf: UnitNumber, lookup: (law: string | null, para: string | null) => T, found: (t: T) => boolean): T | null {
-  if (p.after !== null) {
-    const hit = lookup(law, p.after)
-    if (found(hit)) return hit
-    if (numberOf(p.after) === numberOf(p.own)) return null
-  }
-  return p.ownTaken ? null : lookup(law, p.own)
-}
-
 /** Passages that answer for several designations („Zu §§ 1a und 2") stand once. */
 function distinctPassages(passages: readonly ParagraphExplanationView[]): ParagraphExplanationView[] {
   const seen = new Set<string>()
@@ -565,7 +462,7 @@ export function annexParas(g: AnnexGroup, { limit, folding, placed }: AnnexParaO
  * annex, before any search or legend (26.10.2026).
  *
  * Each § block takes, under the designation it carries AFTER the draft
- * (`addressedParagraphs`), the Ressort's Begründung and our Lesefassung —
+ * (`annexAddressedParagraphs`), the Ressort's Begründung and our Lesefassung —
  * one source of truth for both, so a renumbered § gets its own of each and
  * never its successor's (51/ME XXVIII: the old § 14, now § 22). What no
  * block takes is not dropped but kept for the end of its law (`ends`): the
@@ -647,7 +544,7 @@ export function placeAtParagraphs(
   const blocks: { rows: readonly TextComparisonRow[]; matched: ParagraphExplanationView[]; found: PlacedLesefassung[]; ownNumber: Set<Lesefassung>; standsAfter: string | null }[] = []
   for (const g of groups) {
     const runs = paragraphRuns(g.rows)
-    const addressed = addressedParagraphs(runs, (law) => (designation) => numberedUnitId(designation, articleLaws.has(law ?? '')))
+    const addressed = annexAddressedParagraphs(runs, (law) => (designation) => numberedUnitId(designation, articleLaws.has(law ?? '')))
     for (const [i, run] of runs.entries()) {
       const first = run.rows[0]!
       const numberOf: UnitNumber = (designation) => numberedUnitId(designation, articleLaws.has(first.law ?? ''))
