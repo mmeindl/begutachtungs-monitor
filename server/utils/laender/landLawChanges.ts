@@ -306,3 +306,67 @@ export function instructionLawFor(kurztitel: string, laws: readonly (string | nu
   const hits = laws.filter((l): l is string => l !== null && holds(l))
   return hits.length === 1 ? hits[0]! : undefined
 }
+
+/** „Artikel II Änderung des …" → „II", „Artikel 3" → „3"; null for anything else. */
+const articleDesignation = (s: string | null) => /^Art(?:ikel|\.)\s*([IVXLC]+|\d+[a-z]?)(?![\p{L}\d])/u.exec((s ?? '').replace(/\s+/g, ' ').trim())?.[1] ?? null
+
+/** The law an Artikel's promulgation clause names, and the Stammnorm it cites where it gives the year. */
+export interface ArticleClause {
+  name: string
+  /** „56/1986"; null where the clause cites none, or no year („LGBl. Nr. 56", Wien). */
+  cites: string | null
+}
+
+/** An Artikel's heading, any title headings below it (never the next Artikel's), and the block that follows. */
+const ARTICLE_HEAD_RE = /<ueberschrift typ="(?:art|g1)"[^>]*>(\s*(?:<[^>]+>\s*)*Artikel\b(?:(?!<\/ueberschrift>)[\s\S])*?)<\/ueberschrift>((?:\s*<ueberschrift\b[^>]*>(?!\s*(?:<[^>]+>\s*)*Artikel\b)(?:(?!<\/ueberschrift>)[\s\S])*?<\/ueberschrift>)*)\s*<absatz\b[^>]*>((?:(?!<\/absatz>)[\s\S])*?)<\/absatz>/g
+
+/**
+ * The law each Artikel's promulgation clause names, by the Artikel's
+ * designation („I", „3"): „Die Dienstordnung 1994, LGBl. Nr. 56, zuletzt
+ * geändert durch …, wird wie folgt geändert:" (22.11.2026). Vorarlberg,
+ * Wien and Salzburg title their Artikel with the number alone („Artikel I"),
+ * and say which law it amends only there, in the block below it. Read as
+ * plain text: the name before the Landesgesetzblatt it cites, in a clause
+ * that ends „… geändert:" — a clause that repeals a law („tritt … außer
+ * Kraft") names no amended law.
+ */
+export function lgblArticleClauses(xml: string): Map<string, ArticleClause> {
+  const out = new Map<string, ArticleClause>()
+  const flat = (s: string) => decodeEntities(stripMarkup(s)).replace(/\s+/g, ' ').trim()
+  for (const m of xml.matchAll(ARTICLE_HEAD_RE)) {
+    const designation = articleDesignation(flat(m[1]!))
+    const clause = flat(m[3]!)
+    if (!designation || out.has(designation) || !/\bgeändert(?:\s+wie\s+folgt)?\s*:$/.test(clause)) continue
+    const named = /^(?:Das|Die|Der)\s+(.+?),?\s+LGBl\.?\s*(?:für\s+Wien\s*)?(?:Nr\.?\s*)?(\d+(?:\/\d{4})?)/.exec(clause)
+    if (named) out.set(designation, { name: named[1]!, cites: named[2]!.includes('/') ? named[2]! : null })
+  }
+  return out
+}
+
+/** An Artikel titled with its number alone: „Artikel I", „Artikel 3". */
+const UNTITLED_RE = /^Art(?:ikel|\.)\s*(?:[IVXLC]+|\d+[a-z]?)$/
+
+/**
+ * Each of RIS's laws → the group of instructions that amends it, as
+ * `instructionLawFor` finds it (undefined: none safely). An Artikel titled
+ * with its number alone is held by the name its clause gives the law
+ * (`lgblArticleClauses`, 22.11.2026): until then its title held no word of
+ * any law, and every § of the law it amends was withheld as `lawUnmatched`
+ * — 251 of the 509 in the harness (Vorarlberg 156, Wien 87, Salzburg 8;
+ * „Artikel I" … „Artikel VIII" of Wien's LGBl. Nr. 42/2019).
+ */
+export function instructionLawsOf(versions: readonly Pick<LandKonsVersion, 'law'>[], units: readonly LawUnit[], xml: string): Map<string, string | null | undefined> {
+  const keys = [...lgblInstructedParagraphs(units).keys()]
+  const clauses = lgblArticleClauses(xml)
+  const titleOf = (key: string | null) => {
+    if (key === null || !UNTITLED_RE.test(key.replace(/\s+/g, ' ').trim())) return key
+    const clause = clauses.get(articleDesignation(units.find((u) => u.article === key)?.articleNumber ?? key) ?? '')
+    return clause ? `${key} ${clause.name}` : key
+  }
+  const titles = keys.map(titleOf)
+  const laws = [...new Set(versions.map((v) => v.law))]
+  return new Map(laws.map((law) => {
+    const title = instructionLawFor(law, titles, laws.length)
+    return [law, title === undefined || title === null ? title : keys[titles.indexOf(title)]!]
+  }))
+}

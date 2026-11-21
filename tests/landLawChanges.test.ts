@@ -1,7 +1,7 @@
 /** What a Landesgesetz changed, § by § (`landLawChanges.ts`): every doubt is a § not compared. */
 import { describe, expect, it } from 'vitest'
 import { diffLandDraft } from '../server/utils/laender/landLawDiff'
-import { instructionLawFor, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
+import { instructionLawFor, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
 
 const v = (over: Partial<LandKonsVersion>): LandKonsVersion => ({ gesetzesnummer: '20001217', law: 'Salzburger Kinderbildungs- und -betreuungsgesetz 2019', key: '§5', from: null, to: null, organ: '', xmlUrl: 'x', stammnorm: '57/2019', ...over })
 
@@ -57,6 +57,20 @@ describe('instructions', () => {
     expect(instructionLawFor('Jagdgesetz 1993', [null])).toBeNull()
     expect(instructionLawFor('Wiener Pflanzenschutzmittelgesetz', ['Artikel I'], 1)).toBe('Artikel I')
     expect(instructionLawFor('Wiener Pflanzenschutzmittelgesetz', ['Artikel I', 'Artikel II'], 2)).toBeUndefined()
+  })
+})
+
+describe('lgblArticleClauses', () => {
+  it('reads the law an Artikel’s clause names, and the Stammnorm it cites with its year (22.11.2026)', () => {
+    const xml = '<ueberschrift typ="art" halign="c">Artikel I</ueberschrift><absatz typ="promkleinlsatz" halign="j">Die Dienstordnung 1994, LGBl. Nr. 56, zuletzt geändert durch das Gesetz LGBl. Nr. 10/2019, wird wie folgt geändert:</absatz>' +
+      '<ueberschrift typ="art" halign="c">Artikel II</ueberschrift><absatz typ="promkleinlsatz" halign="j">Das Pflichtschulorganisationsgesetz, LGBl.Nr. 17/1984, in der Fassung LGBl.Nr. 21/1988 und Nr. 81/2017, wird wie folgt geändert:</absatz>' +
+      '<ueberschrift typ="art" halign="c">Artikel V</ueberschrift><absatz typ="abs" halign="j">Das Schulratgesetz, LGBl.Nr. 35/1963, in der Fassung LGBl.Nr. 30/1985, tritt mit Ablauf des 31. Dezember 2018 außer Kraft.</absatz>' +
+      '<ueberschrift typ="g1" halign="c">Artikel 2</ueberschrift><ueberschrift typ="g1" halign="c">Änderung des Steiermärkischen Pensionsgesetzes 2009</ueberschrift><absatz typ="promkleinlsatz" halign="j">Das Steiermärkische Pensionsgesetz 2009, LGBl. Nr. 10/2009, zuletzt in der Fassung LGBl. Nr. 46/2024, wird wie folgt geändert:</absatz>'
+    expect(Object.fromEntries(lgblArticleClauses(xml))).toEqual({
+      I: { name: 'Dienstordnung 1994', cites: null },
+      II: { name: 'Pflichtschulorganisationsgesetz', cites: '17/1984' },
+      2: { name: 'Steiermärkische Pensionsgesetz 2009', cites: '10/2009' },
+    })
   })
 })
 

@@ -26,7 +26,7 @@ import { upstreamText } from '../upstream/fetch'
 import { konsParagraphHistory, konsRefsOfLgbl, lgblNummer } from './landKonsLaws'
 import { comparedText, lgblUnits } from './landLawDiff'
 import {
-  instructionLawFor,
+  instructionLawsOf,
   lgblInstructedParagraphs,
   isNamed,
   konsUnit,
@@ -92,8 +92,9 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   if (byKey.size > MAX_PARAGRAPHS) return off(gapDe('outOfScope', `ein Vergleich für ein Landesgesetzblatt, das mehr als ${MAX_PARAGRAPHS} Paragraphen ändert.`))
 
   const laws = [...new Set(versions.map((v) => v.law))]
-  const instructions = lgblInstructedParagraphs(lgblUnits(lgblXml))
-  const instructionLaws = [...instructions.keys()]
+  const lgbl = lgblUnits(lgblXml)
+  const instructions = lgblInstructedParagraphs(lgbl)
+  const lawKeys = instructionLawsOf(versions, lgbl, lgblXml)
   const withheld: LandLawDiffResponse['withheld'] = []
   let complete = searchComplete
   // Each § as RIS pairs its two versions: the earlier wording (none for a new §) and the later one (none for a repeal).
@@ -118,7 +119,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
       pairs.push([null, unit])
       return
     }
-    const lawKey = instructionLawFor(v.law, instructionLaws, laws.length)
+    const lawKey = lawKeys.get(v.law)
     // No instruction's law matched to this one (or none read at all): whether an instruction names the § is
     // not known. Named „unpaired" until 20.11.2026, whose sentence says an instruction names it.
     if (lawKey === undefined) return void withheld.push({ law: v.law, id: v.key, reason: 'lawUnmatched' })
@@ -146,7 +147,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 
   // Instructions that name a § RIS ties to no version of this Landesgesetzblatt: counted, never dropped.
   for (const [lawKey, keys] of instructions) {
-    const law = laws.find((l) => instructionLawFor(l, instructionLaws, laws.length) === lawKey) ?? (lawKey ?? laws[0] ?? null)
+    const law = laws.find((l) => lawKeys.get(l) === lawKey) ?? (lawKey ?? laws[0] ?? null)
     for (const key of keys) {
       // A range names what RIS has in it; nothing to count of its own.
       if (/-/.test(key)) continue
@@ -196,5 +197,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-10', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-11', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
 )

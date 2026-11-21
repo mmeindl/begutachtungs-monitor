@@ -149,6 +149,28 @@ describe('compareLandLawChanges — a law no instruction could be matched to (20
   })
 })
 
+describe('compareLandLawChanges — Artikel titled with their number alone (22.11.2026)', () => {
+  it('finds each Artikel’s law in its promulgation clause, never withholds its §§ as unmatched (Wien LGBl. Nr. 42/2019)', async () => {
+    XML['wien42.xml'] = '<risdok><nutzdaten>' +
+      '<ueberschrift typ="art" halign="c">Artikel I</ueberschrift><absatz typ="promkleinlsatz" halign="j">Die Dienstordnung 1994, LGBl. Nr. 56, zuletzt geändert durch das Gesetz LGBl. Nr. 10/2019, wird wie folgt geändert:</absatz>' +
+      '<absatz typ="novao2" halign="j">1. In § 15 Abs. 5 wird nach dem Ausdruck <n>„IV K,“</n> der Ausdruck <n>„IV P,“</n> eingefügt.</absatz>' +
+      '<ueberschrift typ="art" halign="c">Artikel II</ueberschrift><absatz typ="promkleinlsatz" halign="j">Die Besoldungsordnung 1994, LGBl. Nr. 55, zuletzt geändert durch das Gesetz LGBl. Nr. 20/2019, wird wie folgt geändert:</absatz>' +
+      '<absatz typ="novao2" halign="j">1. In § 2 wird nach dem Ausdruck <n>„Schema II K,“</n> der Ausdruck <n>„das Schema II P,“</n> eingefügt.</absatz>' +
+      '</nutzdaten></risdok>'
+    const amended = (law: string, para: string, stammnorm: string) => {
+      const r = ref(para, 'p1.xml', '2019-08-01')
+      r.Data.Metadaten.Landesrecht.Kurztitel = law
+      Object.assign(r.Data.Metadaten.Landesrecht.LrKons, { Kundmachungsorgan: `LGBl. Nr. ${stammnorm} zuletzt geändert durch LGBl. Nr. 42/2019`, StammnormBgblnummer: stammnorm, Gesetzesnummer: stammnorm })
+      return r
+    }
+    konsRefsOfLgbl.mockResolvedValue({ refs: [amended('Dienstordnung 1994', '§ 15', '56/1994'), amended('Besoldungsordnung 1994', '§ 2', '55/1994')], complete: true })
+    konsParagraphHistory.mockResolvedValue([])
+    const { value } = await compareLandLawChanges('w', 'LGBl. Nr. 42/2019', 'wien42.xml', null, '2019-07-24')
+    expect(value.withheld.filter((w) => w.reason === 'lawUnmatched')).toEqual([])
+    expect(konsParagraphHistory.mock.calls.map((c) => c.slice(1)).sort()).toEqual([['55/1994', '§2'], ['56/1994', '§15']])
+  })
+})
+
 describe('compareLandLawChanges — a § the Landesgesetzblatt repeals (20.11.2026)', () => {
   beforeEach(() => {
     XML['novelle.xml'] = '<risdok><nutzdaten><absatz typ="novao1">1. § 2 entfällt.</absatz></nutzdaten></risdok>'
