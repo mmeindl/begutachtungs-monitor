@@ -98,8 +98,10 @@ const copy = computed(() => COPY[props.kind])
     </div>
     <div>
       <dt>Geprüft gegen das geltende Recht im RIS</dt>
+      <!-- A new § has no left column, and rule 2 is the only check it can
+           get (20.11.2026); a § a check could not reach is shown, marked. -->
       <dd>
-        Einen Paragraphen zeigen wir nur, wenn diese Dinge stimmen:
+        Ohne Vorbehalt zeigen wir einen Paragraphen nur, wenn diese Dinge stimmen:
         <ul>
           <li>
             Die linke Spalte entspricht dem Gesetzestext im RIS, wie er am
@@ -109,6 +111,9 @@ const copy = computed(() => COPY[props.kind])
           <li>Was rechts als neu markiert ist, steht auch im Gesetzestext {{ copy.item }}.</li>
           <li>Zeigt die rechte Spalte von einem Paragraphen nichts, hebt der Gesetzestext {{ copy.item }} ihn auch auf.</li>
         </ul>
+        Einem neuen Paragraphen steht links nichts gegenüber; bei ihm zählt nur
+        der dritte Punkt. Ließ sich etwas davon nicht prüfen, steht beim
+        Paragraphen „nicht geprüft“.
       </dd>
     </div>
     <div>

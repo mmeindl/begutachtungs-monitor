@@ -58,7 +58,7 @@ import type { ComparisonRow } from './comparisonRows'
 import type { AnnexWithheldCause } from '../../../shared/types'
 import { annexParagraphKey, designationKey } from './annexText'
 import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange, type Coverage } from './coverage'
-import { draftBags, draftReference, rightColumnCheck, type RightColumnCheck, type StandingText, type WordBag } from './rightColumn'
+import { MIN_NEW_WORDS, draftBags, draftReference, insertedStretches, rightColumnCheck, type RightColumnCheck, type StandingText, type WordBag } from './rightColumn'
 import { divisionPath, divisionsOf, draftRepeals, noRepeals, repealsParagraph, showsRepeal, type DraftRepeals } from './repeals'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
@@ -263,6 +263,13 @@ export const REASON_NO_SUCH_PARAGRAPH = 'das RIS Bundesrecht führt diese Paragr
  */
 export const REASON_INSERTED_BY_DRAFT = 'der Entwurf fügt diese Paragraphen erst ein — im geltenden Recht gibt es sie noch nicht'
 /**
+ * The § RIS does not hold under this number is one a renumbering of the
+ * draft gives it („Der bisherige § 68j erhält die Bezeichnung ‚§ 68l'"): the
+ * law holds it under its old number, which the check did not read
+ * (20.11.2026).
+ */
+export const REASON_RENUMBERED = 'der Entwurf nummeriert diese Paragraphen um — im geltenden Recht stehen sie unter ihrer bisherigen Bezeichnung'
+/**
  * The law the Artikel amends is itself an amending act — „Änderung des
  * Bundesgesetzes, mit dem das … geändert werden" (116/ME XXVIII). RIS
  * Bundesrecht consolidates the laws such an act changed, not the act, so
@@ -288,6 +295,11 @@ export const REASON_TOO_SHORT = 'die gezeigten Änderungen tragen zu wenig Text 
  * 99/ME inserts §§ and nothing else, and telling its reader that
  * "die gezeigten Änderungen tragen zu wenig Text" about a screen full of new
  * provisions is false in the ordinary reading of it.
+ *
+ * Since 20.11.2026 it also means the § owes no check (`checkAnnexRows`), and
+ * so it is given only where that is true: the § shows no new text, or rule 2
+ * held what it shows against the draft. A new text too short for rule 2 is
+ * `REASON_TOO_SHORT`, and marked.
  */
 export const REASON_NOTHING_TO_COMPARE = 'die Beilage zeigt an diesen Stellen keinen geltenden Text, der sich vergleichen ließe'
 /**
@@ -384,6 +396,9 @@ function indexOf(law: KonsLawAtDate): LawIndex {
 }
 
 const ARTICLE_PARAGRAPH_KEY_RE = /^Art \S+ (§ \S+)$/
+
+/** What a § without standing text is held against on the RIS side: nothing — no word stands there, and no heading. */
+const NO_STANDING: StandingText = { text: '', heading: '' }
 
 /**
  * „§ 13" for a law RIS files as „Art. 2 § 13" — only where the law itself
@@ -545,6 +560,18 @@ export async function verifyAnnex(
   if (!asOf) return nothing(REASON_NO_ASOF)
 
   const bags = draftBags(draft.blocks)
+  /**
+   * Why a § with nothing in force to compare stays unchecked (20.11.2026),
+   * and with it whether it owes a check (`checkAnnexRows`): nothing is owed
+   * where it shows no new text, or where rule 2 held what it shows against
+   * the draft — read, and with enough new words to judge. A new text below
+   * that floor was held by no rule, and is „zu wenig Text" again.
+   */
+  const newTextReason = (rows: readonly ComparisonRow[], right: RightColumnCheck): string => {
+    if (right.undiffed > 0) return REASON_TOO_LONG
+    if (insertedStretches(rows).length === 0) return REASON_NOTHING_TO_COMPARE
+    return bags.whole.size > 0 && right.newWords >= MIN_NEW_WORDS ? REASON_NOTHING_TO_COMPARE : REASON_TOO_SHORT
+  }
   // What the annex prints a block of its own for, per law. A § that is
   // *not* in here has its text somewhere inside another §'s block, and its
   // words must not be counted as missing there (`draftReference`).
@@ -610,6 +637,28 @@ export async function verifyAnnex(
 
   const coverage = new Map<string | null, Map<string, Coverage>>()
   const rightColumn = new Map<string, RightColumnCheck>()
+  /**
+   * §§ with no standing text by nature — a § the draft inserts, one RIS does
+   * not hold, every § of a draft that amends no law — and why (20.11.2026).
+   * The left check and rule 1 have nothing to hold them against; rule 2 needs
+   * only the draft, so it runs. Until then it was never asked, and such a §
+   * went out with its new text, no check and no mark.
+   *
+   * **Against the whole draft, not the §'s own instructions.** Measured over
+   * GP XXVIII, the per-§ reference withheld 12 such §§ and five of them were
+   * sound: an inserting instruction the addressing does not read („Nach
+   * § 59a wird § 59b angefügt", GSpG), an Inkrafttreten Absatz filed under no
+   * §, a renumbered § the annex prints whole as new (BHG 2013 § 104i), and a
+   * Verordnung a Sammelverordnung enacts, whose text is no instruction at
+   * all. The whole draft passes all of them and still withholds the five
+   * Lehrberufslisten five Ausbildungsordnungen print in their annexes and
+   * none of the drafts writes.
+   */
+  const withoutStanding = new Map<string, { reason: string; right: RightColumnCheck }>()
+  const wholeDraft: WordBag = { has: (w) => bags.whole.has(w), read: bags.whole.size > 0 }
+  const draftOnly = (groupKey: string, group: { rows: ComparisonRow[] }, reason: string): void => {
+    withoutStanding.set(groupKey, { reason, right: rightColumnCheck(group.rows, NO_STANDING, wholeDraft) })
+  }
   /** Per law: its § index, and the divisions RIS files over each § it was asked for — the repeal check walks them (`repealsParagraph`). */
   const indexes = new Map<string | null, LawIndex>()
   const divisions = new Map<string | null, Map<string, string[]>>()
@@ -621,7 +670,7 @@ export async function verifyAnnex(
     if (looked >= maxParagraphs) return skip(groupKey, REASON_CEILING)
     looked++
     const index = await lawOf(group.law)
-    if (typeof index === 'string') return skip(groupKey, index)
+    if (typeof index === 'string') return index === REASON_NO_AMENDING ? draftOnly(groupKey, group, index) : skip(groupKey, index)
     const key = designationKey(group.para)
     if (key === null) return skip(groupKey, REASON_UNREADABLE_DESIGNATION)
     const ref =
@@ -629,7 +678,15 @@ export async function verifyAnnex(
       (group.rows.some(isDisplayedChange) && sources.paragraphAcrossGap
         ? await sources.paragraphAcrossGap(index.law.gesetzesnummer, key, asOf)
         : undefined)
-    if (!ref) return skip(groupKey, insertedByDraft(group.law).has(key) ? REASON_INSERTED_BY_DRAFT : REASON_NO_SUCH_PARAGRAPH)
+    // A § the draft renumbers into this number stands in the law under its
+    // old one, so its text is no new text of the draft's: rule 2 would read
+    // the standing § as missing from the draft (MSchG § 68l, the old § 68j;
+    // the Forstassistenten-Ausbildungsverordnung's § 5, the old § 4). Its
+    // standing text was not read, so it owes a check.
+    // An unattributed row reads its law as `insertedByDraft` does.
+    const lawKey = group.law ?? (amending.length === 1 ? amending[0]!.key : null)
+    if (!ref && bags.aliases?.get(lawKey)?.has(key)) return skip(groupKey, REASON_RENUMBERED)
+    if (!ref) return draftOnly(groupKey, group, insertedByDraft(group.law).has(key) ? REASON_INSERTED_BY_DRAFT : REASON_NO_SUCH_PARAGRAPH)
     const standing = await sources.standingText(ref)
     if (standing === null) return skip(groupKey, REASON_NOT_REPRESENTABLE)
     indexes.set(group.law, index)
@@ -678,7 +735,7 @@ export async function verifyAnnex(
       // may promote such a § either: the draft bag passes happily on garbage
       // lifted from another part of the same draft.
       if (!cover.prose) {
-        skip(key, cover.comparable === 0 ? REASON_NOTHING_TO_COMPARE : REASON_TOO_SHORT)
+        skip(key, cover.comparable === 0 ? newTextReason(groups.get(key)!.rows, right!) : REASON_TOO_SHORT)
         continue
       }
       // Nor may a § whose right column the rules could not read whole: a
@@ -690,6 +747,18 @@ export async function verifyAnnex(
       }
       verdicts[key] = 'verified'
     }
+  }
+  // Rule 2 alone, where nothing stands: it withholds what the draft does not
+  // write, and a § it could not judge owes a check. A § that also shows a
+  // change of standing text keeps the reason its left column went unchecked.
+  for (const [key, { reason, right }] of withoutStanding) {
+    if (right.notInDraft) {
+      verdicts[key] = 'withheld'
+      withheldCauses[key] = 'notInDraft'
+      continue
+    }
+    const rows = groups.get(key)!.rows
+    skip(key, rows.some(isDisplayedChange) ? reason : newTextReason(rows, right))
   }
   // **A § a column prints twice over is not paired by guess** (19.11.2026):
   // where the PDF reader could neither join the prints nor drop all but one

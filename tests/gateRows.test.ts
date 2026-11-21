@@ -99,9 +99,10 @@ describe('checkAnnexRows', () => {
   it('counts as unchecked only the §§ that show a change', () => {
     // The page prints this number after "… ließen sich nicht prüfen", so it
     // has to mean "this much of what you see is unvouched-for". A § whose
-    // rows are unchanged is folded away behind a count and needs no check;
-    // one the draft *inserts* has no standing text to check against, which is
-    // the point of it and not a gap.
+    // rows are unchanged is folded away behind a count and needs no check.
+    // One the draft *inserts* has no standing text, and owes nothing only
+    // where rule 2 held its new text against the draft
+    // (`REASON_NOTHING_TO_COMPARE`, 20.11.2026).
     const rows = [
       row({ gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu' }),
       row({ gld: '§ 2.', para: '§ 2.', current: 'gleich', proposed: 'gleich', change: 'unchanged' }),
@@ -110,9 +111,12 @@ describe('checkAnnexRows', () => {
       row({ gld: '§ 5.', para: '§ 5.', current: '§ 5. …', proposed: '§ 5. …', change: 'unchanged', elided: true }),
     ]
     const verdicts = { '#§ 1.': 'unchecked', '#§ 2.': 'unchecked', '#§ 3.': 'unchecked', '#§ 4.': 'unchecked', '#§ 5.': 'unchecked' } as const
-    expect(checkAnnexRows(rows, verification({ verdicts })).uncheckedParagraphs).toBe(2)
+    const uncheckedReasons = { '#§ 3.': REASON_NOTHING_TO_COMPARE }
+    expect(checkAnnexRows(rows, verification({ verdicts, uncheckedReasons })).uncheckedParagraphs).toBe(2)
+    // …and where no rule held the new text, the inserted § is one of them.
+    expect(checkAnnexRows(rows, verification({ verdicts, uncheckedReasons: { '#§ 3.': REASON_TOO_SHORT } })).uncheckedParagraphs).toBe(3)
     // A verdict of its own takes a § out of the count whichever way it went.
-    expect(checkAnnexRows(rows, verification({ verdicts: { ...verdicts, '#§ 1.': 'verified', '#§ 4.': 'withheld' } })).uncheckedParagraphs).toBe(0)
+    expect(checkAnnexRows(rows, verification({ verdicts: { ...verdicts, '#§ 1.': 'verified', '#§ 4.': 'withheld' }, uncheckedReasons })).uncheckedParagraphs).toBe(0)
   })
 
   it('owes no check for a § with nothing in force to compare — and says so per row (03.10.2026)', () => {

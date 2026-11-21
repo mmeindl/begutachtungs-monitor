@@ -51,7 +51,7 @@ export const TERMS = {
   'nicht-geprueft': {
     label: 'nicht geprüft',
     definition:
-      'Die Änderung betrifft geltendes Recht, aber die Prüfung ließ sich nicht durchführen: Das RIS führt das Gesetz oder den Paragraphen nicht oder lässt seine Absätze nicht auseinanderhalten, oder die Beilage selbst gibt zu wenig her. Das ist kein Befund über den Entwurf, sondern einer über die Prüfbarkeit; der Grund steht beim Gesetz.',
+      'Die Prüfung ließ sich nicht durchführen: Das RIS führt das Gesetz oder den Paragraphen nicht oder lässt seine Absätze nicht auseinanderhalten, oder die Beilage selbst gibt zu wenig her: zu wenig geltenden Text für den Vergleich mit dem RIS oder zu wenig neuen Text für den Abgleich mit dem vorgeschlagenen Gesetzestext. Das ist kein Befund über den Entwurf, sondern einer über die Prüfbarkeit; der Grund steht beim Gesetz.',
   },
   /** A Verordnung of the Bund: the statement goes to the ministry. */
   'nicht-gezaehlt-verordnung': {

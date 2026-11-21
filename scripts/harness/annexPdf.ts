@@ -222,7 +222,7 @@ function dumpRows(id: string, cite: string, parsed: ComparisonParse, gate: GateR
     unplaced: 'unplacedKinds' in parsed ? parsed.unplacedKinds : undefined,
     rows: gate.rows.map((r) => ({
       kind: r.kind, law: r.law, heading: r.heading, para: r.para, gld: r.gld, paraAfter: r.paraAfter, change: r.change, check: r.check,
-      cause: r.withheldCause ?? null, reason: r.uncheckedReason ?? null, elided: r.elided, elisionRange: r.elisionRange, editorial: r.editorial,
+      cause: r.withheldCause ?? null, reason: r.uncheckedReason ?? null, owes: r.owesCheck, elided: r.elided, elisionRange: r.elisionRange, editorial: r.editorial,
       current: r.current, proposed: r.proposed,
     })),
   }

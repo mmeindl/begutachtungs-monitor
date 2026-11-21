@@ -9,6 +9,7 @@ import { summarizeComparison, type ComparisonRow, type ComparisonStats } from '.
 import type { AnnexWithheldCause, TextComparisonRow } from '../../../shared/types'
 import { annexParagraphKey } from './annexText'
 import { isDisplayedChange } from './coverage'
+import { insertedStretches } from './rightColumn'
 import { REASON_NOTHING_TO_COMPARE, REASON_UNREADABLE_DESIGNATION, type AnnexVerification } from './verdict'
 
 /**
@@ -44,10 +45,14 @@ export interface CheckedComparison {
    *
    * Only those. Counting every unchecked verdict put §§ into the sentence
    * "… ließen sich nicht prüfen" that need no check at all: a § whose rows
-   * are unchanged is folded away behind a count, and a § the draft *inserts*
-   * has no standing text to check against — that is the point of it, not a
-   * gap. The number the page prints has to mean "this much of what you see is
-   * unvouched-for", or it reads as an alarm about the ministry's annex.
+   * are unchanged is folded away behind a count. The number the page prints
+   * has to mean "this much of what you see is unvouched-for", or it reads as
+   * an alarm about the ministry's annex.
+   *
+   * A § the draft *inserts* has no standing text to check against, and was
+   * left out on that ground until 20.11.2026 — but its new text was held by
+   * nothing either, and went out unmarked. It is counted now unless rule 2
+   * held its new text against the draft (`REASON_NOTHING_TO_COMPARE`).
    */
   uncheckedParagraphs: number
   /**
@@ -91,14 +96,22 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
   /**
    * A § whose displayed changes carry no comparable word of text in force —
    * every change an insertion, or the left column elision alone („§ 20. (1)
-   * bis (5) …"). It shows a change but owes no check: there is nothing in
-   * force to hold it against (`REASON_NOTHING_TO_COMPARE`).
+   * bis (5) …") — and whose new text rule 2 held against the draft, or that
+   * shows none. It shows a change but owes no check: there is nothing in
+   * force to hold it against, and the draft held the rest
+   * (`REASON_NOTHING_TO_COMPARE`).
    */
   const nothingOwed = (key: string) => verification.uncheckedReasons[key] === REASON_NOTHING_TO_COMPARE
+  /**
+   * A row the page shows as a change: of text in force, or new text
+   * (20.11.2026). New text is the claim „the draft writes this", and a check
+   * is owed for it as much as for a changed line of the standing law.
+   */
+  const shownChange = (row: ComparisonRow): boolean => isDisplayedChange(row) || insertedStretches([row]).length > 0
   /** §§ the page shows at least one change for — the only ones a check is owed. */
   const showsChange = new Set<string>()
   for (const row of rows) {
-    if (row.kind !== 'pair' || !isDisplayedChange(row)) continue
+    if (row.kind !== 'pair' || !shownChange(row)) continue
     const para = row.gld ?? row.para
     if (para !== null && !nothingOwed(annexParagraphKey(row.law, para))) showsChange.add(annexParagraphKey(row.law, para))
   }
@@ -108,13 +121,13 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
     if (row.kind !== 'pair') return { ...row, check: 'unchecked' as const, owesCheck: false }
     const para = row.gld ?? row.para
     if (para === null) {
-      const owes = isDisplayedChange(row)
+      const owes = shownChange(row)
       if (owes) rowsWithoutParagraph++
       return { ...row, check: 'unchecked' as const, owesCheck: owes, uncheckedReason: REASON_UNREADABLE_DESIGNATION }
     }
     const key = annexParagraphKey(row.law, para)
     const verdict = verification.verdicts[key] ?? 'unchecked'
-    const owesCheck = isDisplayedChange(row) && !nothingOwed(key)
+    const owesCheck = shownChange(row) && !nothingOwed(key)
     // The reason travels with the row for the same cause as the withheld
     // one below: the page says it per law, and only the rows know their law.
     if (verdict === 'unchecked') return { ...row, check: verdict, owesCheck, uncheckedReason: verification.uncheckedReasons[key] ?? null }

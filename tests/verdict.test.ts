@@ -15,6 +15,7 @@ import {
   REASON_NO_SUCH_PARAGRAPH,
   REASON_NOTHING_TO_COMPARE,
   REASON_NOT_REPRESENTABLE,
+  REASON_RENUMBERED,
   REASON_TOO_LONG,
   REASON_TOO_SHORT,
   REASON_UNRESOLVED,
@@ -229,8 +230,11 @@ describe('verifyAnnex', () => {
     // readers on 2026-09-10, and 99/ME — an annex that inserts §§
     // and does nothing else — is where it read false: a screenful of new
     // provisions is not "zu wenig Text".
+    // § 1's new text is the draft's own, and long enough for rule 2 to hold
+    // it: a new text no rule could hold is „zu wenig Text" again, and owes a
+    // check (20.11.2026, below).
     const rows = [
-      row({ gld: '§ 1.', para: '§ 1.', current: '', proposed: 'Ein ganz neuer Paragraph mit reichlich Text.', change: 'inserted' }),
+      row({ gld: '§ 1.', para: '§ 1.', current: '', proposed: PROSE, change: 'inserted' }),
       row({ gld: '§ 2.', para: '§ 2.', current: '(1) bis (3) …', elided: false }),
     ]
     const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
@@ -543,5 +547,86 @@ describe('verifyAnnex: a § a column prints twice over (19.11.2026)', () => {
     const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE, proposed: PROSE, change: 'unchanged' })]
     const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
     expect(check.withheldCauses['#§ 1.']).toBeUndefined()
+  })
+})
+
+describe('verifyAnnex: a § without standing text (20.11.2026)', () => {
+  // A § the draft inserts, one RIS does not hold, and every § of a draft that
+  // amends no law have no standing text — so the left check and rule 1 have
+  // nothing to hold, and until 20.11.2026 rule 2 was never asked either. The
+  // § went out with new text, no check and no mark. Rule 2 needs only the
+  // draft: it runs, and where it cannot judge, the § owes a check.
+  const inserting = (payload: string): TextBlock[] => [
+    { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 1', gld: null },
+    { kind: 'section', cls: 'ueberschrift/g2', text: 'X-Gesetz', gld: null },
+    { kind: 'other', cls: 'absatz/promkleinlsatz', text: 'Das X-Gesetz, BGBl. I Nr. 1/2020, wird wie folgt geändert:', gld: null },
+    instruction('1. Nach § 8 wird folgender § 9 eingefügt:'),
+    { kind: 'abs', cls: 'absatz/abs', text: payload, gld: '§ 9.' },
+  ]
+  const law = { 'BGBl. I 1/2020': { '§ 1': PROSE } }
+
+  it('withholds an inserted § whose right column carries text the draft does not write', async () => {
+    const rows = [row({ gld: '§ 9.', para: '§ 9.', current: '', proposed: `${PROSE} ${FOREIGN}`, change: 'inserted' })]
+    const check = await verifyAnnex(rows, draft({ blocks: inserting(PROSE) }), fakeSources(law))
+    expect(check.verdicts['#§ 9.']).toBe('withheld')
+    expect(check.withheldCauses['#§ 9.']).toBe('notInDraft')
+  })
+
+  it('owes nothing for an inserted § whose new text rule 2 held', async () => {
+    const rows = [row({ gld: '§ 9.', para: '§ 9.', current: '', proposed: PROSE, change: 'inserted' })]
+    const check = await verifyAnnex(rows, draft({ blocks: inserting(PROSE) }), fakeSources(law))
+    expect(check.verdicts['#§ 9.']).toBe('unchecked')
+    expect(check.uncheckedReasons['#§ 9.']).toBe(REASON_NOTHING_TO_COMPARE)
+    const out = checkAnnexRows(rows, check)
+    expect(out.rows[0]!.owesCheck).toBe(false)
+    expect(out.uncheckedParagraphs).toBe(0)
+  })
+
+  it('marks an inserted § too short for rule 2 „nicht geprüft", with that reason', async () => {
+    const rows = [row({ gld: '§ 9.', para: '§ 9.', current: '', proposed: 'Der Bund entscheidet.', change: 'inserted' })]
+    const check = await verifyAnnex(rows, draft({ blocks: inserting('Der Bund entscheidet.') }), fakeSources(law))
+    expect(check.uncheckedReasons['#§ 9.']).toBe(REASON_TOO_SHORT)
+    const out = checkAnnexRows(rows, check)
+    expect(out.rows[0]).toMatchObject({ check: 'unchecked', owesCheck: true, uncheckedReason: REASON_TOO_SHORT })
+    expect(out.uncheckedParagraphs).toBe(1)
+  })
+
+  it('holds a § RIS does not hold, and the draft does not insert, to the draft as well', async () => {
+    const rows = [row({ gld: '§ 9.', para: '§ 9.', current: '', proposed: FOREIGN, change: 'inserted' })]
+    const check = await verifyAnnex(rows, draft(), fakeSources(law))
+    expect(check.withheldCauses['#§ 9.']).toBe('notInDraft')
+  })
+
+  it('marks a § the draft only renumbers into its number, rather than holding its standing text to the draft', async () => {
+    // MSchG § 68l (the old § 68j) and § 5 of the Forstassistenten-
+    // Ausbildungsverordnung (the old § 4): the annex prints the renumbered §
+    // whole as new, and its text stands in the law, not in the draft.
+    const blocks: TextBlock[] = [
+      { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 1', gld: null },
+      { kind: 'section', cls: 'ueberschrift/g2', text: 'X-Gesetz', gld: null },
+      { kind: 'other', cls: 'absatz/promkleinlsatz', text: 'Das X-Gesetz, BGBl. I Nr. 1/2020, wird wie folgt geändert:', gld: null },
+      instruction('1. Der bisherige § 8 erhält die Bezeichnung „§ 9“.'),
+    ]
+    const rows = [row({ gld: '§ 9.', para: '§ 9.', current: '', proposed: FOREIGN, change: 'inserted' })]
+    const check = await verifyAnnex(rows, draft({ blocks }), fakeSources(law))
+    expect(check.verdicts['#§ 9.']).toBe('unchecked')
+    expect(check.uncheckedReasons['#§ 9.']).toBe(REASON_RENUMBERED)
+    expect(checkAnnexRows(rows, check).rows[0]!.owesCheck).toBe(true)
+  })
+
+  it('holds the right column of a draft that amends no law to the draft', async () => {
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: '', proposed: `${PROSE} ${FOREIGN}`, change: 'inserted' })]
+    const blocks: TextBlock[] = [{ kind: 'abs', cls: 'absatz/abs', text: PROSE, gld: '§ 1.' }]
+    const check = await verifyAnnex(rows, draft({ articles: [article({ amends: false, bgbl: null })], blocks }), fakeSources({}))
+    expect(check.withheldCauses['#§ 1.']).toBe('notInDraft')
+  })
+
+  it('marks a standing § whose only change is a new text too short for rule 2', async () => {
+    // „§ 20. (1) bis (5) …" against a new Abs. 6: nothing in force to compare,
+    // and too little new text for the draft — no rule held it.
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: '§ 1. (1) bis (5) …', proposed: '(6) Der Bund entscheidet.' })]
+    const check = await verifyAnnex(rows, draft(), fakeSources(law))
+    expect(check.uncheckedReasons['#§ 1.']).toBe(REASON_TOO_SHORT)
+    expect(checkAnnexRows(rows, check).uncheckedParagraphs).toBe(1)
   })
 })
