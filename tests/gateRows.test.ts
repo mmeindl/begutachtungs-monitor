@@ -159,7 +159,7 @@ describe('checkAnnexRows', () => {
     expect(out.rows.map((r) => r.check)).toEqual(['verified', 'withheld'])
   })
 
-  it('counts the §§ the page marks „nicht geprüft" — the record’s markedParas (21.11.2026)', () => {
+  it('counts the §§ the page marks „nicht geprüft" and the §§ it withholds as the server does (21.11.2026)', () => {
     // annexPdf.ts records `uncheckedParagraphs + rowsWithoutParagraph` as the
     // §§ that carry the mark; the page counts them itself, row by row
     // (`groupAnnexRows`, `check === 'unchecked' && owesCheck`). The two must
@@ -172,15 +172,21 @@ describe('checkAnnexRows', () => {
       row({ law: 'X-Gesetz', gld: '§ 4.', para: '§ 4.', current: '', proposed: 'Ein ganz neuer Paragraph.', change: 'inserted' }),
       row({ law: 'X-Gesetz', gld: null, para: null, current: 'alt', proposed: 'neu' }),
       row({ law: 'Y-Gesetz', gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu' }),
+      row({ law: 'Y-Gesetz', gld: '§ 2.', para: '§ 2.', current: 'alt', proposed: 'neu' }),
+      row({ law: 'Y-Gesetz', gld: '§ 2.', para: '§ 2.', current: 'mehr alt', proposed: 'mehr neu' }),
     ]
     const key = (law: string, p: string) => annexParagraphKey(law, p)
     const out = checkAnnexRows(rows, verification({
-      verdicts: { [key('X-Gesetz', '§ 1.')]: 'unchecked', [key('X-Gesetz', '§ 2.')]: 'unchecked', [key('X-Gesetz', '§ 3.')]: 'unchecked', [key('X-Gesetz', '§ 4.')]: 'unchecked', [key('Y-Gesetz', '§ 1.')]: 'unchecked' },
+      verdicts: { [key('X-Gesetz', '§ 1.')]: 'unchecked', [key('X-Gesetz', '§ 2.')]: 'unchecked', [key('X-Gesetz', '§ 3.')]: 'unchecked', [key('X-Gesetz', '§ 4.')]: 'unchecked', [key('Y-Gesetz', '§ 1.')]: 'unchecked', [key('Y-Gesetz', '§ 2.')]: 'withheld' },
+      withheldCauses: { [key('Y-Gesetz', '§ 2.')]: 'notInDraft' },
       uncheckedReasons: { [key('X-Gesetz', '§ 3.')]: REASON_TOO_SHORT, [key('X-Gesetz', '§ 4.')]: REASON_NOTHING_TO_COMPARE },
     }))
-    const marked = groupAnnexRows(out.rows, { matches: null, hidden: [] }).groups.reduce((n, g) => n + g.unchecked, 0)
+    const { groups } = groupAnnexRows(out.rows, { matches: null, hidden: [] })
+    const marked = groups.reduce((n, g) => n + g.unchecked, 0)
     expect(marked).toBe(4)
     expect(out.uncheckedParagraphs + out.rowsWithoutParagraph).toBe(marked)
+    // …and the pills of §§ not shown add up to the server's withheld count.
+    expect(groups.reduce((n, g) => n + g.withheld, 0)).toBe(out.withheldParagraphs)
   })
 })
 
