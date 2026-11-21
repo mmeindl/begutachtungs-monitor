@@ -93,6 +93,10 @@ function articleNameSplit(cls: string, inner: string): [string, string] | null {
 export function parseParliamentHtml(html: string): TextBlock[] {
   const bodyStart = html.search(/<body[^>]*>/i)
   const body = bodyStart >= 0 ? html.slice(bodyStart) : html
+  // A paragraph inside a table keeps its class and kind — the table of
+  // contents sets its columns in one — and is marked (`table`), as RIS's are.
+  const tables = [...body.matchAll(/<table\b[\s\S]*?<\/table\s*>/gi)].map((t) => [t.index!, t.index! + t[0].length] as const)
+  const inTable = (at: number): boolean => tables.some(([from, to]) => at >= from && at < to)
   const blocks: TextBlock[] = []
   for (const m of body.matchAll(P_RE)) {
     const cls = m[1]!
@@ -113,7 +117,7 @@ export function parseParliamentHtml(html: string): TextBlock[] {
           : inner,
     )
     if (!text && !gld) continue
-    blocks.push({ kind: kindOf(cls, text), cls, text, gld: gld || null })
+    blocks.push({ kind: kindOf(cls, text), cls, text, gld: gld || null, ...(inTable(m.index!) ? { table: true as const } : {}) })
   }
   return refineArticleHeadings(blocks)
 }

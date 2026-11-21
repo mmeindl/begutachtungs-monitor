@@ -320,6 +320,12 @@ export interface LawDiffUnit {
   toText: string | null
   /** Word-level diff for changed units; null when unchanged, inserted, removed or too long */
   segments: LawDiffSegment[] | null
+  /**
+   * Either side holds text from a table (21.11.2026, `TextBlock.table`): its
+   * cells were compared as one run of words, and the page says so
+   * (`TABLE_AS_TEXT_DE`).
+   */
+  table?: true
 }
 
 /**

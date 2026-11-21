@@ -20,6 +20,7 @@ import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource
 import { UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { annexBadge, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexPara, type PlacedLesefassung } from '~/utils/annexGroups'
 import { enactedHaystack, newLawGroups } from '~/utils/newLawGroups'
+import { layoutNotes } from '~/utils/layoutNotes'
 import { annexParagraphCiteDe, citeLineDe } from '#shared/utils/citations'
 import { laterAmendmentLine, lesefassungLine, lesefassungNotRunText, lesefassungUnreachableText, mergesIntoNotice, noticeLesefassungToo } from '~/utils/lesefassung'
 import { unitsPluralDe, type UnitKind } from '#shared/utils/unitWord'
@@ -568,6 +569,7 @@ function withheldReason(cause: AnnexWithheldCause | null, unit: UnitKind): strin
                 <template #summary>{{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert</template>
                 <div class="mt-2 space-y-3 pl-6 text-sm leading-relaxed text-ink-secondary">
                   <p v-for="(r, ri) in b.rows" :key="`${r.gld ?? r.para ?? ''}-${ri}`" class="hyphens-auto">{{ r.current }}</p>
+                  <GapNote v-for="note in layoutNotes(b.rows.map((r) => r.current))" :key="note" class="text-xs" :text="note" />
                 </div>
               </Disclosure>
 

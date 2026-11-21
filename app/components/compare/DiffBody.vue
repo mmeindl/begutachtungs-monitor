@@ -17,7 +17,7 @@
  * cannot follow a renumbering, in the § comparison it can.
  */
 import type { LawDiffSegment, LawUnitChange } from '#shared/types'
-import { FIGURE_NOT_COMPARED_DE, hasFigure } from '#shared/utils/figureMark'
+import { FIGURE_NOT_COMPARED_DE, TABLE_AS_TEXT_DE, hasFigure } from '#shared/utils/figureMark'
 import { absaetze } from '~/utils/absaetze'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, PILL_CLASS } from '~/utils/diffBadges'
 import { NO_WORD_DIFF_DE } from '~/utils/diffSides'
@@ -42,6 +42,8 @@ const props = defineProps<{
   fromLabel: string
   toLabel: string
   terms?: Partial<Record<DiffBadge, TermKey>>
+  /** Either text came from a table (`LawDiffUnit.table`): compared as a run of words, and said so. */
+  table?: boolean
 }>()
 
 const term = computed(() => props.terms?.[props.badge])
@@ -128,6 +130,7 @@ const removedBlocks = computed(() => plain(props.fromText))
       <p v-for="(block, i) in removedBlocks" :key="i">{{ block }}</p>
     </div>
     <GapNote v-if="figure" class="mt-1 text-xs text-ink-secondary" :text="FIGURE_NOT_COMPARED_DE" />
+    <GapNote v-if="table" class="mt-1 text-xs text-ink-secondary" :text="TABLE_AS_TEXT_DE" />
 
     <slot />
   </div>

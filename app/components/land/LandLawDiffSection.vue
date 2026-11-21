@@ -15,6 +15,7 @@ import { comparisonLaws, landReasonsAt, unplacedLandReasons } from '~/utils/land
 import { unitList } from '~/utils/lesefassung'
 import { citeLineDe, dividedText, landTextCiteDe, lawUnitCiteDe } from '#shared/utils/citations'
 import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '~/utils/diffSides'
+import { unitLayoutNotes } from '~/utils/layoutNotes'
 import { landUncheckedMarks, landUncheckedNote } from '~/utils/landUnchecked'
 import ListBox from '~/components/ui/ListBox.vue'
 import LandWithheldNotes from '~/components/land/LandWithheldNotes.vue'
@@ -479,6 +480,7 @@ const hasUnits = computed(() => units.value.length > 0)
                   <span v-if="u.label" class="font-medium text-ink">&nbsp;{{ u.label }}</span>
                   <span> — {{ u.unit.toText }}</span>
                 </p>
+                <GapNote v-for="note in unitLayoutNotes(b.units.map((u) => u.unit))" :key="note" class="text-xs" :text="note" />
               </div>
             </details>
             <div v-else class="border-b border-hairline px-4 py-3 last:border-b-0">
@@ -519,6 +521,7 @@ const hasUnits = computed(() => units.value.length > 0)
                 :to-text="b.unit.toText"
                 :from-label="FROM_LABEL"
                 :to-label="TO_LABEL"
+                :table="b.unit.table"
               >
                 <!-- Not held word for word against the draft: the Bund's pill
                      beside the change, its definition under the row. -->

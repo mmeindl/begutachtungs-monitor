@@ -20,6 +20,7 @@ import { absaetze } from '~/utils/absaetze'
 import type { UnitKind } from '#shared/utils/unitWord'
 // Imported, not auto-imported: a helper used only in the template is not resolved at runtime.
 import { laterAmendmentText, lesefassungSummary, witnessNote } from '~/utils/lesefassung'
+import { layoutNotes } from '~/utils/layoutNotes'
 
 /** `unit`: what the law counts in, where that is not Paragraphen („Ganzer Artikel …", the B-VG). */
 defineProps<{ paragraph: ConsolidatedParagraph; unit?: UnitKind }>()
@@ -87,6 +88,8 @@ defineProps<{ paragraph: ConsolidatedParagraph; unit?: UnitKind }>()
       >
         <DiffText :segments="abs" />
       </p>
+      <!-- An image in the text: what is marked here are words, as under a change (`DiffBody`). -->
+      <GapNote v-for="note in layoutNotes(paragraph.segments.map((s) => s.text))" :key="note" class="mt-2 text-xs text-ink-secondary" :text="note" />
     </div>
   </Disclosure>
 </template>

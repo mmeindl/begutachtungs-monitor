@@ -195,7 +195,7 @@ export function parseRisXml(xml: string): TextBlock[] {
     } else {
       kind = 'toc'
     }
-    blocks.push({ kind, cls: `${inTable(m.index!) ? 'table:' : ''}${tag}/${typ}`, text, gld: gld || null })
+    blocks.push({ kind, cls: `${inTable(m.index!) ? 'table:' : ''}${tag}/${typ}`, text, gld: gld || null, ...(inTable(m.index!) ? { table: true as const } : {}) })
   }
   return refineArticleHeadings(blocks)
 }

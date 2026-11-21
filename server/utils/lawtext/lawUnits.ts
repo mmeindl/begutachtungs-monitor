@@ -34,6 +34,12 @@ export interface TextBlock {
   text: string
   /** Gliederungssymbol from 991GldSymbol, e.g. "§ 5." — only on the first Absatz of a § */
   gld: string | null
+  /**
+   * The block is a table's cell, or a paragraph inside one (21.11.2026). The
+   * comparison reads it as text like any other block; the page says that a
+   * table is compared as a run of words (`TABLE_AS_TEXT_DE`).
+   */
+  table?: true
 }
 
 /** One comparable unit: a § (with all its Absätze and Ziffern) or one Novellierungsanordnung. */

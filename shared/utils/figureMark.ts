@@ -22,6 +22,16 @@ export const FIGURE_MARK = '[Abbildung]'
  */
 export const FIGURE_NOT_COMPARED_DE = gapDe('outOfScope', `Abbildungen vergleicht der Monitor nicht. „${FIGURE_MARK}“ steht, wo das Dokument eine setzt; verglichen sind die Wörter daneben.`)
 
+/**
+ * Said under a unit whose text came from a table, in either version
+ * (21.11.2026): both readers take a table's cells as paragraphs in the order
+ * the document sets them (`risXml.ts`, `parliamentHtml.ts`), so the
+ * comparison sees a run of words and not rows and columns. A value that moved
+ * to another cell reads as words changed; a row split or joined with the
+ * words in the same order reads as nothing.
+ */
+export const TABLE_AS_TEXT_DE = gapDe('outOfScope', 'Tabellen vergleicht der Monitor als Text, Zelle für Zelle der Reihe nach; Zeilen und Spalten zeigt der Vergleich nicht.')
+
 /** The mark, bare or with the annex's `alt` text („[Abbildung: Kamerasymbol]", `annex/tableCells.ts`). */
 const FIGURE_MARK_RE = /\[Abbildung(?::[^\]]*)?\]/
 

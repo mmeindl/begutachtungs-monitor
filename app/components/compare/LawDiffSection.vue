@@ -25,6 +25,7 @@ import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '~/utils/diffSides'
+import { layoutNotes, unitLayoutNotes } from '~/utils/layoutNotes'
 import { displayId, extraHeading, renumberedFrom, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import { lawDiffCredits } from '~/utils/lawDiffCredits'
@@ -645,6 +646,8 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
                       <span v-else-if="u.extra">&nbsp;{{ u.extra }}</span>
                       <span> — {{ u.unit.toText }}</span>
                     </p>
+                    <!-- What „unverändert" cannot claim of an image or a table's layout, as under a change (`DiffBody`). -->
+                    <GapNote v-for="note in unitLayoutNotes(b.units.map((u) => u.unit))" :key="note" class="text-xs" :text="note" />
                   </div>
                 </details>
 
@@ -683,6 +686,7 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
                     :from-label="fromLabel"
                     :to-label="toLabel"
                     :terms="BADGE_TERMS"
+                    :table="b.unit.table"
                   >
                     <!-- What the Ressort says about it — and whether it says
                          so differently after the Begutachtung than before.
@@ -753,6 +757,13 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
                       <!-- The passage as a footnote cites it, under the text
                            it cites (21.10.2026); `-ml-2` aligns the icon with
                            that text rather than the button's padding. -->
+                      <!-- An image in either passage: compared are the words beside it, as under the change. -->
+                      <GapNote
+                        v-for="note in layoutNotes([b.reasoning.fromText, b.reasoning.toText, ...(b.reasoning.segments ?? []).map((s) => s.text)])"
+                        :key="note"
+                        class="pb-2 pl-6 text-xs text-ink-secondary"
+                        :text="note"
+                      />
                       <p v-if="reasoningCite(b.reasoning)" class="pb-2 pl-6">
                         <CiteButton class="-ml-2" :text="reasoningCite(b.reasoning)!" subject="Diese Begründung" />
                       </p>

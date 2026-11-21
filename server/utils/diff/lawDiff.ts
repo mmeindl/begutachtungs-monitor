@@ -595,6 +595,7 @@ function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null,
     fromText: from?.text ?? null,
     toText: to?.text ?? null,
     segments: diff?.segments ?? null,
+    ...(from?.blocks.some((x) => x.table) || to?.blocks.some((x) => x.table) ? { table: true as const } : {}),
   }
 }
 
