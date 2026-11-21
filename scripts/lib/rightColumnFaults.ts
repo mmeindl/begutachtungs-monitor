@@ -109,6 +109,13 @@ export function swappedWord(text: string): string | null {
 
 /** The markers and omission marks a sentence may open with: no words of their own. */
 const LEADING_MARKS_RE = /^(?:(?:\(\d+[a-z]?\)|\d+[a-z]?\.|[a-z]{1,2}\)|\[\s*(?:…|\.\.\.)\s*\]|…|\.\.\.)\s*)+/
+/**
+ * An abbreviation a sentence runs on after, which the callers' splitters cut
+ * at (22.11.2026): „maximal 50 Mio." / „Euro zur Verfügung.", „(z.B." /
+ * „Zahnextraktionen, …" — three of the 369 Satz-weg sites of the Bund's
+ * annex, each dropping the tail of a sentence instead of a sentence.
+ */
+const ABBREVIATION_END_RE = /(?:^|[\s(])(?:Mio|z\.\s?B)\.$/
 /** A sentence has words: below this many, a part is a heading or a marker. */
 const MIN_SENTENCE_WORDS = 3
 
@@ -123,13 +130,13 @@ export function isSentence(part: string): boolean {
  * the marker it opens with; what follows it, a heading or an omission,
  * stays. Null where the text holds fewer than two sentences. The splitter's
  * cut after a date's day is undone first („tritt mit 1." / „Jänner 2027 in
- * Kraft.").
+ * Kraft."), and its cut after an abbreviation it does not know (`ABBREVIATION_END_RE`).
  */
 export function lastSentenceGone(text: string, split: RegExp): string | null {
   const parts: string[] = []
   for (const part of text.split(split)) {
     const prev = parts[parts.length - 1]
-    if (prev !== undefined && /(?:^|\s)\d{1,2}\.$/.test(prev) && MONTH_RE.test(part)) parts[parts.length - 1] = `${prev} ${part}`
+    if (prev !== undefined && ((/(?:^|\s)\d{1,2}\.$/.test(prev) && MONTH_RE.test(part)) || ABBREVIATION_END_RE.test(prev))) parts[parts.length - 1] = `${prev} ${part}`
     else parts.push(part)
   }
   const sentences = parts.map((p, i) => (isSentence(p) ? i : -1)).filter((i) => i >= 0)

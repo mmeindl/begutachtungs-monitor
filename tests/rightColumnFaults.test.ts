@@ -57,6 +57,14 @@ describe('right-column faults', () => {
     expect(lastSentenceGone('Der Antrag ist schriftlich einzubringen. (3)', marked)).toBeNull()
   })
 
+  // The splitter cuts after „Mio." and „z.B.": the Bund's NEHG § 24 lost
+  // „Euro zur Verfügung." of its one new sentence (22.11.2026).
+  it('does not take the tail of a sentence after an abbreviation for a sentence', () => {
+    const marked = /(?<=[.;:!?])\s+(?=[A-ZÄÖÜ(„"])/
+    expect(lastSentenceGone('In den Jahren 2026 und 2027 steht dafür jährlich maximal 50 Mio. Euro zur Verfügung.', marked)).toBeNull()
+    expect(lastSentenceGone('Die Frist beträgt vier Wochen. Bei Eingriffen (z.B. Zahnextraktionen) ist zu warten.', marked)).toBe('Die Frist beträgt vier Wochen.')
+  })
+
   // The Bund's L and the donor of R-alt and U (21.11.2026), asked of the Länder too.
   const words = (t: string) => t.split(/\s+/).filter((w) => /\p{L}{3,}/u.test(w))
   const site = 'Die Behörde hat den Antrag binnen vier Wochen zu prüfen und das Ergebnis mitzuteilen. Eine Verlängerung der Frist ist einmal zulässig, wenn die Partei zustimmt. Die Entscheidung ergeht schriftlich und ist der Partei zuzustellen.'
