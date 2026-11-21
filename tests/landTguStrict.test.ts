@@ -84,6 +84,16 @@ describe('quoteRoles', () => {
     expect(roles('Nach der Überschrift „VII. Abschnitt - Schluss- und Übergangsbestimmungen“ wird folgender neuer § 44a eingefügt:')).toEqual(['anchor'])
   })
 
+  it('reads „„X“ wird durch …", a word replaced by a sign, and a payload that says „sinngemäß" itself (Oö. 2026-16120, 2026-16124, Tirol 575/2026, Salzburg 32075; 21.11.2026)', () => {
+    expect(roles('Im § 2 Abs. 4 wird die Wortfolge „, die einem Geschlecht angehören,“ durch die Wortfolge „aus einem der Gründe“ ersetzt und die Wortfolge „Personen des anderen Geschlechts“ wird durch die Wortfolge „anderen Personen“ ersetzt.')).toEqual(['old', 'new', 'old', 'new'])
+    expect(roles('Im § 27 Abs. 2 Z 6 wird das Wort „und“ am Ende von lit. a durch einen Strichpunkt ersetzt und nach lit. b folgende lit. c eingefügt:')).toEqual(['old'])
+    expect(roles('Im § 22 Abs. 3 lit. f werden der Beistrich und das Wort „und“ am Ende durch einen Punkt ersetzt und die lit. g aufgehoben.')).toEqual(['old'])
+    expect(roles('Im § 16 Abs 2 wird angefügt: „Den Umweltorganisationen ist der Bescheid unter sinngemäßer Anwendung des § 55a zuzustellen.“')).toEqual(['new'])
+    // The sign replaces what its own clause names, not a quote of another clause (Oö. 2026-16124 § 27, Salzburg 32025 § 25).
+    expect(roles('Im § 27 Abs. 2 wird in Z 9 nach dem Wort „Immissionsgrenzwertes“ die Wortfolge „bzw. einer Umweltqualitätsnorm“ eingefügt und der Punkt am Ende durch einen Strichpunkt ersetzt sowie folgende Z 10 angefügt:')).toEqual(['anchor', 'new'])
+    expect(roles('Im § 25 Abs 1 erhalten die Z 3 und 4 die Bezeichnungen „2.“ und „3.“, wobei in der Z 3 neu der Punkt am Ende durch einen Strichpunkt ersetzt wird, und lautet die Z 4 neu:')).toEqual(['new', 'new'])
+  })
+
   it('does not guess: a range of designations, a replacement left to the reader\'s grammar', () => {
     expect(roles('Im § 24a erhalten die bisherigen Abs. 1 bis 8 die Bezeichnungen „(2)“ bis „(9)“.')).toEqual(['new', null])
     expect(roles('Im § 31 wird das Wort „Bezirk“ in der jeweiligen grammatikalischen Form durch das Wort „Wahlkreis“ ersetzt.')).toContain(null)

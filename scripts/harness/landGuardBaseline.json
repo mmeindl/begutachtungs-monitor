@@ -1,5 +1,5 @@
 {
- "at": "2026-11-21T08:57:23.345Z",
+ "at": "2026-11-21T09:01:35.312Z",
  "documents": {
   "ktn-104907-2025-32": {
    "land": "ktn",
@@ -1472,9 +1472,10 @@
    "land": "sbg",
    "state": "beantwortet",
    "available": true,
-   "shown": 8,
+   "shown": 7,
    "withheld": [
     "draftDiffers · Salzburger Sozialbetreuungsberufegesetz · §16",
+    "draftDiffers · Salzburger Sozialbetreuungsberufegesetz · §30",
     "leftCheck · Salzburger Sozialbetreuungsberufegesetz · §12",
     "leftCheck · Salzburger Sozialbetreuungsberufegesetz · §27",
     "leftCheck · Salzburger Sozialbetreuungsberufegesetz · §9"

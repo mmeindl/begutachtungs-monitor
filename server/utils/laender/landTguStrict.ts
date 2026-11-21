@@ -192,6 +192,13 @@ type Role = 'new' | 'old' | 'anchor' | null
 const CLAUSE_RE = /(?:(?<![\p{L}])(?:und|sowie)|[,;])\s+(?:es\s+|im\s+§[^„]*?\s)?(?=(?:wird|werden|entfällt|entfallen|erhält|erhalten|tritt|treten|hat|haben)(?![\p{L}]))/gu
 /** Between two quotations of one list: „„Vorlage" und „Beibringung"", „„11.", „12." und „13."". */
 const LIST_RE = new RegExp(`^\\s*(?:,|und|sowie|oder|bzw\\.?)\\s*(?:(?:die|das|der|den|dem)\\s+)?(?:${UNIT_WORD}\\s*)?$`, 'u')
+/**
+ * A quoted wording replaced by a sign, no wording: „„und“ am Ende von lit. a
+ * durch einen Strichpunkt ersetzt" — only place words between, no verb, no
+ * conjunction, no comma: „„bzw. einer Umweltqualitätsnorm“ eingefügt und der
+ * Punkt am Ende durch einen Strichpunkt ersetzt" replaces the full stop.
+ */
+const REPLACED_BY_SIGN_RE = new RegExp(`^\\s*(?:(?!(?:und|sowie|oder|${REMOVING}|${ADDING}|ersetzt|lautet|lauten)(?![\\p{L}]))[\\p{L}\\d.]+\\s+){0,6}durch\\s+(?:einen|ein)\\s+(?:Strichpunkt|Punkt|Beistrich|Doppelpunkt)(?![\\p{L}])`, 'u')
 /** A replacement the instruction leaves to the reader's grammar: the wording is not quoted as it will stand. */
 const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jeweiligen|jeweils\s+richtigen/u
 
@@ -207,14 +214,16 @@ export function quoteRoles(raw: string): { text: string; role: Role }[] {
   const line = withoutResidue(raw)
   const quotes = [...line.matchAll(QUOTE_RE)]
   const bounds = [...line.matchAll(CLAUSE_RE)].map((m) => m.index)
-  const inexact = INEXACT_RE.test(line)
+  // The instruction's words, not its payload's: „… unter sinngemäßer Anwendung des § 55a …“ (Salzburg 32075, § 16).
+  const inexact = INEXACT_RE.test(line.replace(QUOTE_RE, ' '))
   const out = quotes.map((m, i) => {
     const start = m.index
     const end = start + m[0].length
     const before = line.slice(i > 0 ? quotes[i - 1]!.index + quotes[i - 1]![0].length : 0, start)
     const after = line.slice(end, quotes[i + 1]?.index ?? line.length)
     let role: Role = null
-    if (/^\s*(?:jeweils\s+)?durch(?![\p{L}])/u.test(after)) role = 'old'
+    // „„X“ durch …", „„X“ wird durch …" (Oö. 2026-16120), „„und“ am Ende durch einen Punkt ersetzt" (2026-16124, Tirol 575/2026): the old wording.
+    if (/^\s*(?:(?:wird|werden)\s+)?(?:jeweils\s+)?durch(?![\p{L}])/u.test(after) || REPLACED_BY_SIGN_RE.test(after)) role = 'old'
     else if (/(?<![\p{L}])durch\s+(?:\p{L}+[\s-]+){0,5}$/u.test(before)) role = 'new'
     else if (ANCHOR_RE.test(before)) role = 'anchor'
     else if (NEW_AFTER_RE.test(before) || /^\s*bezeichnet(?![\p{L}])/u.test(after)) role = 'new'
