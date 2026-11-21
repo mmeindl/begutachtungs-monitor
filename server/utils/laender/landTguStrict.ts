@@ -106,7 +106,37 @@ const BROKEN_WORD_RE = new RegExp(`(?<=[\\p{L}\\p{N}])-([\\s\\uE000\\uE001]+)(?!
 const TOKEN_RE = /[\uE000\uE001]|§|[\p{L}\p{N}-]+/gu
 
 /** A token with whether it stands inside a stretch marked `\uE000…\uE001` — two private-use characters no text carries and no normalisation touches. */
-interface Marked { word: string; marked: boolean }
+interface Marked {
+  word: string
+  marked: boolean
+  /** Whether the word is printed as a designation, where a unit begins (`designationForm`). */
+  designation?: boolean
+}
+
+/** The words a figure stands after in an address or a citation, not where a unit begins: „Abs. 5.", „Nr. 5.", „S. 1.". */
+const ADDRESS_WORDS = new Set(['abs', 'absatz', 'z', 'ziffer', 'lit', 'litera', '§', 'art', 'artikel', 'nr', 's', 'satz', 'anlage'])
+
+/**
+ * Whether the token at `at` of `flat` is printed as a designation: „(5)", or
+ * „5." / „e)" where a unit can begin — after a mark, or after the joiner that
+ * ends a list's last unit („… soll oder 10. die …"); not after an address word
+ * („Abs. 5.", „Nr. 5.") or a joiner of designations („Z 4 und 5.").
+ */
+function designationForm(flat: string, at: number, length: number, previous: readonly Marked[]): boolean {
+  // The marks of a new stretch (`markedTokens`) are no character of the text.
+  const blank = (c: string | undefined) => c === undefined || /[\s\uE000\uE001]/u.test(c)
+  let k = at - 1
+  while (k >= 0 && blank(flat[k])) k--
+  const after = flat[at + length]
+  if (flat[k] === '(' && after === ')') return true
+  // „5.", „e)", and „5.." as Oö. 2026-16120 prints it.
+  let end = at + length
+  while (flat[end] === '.' || flat[end] === ')') end++
+  if (end === at + length || !blank(flat[end])) return false
+  const [two, one] = [previous.at(-2)?.word, previous.at(-1)?.word]
+  if (k >= 0 && /[\p{L}\p{N}]/u.test(flat[k]!)) return /^(?:und|oder|sowie)$/.test(one ?? '') && !/^\d/.test(two ?? '')
+  return !ADDRESS_WORDS.has(one ?? '')
+}
 
 /**
  * What a misread font leaves in a Land's PDF where a line mixes it with a
@@ -129,7 +159,7 @@ function markedTokens(text: string): Marked[] {
     else {
       // „ß" read as the ligature „ﬂ" comes back as „fl" („Maflgabe", the same two drafts): one spelling for both.
       const word = m[0].replace(/-/g, '').replace(/ß/g, 'fl')
-      if (word) out.push({ word, marked: on })
+      if (word) out.push({ word, marked: on, designation: designationForm(flat, m.index, m[0].length, out) })
     }
   }
   return out
@@ -166,6 +196,12 @@ export interface Wording {
   repeats: boolean
   /** …and must stand there once at least, where its instruction names one § only. */
   once?: boolean
+  /**
+   * A designation the instruction gives („erhält die Absatzbezeichnung
+   * „(5)""): a single token accounts only for a place printed as a
+   * designation (`designationForm`), not for the same figure in the text.
+   */
+  designation?: boolean
 }
 
 /** What the draft writes for one §, or why that cannot be said. */
@@ -213,6 +249,9 @@ const LIST_RE = new RegExp(`^\\s*(?:,|und|sowie|oder|bzw\\.?)\\s*(?:(?:die|das|d
  * Punkt am Ende durch einen Strichpunkt ersetzt" replaces the full stop.
  */
 const REPLACED_BY_SIGN_RE = new RegExp(`^\\s*(?:(?!(?:und|sowie|oder|${REMOVING}|${ADDING}|ersetzt|lautet|lauten)(?![\\p{L}]))[\\p{L}\\d.]+\\s+){0,6}durch\\s+(?:einen|ein)\\s+(?:Strichpunkt|Punkt|Beistrich|Doppelpunkt)(?![\\p{L}])`, 'u')
+/** A quotation the line gives as a designation: „erhält die Absatzbezeichnung „(4)“", „die Bezeichnungen „4.“ und „5.“" — not a name („die Bezeichnung „Lemböckgasse“"). */
+const DESIGNATION_BEFORE_RE = /bezeichnung(?:en)?\s*$/iu
+const DESIGNATION_TEXT_RE = /^\s*(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.?|[a-z]{1,2}\)?)\s*$/u
 /** A replacement the instruction leaves to the reader's grammar: the wording is not quoted as it will stand. */
 const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jeweiligen|jeweils\s+richtigen/u
 
@@ -224,7 +263,7 @@ const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jewei
  * Read clause by clause, since German puts the verb at either end:
  * „entfällt die Wortfolge „X"" and „wird die Wortfolge „X" gestrichen".
  */
-export function quoteRoles(raw: string): { text: string; role: Role }[] {
+export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean }[] {
   const line = withoutResidue(raw)
   const quotes = [...line.matchAll(QUOTE_RE)]
   const bounds = [...line.matchAll(CLAUSE_RE)].map((m) => m.index)
@@ -241,7 +280,7 @@ export function quoteRoles(raw: string): { text: string; role: Role }[] {
     else if (/(?<![\p{L}])durch\s+(?:\p{L}+[\s-]+){0,5}$/u.test(before)) role = 'new'
     else if (ANCHOR_RE.test(before)) role = 'anchor'
     else if (NEW_AFTER_RE.test(before) || /^\s*bezeichnet(?![\p{L}])/u.test(after)) role = 'new'
-    return { text: m[1]!, role, before, after, start, end }
+    return { text: m[1]!, role, before, after, start, end, designation: DESIGNATION_BEFORE_RE.test(before) && DESIGNATION_TEXT_RE.test(m[1]!) }
   })
   // A list of quotations shares the role its last or its first member has.
   const lists = () => {
@@ -263,7 +302,9 @@ export function quoteRoles(raw: string): { text: string; role: Role }[] {
     else if (verb && new RegExp(`^(?:${ADDING})$`).test(verb)) q.role = 'new'
   }
   lists()
-  return out.map(({ text, role }) => ({ text, role: inexact && role === 'new' ? null : role }))
+  // „die Bezeichnungen „4.“ und „5.“": a list of designations.
+  for (let i = 1; i < out.length; i++) if (out[i - 1]!.designation && out[i]!.role === out[i - 1]!.role && LIST_RE.test(out[i]!.before) && DESIGNATION_TEXT_RE.test(out[i]!.text)) out[i]!.designation = true
+  return out.map(({ text, role, designation }) => ({ text, role: inexact && role === 'new' ? null : role, designation: role === 'new' && designation }))
 }
 
 /** A block that opens with a § designation: „§ 2. (1) Die …", „„§ 21a", „§ 20a". */
@@ -438,7 +479,13 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         let k = 0
         const kept = withoutResidue(run.line).replace(QUOTE_RE, (m) => (roles[k++]?.role === 'new' ? m : ' '))
         standing.push(...strictTokens(kept))
-        written.push(...[...kept.matchAll(WRITTEN_RE)].flatMap((m) => strictTokens(m[1]!)))
+        // A designation the line gives is held where it is printed as one (`Wording.designation`), not as a word of the text.
+        let d = 0
+        const own = withoutResidue(run.line).replace(QUOTE_RE, (m) => {
+          const role = roles[d++]
+          return role?.role === 'new' && !role.designation ? m : ' '
+        })
+        written.push(...[...own.matchAll(WRITTEN_RE)].flatMap((m) => strictTokens(m[1]!)))
       }
       for (const block of run.payload) {
         const tokens = strictTokens(`${block.gld ?? ''} ${block.text}`.replace(FOOTER_RE, ' '))
@@ -452,7 +499,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       for (const run of runs) {
         for (const quote of run.line === null ? [] : quoteRoles(run.line)) {
           const tokens = quote.role === 'new' ? strictTokens(quote.text) : []
-          if (tokens.length) into.general.push({ tokens, optional: tokens.map(() => false), repeats: true })
+          if (tokens.length) into.general.push({ tokens, optional: tokens.map(() => false), repeats: true, ...(quote.designation ? { designation: true } : {}) })
         }
       }
       return
@@ -470,7 +517,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         if (quote.role !== 'new') continue
         const tokens = strictTokens(quote.text)
         if (!tokens.length) continue
-        for (const key of keys) at(draft.law, key).wordings.push({ tokens, optional: tokens.map(() => false), repeats: true, once: keys.length === 1 })
+        for (const key of keys) at(draft.law, key).wordings.push({ tokens, optional: tokens.map(() => false), repeats: true, once: keys.length === 1, ...(quote.designation ? { designation: true } : {}) })
       }
       if (!run.payload.length) continue
       const pieces = payloadPieces(run.payload)
@@ -758,7 +805,11 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   // A stretch quoted in an instruction's line accounts for each place it stands at…
   const placed = shown.map(() => false)
   for (const w of [...all.filter((x) => x.repeats), ...general]) {
-    for (const at of placesOf(words, w.tokens)) for (let k = 0; k < w.tokens.length; k++) placed[at + k] = true
+    for (const at of placesOf(words, w.tokens)) {
+      // …a designation it gives only where the column prints one: „(5)", not the „5" of „binnen 5 Wochen".
+      if (w.designation && w.tokens.length === 1 && !shown[at]!.designation) continue
+      for (let k = 0; k < w.tokens.length; k++) placed[at + k] = true
+    }
   }
   // …and the payloads are aligned with what is left: a new word accounted for must not pull a payload's word out of its place.
   const wild = law.placeholders ? { shown: law.placeholders(words), draft: law.placeholders(draft) } : undefined

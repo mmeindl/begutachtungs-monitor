@@ -140,6 +140,21 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     expect(check('1. In § 4 werden die Wörter „(4)“ bis „(6)“ eingefügt und nach Abs. 2 wird folgender Abs. 3 eingefügt:').state).toBe('differs')
   })
 
+  it('holds a designation a renumbering gives only where the column prints one, never for the same figure in the text', () => {
+    // „(5)" is the draft's; „binnen [5] Wochen" for „binnen 4 Wochen" is not, though „5" is a designation the line gives (21.11.2026).
+    const line = '1. In § 4 erhalten die Abs. 3 bis 5 die Absatzbezeichnungen „(4)“ bis „(6)“ und nach Abs. 2 wird folgender Abs. 3 eingefügt:'
+    const blocks = [...DRAFT.slice(0, 3), ...parseRisXml(`<absatz typ="novao1">${line}</absatz><absatz typ="abs">„(3) Neu.“</absatz>`)]
+    const check = (from: string, to: string) => {
+      const current = `(3) Der Antrag ist schriftlich einzubringen. (4) Die Behörde entscheidet binnen ${from} Wochen. (5) Die Beschwerde ist zulässig.`
+      const proposed = `(3) Neu. (4) Der Antrag ist schriftlich einzubringen. (5) Die Behörde entscheidet binnen ${to} Wochen. (6) Die Beschwerde ist zulässig.`
+      return annexStrictChecks([row({ law: LAW, gld: '§ 4.', para: '§ 4.', current, proposed })], { ...draft, blocks }).get(`${LAW}#§ 4.`)!
+    }
+    expect(check('2', '2').state).toBe('holds')
+    expect(check('2', '5')).toMatchObject({ state: 'differs', notInDraft: ['5'] })
+    // The quoted end of the range alike: „(4)" given as a designation is no figure „4".
+    expect(check('2', '4')).toMatchObject({ state: 'differs', notInDraft: ['4'] })
+  })
+
   it('reads the annex\'s elision as it says: its designations are no text, and what it leaves out is not missing', () => {
     // „§ 9 Abs. 3 lautet:" restates the whole Absatz; the annex leaves its unchanged first sentence out.
     const blocks = [...DRAFT.slice(0, 3), novao('1. § 9 Abs. 3 lautet:'), abs('"(3) Die Behörde hat den Antrag zu prüfen. Sie entscheidet binnen 14 Tagen."')]

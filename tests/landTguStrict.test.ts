@@ -69,6 +69,14 @@ describe('strictTokens', () => {
 describe('quoteRoles', () => {
   const roles = (line: string) => quoteRoles(line).map((q) => q.role)
 
+  it('says which new quotation the line gives as a designation, and a name it gives is none', () => {
+    const designations = (line: string) => quoteRoles(line).map((q) => q.designation)
+    expect(designations('§ 25 Abs. 1 entfällt und die bisherigen Abs. 2, 3 und 3a erhalten die Bezeichnung „(1)“, „(2)“ und „(3)“.')).toEqual([true, true, true])
+    expect(designations('In § 7 Abs. 2 erhält die Z 3 die Ziffernbezeichnung „4.“')).toEqual([true])
+    expect(designations('In § 4 Abs. 2 Z 7 wird die Bezeichnung „Schönbrunner Straße“ durch die Bezeichnung „Lemböckgasse“ ersetzt.')).toEqual([false, false])
+    expect(designations('Im § 17 Abs. 1 wird die Zahl „19“ durch die Zahl „18“ ersetzt.')).toEqual([false, false])
+  })
+
   it('tells the new wording from the old and from the place, with the verb at either end', () => {
     expect(roles('Im § 17 Abs. 1 wird die Zahl „19“ durch die Zahl „18“ ersetzt.')).toEqual(['old', 'new'])
     expect(roles('Im § 13 Abs. 3 wird nach dem Wortlaut „BGBl. II Nr. 281/2006,“ der Wortlaut „in der Fassung der Verordnung BGBl. II Nr. XX/XXX,“ eingefügt.')).toEqual(['anchor', 'new'])

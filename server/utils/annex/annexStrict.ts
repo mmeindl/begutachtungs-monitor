@@ -24,6 +24,13 @@
  * saying it left text out and carries no word. Run on the rows as parsed,
  * before the gate empties the withheld ones.
  *
+ * A DESIGNATION IS NO FIGURE (21.11.2026): a renumbering's designations — the
+ * quoted „(4)", the „5" and „6" it gives in words — account only for a place
+ * the column prints as a designation (`Wording.designation`). Before, a
+ * figure of the text changed to one of them held: of 121 such faults put into
+ * §§ the check held, 62 passed; since then 36, every one of which a single
+ * new figure that a payload of the § prints somewhere (`DraftWording.written`).
+ *
  * WHAT CANNOT BE HELD IS SAID (`state: 'unchecked'`, with the reason), never
  * passed: a § whose law the draft does not name with certainty, a § a page
  * the reader could not read runs across, a changed row too long for the word
@@ -138,8 +145,8 @@ const MAX_RANGE = 30
  * „(4)" bis „(7)"" prints „(5)" and „(6)" nowhere, and the right column shows
  * them as new. Read only as the line prints it — a designation word, two
  * numbers or two single letters, ascending, at most `MAX_RANGE` apart — and
- * held as the quoted ends are: each stands for every place it stands in the
- * column (`Wording.repeats`). Any other shape adds nothing.
+ * held as the quoted ends are: each stands for every place the column prints
+ * it as a designation (`Wording.designation`). Any other shape adds nothing.
  */
 function withRenumberedRange(w: DraftWording): DraftWording {
   const added: string[] = []
@@ -155,7 +162,7 @@ function withRenumberedRange(w: DraftWording): DraftWording {
     }
   }
   if (!added.length) return w
-  return { ...w, wordings: [...w.wordings, ...[...new Set(added)].map((t) => ({ tokens: [t], optional: [false], repeats: true }))] }
+  return { ...w, wordings: [...w.wordings, ...[...new Set(added)].map((t) => ({ tokens: [t], optional: [false], repeats: true, designation: true }))] }
 }
 
 /** The annex's marks for a stretch it leaves out („(2) bis (4) …", „[…]"), as `elision.ts` reads them. */
