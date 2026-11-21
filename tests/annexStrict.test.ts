@@ -203,6 +203,10 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     const check = (proposed: string) => annexStrictChecks([row({ law: LAW, gld: '§ 5.', para: '§ 5.', current: STANDING_5, proposed })], draft).get(`${LAW}#§ 5.`)!
     expect(check(SHOWN_5.replace('(2) Die Behörde', '(2) Diebehörde')).state).toBe('holds')
     expect(check(SHOWN_5.replace('(2) Die Behörde', '(2) Diebehörden'))).toMatchObject({ state: 'differs', notInDraft: ['diebehörden'] })
+    // The draft's side alike: „14Tagen" in a payload that prints „14" and „Tagen" elsewhere too (TabStG § 4: „Februar2026").
+    const tail = 'Abs. 14 gilt an Tagen der Ruhe.'
+    const glued = [...DRAFT.slice(0, 3), novao('1. § 5 Abs. 2 lautet:'), abs(`(2) Die Behörde hat binnen 14Tagen über den Antrag zu entscheiden. ${tail}`)]
+    expect(annexStrictChecks([row({ law: LAW, gld: '§ 5.', para: '§ 5.', current: STANDING_5, proposed: `${SHOWN_5} ${tail}` })], { ...draft, blocks: glued }).get(`${LAW}#§ 5.`)!.state).toBe('holds')
   })
 
   it('reads the annex\'s elision as it says: its designations are no text, and what it leaves out is not missing', () => {

@@ -771,8 +771,20 @@ function respace(shown: Marked[], wordings: readonly Wording[]): void {
   // A designation is no half of a word: „§ 3. (1)" is not „31" (Leitungsrechte-DÜV, § 3).
   join(shown, (t) => t.word, (a, b) => ({ word: a.word + b.word, marked: a.marked || b.marked }), draftWords, (t) => t.designation === true)
   const shownWords = new Set(shown.map((t) => t.word))
+  // …and the same on the draft's side („Februar2026", TabStG § 4).
+  const shownPairs = new Set(shown.slice(1).map((t, k) => `${shown[k]!.word} ${t.word}`))
   for (const w of wordings) {
     const pairs = w.tokens.map((word, i) => ({ word, optional: w.optional[i]! }))
+    for (let i = 0; i < pairs.length; i++) {
+      const t = pairs[i]!
+      if (shownWords.has(t.word)) continue
+      for (let k = 1; k < t.word.length; k++) {
+        if (!shownPairs.has(`${t.word.slice(0, k)} ${t.word.slice(k)}`)) continue
+        pairs.splice(i, 1, { word: t.word.slice(0, k), optional: t.optional }, { word: t.word.slice(k), optional: t.optional })
+        i++
+        break
+      }
+    }
     join(pairs, (t) => t.word, (a, b) => ({ word: a.word + b.word, optional: a.optional && b.optional }), shownWords)
     w.tokens = pairs.map((x) => x.word)
     w.optional = pairs.map((x) => x.optional)
