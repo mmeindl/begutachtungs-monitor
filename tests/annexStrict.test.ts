@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DRAFT_UNREAD, annexStrictChecks } from '../server/utils/annex/annexStrict'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { insertedStretches } from '../server/utils/annex/rightColumn'
 import { REASON_CUT } from '../server/utils/annex/verdict'
 import { STRICT_UNCHECKED, strictTokens } from '../server/utils/laender/landTguStrict'
@@ -86,5 +87,14 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     expect(reason([row(base)], { ...draft, blocks: [] })).toMatchObject({ state: 'unchecked', reason: DRAFT_UNREAD })
     // A § no instruction names.
     expect(annexStrictChecks([row({ ...base, gld: '§ 7.', para: '§ 7.' })], draft).get(`${LAW}#§ 7.`)).toMatchObject({ state: 'unchecked', reason: STRICT_UNCHECKED.unnamed })
+  })
+
+  it('reads an instruction\'s quotations with the marks RIS prints: which one opens says what is old and what is new', () => {
+    // The folded text has one straight mark for both, and no quotation of a Bund draft was read (21.11.2026).
+    const blocks = [...DRAFT.slice(0, 3), ...parseRisXml('<absatz typ="novao1">1. In § 6 Abs. 1 wird die Zahl „14“ durch die Zahl „21“ ersetzt.</absatz>')]
+    const rows = [row({ law: LAW, gld: '§ 6.', para: '§ 6.', current: '(1) Die Frist beträgt 14 Tage.', proposed: '(1) Die Frist beträgt 21 Tage.' })]
+    expect(annexStrictChecks(rows, { ...draft, blocks }).get(`${LAW}#§ 6.`)).toMatchObject({ state: 'holds' })
+    const wrong = [row({ law: LAW, gld: '§ 6.', para: '§ 6.', current: '(1) Die Frist beträgt 14 Tage.', proposed: '(1) Die Frist beträgt 28 Tage.' })]
+    expect(annexStrictChecks(wrong, { ...draft, blocks }).get(`${LAW}#§ 6.`)).toMatchObject({ state: 'differs', notInDraft: ['28'], notShown: ['21'] })
   })
 })

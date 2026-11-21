@@ -24,14 +24,14 @@ import { FIGURE_MARK, withoutFigures } from '../../../shared/utils/figureMark'
  * U+200C (2), each inside or beside a word, none of them a word boundary. The
  * zero-width space is the one that is a boundary, so it becomes a space.
  */
-export function normalizeText(t: string): string {
+export function normalizeText(t: string, printedQuotes = false): string {
   return t
     // eslint-disable-next-line no-irregular-whitespace -- the NBSP in the class is what this line replaces
     .replace(/ /g, ' ')
     .replace(/[‑–‒]/g, '-')
     .replace(/\u200b/g, ' ')
     .replace(/\p{Cf}/gu, '')
-    .replace(/[„“”]/g, '"')
+    .replace(/[„“”]/g, (m) => (printedQuotes ? m : '"'))
     .replace(/[‚‘’]/g, "'")
     .replace(/\s+/g, ' ')
     .trim()
@@ -381,6 +381,6 @@ const IMG_RE = /<img\b[^>]*>/gi
  * RIS's `<binary>` arrives named from `risText`, Parliament's `<img>` is
  * named here, so both sides carry the same mark where they set an image.
  */
-export function stripTags(html: string): string {
-  return normalizeText(decodeEntities(stripMarkup(html.replace(IMG_RE, ` ${FIGURE_MARK} `))))
+export function stripTags(html: string, printedQuotes = false): string {
+  return normalizeText(decodeEntities(stripMarkup(html.replace(IMG_RE, ` ${FIGURE_MARK} `))), printedQuotes)
 }

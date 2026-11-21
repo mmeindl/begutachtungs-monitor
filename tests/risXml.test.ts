@@ -80,3 +80,16 @@ describe('an image in the RIS XML is named, not spelt out (19.11.2026)', () => {
     expect(blocks.map((b) => b.text)).toEqual(['Zusatztafel [Abbildung] wie abgebildet'])
   })
 })
+
+describe('the quotation marks as RIS prints them (`TextBlock.quoted`, 21.11.2026)', () => {
+  it('keeps which mark opens a quotation beside the folded text, and only where folding changed it', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="novao1">3. In § 6 Abs. 1 wird die Zahl &#8222;14&#8220; durch die Zahl „21“ ersetzt.</absatz>
+      <absatz typ="novao1">4. § 7 Abs. 2 entfällt.</absatz>
+      </abschnitt></nutzdaten></risdok>`
+    const blocks = parseRisXml(xml)
+    expect(blocks[0]!.text).toBe('3. In § 6 Abs. 1 wird die Zahl "14" durch die Zahl "21" ersetzt.')
+    expect(blocks[0]!.quoted).toBe('3. In § 6 Abs. 1 wird die Zahl „14“ durch die Zahl „21“ ersetzt.')
+    expect(blocks[1]).not.toHaveProperty('quoted')
+  })
+})

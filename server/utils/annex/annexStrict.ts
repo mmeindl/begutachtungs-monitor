@@ -30,15 +30,18 @@
  * diff, a § showing no new text, and everything `strictCheck` refuses.
  */
 import type { LawDiffSegment, LawDiffUnit } from '../../../shared/types'
-import { draftUnits } from './annexDraft'
 import { annexParagraphKey, designationKey } from './annexText'
 import type { ComparisonRow } from './comparisonRows'
+import type { TextBlock } from '../lawtext/lawUnits'
 import { REASON_CUT, REASON_UNREADABLE_DESIGNATION, type AnnexDraft } from './verdict'
-import { installedDesignations, refusedAddress, repeatsItsNumber } from '../laender/landTguGuard'
+import { refusedAddress } from '../laender/landTguGuard'
 import { STRICT_UNCHECKED, draftWording, strictCheck, type StrictCheck } from '../laender/landTguStrict'
 
 /** Why a § was not held, beside `STRICT_UNCHECKED`: the draft's Gesetzestext could not be read at all. */
 export const DRAFT_UNREAD = 'der Gesetzestext des Entwurfs ließ sich nicht lesen'
+
+/** Blocks whose text keys a law (`segmentUnits`): read as folded, as the rows' law is. */
+const HEADING_KINDS = new Set<TextBlock['kind']>(['title', 'article', 'section'])
 
 const unchecked = (reason: string): StrictCheck => ({ state: 'unchecked', reason, notInDraft: [], notShown: [], newWords: 0, draftWords: 0 })
 
@@ -115,14 +118,14 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
     for (const key of groups.keys()) out.set(key, unchecked(DRAFT_UNREAD))
     return out
   }
-  // The callbacks the Länder guard reads instructions with (`guardTguUnits`).
-  const wording = draftWording(draft.blocks, (unit) => (repeatsItsNumber(unit) ? [] : [...installedDesignations(unit.text), ...refusedAddress(unit)]))
-  const mixed = new Map<string | null, Set<string>>()
-  for (const unit of draftUnits(draft.blocks).filter(repeatsItsNumber)) {
-    const into = mixed.get(unit.law) ?? new Set<string>()
-    for (const p of unit.paras) into.add(designationKey(p) ?? '')
-    mixed.set(unit.law, into)
-  }
+  // The quotation marks as RIS prints them (`TextBlock.quoted`): which one opens a quotation is what `quoteRoles` reads.
+  // Not in a heading, whose text names the law (`DraftUnit.law`) as the rows and the Artikel name it.
+  const blocks = draft.blocks.map((b) => (b.quoted === undefined || HEADING_KINDS.has(b.kind) ? b : { ...b, text: b.quoted }))
+  // An instruction whose address the engine's grammar refuses still names its § where it opens with it
+  // (`refusedAddress`). Not the Länder's other two readings: a RIS draft prints the Gliederungssymbol of every §
+  // a payload installs, which `draftUnits` reads, and numbers each instruction as a block of its own. Read on the
+  // Bund, `installedDesignations` took citations in quoted text for §§ a payload installs.
+  const wording = draftWording(blocks, refusedAddress)
   const amending = draft.articles.filter((a) => a.amends)
   const lawKeys = [...wording.keys()]
   const lawKeyOf = (law: string | null): string | null | undefined => (law !== null ? law : amending.length === 1 ? amending[0]!.key : amending.length === 0 && lawKeys.length === 1 ? lawKeys[0] : undefined)
@@ -164,10 +167,6 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
       continue
     }
     const keys = [own, ...afters]
-    if (keys.some((k) => mixed.get(lawKey)?.has(k))) {
-      out.set(groupKey, unchecked(STRICT_UNCHECKED.twoUnderOne))
-      continue
-    }
     const law = wording.get(lawKey)
     const printed = shown.get(group.law) ?? new Set<string>()
     const elsewhere = [...(law?.generalText ?? []), ...[...(law?.byKey ?? [])].filter(([k]) => !printed.has(k)).flatMap(([, w]) => [...w.wordings.map((x) => x.tokens), ...w.text])]

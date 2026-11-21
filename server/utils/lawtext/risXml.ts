@@ -120,7 +120,7 @@ function articleNameSplit(typ: string, inner: string): [string, string] | null {
   return ARTICLE_LINE_RE.test(line) && name ? [line, name] : null
 }
 
-function risText(inner: string): string {
+function risText(inner: string, printedQuotes = false): string {
   return stripTags(
     inner
       .replace(BINARY_RE, ` ${FIGURE_MARK} `)
@@ -128,6 +128,7 @@ function risText(inner: string): string {
       .replace(/<gdash\s*\/>/g, '-')
       .replace(/<nbsp\s*\/>/g, ' ')
       .replace(/<amp\s*\/>/g, '&amp;'),
+    printedQuotes,
   )
 }
 
@@ -161,13 +162,15 @@ export function parseRisXml(xml: string): TextBlock[] {
     const gldMatch = RIS_GLD_RE.exec(inner)
     const boldMatch = gldMatch ? null : RIS_BOLD_GLD_RE.exec(inner)
     const gld = gldMatch ? risText(gldMatch[1]!) : boldMatch ? risText(boldMatch[2]!) : null
-    const text = risText(
-      gldMatch
-        ? inner.replace(gldMatch[0], ' ')
-        : boldMatch
-          ? `${boldMatch[1]} ${inner.slice(boldMatch[0].length)}`
-          : inner,
-    )
+    const own = gldMatch
+      ? inner.replace(gldMatch[0], ' ')
+      : boldMatch
+        ? `${boldMatch[1]} ${inner.slice(boldMatch[0].length)}`
+        : inner
+    const text = risText(own)
+    // The quotation marks as RIS prints them, where folding changed them (`TextBlock.quoted`).
+    const printed = risText(own, true)
+    const quoted = printed !== text ? { quoted: printed } : {}
     if (!text && !gld) continue
     const split = tag === 'ueberschrift' && !gld && !inTable(m.index!) ? articleNameSplit(typ, inner) : null
     if (split) {
@@ -195,7 +198,7 @@ export function parseRisXml(xml: string): TextBlock[] {
     } else {
       kind = 'toc'
     }
-    blocks.push({ kind, cls: `${inTable(m.index!) ? 'table:' : ''}${tag}/${typ}`, text, gld: gld || null, ...(inTable(m.index!) ? { table: true as const } : {}) })
+    blocks.push({ kind, cls: `${inTable(m.index!) ? 'table:' : ''}${tag}/${typ}`, text, gld: gld || null, ...(inTable(m.index!) ? { table: true as const } : {}), ...quoted })
   }
   return refineArticleHeadings(blocks)
 }

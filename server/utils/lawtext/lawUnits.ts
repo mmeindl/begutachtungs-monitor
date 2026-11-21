@@ -40,6 +40,14 @@ export interface TextBlock {
    * table is compared as a run of words (`TABLE_AS_TEXT_DE`).
    */
   table?: true
+  /**
+   * The text with its double quotation marks as RIS prints them („…“), set
+   * only where they differ from `text`, which folds them into one straight
+   * mark (`normalizeText`) — so which mark opens a quotation is lost there.
+   * Read by the strict check of the Bund's annex alone (`annex/annexStrict.ts`):
+   * the quotation grammar it shares with the Länder needs to know (21.11.2026).
+   */
+  quoted?: string
 }
 
 /** One comparable unit: a § (with all its Absätze and Ziffern) or one Novellierungsanordnung. */
