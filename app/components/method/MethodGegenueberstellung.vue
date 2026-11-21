@@ -119,9 +119,9 @@ const copy = computed(() => COPY[props.kind])
         Einem neuen Paragraphen steht links nichts gegenüber; bei ihm zählen nur
         der dritte und der vierte Punkt. Ließ sich etwas davon nicht prüfen, steht beim
         Paragraphen „nicht geprüft“. Stimmt der neue Text beim wortweisen
-        Abgleich nicht mit dem Gesetzestext überein<template v-if="kind === 'entwurf'"> und bestätigt
-          ihn auch unsere eigene Lesung nicht</template>, steht „nicht bestätigt“;
-        gezeigt wird der Paragraph trotzdem.
+        Abgleich nicht mit dem Gesetzestext überein, steht „nicht bestätigt“;
+        gezeigt wird der Paragraph trotzdem.<template v-if="kind === 'entwurf'"> Ohne diesen Vermerk bleibt er
+          nur, wenn ihm kein Wortlaut des Entwurfs fehlt und unsere eigene Lesung ihn bestätigt.</template>
       </dd>
     </div>
     <div>

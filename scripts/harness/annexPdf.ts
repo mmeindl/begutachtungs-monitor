@@ -66,7 +66,7 @@ import { asArray, pickBundledTextComparisons, pickOlderTextComparisons, pickText
 import { holdsAsAnnex } from '../../server/utils/annex/olderAnnex'
 import { annexSources, draftRenditionOf, fetchParagraphXml, resolveKonsLaw } from '../lib/productionSources'
 import { annexStrictChecks } from '../../server/utils/annex/annexStrict'
-import { MARK_DELETIONS, MARK_DRAFT_UNREAD, MARK_LONG, MARK_UNASSIGNED, MARK_WORDING, OBJECTION_OVER_CONFIRMATION, annexMarks, type AnnexMark } from '../../server/utils/annex/annexMark'
+import { MARK_DELETIONS, MARK_DRAFT_UNREAD, MARK_LONG, MARK_UNASSIGNED, MARK_WORDING, annexMarks, type AnnexMark, type ObjectionRule } from '../../server/utils/annex/annexMark'
 import { REASON_NOTHING_TO_COMPARE } from '../../server/utils/annex/verdict'
 import { consolidate } from '../../server/utils/kons/consolidate'
 import { oracleConfirmedRows } from '../../shared/utils/annexOutcomes'
@@ -233,8 +233,8 @@ interface GateResult {
    * What the page shows on top of the gate (`annexMark.ts`, 21.11.2026): the
    * §§ shown, and of those the ones „nicht bestätigt" and the ones the table
    * marks „nicht geprüft" by its reason (the gate's own stay in
-   * `markedParas`); each also under the other value of
-   * `OBJECTION_OVER_CONFIRMATION`, which moves „nicht bestätigt" only.
+   * `markedParas`); „nicht bestätigt" also under each value of
+   * `OBJECTION_OVER_CONFIRMATION`, the only figure it moves.
    */
   marks: MarkRecord
 }
@@ -243,7 +243,8 @@ interface GateResult {
 interface MarkRecord {
   shownParas: number
   unconfirmedParas: number
-  unconfirmedParasOther: number
+  /** „nicht bestätigt" under each value of `OBJECTION_OVER_CONFIRMATION` (`unconfirmedParas` is the default's). */
+  unconfirmedParasBy: Record<ObjectionRule, number>
   /** „nicht geprüft" from the table, by reason: deletions, unassigned, wording, long, draftUnread. */
   markedWord: Record<MarkReasonKey, number>
   /** The gate's marked §§ the oracle confirms — kept marked; counted for a later rule. */
@@ -254,7 +255,7 @@ interface MarkRecord {
 type MarkReasonKey = 'deletions' | 'unassigned' | 'wording' | 'long' | 'draftUnread'
 const MARK_REASON_KEY: Record<string, MarkReasonKey> = { [MARK_DELETIONS]: 'deletions', [MARK_UNASSIGNED]: 'unassigned', [MARK_WORDING]: 'wording', [MARK_LONG]: 'long', [MARK_DRAFT_UNREAD]: 'draftUnread' }
 const noCells = (): Record<StrictCell, number> => ({ holds: 0, 'holds-empty': 0, differs: 0, unchecked: 0, 'no-new-text': 0 })
-const noMarks = (): MarkRecord => ({ shownParas: 0, unconfirmedParas: 0, unconfirmedParasOther: 0, markedWord: { deletions: 0, unassigned: 0, wording: 0, long: 0, draftUnread: 0 }, gateMarkedConfirmed: 0, table: { confirmed: noCells(), notConfirmed: noCells(), noLesefassung: noCells() } })
+const noMarks = (): MarkRecord => ({ shownParas: 0, unconfirmedParas: 0, unconfirmedParasBy: { clean: 0, unconfirmed: 0, missing: 0 }, markedWord: { deletions: 0, unassigned: 0, wording: 0, long: 0, draftUnread: 0 }, gateMarkedConfirmed: 0, table: { confirmed: noCells(), notConfirmed: noCells(), noLesefassung: noCells() } })
 
 /**
  * `--zeilen=<path>`: every draft's rows as the response would carry them,
@@ -625,8 +626,8 @@ interface MarkedParagraph {
   notShown: string[]
   oracle: boolean | null
   mark: AnnexMark
-  /** The same § under the other value of `OBJECTION_OVER_CONFIRMATION`. */
-  markOther: AnnexMark
+  /** The same § under each value of `OBJECTION_OVER_CONFIRMATION`. */
+  markBy: Record<ObjectionRule, AnnexMark>
 }
 
 async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft, lesefassung: ConsolidatedTextResponse): Promise<GateResult> {
@@ -634,7 +635,7 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft, lesefa
   const strict = annexStrictChecks(rows, draft)
   const confirmed = oracleConfirmedRows(rows, lesefassung)
   const marks = annexMarks(rows, check, strict, confirmed)
-  const other = annexMarks(rows, check, strict, confirmed, OBJECTION_OVER_CONFIRMATION === 'clean' ? 'unconfirmed' : 'clean')
+  const by = { clean: annexMarks(rows, check, strict, confirmed, 'clean'), unconfirmed: annexMarks(rows, check, strict, confirmed, 'unconfirmed'), missing: annexMarks(rows, check, strict, confirmed, 'missing') }
   const paragraphs: MarkedParagraph[] = []
   {
     const groups = new Map<string, ComparisonRow[]>()
@@ -661,7 +662,7 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft, lesefa
         notShown: s?.notShown ?? [],
         oracle: confirmed === null ? null : printed.length > 0 && printed.every((r) => confirmed.has(r)),
         mark: marks.get(key)!,
-        markOther: other.get(key)!,
+        markBy: { clean: by.clean.get(key)!, unconfirmed: by.unconfirmed.get(key)!, missing: by.missing.get(key)! },
       })
     }
   }
@@ -672,7 +673,7 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft, lesefa
   for (const q of paragraphs) {
     markRecord.shownParas++
     if (q.mark.kind === 'unconfirmed') markRecord.unconfirmedParas++
-    if (q.markOther.kind === 'unconfirmed') markRecord.unconfirmedParasOther++
+    for (const rule of ['clean', 'unconfirmed', 'missing'] as const) if (q.markBy[rule].kind === 'unconfirmed') markRecord.unconfirmedParasBy[rule]++
     if (q.mark.kind === 'unchecked') markRecord.markedWord[MARK_REASON_KEY[q.mark.reason]!]++
     if (q.population === 'marked') {
       if (q.oracle) markRecord.gateMarkedConfirmed++
@@ -882,9 +883,9 @@ console.log(`      davon Paragraphen mit ≥ ${MIN_PROSE_TOKENS} vergleichbaren 
   const gateMarked = gsum((g) => g.markedParas)
   const pct = (n: number) => (shown ? `${((n / shown) * 100).toFixed(1)} %` : '—')
   console.log(`    Wort für Wort (die Tabelle über dem Tor): gezeigte Paragraphen ${shown}`)
-  console.log(`      „nicht bestätigt“: ${msum((m) => m.unconfirmedParas)} (andere Variante, der Einwand gilt immer: ${msum((m) => m.unconfirmedParasOther)})`)
+  console.log(`      „nicht bestätigt“: ${msum((m) => m.unconfirmedParas)} (je Wert der Regel: fehlender Wortlaut zählt ${msum((m) => m.unconfirmedParasBy.missing)}, die Lesefassung gilt immer ${msum((m) => m.unconfirmedParasBy.clean)}, der Einwand gilt immer ${msum((m) => m.unconfirmedParasBy.unconfirmed)})`)
   console.log(`      „nicht geprüft“ aus der Tabelle: ${word} — nur Streichungen ${msum((m) => m.markedWord.deletions)}, keiner Anordnung zugeordnet ${msum((m) => m.markedWord.unassigned)}, Anordnung nicht lesbar ${msum((m) => m.markedWord.wording)}, zu lang ${msum((m) => m.markedWord.long)}, Entwurf ungelesen ${msum((m) => m.markedWord.draftUnread)}`)
-  console.log(`      markiert insgesamt (Tor + Tabelle): ${gateMarked + word + msum((m) => m.unconfirmedParas)} (${pct(gateMarked + word + msum((m) => m.unconfirmedParas))}); andere Variante ${gateMarked + word + msum((m) => m.unconfirmedParasOther)}`)
+  console.log(`      markiert insgesamt (Tor + Tabelle): ${gateMarked + word + msum((m) => m.unconfirmedParas)} (${pct(gateMarked + word + msum((m) => m.unconfirmedParas))}); je Wert ${(['missing', 'clean', 'unconfirmed'] as const).map((rule) => gateMarked + word + msum((m) => m.unconfirmedParasBy[rule])).join(' / ')}`)
   console.log(`      vom Tor markiert und von der Lesefassung bestätigt (bleibt markiert): ${msum((m) => m.gateMarkedConfirmed)}`)
   const cells: StrictCell[] = ['holds', 'holds-empty', 'differs', 'unchecked', 'no-new-text']
   console.log(`      Lesefassung \\ Entwurfsprüfung   ${cells.map((c) => c.padStart(12)).join('')}`)
@@ -979,7 +980,7 @@ if (jsonPath) {
       markedParas: r.gate.markedParas,
       shownParas: r.gate.marks.shownParas,
       unconfirmedParas: r.gate.marks.unconfirmedParas,
-      unconfirmedParasOther: r.gate.marks.unconfirmedParasOther,
+      unconfirmedParasBy: r.gate.marks.unconfirmedParasBy,
       markedWordParas: Object.values(r.gate.marks.markedWord).reduce((a, b) => a + b, 0),
       markedWord: r.gate.marks.markedWord,
       gateMarkedConfirmed: r.gate.marks.gateMarkedConfirmed,

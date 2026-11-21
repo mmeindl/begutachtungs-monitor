@@ -29,9 +29,11 @@
  *      draft check reads no old text, so it confirmed nothing — clean where
  *      the oracle confirms, else „nicht geprüft" (`MARK_DELETIONS`);
  *    - the draft check holds: clean;
- *    - it objects: „nicht bestätigt", unless the oracle confirms — then
- *      `OBJECTION_OVER_CONFIRMATION` decides, the one cell where the two
- *      variants differ;
+ *    - it objects: „nicht bestätigt". Where the oracle confirms, the § is
+ *      clean only where the objection names no wording of the draft the
+ *      column lacks (`StrictCheck.notShown` empty): the oracle holds the
+ *      column by containment, vouching for the words it shows and blind by
+ *      design to wording it lacks (`OBJECTION_OVER_CONFIRMATION`);
  *    - it could not run: clean where the oracle confirms, else „nicht
  *      geprüft" with the reason in the Länder's words.
  */
@@ -46,14 +48,26 @@ import { insertedStretches } from './rightColumn'
 import { REASON_NOTHING_TO_COMPARE, type AnnexVerification, type ParagraphVerdict } from './verdict'
 
 /**
- * The cell where the oracle confirms a § and the draft check objects to it:
- * 'clean' lets the oracle's confirmation stand (the rule approved on
- * 21.11.2026), 'unconfirmed' never overrules the draft check. Every one of
- * the 101 §§ of that cell measured by stage 3a was read: 8 real differences
- * between the ministry's two documents, 52 false alarms of the draft check,
- * 19 limits of how the annex is set, 4 our draft reader, 20 undecided.
+ * The cell where the oracle confirms a § and the draft check objects to it.
+ * The oracle holds the right column by containment: it vouches for the
+ * words the column shows and cannot see wording the column lacks. So the
+ * cell is split by what the objection is about ('missing', the maintainer's
+ * decision of 21.11.2026): clean where the draft check objects only to words
+ * the column shows beyond the draft's wording (`StrictCheck.notShown`
+ * empty), „nicht bestätigt" where it names wording of the draft the column
+ * lacks, whatever the oracle says. Kept for the record: 'clean' lets every
+ * confirmation stand (the rule until that decision), 'unconfirmed' never
+ * overrules the draft check.
+ *
+ * Stage 3a read the cell's 103 §§ one by one. The 52 that object only to
+ * words the column shows: 40 false alarms of the draft check, 11 limits of
+ * how the annex is set, 1 our draft reader, no real difference. The 51 that
+ * name missing wording: all 8 real differences between the ministry's two
+ * documents, 20 undecided (the draft's text not found in the annex), 12
+ * false alarms, 8 limits of the layout, 3 our draft reader.
  */
-export const OBJECTION_OVER_CONFIRMATION: 'clean' | 'unconfirmed' = 'clean'
+export type ObjectionRule = 'clean' | 'unconfirmed' | 'missing'
+export const OBJECTION_OVER_CONFIRMATION: ObjectionRule = 'missing'
 
 /*
  * Why a § the draft check could not hold carries „nicht geprüft" — written
@@ -94,8 +108,8 @@ export function markReasonOf(reason: string | null): string {
   return kind === 'wording' ? MARK_WORDING : kind === 'long' ? MARK_LONG : MARK_UNASSIGNED
 }
 
-/** The table, for one §. `objection` is the one cell's value; the harness asks both. */
-export function markOf(input: MarkInput, objection: 'clean' | 'unconfirmed' = OBJECTION_OVER_CONFIRMATION): AnnexMark {
+/** The table, for one §. `objection` is the one cell's value; the harness asks all three. */
+export function markOf(input: MarkInput, objection: ObjectionRule = OBJECTION_OVER_CONFIRMATION): AnnexMark {
   if (input.verdict === 'withheld') return GATE
   if (input.verdict === 'unchecked' && input.uncheckedReason !== REASON_NOTHING_TO_COMPARE) return GATE
   if (!input.showsChange) return GATE
@@ -103,7 +117,7 @@ export function markOf(input: MarkInput, objection: 'clean' | 'unconfirmed' = OB
   const strict = input.strict
   if (!input.showsNewText || (strict?.state === 'holds' && strict.newWords === 0)) return confirmed ? GATE : { kind: 'unchecked', reason: MARK_DELETIONS }
   if (strict?.state === 'holds') return GATE
-  if (strict?.state === 'differs') return confirmed && objection === 'clean' ? GATE : UNCONFIRMED
+  if (strict?.state === 'differs') return confirmed && (objection === 'clean' || (objection === 'missing' && strict.notShown.length === 0)) ? GATE : UNCONFIRMED
   return confirmed ? GATE : { kind: 'unchecked', reason: markReasonOf(strict?.reason ?? null) }
 }
 
@@ -120,7 +134,7 @@ export function annexMarks(
   verification: AnnexVerification,
   strict: ReadonlyMap<string, StrictCheck>,
   confirmed: ReadonlySet<ComparisonRow> | null,
-  objection: 'clean' | 'unconfirmed' = OBJECTION_OVER_CONFIRMATION,
+  objection: ObjectionRule = OBJECTION_OVER_CONFIRMATION,
 ): Map<string, AnnexMark> {
   const groups = new Map<string, ComparisonRow[]>()
   for (const row of rows) {

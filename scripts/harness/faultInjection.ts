@@ -73,20 +73,22 @@
  * the table of `annex/annexMark.ts` — the draft check over the faulted rows,
  * the oracle again over the same result with the faulted rows in the annex.
  * Over the §§ the page showed without a mark before the fault: withheld,
- * marked (either pill), shown without a mark; under both values of
- * `OBJECTION_OVER_CONFIRMATION`. GP XXVIII, approved rule (other variant):
+ * marked (either pill), shown without a mark; under each value of
+ * `OBJECTION_OVER_CONFIRMATION`, each over the §§ it shows without a mark.
+ * GP XXVIII, 22.11.2026, the rule in force ('missing'; under 'clean' and
+ * 'unconfirmed' in brackets):
  *
- * | 21.11.2026 | PDF | Tabelle |
+ * | 22.11.2026 | PDF | Tabelle |
  * |---|---:|---:|
- * | Zahl im Text       | 1080/1093 (98,8 %; 99,5) | 618/626 (98,7 %; 99,5) |
- * | Bezeichnung        |  446/496 (89,9 %; 90,9)  | 266/298 (89,3 %; 93,0) |
- * | Wort getauscht     | 1369/1390 (98,5 %; 99,3) | 887/896 (99,0 %; 99,8) |
- * | neuer Satz fehlt   |  207/238 (87,0 %; 88,2)  | 123/131 (93,9 %; 99,2) |
- * | behaltener Satz gestrichen | 224/955 (23,5 %; 23,7) | 165/698 (23,6 %; 24,5) |
- * | Satz links verloren | 795/1041 (76,4 %; 81,6) | 250/314 (79,6 %; 79,9) |
+ * | Zahl im Text       | 1075/1083 (99,3 %; 98,8; 99,5) | 609/612 (99,5 %; 98,7; 99,5) |
+ * | Bezeichnung        |  443/489 (90,6 %; 89,9; 90,5)  | 266/287 (92,7 %; 89,3; 92,7) |
+ * | Wort getauscht     | 1362/1380 (98,7 %; 98,5; 99,3) | 872/880 (99,1 %; 99,0; 99,8) |
+ * | neuer Satz fehlt   |  206/233 (88,4 %; 87,3; 88,1)  | 124/125 (99,2 %; 93,8; 99,2) |
+ * | behaltener Satz gestrichen | 220/951 (23,1 %; 23,5; 22,5) | 153/680 (22,5 %; 23,6; 21,6) |
+ * | Satz links verloren | 804/1032 (77,9 %; 76,4; 81,2) | 241/305 (79,0 %; 79,6; 79,1) |
  *
  * A kept sentence struck passes wherever the draft check held before the
- * fault: it reads no old text, and under either rule its holding keeps the §
+ * fault: it reads no old text, and under every rule its holding keeps the §
  * clean. Zahl, Wort and neuer Satz fehlt are held to 95 % on both paths
  * under `--mindestens` (`CHAIN_FLOORED`); neuer Satz fehlt does not hold.
  *
@@ -408,7 +410,7 @@ import { bumpedDesignation, donorSentence, isSentence, lastSentenceGone, raisedN
 import { chainedAbsaetze } from '../lib/faultSites'
 import { annexSources, resolveKonsLaw } from '../lib/productionSources'
 import { annexStrictChecks } from '../../server/utils/annex/annexStrict'
-import { markOf, OBJECTION_OVER_CONFIRMATION } from '../../server/utils/annex/annexMark'
+import { markOf, OBJECTION_OVER_CONFIRMATION, type ObjectionRule } from '../../server/utils/annex/annexMark'
 import { insertedStretches } from '../../server/utils/annex/rightColumn'
 import type { StrictCheck } from '../../server/utils/laender/landTguStrict'
 
@@ -643,7 +645,7 @@ interface DraftResult {
  * (`judge`), then the table of `annex/annexMark.ts` — the draft check on the
  * faulted rows and the oracle on them — with three outcomes: withheld,
  * marked (either pill), shown without a mark. Over the §§ the page shows
- * without a mark before the fault, and under both values of the table's one
+ * without a mark before the fault, and under each value of the table's one
  * open cell (`OBJECTION_OVER_CONFIRMATION`).
  *
  * The gate is `judge` per § (the left check and both rules against the §'s
@@ -662,16 +664,16 @@ interface ChainTally {
   withheld: number
   marked: number
   unmarked: number
-  /** The same faults under the other value of `OBJECTION_OVER_CONFIRMATION` (withheld does not move). */
-  markedOther: number
-  unmarkedOther: number
+  /** The same under each value of `OBJECTION_OVER_CONFIRMATION`, each over the §§ it shows without a mark before the fault; the figures above are the rule's in force. */
+  byRule: Record<ObjectionRule, { tried: number; withheld: number; marked: number; unmarked: number }>
   /** Faults in §§ the oracle confirmed before, and of those the ones where it read the faulted row again — in the rest its confirmation stands. */
   oracleBefore: number
   oracleAsked: number
   /** What got through unmarked, for `--misses`: the §, and which check let it pass. */
   misses: string[]
 }
-const chainTally = (label: string): ChainTally => ({ label, tried: 0, withheld: 0, marked: 0, unmarked: 0, markedOther: 0, unmarkedOther: 0, oracleBefore: 0, oracleAsked: 0, misses: [] })
+const RULES: readonly ObjectionRule[] = ['missing', 'clean', 'unconfirmed']
+const chainTally = (label: string): ChainTally => ({ label, tried: 0, withheld: 0, marked: 0, unmarked: 0, byRule: { missing: { tried: 0, withheld: 0, marked: 0, unmarked: 0 }, clean: { tried: 0, withheld: 0, marked: 0, unmarked: 0 }, unconfirmed: { tried: 0, withheld: 0, marked: 0, unmarked: 0 } }, oracleBefore: 0, oracleAsked: 0, misses: [] })
 const chainFaults: Record<ChainKey, ChainTally> = {
   zahl: chainTally('Zahl im Text, rechts'),
   bezeichnung: chainTally('Bezeichnung, rechts'),
@@ -680,7 +682,7 @@ const chainFaults: Record<ChainKey, ChainTally> = {
   rweg: chainTally('behaltener Satz rechts gestrichen'),
   links: chainTally('Satz links verloren'),
 }
-/** The classes held to 95 % on both paths under `--mindestens` (withheld or marked, approved rule). */
+/** The classes held to 95 % on both paths under `--mindestens` (withheld or marked, the rule in force). */
 const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg']
 const CHAIN_FLOOR = 95
 /**
@@ -972,12 +974,17 @@ function judgeChain(cite: string, rows: readonly ComparisonRow[], draft: { artic
     const groupKey = annexParagraphKey(c.para.law, c.para.para)
     if (withheld(base.get(c.para)!)) continue
     const oracleBefore = chainOracle.judges.has(groupKey)
-    const cleanBefore = markOf({ verdict: 'verified', uncheckedReason: null, showsNewText: insertedStretches(c.para.rows).length > 0, showsChange: showsChangeOf(c.para.rows), strict: before.get(groupKey), oracleConfirmed: oracleBefore }).kind === 'gate'
-    if (!cleanBefore) continue
+    const inputBefore = { verdict: 'verified' as const, uncheckedReason: null, showsNewText: insertedStretches(c.para.rows).length > 0, showsChange: showsChangeOf(c.para.rows), strict: before.get(groupKey), oracleConfirmed: oracleBefore }
+    // Each value of the open cell over the §§ it shows without a mark before the fault; the class's own figures are the rule's in force.
+    const rules = RULES.filter((rule) => markOf(inputBefore, rule).kind === 'gate')
+    if (rules.length === 0) continue
+    const inForce = rules.includes(OBJECTION_OVER_CONFIRMATION)
     const tally = chainFaults[c.key]
-    tally.tried++
+    for (const rule of rules) tally.byRule[rule].tried++
+    if (inForce) tally.tried++
     if (withheld(c.verdict)) {
-      tally.withheld++
+      for (const rule of rules) tally.byRule[rule].withheld++
+      if (inForce) tally.withheld++
       continue
     }
     const swap = new Map<ComparisonRow, ComparisonRow>()
@@ -986,15 +993,15 @@ function judgeChain(cite: string, rows: readonly ComparisonRow[], draft: { artic
     })
     const again = oracleBefore ? (chainOracle.judges.get(groupKey) ?? []).map((judge) => judge(swap)) : []
     const oracleAfter = oracleBefore && again.every((a) => a.confirms)
-    if (oracleBefore) tally.oracleBefore++
-    if (again.some((a) => a.read)) tally.oracleAsked++
+    if (inForce && oracleBefore) tally.oracleBefore++
+    if (inForce && again.some((a) => a.read)) tally.oracleAsked++
     const input = { verdict: 'verified' as const, uncheckedReason: null, showsNewText: insertedStretches(c.rows).length > 0, showsChange: showsChangeOf(c.rows), strict: after.get(c.key)!.get(groupKey), oracleConfirmed: oracleAfter }
+    for (const rule of rules) tally.byRule[rule][markOf(input, rule).kind === 'gate' ? 'unmarked' : 'marked']++
+    if (!inForce) continue
     if (markOf(input).kind === 'gate') {
       tally.unmarked++
       tally.misses.push(`${cite} ${c.para.para}${c.para.law ? ` [${c.para.law.slice(0, 28)}]` : ''} — Entwurfsprüfung ${input.strict?.state ?? '—'}${input.strict?.state === 'holds' ? ` (${input.strict.newWords} neue Wörter)` : ''}, Orakel ${oracleAfter ? 'bestätigt' : 'nicht'}`)
     } else tally.marked++
-    if (markOf(input, OBJECTION_OVER_CONFIRMATION === 'clean' ? 'unconfirmed' : 'clean').kind === 'gate') tally.unmarkedOther++
-    else tally.markedOther++
   }
 }
 
@@ -2399,9 +2406,9 @@ const gatePassed = ![...(gateFloor?.values() ?? [])].includes('verfehlt')
 
 // The whole chain (`judgeChain`): withheld, marked, shown without a mark — over the §§ shown unmarked before the fault.
 console.log(`\n  Die ganze Kette der Seite (Tor, dann Wort für Wort): Fehler in Paragraphen, die vorher ohne Markierung gezeigt wurden`)
-console.log(`    Klasse                              Versuche  einbehalten  markiert  ohne Markierung   (andere Variante: markiert / ohne)`)
+console.log(`    Klasse                              Versuche  einbehalten  markiert  ohne Markierung   (Regel ${OBJECTION_OVER_CONFIRMATION}; gefangen je Wert: ${RULES.join(' / ')})`)
 for (const t of Object.values(chainFaults)) {
-  console.log(`    ${t.label.padEnd(36)}${String(t.tried).padStart(8)}${String(t.withheld).padStart(13)}${String(t.marked).padStart(10)}${String(t.unmarked).padStart(17)}   ${pct(t.withheld + t.marked, t.tried)} gefangen   (${t.markedOther} / ${t.unmarkedOther}, ${pct(t.withheld + t.markedOther, t.tried)}); Orakel vorher bestätigt ${t.oracleBefore}, danach gefragt ${t.oracleAsked}`)
+  console.log(`    ${t.label.padEnd(36)}${String(t.tried).padStart(8)}${String(t.withheld).padStart(13)}${String(t.marked).padStart(10)}${String(t.unmarked).padStart(17)}   ${pct(t.withheld + t.marked, t.tried)} gefangen   (${RULES.map((rule) => `${t.byRule[rule].withheld + t.byRule[rule].marked}/${t.byRule[rule].tried}`).join(' / ')}); Orakel vorher bestätigt ${t.oracleBefore}, danach gefragt ${t.oracleAsked}`)
 }
 if (argFlag('misses')) for (const t of Object.values(chainFaults)) for (const m of t.misses) console.log(`      ${t.label}: ${m}`)
 const chainFloor = floor && floorOf(CHAIN_FLOORED.map((k) => ({ key: k, tried: chainFaults[k].tried, caught: chainFaults[k].withheld + chainFaults[k].marked })), CHAIN_FLOOR)
@@ -2458,8 +2465,8 @@ if (jsonPath) {
     })),
     // The annex's right column misread, as the oracle sees it against the unchanged result.
     column: columnClasses.map((f) => ({ key: keyOf(f.label), label: f.label.trim(), tried: f.tried, caught: f.caught, floored: floored.has(f), ...(floor && floored.has(f) ? { floor: floor.status.get(keyOf(f.label)) } : {}) })),
-    // The whole chain the page runs, gate then table (`judgeChain`, 21.11.2026), under both rule variants.
-    chain: (Object.entries(chainFaults) as [ChainKey, ChainTally][]).map(([key, t]) => ({ key, label: t.label, tried: t.tried, withheld: t.withheld, marked: t.marked, unmarked: t.unmarked, markedOther: t.markedOther, unmarkedOther: t.unmarkedOther, oracleBefore: t.oracleBefore, oracleAsked: t.oracleAsked, floored: CHAIN_FLOORED.includes(key), ...(chainFloor && CHAIN_FLOORED.includes(key) ? { floorMin: CHAIN_FLOOR, floor: chainFloor.status.get(key) } : {}) })),
+    // The whole chain the page runs, gate then table (`judgeChain`, 21.11.2026), under each value of the table's open cell.
+    chain: (Object.entries(chainFaults) as [ChainKey, ChainTally][]).map(([key, t]) => ({ key, label: t.label, tried: t.tried, withheld: t.withheld, marked: t.marked, unmarked: t.unmarked, byRule: t.byRule, oracleBefore: t.oracleBefore, oracleAsked: t.oracleAsked, floored: CHAIN_FLOORED.includes(key), ...(chainFloor && CHAIN_FLOORED.includes(key) ? { floorMin: CHAIN_FLOOR, floor: chainFloor.status.get(key) } : {}) })),
     chainRule: OBJECTION_OVER_CONFIRMATION,
   }
   writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)

@@ -247,8 +247,11 @@ export interface TextComparisonRow {
    *   leaves the server: a wrong comparison must not be renderable at all.
    * - `unconfirmed` — „nicht bestätigt" (21.11.2026): the word-for-word check
    *   of its new text ran, and the new text does not agree with the draft's
-   *   own law text, nor did our Lesefassung confirm the §
-   *   (`server/utils/annex/annexMark.ts`). Shown with its text all the same:
+   *   own law text. Our Lesefassung's confirmation lifts that only where the
+   *   check objects to nothing but words the column shows beyond the draft's
+   *   wording: where wording of the draft is missing from the column, the §
+   *   stays „nicht bestätigt" whatever the Lesefassung says (22.11.2026,
+   *   `server/utils/annex/annexMark.ts`). Shown with its text all the same:
    *   the annex is the ministry's document, and the check has false alarms.
    *   A state of its own, never derived from a reason string.
    *
@@ -449,7 +452,8 @@ export interface TextComparisonResponse {
     /**
      * §§ shown „nicht bestätigt" (`TextComparisonRow.check` `unconfirmed`):
      * the word-for-word check of their new text ran and did not agree, and
-     * our Lesefassung did not confirm them. Counted apart from
+     * our Lesefassung did not confirm them — or did, while wording of the
+     * draft is missing from the column. Counted apart from
      * `uncheckedParagraphs`; a § is in one of the two at most.
      */
     unconfirmedParagraphs: number

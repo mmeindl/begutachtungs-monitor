@@ -146,15 +146,16 @@ export interface AnnexDraftReport {
   /**
    * The table on top of the gate (`server/utils/annex/annexMark.ts`,
    * 21.11.2026), absent in older reports: §§ shown (not withheld), of them
-   * „nicht bestätigt" — under the approved rule and under the other value of
-   * `OBJECTION_OVER_CONFIRMATION` —, „nicht geprüft" from the table (beside
+   * „nicht bestätigt" — under the rule in force, and under each value of
+   * `OBJECTION_OVER_CONFIRMATION` (since 22.11.2026; `unconfirmedParasOther`
+   * before, the one other value) —, „nicht geprüft" from the table (beside
    * the gate's `markedParas`) and by reason, the gate's marked §§ the oracle
    * confirms, and over the §§ the table decides the oracle's word
    * (confirmed, not confirmed, no Lesefassung) by the draft check's state.
    */
   shownParas?: number
   unconfirmedParas?: number
-  unconfirmedParasOther?: number
+  unconfirmedParasBy?: Record<'clean' | 'unconfirmed' | 'missing', number>
   markedWordParas?: number
   markedWord?: Record<'deletions' | 'unassigned' | 'wording' | 'long' | 'draftUnread', number>
   gateMarkedConfirmed?: number

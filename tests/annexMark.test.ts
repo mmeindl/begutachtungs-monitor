@@ -35,12 +35,29 @@ describe('markOf: the table, one line at a time', () => {
     expect(markOf(verified({ verdict: 'unchecked', uncheckedReason: REASON_NOTHING_TO_COMPARE, strict: strict('differs') }))).toEqual({ kind: 'unconfirmed' })
   })
 
-  it('lets the cell „the oracle confirms, the draft check objects" decide by its one constant', () => {
-    const cell = verified({ strict: strict('differs'), oracleConfirmed: true })
-    expect(markOf(cell, 'clean')).toEqual({ kind: 'gate' })
-    expect(markOf(cell, 'unconfirmed')).toEqual({ kind: 'unconfirmed' })
-    expect(OBJECTION_OVER_CONFIRMATION).toBe('clean')
-    expect(markOf(cell)).toEqual({ kind: 'gate' })
+  describe('the cell „the oracle confirms, the draft check objects", by its one constant', () => {
+    // Words the column shows beyond the draft's wording, and wording of the draft the column lacks.
+    const shownBeyond = verified({ strict: strict('differs', { notInDraft: ['anm'] }), oracleConfirmed: true })
+    const lacking = verified({ strict: strict('differs', { notShown: ['dabei', 'hat', 'sie'] }), oracleConfirmed: true })
+    const both = verified({ strict: strict('differs', { notInDraft: ['anm'], notShown: ['dabei'] }), oracleConfirmed: true })
+
+    it('splits by what the objection is about by default: clean only where it names no wording the column lacks', () => {
+      expect(OBJECTION_OVER_CONFIRMATION).toBe('missing')
+      expect(markOf(shownBeyond)).toEqual({ kind: 'gate' })
+      expect(markOf(lacking)).toEqual({ kind: 'unconfirmed' })
+      expect(markOf(both)).toEqual({ kind: 'unconfirmed' })
+      // The oracle's word counts only in the cell: without it the objection stands either way.
+      expect(markOf({ ...shownBeyond, oracleConfirmed: false })).toEqual({ kind: 'unconfirmed' })
+      expect(markOf({ ...shownBeyond, oracleConfirmed: null })).toEqual({ kind: 'unconfirmed' })
+    })
+
+    it('lets every confirmation stand under \'clean\'', () => {
+      for (const cell of [shownBeyond, lacking, both]) expect(markOf(cell, 'clean')).toEqual({ kind: 'gate' })
+    })
+
+    it('never overrules the draft check under \'unconfirmed\'', () => {
+      for (const cell of [shownBeyond, lacking, both]) expect(markOf(cell, 'unconfirmed')).toEqual({ kind: 'unconfirmed' })
+    })
   })
 
   it('where the draft check could not run: clean where the oracle confirms, else „nicht geprüft" with the reason in three classes', () => {
