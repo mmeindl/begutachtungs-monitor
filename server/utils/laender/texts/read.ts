@@ -87,9 +87,58 @@ export async function pdfPages(url: string): Promise<string[]> {
 
 /** A Land PDF's text per page, from bytes already read — `pdfPages` without the fetch. */
 export async function pagesOfBytes(bytes: Uint8Array): Promise<string[]> {
-  const { extractText } = await import('unpdf')
-  const { text } = await withPdf(bytes, (doc) => extractText(doc, { mergePages: false }))
-  return repairMacRoman(Array.isArray(text) ? text : [text])
+  return repairMacRoman(await withPdf(bytes, async (doc) => {
+    const pages: string[] = []
+    for (let n = 1; n <= doc.numPages; n++) pages.push(pageText((await (await doc.getPage(n)).getTextContent()).items as TextRun[]))
+    return pages
+  }))
+}
+
+/** A text run as pdf.js gives it: its text, its matrix, its height. */
+interface TextRun { str?: string; transform?: number[]; height?: number; hasEOL?: boolean }
+
+/**
+ * A page's runs joined as unpdf's `extractText` joins them — a line closed
+ * where pdf.js marks its end — save one thing (20.11.2026): a footnote mark
+ * set smaller and raised, right after a sign, is a word of its own, as the
+ * Landesgesetzblatt's XML sets it in `<sup>` and so apart (`stripMarkup`).
+ * Salzburg sets the mark after an amount at 6.5 points, 3.5 above the line,
+ * and the text layer read „35,821)" where the Landesgesetzblatt has „35,82
+ * 1)" (sbg-31419, sbg-33547, sbg-34444).
+ *
+ * Only the mark, not every raised run: of the 356 places in the 849 cached
+ * Land PDFs where a run set so follows a letter or a digit, 26 are such a
+ * mark, 276 an exponent („m2") and 44 a bare footnote number of the
+ * Erläuterungen. A Land types „m2" in its draft where its Vorlage sets
+ * „m²" raised (ktn-79014-2025-14, seven times), and split, the exponent
+ * would stand as „m2 → m 2" in its Entwurf → Regierungsvorlage. And only
+ * after a word or a number: „*1)" is one mark,
+ * as the Landesgesetzblatt has it (sbg-34574). A lowered run, an index,
+ * stays welded to its word, as `<sub>` is.
+ */
+function pageText(runs: readonly TextRun[]): string {
+  let text = ''
+  let before: TextRun | null = null
+  for (const run of runs) {
+    if (run.str == null) continue
+    if (before && FOOTNOTE_MARK_RE.test(run.str) && /[\p{L}\d]$/u.test(text) && isRaised(run, before)) text += ' '
+    text += run.str + (run.hasEOL ? '\n' : '')
+    if (run.str.trim()) before = run
+  }
+  return text
+}
+
+/** A footnote mark as a run of its own: „1)", „1)2)". */
+const FOOTNOTE_MARK_RE = /^(?:\d{1,2}\))+$/
+
+/** Set upright, under four fifths of the run before it, and its baseline above that run's by a fifth of its height or more. */
+function isRaised(run: TextRun, before: TextRun): boolean {
+  const [a, b, c, , , y] = run.transform ?? []
+  const [pa, pb, pc, , , py] = before.transform ?? []
+  const h = run.height ?? 0
+  const ph = before.height ?? 0
+  if (b !== 0 || c !== 0 || pb !== 0 || pc !== 0 || !(a! > 0) || !(pa! > 0) || !(h > 0) || !(ph > 0)) return false
+  return h < 0.8 * ph && y! - py! >= 0.2 * ph && y! - py! < ph
 }
 
 /**
