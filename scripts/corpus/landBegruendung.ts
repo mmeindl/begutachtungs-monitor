@@ -35,6 +35,15 @@
  * `--against <dir>` prints, draft by draft, every entry and every change
  * whose attachment moved since that run — read each one.
  *
+ * THE §§ OF A NEW LAW (21.11.2026). A unit of the comparison that IS a §
+ * (`isParagraphUnit`) belongs to a law enacted anew, alone or inside a
+ * package. Per draft with a Vorlage, `<dir>/own.jsonl` holds every such §
+ * changed on both sides, whether each text titles a passage with its own §
+ * — „Zu § 9:", „Zu §§ 8 bis 10:", read from the heading's own address, a
+ * heading that names a Ziffer is an instruction's — and the entry the
+ * comparison gave it. Both texts' entries come from `readLandReasoning`,
+ * what `compareLandReasoning` reads.
+ *
  * Runs with `-c vitest.config.ts`: `texts/read.ts` imports `#shared`.
  */
 import { createHash } from 'node:crypto'
@@ -45,6 +54,9 @@ import { argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { diffUnitKey } from '../../shared/utils/diffKey'
+import { isParagraphUnit } from '../../shared/utils/unitName'
+import { headingAddress, leadingAddress, ziffernOf } from '../../server/utils/explanations/risExplanations'
+import { articleNumberKey } from '../../server/utils/text/designation'
 import { landReasonsAt, unplacedLandReasons } from '../../app/utils/landReasons'
 
 const outDir = argPair('out')
@@ -69,7 +81,7 @@ Object.assign(globalThis, {
   createError: (input: { statusCode?: number; statusMessage?: string }) => Object.assign(new Error(input.statusMessage ?? 'upstream'), input),
 })
 const { readLandExplanations } = await import('../../server/utils/laender/landExplanationsRead')
-const { compareLandReasoning } = await import('../../server/utils/laender/landReasoningService')
+const { compareLandReasoning, readLandReasoning } = await import('../../server/utils/laender/landReasoningService')
 const { compareReadTexts } = await import('../../server/utils/laender/landLawDiffService')
 const { textSources } = await import('../../server/utils/laender/texts/stations')
 
@@ -100,9 +112,28 @@ interface EntryLine { heading: string; law: string | null; paras: string[] }
 interface ExplanationsLine { land: LandCode; draft: string; state: string; reason: string | null; entries: EntryLine[] }
 interface ChangeLine { key: string; change: string; entry: string | null; verdict: string | null; gap: string | null }
 interface ReasoningLine { land: LandCode; draft: string; state: string; reason: string | null; stats: Record<string, number> | null; changes: ChangeLine[] }
+/** A § of a new law changed on both sides: the passages each text titles with its own § (indexes into its entries), and the comparison's entry. */
+interface OwnUnit { key: string; before: number[]; after: number[]; entry: string | null; verdict: string | null }
+interface OwnLine { land: LandCode; draft: string; laws: number; paragraphUnits: number; compared: number; units: OwnUnit[]; headings: { before: string[]; after: string[] } }
 
 const explanations: ExplanationsLine[] = []
 const reasoning: ReasoningLine[] = []
+const own: OwnLine[] = []
+/**
+ * The passages of one text titled with a §'s own designation: the heading's
+ * own address names it (`leadingAddress`, as the Bund's join reads a
+ * heading) and no Ziffer; on a side whose units carry an Artikel, under the
+ * unit's own.
+ */
+function titledWith(entries: readonly { heading: string; article: string | null }[], para: string | null, article: string | null): number[] {
+  if (!para) return []
+  return entries.flatMap((e, i) => {
+    if (ziffernOf(e.heading).length) return []
+    if (!headingAddress(leadingAddress(e.heading)).paragraphs.includes(`§ ${para.toLowerCase()}`)) return []
+    if (article && e.article && articleNumberKey(e.article) !== article) return []
+    return [i]
+  })
+}
 let done = 0
 for (const item of items) {
   done++
@@ -152,6 +183,30 @@ for (const item of items) {
         const entry = entryKey ? value.entries[entryKey] : null
         return { key, change: u.change, entry: entryKey, verdict: entry ? (!entry.comparable ? 'ohne Vergleich' : entry.changed ? 'geändert' : 'unverändert') : null, gap: gaps[key] ?? null }
       })
+      // The §§ of a new law, beside both texts' entries.
+      const paragraphUnits = (shown.available ? shown.units : []).filter(isParagraphUnit)
+      const inputs = paragraphUnits.length ? await readLandReasoning(item.land, detail, { pagesOf, comparison: async () => shown }) : null
+      if (inputs && !('unavailable' in inputs)) {
+        const verdictOf = new Map(r.changes.map((c) => [c.key, c]))
+        own.push({
+          land: item.land,
+          draft: item.id,
+          laws: new Set(shown.units.map((u) => u.article)).size,
+          paragraphUnits: paragraphUnits.length,
+          compared: value.stats.compared,
+          units: paragraphUnits.filter((u) => u.change === 'changed').map((u) => {
+            const key = diffUnitKey(u)
+            return {
+              key,
+              before: titledWith(inputs.before, u.fromId?.slice(1) ?? null, u.fromArticleKey),
+              after: titledWith(inputs.after, u.id.slice(1), u.articleKey),
+              entry: verdictOf.get(key)?.entry ?? null,
+              verdict: verdictOf.get(key)?.verdict ?? null,
+            }
+          }),
+          headings: { before: inputs.before.map((e) => `${e.article ?? '–'} ${e.heading}`), after: inputs.after.map((e) => `${e.article ?? '–'} ${e.heading}`) },
+        })
+      }
     } catch (err) {
       r.state = /nicht im Cache/.test(String(err)) ? 'fehlt' : 'Fehler'
       r.reason = String(err).slice(0, 200)
@@ -187,6 +242,7 @@ if (tguFile) {
 writeFileSync(join(outDir, 'explanations.jsonl'), explanations.map((l) => JSON.stringify(l)).join('\n') + '\n')
 if (tguFile) writeFileSync(join(outDir, 'attachments.jsonl'), attachments.map((l) => JSON.stringify(l)).join('\n') + '\n')
 writeFileSync(join(outDir, 'reasoning.jsonl'), reasoning.map((l) => JSON.stringify(l)).join('\n') + '\n')
+writeFileSync(join(outDir, 'own.jsonl'), own.map((l) => JSON.stringify(l)).join('\n') + '\n')
 const out: string[] = []
 out.push(`# Begründungen der Länder: wo sie stehen — ${new Date().toISOString().slice(0, 16)}`)
 out.push('')
@@ -219,6 +275,18 @@ out.push(`- beidseits, ohne Eintrag: ${paired.filter(({ c }) => !c.entry).length
 const stateOf = (l: { state: string; reason: string | null }) => (l.state === 'fehlt' || !l.reason ? l.state : `${l.state} — ${l.reason}`)
 const rStates = [...reasoning.reduce((m, l) => m.set(stateOf(l), (m.get(stateOf(l)) ?? 0) + 1), new Map<string, number>())]
 for (const [s, n] of rStates) out.push(`- ${n}× ${s}`)
+out.push('')
+out.push('## Die Paragraphen neuer Gesetze (Einheiten, die ein § sind)')
+out.push('')
+const ownUnits = own.flatMap((l) => l.units)
+const titledBoth = ownUnits.filter((u) => u.before.length && u.after.length)
+out.push(`Entwürfe mit Vorlage und §-Einheiten: ${own.length}, davon Pakete: ${own.filter((l) => l.laws > 1).length}; §-Einheiten: ${own.reduce((n, l) => n + l.paragraphUnits, 0)}; geändert (beidseits): ${ownUnits.length}`)
+out.push(`- mit einer Passage zum eigenen § in beiden Texten: ${titledBoth.length}; nur im Entwurf: ${ownUnits.filter((u) => u.before.length && !u.after.length).length}; nur in der Vorlage: ${ownUnits.filter((u) => !u.before.length && u.after.length).length}; in keinem: ${ownUnits.filter((u) => !u.before.length && !u.after.length).length}`)
+out.push(`- mit Eintrag: ${ownUnits.filter((u) => u.entry).length} (geändert ${ownUnits.filter((u) => u.verdict === 'geändert').length}, unverändert ${ownUnits.filter((u) => u.verdict === 'unverändert').length}, ohne Vergleich ${ownUnits.filter((u) => u.verdict === 'ohne Vergleich').length})`)
+out.push('')
+out.push('| Entwurf | Gesetze | §-Einheiten | geändert | Passage beidseits | mit Eintrag | verglichen (Entwurf) |')
+out.push('|---|---|---|---|---|---|---|')
+for (const l of own) out.push(`| ${l.draft} | ${l.laws} | ${l.paragraphUnits} | ${l.units.length} | ${l.units.filter((u) => u.before.length && u.after.length).length} | ${l.units.filter((u) => u.entry).length} | ${l.compared} |`)
 if (tguFile) {
   const at = attachments.flatMap((a) => a.units.map((u) => ({ a, u })))
   out.push('')

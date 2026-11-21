@@ -7,7 +7,7 @@
  * only where BOTH sides have one.
  */
 import { gapDe } from '#shared/utils/gaps'
-import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandReasoningResponse } from '#shared/types'
+import type { LandCode, LandDraftDetail, LandExplanationsResponse, LandLawDiffResponse, LandReasoningResponse, LandTextDocument } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
@@ -24,22 +24,66 @@ const emptyStats = { compared: 0, changed: 0, editorial: 0, uncompared: 0 }
 const unavailable = (reason: string): LandReasoningResponse => ({ available: false, unavailableReason: reason, sources: [], units: {}, entries: {}, stats: emptyStats })
 
 /**
- * One text's reasoning per § number, its passages joined in order. The
- * Erläuterungen stand in the law's own PDF (Oberösterreich, Salzburg's
- * Vorlagen) or in one of their own (Kärnten, Tirol: `explanationsUrl`) —
- * then the Ziffern a „Zu Z 3:" names are read off the law's PDF. Both
- * through the cached read: the comparison beside it reads the same two
- * PDFs, the Erläuterungen section the draft's (`pdfPagesService.ts`).
+ * One text's Erläuterungen, entry by entry (`explainedParagraphs`), each
+ * with the Artikel its heading or the Artikel heading above it names
+ * (`ParticularExplanation.article`). The Erläuterungen stand in the law's
+ * own PDF (Oberösterreich, Salzburg's Vorlagen) or in one of their own
+ * (Kärnten, Tirol: `explanationsUrl`) — then the Ziffern a „Zu Z 3:" names
+ * are read off the law's PDF. Both through the cached read: the comparison
+ * beside it reads the same two PDFs, the Erläuterungen section the draft's
+ * (`pdfPagesService.ts`).
  */
-async function reasonsByParagraph(lawUrl: string, explanationsUrl: string | null, title: string, pagesOf: PagesReader): Promise<Map<string, string>> {
+async function reasonsOf(lawUrl: string, explanationsUrl: string | null, title: string, pagesOf: PagesReader): Promise<LandReasoningEntry[]> {
   const [pages, lawPages] = await Promise.all([pagesOf(explanationsUrl ?? lawUrl), explanationsUrl ? pagesOf(lawUrl) : null])
   const parse = parseLandExplanations(pages)
+  if (!parse) return []
+  // `explainedParagraphs` keeps the parse's entries in order, one for one.
+  return explainedParagraphs(parse, landDraftUnits(lawPages ?? pages), title, (lawPages ?? pages).join('\n')).map((e, i) => ({ ...e, article: parse.particular[i]!.article }))
+}
+
+/** One text's reasoning per § number, its entries joined in order — the § join's input. */
+function reasonsByParagraph(entries: readonly LandReasoningEntry[]): Map<string, string> {
   const out = new Map<string, string>()
-  if (!parse) return out
-  for (const e of explainedParagraphs(parse, landDraftUnits(lawPages ?? pages), title, (lawPages ?? pages).join('\n'))) {
+  for (const e of entries) {
     for (const p of e.paras) out.set(p.toLowerCase(), [out.get(p.toLowerCase()), ...e.text].filter(Boolean).join(' '))
   }
   return out
+}
+
+/** An entry of a text's Erläuterungen as the Begründungsvergleich reads it: the page's entry and its Artikel („I", „2"), null under none. */
+export type LandReasoningEntry = LandExplanationsResponse['particular'][number] & { article: string | null }
+
+/** What the Begründungsvergleich reads: both texts' entries and the comparison beside them — or why it cannot. */
+export type LandReasoningInputs =
+  | { unavailable: string }
+  | { sources: LandTextDocument[]; before: LandReasoningEntry[]; after: LandReasoningEntry[]; comparison: LandLawDiffResponse }
+
+/** How the PDFs and the comparison are had. */
+export interface LandReasoningReads { pagesOf: PagesReader; comparison: () => Promise<LandLawDiffResponse> }
+
+/**
+ * Everything `compareLandReasoning` reads, read as it reads it — exported
+ * for the census of the Land's Begründungen (`scripts/corpus/landBegruendung.ts`),
+ * which counts the entries of both texts beside what the comparison made
+ * of them.
+ */
+export async function readLandReasoning(land: LandCode, detail: LandDraftDetail, read: LandReasoningReads): Promise<LandReasoningInputs> {
+  if (!detail.comparisons.some(([a, b]) => a === 'entwurf' && b === 'rv')) return { unavailable: 'Zu diesem Entwurf gibt es keine Regierungsvorlage.' }
+  const sources = textSources(land, detail)
+  const draftUrl = sources.entwurf?.document.url
+  const rvUrl = sources.rv?.document.url
+  if (!draftUrl || !rvUrl) return { unavailable: gapDe('unreadable', 'Einen der beiden Texte fand der Monitor unter den Dokumenten des Landes nicht.') }
+  // Their own documents, where the Land files them so: the draft's „Erläuterungen", the Vorlage's „Regierungsvorlage, Erläuterungen".
+  const docs = detail.draft.documents
+  const urlOf = (doc: { url: string } | null | undefined) => (doc ? safeExternalUrl(doc.url) : null)
+  const [before, after, comparison] = await Promise.all([
+    reasonsOf(draftUrl, urlOf(draftExplanationsDocument(docs)), detail.draft.title, read.pagesOf),
+    reasonsOf(rvUrl, urlOf(docs.find((d) => /^Regierungsvorlage, Erläuterungen$/.test(d.title))), detail.draft.title, read.pagesOf),
+    read.comparison(),
+  ])
+  // What the Land filed as the draft and evidently is none: said as the comparison says it (`notADraft`).
+  if (comparison.unavailableReason === NOT_A_DRAFT) return { unavailable: NOT_A_DRAFT }
+  return { sources: [sources.entwurf!.document, sources.rv!.document], before, after, comparison }
 }
 
 /**
@@ -51,29 +95,18 @@ export async function compareLandReasoning(
   land: LandCode,
   number: string,
   detail: LandDraftDetail,
-  read: { pagesOf: PagesReader; comparison: () => Promise<LandLawDiffResponse> } = { pagesOf: cachedPdfPages, comparison: () => cachedLandComparison(land, number, 'entwurf', 'rv', detail) },
+  read: LandReasoningReads = { pagesOf: cachedPdfPages, comparison: () => cachedLandComparison(land, number, 'entwurf', 'rv', detail) },
 ): Promise<LandReasoningResponse> {
-  if (!detail.comparisons.some(([a, b]) => a === 'entwurf' && b === 'rv')) return unavailable('Zu diesem Entwurf gibt es keine Regierungsvorlage.')
-  const sources = textSources(land, detail)
-  const draftUrl = sources.entwurf?.document.url
-  const rvUrl = sources.rv?.document.url
-  if (!draftUrl || !rvUrl) return unavailable(gapDe('unreadable', 'Einen der beiden Texte fand der Monitor unter den Dokumenten des Landes nicht.'))
-  // Their own documents, where the Land files them so: the draft's „Erläuterungen", the Vorlage's „Regierungsvorlage, Erläuterungen".
-  const docs = detail.draft.documents
-  const urlOf = (doc: { url: string } | null | undefined) => (doc ? safeExternalUrl(doc.url) : null)
-  const [before, after, comparison] = await Promise.all([
-    reasonsByParagraph(draftUrl, urlOf(draftExplanationsDocument(docs)), detail.draft.title, read.pagesOf),
-    reasonsByParagraph(rvUrl, urlOf(docs.find((d) => /^Regierungsvorlage, Erläuterungen$/.test(d.title))), detail.draft.title, read.pagesOf),
-    read.comparison(),
-  ])
-  // What the Land filed as the draft and evidently is none: said as the comparison says it (`notADraft`).
-  if (comparison.unavailableReason === NOT_A_DRAFT) return unavailable(NOT_A_DRAFT)
+  const inputs = await readLandReasoning(land, detail, read)
+  if ('unavailable' in inputs) return unavailable(inputs.unavailable)
+  const before = reasonsByParagraph(inputs.before)
+  const after = reasonsByParagraph(inputs.after)
   if (!before.size || !after.size) return unavailable(gapDe('unreadable', 'In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen.'))
-  const result = compareReasoningByParagraph(comparison.units, before, after)
+  const result = compareReasoningByParagraph(inputs.comparison.units, before, after)
   return {
     available: true,
     unavailableReason: null,
-    sources: [sources.entwurf!.document, sources.rv!.document],
+    sources: inputs.sources,
     units: result.units,
     entries: result.entries,
     stats: result.stats,
