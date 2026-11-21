@@ -55,6 +55,16 @@ describe('floorOf', () => {
     expect(floor.status.get('Lücke')).toBe('nicht gehalten')
     expect(floor.status.get('E')).toBe('gehalten')
   })
+
+  it('says „nicht anwendbar" of a class that cannot occur on the path and found no site, and holds it once it finds one', () => {
+    const why = 'eine Zelle hält eine Einheit'
+    const none = floorOf([{ key: 'Lücke', tried: 0, caught: 0, notApplicable: why }, { key: 'Fehlt', tried: 0, caught: 0 }], 95)
+    expect(none).toMatchObject({ passed: true, unheld: ['Fehlt'], notApplicable: ['Lücke'] })
+    expect(none.status.get('Lücke')).toBe('nicht anwendbar')
+    // A site refutes the reason: the class is held like any other.
+    const found = floorOf([{ key: 'Lücke', tried: 3, caught: 3, notApplicable: why }], 95)
+    expect(found).toMatchObject({ unheld: ['Lücke'], notApplicable: [] })
+  })
 })
 
 describe('landListWindows — what a cached Länder list held, per Land (21.11.2026)', () => {

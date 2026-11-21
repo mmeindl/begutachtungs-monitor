@@ -357,6 +357,7 @@ import { corpusReach, floorOf, harnessStamp, type FloorStatus } from '../lib/har
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
 import { donorSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
+import { chainedAbsaetze } from '../lib/faultSites'
 
 // The Begut list is fetched afresh; `--liste-aus-cache` replays the cached one on purpose (`lib/harnessCache.ts`).
 const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
@@ -925,9 +926,9 @@ function structuralFault(node: LawNode, rows: readonly ComparisonRow[], kind: 'R
     }
     return null
   }
-  const chained = printedAbsaetze(rows, true)
-  const changed = printedAbsaetze(rows.filter((r) => !r.elided), false)
-  const drop = abs.find((c) => chained.has(c.id) && !changed.has(c.id) && c !== abs[0] && c !== abs[abs.length - 1])
+  const { chained, withText } = chainedAbsaetze(rows)
+  // One of two Absätze of one number (RIS's own, `results.dupAbs`) is no site: the other one still stands.
+  const drop = abs.find((c) => chained.has(c.id) && !withText.has(c.id) && c !== abs[0] && c !== abs[abs.length - 1] && abs.filter((x) => x.id === c.id).length === 1)
   return drop ? { ...node, children: node.children.filter((c) => c !== drop) } : null
 }
 
@@ -1573,7 +1574,12 @@ async function injectIntoResults(
         const judged = judgedVerdict(id, faultedBefore, plainText(faulted), paraRows, absatzSequence(faulted), beforeNode ? (absatzSequence(dropped ? withoutAbsatz(beforeNode, dropped) : beforeNode) ?? null) : null)
         if (judged.verdict !== 'bestätigt') into.caught++
         if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
-        else if (judged.verdict === 'bestätigt') into.misses.push(`${cite} ${unitLabel(id)} — Absätze ${(absatzSequence(faulted) ?? []).join(', ')}`)
+        else if (judged.verdict === 'bestätigt') {
+          // Where the annex names the dropped Absatz, so a miss can be read: the reach of check 5 is where a marker can stand.
+          const cell = dropped === null ? undefined : paraRows.map((r) => normalizeText(r.proposed)).find((p) => p.includes(`(${dropped})`))
+          const at = cell?.indexOf(`(${dropped})`) ?? -1
+          into.misses.push(`${cite} ${unitLabel(id)} — Absätze ${(absatzSequence(faulted) ?? []).join(', ')}${dropped ? ` — ohne (${dropped}), Beilage: „…${cell ? cell.slice(Math.max(0, at - 50), at + 20) : '?'}…"` : ''}`)
+        }
       }
       if (gaps.length > 0 && beforeNode && standingUnits) {
         const gap = gaps[Math.floor(gaps.length / 2)]!
@@ -1863,6 +1869,18 @@ const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, orac
  * lets through is a § shown that is not the draft.
  */
 const flooredClasses = [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, ...flooredWordClasses, oracleFaults.Payload]
+/**
+ * A floored class that cannot occur on one path by construction, with why
+ * (21.11.2026): the floor and the record say „nicht anwendbar" there, not
+ * „nicht gehalten" — but only while the run finds no site (`floorOf`).
+ * „Lücke" reads a jump between two unit markers of ONE row
+ * (`silentOmissions`), from a unit or from a cell that opens the § with its
+ * designation; a cell of the table path holds one unit and opens no §.
+ */
+const NOT_ON_PATH: Record<string, { path: 'pdf' | 'table'; why: string }> = {
+  Lücke: { path: 'table', why: 'eine Zelle des Tabellenpfads hält eine Einheit und eröffnet keinen Paragraphen: zwischen zwei Markern einer Zeile lässt sie nichts aus' },
+}
+const notApplicableOf = (key: string): string | undefined => (NOT_ON_PATH[key]?.path === (xmlMode ? 'table' : 'pdf') ? NOT_ON_PATH[key]!.why : undefined)
 
 const docs: any[] = []
 // As many pages as `--limit` asks for; the loop stopped at page 4 whatever the
@@ -2019,12 +2037,13 @@ if (argFlag('misses')) {
  */
 const keyOf = (label: string): string => label.trim().split(/\s+/)[0]!
 const floorArg = argAssigned('mindestens')
-const floor = floorArg === null ? null : floorOf(flooredClasses.map((f) => ({ key: keyOf(f.label), tried: f.tried, caught: f.caught })), Number(floorArg))
+const floor = floorArg === null ? null : floorOf(flooredClasses.map((f) => ({ key: keyOf(f.label), tried: f.tried, caught: f.caught, notApplicable: notApplicableOf(keyOf(f.label)) })), Number(floorArg))
 if (floor) {
   for (const f of flooredClasses) {
     const status = floor.status.get(keyOf(f.label))
     if (status === 'verfehlt') console.log(`  ✗ unter ${floor.min} %: ${f.label.trim()} — ${f.caught}/${f.tried}`)
     if (status === 'nicht gehalten') console.log(`  · nicht gehalten (unter 20 Versuchen): ${f.label.trim()} — ${f.caught}/${f.tried}`)
+    if (status === 'nicht anwendbar') console.log(`  · nicht anwendbar auf diesem Pfad: ${f.label.trim()} — ${notApplicableOf(keyOf(f.label))}`)
   }
   if (floor.passed) console.log(`  ✓ jede Fehlerklasse mit mindestens 20 Versuchen zu mindestens ${floor.min} % gefangen${floor.unheld.length ? `; nicht gehalten: ${floor.unheld.join(', ')}` : ''}`)
 }
@@ -2076,7 +2095,7 @@ if (jsonPath) {
     path: xmlMode ? 'table' : 'pdf',
     window: listWindow,
     drafts,
-    floor: floor ? { min: floor.min, passed: floor.passed, failed: floor.failed, unheld: floor.unheld } : null,
+    floor: floor ? { min: floor.min, passed: floor.passed, failed: floor.failed, unheld: floor.unheld, notApplicable: floor.notApplicable } : null,
     annex: Object.values(faults).map((f) => ({
       key: keyOf(f.label),
       label: f.label.trim(),
@@ -2092,6 +2111,8 @@ if (jsonPath) {
       caught: f.caught,
       floored: floored.has(f),
       ...(floor && floored.has(f) ? { floor: floor.status.get(keyOf(f.label)) } : {}),
+      // Why the class cannot occur on this path, where its floor says „nicht anwendbar".
+      ...(floor?.status.get(keyOf(f.label)) === 'nicht anwendbar' && floored.has(f) ? { notApplicable: notApplicableOf(keyOf(f.label)) } : {}),
     })),
   }
   writeFileSync(jsonPath, `${JSON.stringify(out, null, 1)}\n`)
