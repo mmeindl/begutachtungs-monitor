@@ -44,7 +44,7 @@ import { parseAnnexPdf, type AnnexLayout, type AnnexPage } from '../annex/annexP
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from '../annex/tableCells'
 import { ktnTguReading } from './landTguKaernten'
 import { tirolTguPages, tirolTguReading } from './landTguTirol'
-import { guardTguUnits, notHeld, undrafted } from './landTguGuard'
+import { guardTguUnits, instructedAccount, notHeld, undrafted, unprintedInstructed } from './landTguGuard'
 import type { Gathered } from '../cache/gathered'
 
 /** RIS documents fetched at once while checking the §§ */
@@ -756,7 +756,13 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
   const guard = await withoutUndrafted(land, detail, compared, draftPagesOf, bytesOf)
   if (!guard.complete) complete = false
   const units = guard.units
-  const listed = once([...withheld, ...guard.withheld])
+  /* What the draft's instructions change and the document does not print
+   * where the monitor reads it (21.11.2026, `unprintedInstructed`): named
+   * under a reason of its own, never dropped. Only where the draft was read. */
+  const before = [...withheld, ...guard.withheld]
+  const comparedLaws = [...new Set([...compared.map((u) => u.article), ...before.map((w) => w.law)])]
+  const unprinted = guard.blocks?.length ? unprintedInstructed(instructedAccount(guard.blocks, comparedLaws, [...units.map((u) => ({ law: u.article, id: u.id, fromId: u.fromId })), ...before])) : []
+  const listed = once([...before, ...unprinted])
   if (!units.length) return { value: unavailable(NONE_SHOWN, { fromDocument, toDocument, withheld: listed, ...beside }), complete }
   const s = summarizeDiff(units)
   /* The names the draft prints (26.10.2026). A group stays filed under the
@@ -832,8 +838,8 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
  * no verdict, neither way. The draft's pages come from the read the page
  * already holds (`draftPagesOf`).
  */
-async function withoutUndrafted(land: LandCode, detail: LandDraftDetail, units: LawDiffUnit[], draftPagesOf: PagesReader | undefined, bytesOf: BytesReader): Promise<{ units: LawDiffUnit[]; withheld: LandLawDiffResponse['withheld']; unchecked: NonNullable<LandLawDiffResponse['draftUnchecked']>; complete: boolean }> {
-  if (land === 'ktn') return { units, withheld: [], unchecked: [], complete: true }
+async function withoutUndrafted(land: LandCode, detail: LandDraftDetail, units: LawDiffUnit[], draftPagesOf: PagesReader | undefined, bytesOf: BytesReader): Promise<{ units: LawDiffUnit[]; withheld: LandLawDiffResponse['withheld']; unchecked: NonNullable<LandLawDiffResponse['draftUnchecked']>; complete: boolean; blocks: TextBlock[] | null }> {
+  if (land === 'ktn') return { units, withheld: [], unchecked: [], complete: true, blocks: null }
   let blocks: TextBlock[] | null
   let failed = false
   try {
@@ -854,6 +860,7 @@ async function withoutUndrafted(land: LandCode, detail: LandDraftDetail, units: 
     withheld: units.flatMap((u, i) => (off.has(i) ? [{ law: u.article, id: u.id, ...(u.fromId && u.fromId !== u.id ? { fromId: u.fromId } : {}), reason: off.get(i)! }] : [])),
     unchecked,
     complete: !failed && guard.read,
+    blocks,
   }
 }
 

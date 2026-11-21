@@ -1,5 +1,5 @@
 {
- "at": "2026-11-21T13:58:46.886Z",
+ "at": "2026-11-21T14:13:31.634Z",
  "documents": {
   "ktn-104907-2025-32": {
    "land": "ktn",
@@ -2333,7 +2333,8 @@
    "shown": 8,
    "withheld": [
     "draftDiffers · Salzburger Campingplatzgesetz · §16",
-    "leftCheck · Landesumweltanwaltschafts-Gesetz · §8"
+    "leftCheck · Landesumweltanwaltschafts-Gesetz · §8",
+    "unprinted · Landesumweltanwaltschafts-Gesetz · §12"
    ]
   },
   "sbg-34860": {
@@ -2609,7 +2610,9 @@
     "draftDiffers · Salzburger Landtagswahlordnung 1998 · §98",
     "leftCheck · Salzburger Landtagswahlordnung 1998 · §105",
     "leftCheck · Salzburger Landtagswahlordnung 1998 · §36",
-    "leftCheck · Salzburger Landtagswahlordnung 1998 · §38"
+    "leftCheck · Salzburger Landtagswahlordnung 1998 · §38",
+    "unprinted · Salzburger Landtagswahlordnung 1998 · Anlage 1",
+    "unprinted · Salzburger Landtagswahlordnung 1998 · Anlage 5"
    ]
   },
   "sbg-35631": {

@@ -94,6 +94,13 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     one: 'Was die Textgegenüberstellung bei ihm als neu zeigt, stimmt nicht Wort für Wort mit dem Wortlaut überein, den der Entwurf für ihn schreibt – das kann an den beiden Dokumenten liegen oder daran, wie der Monitor sie liest',
     many: 'Was die Textgegenüberstellung bei ihnen als neu zeigt, stimmt nicht Wort für Wort mit dem Wortlaut überein, den der Entwurf für sie schreibt – das kann an den beiden Dokumenten liegen oder daran, wie der Monitor sie liest',
   },
+  // The draft's instructions name it, the document does not print it where the monitor reads it (21.11.2026, `unprintedInstructed`):
+  // „diese Stelle", since an Anlage stands here as a § does; whose gap it is, the monitor does not know.
+  unprinted: {
+    lead: 'Nicht gezeigt:',
+    one: 'Der Entwurf ändert diese Stelle; in der Textgegenüberstellung fand der Monitor sie nicht – das kann an der Textgegenüberstellung liegen oder daran, wie der Monitor sie liest',
+    many: 'Der Entwurf ändert diese Stellen; in der Textgegenüberstellung fand der Monitor sie nicht – das kann an der Textgegenüberstellung liegen oder daran, wie der Monitor sie liest',
+  },
   // A station pair (19.11.2026, `announcedText.ts`): one side's reader did not find what the instruction announces, so the diff would show it as new or gone.
   announced: {
     lead: 'Nicht gezeigt:',
@@ -174,7 +181,7 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'lawUnmatched', 'uninstructed', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'draftDiffers', 'announced', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
+const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'lawUnmatched', 'uninstructed', 'enactedUnread', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'draftDiffers', 'unprinted', 'announced', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
  * The numbers other §§ of a group move to: „§ 34 → § 33" makes § 33 one

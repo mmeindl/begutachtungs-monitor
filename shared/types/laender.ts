@@ -443,7 +443,11 @@ export interface LandLawDiffResponse {
  *  - `draftDiffers`: what the document shows as new at it is not, word for
  *    word and number for number, the wording the draft quotes for it — a
  *    word of the one is missing in the other, or stands elsewhere
- *    (`laender/landTguStrict.ts`, 20.11.2026). Not Kärnten's.
+ *    (`laender/landTguStrict.ts`, 20.11.2026). Not Kärnten's;
+ *  - `unprinted`: the draft's instructions change it, and the document does
+ *    not print it where the monitor reads it — a § of a law the comparison
+ *    holds, never an anchor (`laender/landTguGuard.ts`,
+ *    `unprintedInstructed`, 21.11.2026). Not Kärnten's.
  * And on a Landesgesetz's page (`landLawChangesService.ts`):
  *  - `uninstructed`: RIS ties its version to the Landesgesetzblatt, no
  *    instruction names it;
@@ -456,7 +460,7 @@ export interface LandLawDiffResponse {
  *    text RIS holds in no single version the monitor reads with certainty
  *    (19.11.2026).
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'notInDraft' | 'draftDiffers' | 'announced'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'notInDraft' | 'draftDiffers' | 'unprinted' | 'announced'
 
 /**
  * Why a § shown was not held word for word against the draft

@@ -119,11 +119,11 @@ import type { LaenderResponse, LandCode, LandDraftDetail, LawDiffUnit } from '..
 import { installFetchCache } from '../lib/harnessCache'
 import { harnessStamp, landListWindows } from '../lib/harnessRecord'
 import { argAssigned, argFlag, argPair } from '../lib/args'
-import { MIN_TRIES, accountFor, anchorOf, accountingFailed, baselineDocument, floorFailed, floorLine, floorRows, landBaselineFindings, landRecord, markTallies, reachByLand, toLandBaseline, unaccountedInstructed, unmarkedFloor, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument, type MarkOutcome } from '../lib/landGuardReport'
+import { MIN_TRIES, accountFor, accountingFailed, baselineDocument, floorFailed, floorLine, floorRows, landBaselineFindings, landRecord, markTallies, reachByLand, toLandBaseline, unmarkedFloor, type Accounting, type Reach, type FaultTally, type LandBaseline, type LandBaselineDocument, type MarkOutcome } from '../lib/landGuardReport'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { compareTgu, sideBySide, tguDocument, tguDraftBlocks } from '../../server/utils/laender/landTguService'
 import { tguPages } from '../../server/utils/laender/landTguPdf'
-import { articleClauses, draftLawKey, guardTguUnits, landDraftBags, notHeld, readableBlocks, undrafted } from '../../server/utils/laender/landTguGuard'
+import { guardTguUnits, instructedAccount, notHeld, undrafted } from '../../server/utils/laender/landTguGuard'
 import { lawInForce, paragraphText } from '../../server/utils/laender/landKons'
 import { comparableWords, cutShort, standsInRis } from '../../server/utils/laender/landTgu'
 import { draftUnits } from '../../server/utils/annex/annexDraft'
@@ -299,48 +299,10 @@ const accountings: AccountingRecord[] = []
 /** How far each document of the population got (`Reach`), and whether every read beneath its answer answered (`Gathered.complete`). */
 const reached: { land: LandCode; reach: Reach; complete: boolean }[] = []
 
-/** The §§ the draft's instructions name, per law, against those the comparison shows or withholds — both by `designationKey`, the laws matched as the guard matches them (`draftLawKey`), the addresses read as the guard reads them (`readableBlocks`). */
+/** The §§ the draft's instructions name against those the comparison shows or withholds: the product's own accounting (`instructedAccount`, which the page reads since 21.11.2026), with each instruction's text for reading. */
 function instructedOf(printed: readonly TextBlock[], laws: readonly (string | null)[], accounted: readonly { law: string | null; id: string; fromId?: string | null }[]): AccountingRecord['instructed'] {
-  const blocks = readableBlocks(printed)
-  const units = draftUnits(blocks)
-  const bags = landDraftBags(blocks)
-  const keys = [...new Set([...bags.byLaw.keys(), ...bags.general.keys()])]
-  const clauses = articleClauses(blocks)
-  const keyOf = new Map(laws.map((law) => [law, draftLawKey(law, keys, clauses)] as const))
-  const designation = (id: string) => designationKey(id.replace(/^§\s*/, '§ '))
-  const unnamed = new Set<string>()
-  const byLaw = new Map<string | null, Set<string>>()
-  for (const a of accounted) {
-    const ids = [a.id, a.fromId].flatMap((x) => (x ? [designation(x)] : [])).filter((x): x is string => !!x)
-    const key = keyOf.get(a.law)
-    if (key === undefined) ids.forEach((x) => unnamed.add(x))
-    else byLaw.set(key, new Set([...(byLaw.get(key) ?? []), ...ids]))
-  }
-  // A law the draft's could not be matched to: its §§ count for every law (lenient — this list is read, not failed).
-  for (const set of byLaw.values()) unnamed.forEach((x) => set.add(x))
-  const named = new Map<string | null, Set<string>>()
-  const instructions = new Map<string, { id: string; text: string }[]>()
-  for (const u of units) {
-    for (const p of u.paras) {
-      const k = designationKey(p)
-      if (!k) continue
-      named.set(u.law, (named.get(u.law) ?? new Set<string>()).add(k))
-      instructions.set(`${u.law}|${k}`, [...(instructions.get(`${u.law}|${k}`) ?? []), { id: u.id, text: u.text }])
-    }
-  }
-  return {
-    named: [...named.values()].reduce((n, s) => n + s.size, 0),
-    missing: unaccountedInstructed(named, byLaw).map((m) => {
-      const by = instructions.get(`${m.law}|${m.para}`) ?? []
-      const anchor = by.length > 0 && by.every((u) => {
-        const a = anchorOf(u.text)
-        return a !== null && designationKey(a) === m.para
-      })
-      return { ...m, instruction: by.map((u) => `[${u.id}] ${u.text.slice(0, 300)}`).join(' | '), anchor }
-    }),
-    unnamedLaws: laws.filter((l) => keyOf.get(l) === undefined),
-    lawsWithout: [...named].filter(([law]) => !byLaw.has(law)).map(([law, paras]) => ({ law, paras: paras.size })),
-  }
+  const account = instructedAccount(printed, laws, accounted)
+  return { ...account, missing: account.missing.map((m) => ({ law: m.law, para: m.para, instruction: m.instructions.map((u) => `[${u.id}] ${u.text.slice(0, 300)}`).join(' | '), anchor: m.anchor })) }
 }
 /** The §§ the rule passes, with what is needed to inject into them. */
 interface Site { record: UnitRecord; unit: LawDiffUnit; blocks: TextBlock[]; all: LawDiffUnit[] }

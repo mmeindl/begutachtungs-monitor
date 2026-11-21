@@ -447,3 +447,132 @@ export function guardTguUnits(units: readonly LawDiffUnit[], printed: readonly T
   })
   return { checks, read: true, wholeDraft, units: bags.units, addressed: bags.addressed, strict, lawKeys }
 }
+
+/**
+ * The §§ the draft's instructions name for a law that the comparison
+ * neither shows nor withholds — both maps keyed by the draft's law key, with
+ * designation keys (`designationKey`). A § opener the reader missed leaves
+ * its § in neither list (`landTgu.ts`, `tguParagraphs`: its lines join the
+ * § before, or a division heading); so does a § the Land's document does
+ * not print. Printed, never failed: which of the two it is is reading work.
+ * A law of the draft the comparison has nothing of is left to the caller,
+ * which counts it apart: the document may not reach that law at all, or
+ * print it under another name.
+ */
+export function unaccountedInstructed(named: ReadonlyMap<string | null, ReadonlySet<string>>, accounted: ReadonlyMap<string | null, ReadonlySet<string>>): { law: string | null; para: string }[] {
+  const out: { law: string | null; para: string }[] = []
+  for (const [law, paras] of named) {
+    const has = accounted.get(law)
+    if (!has) continue
+    for (const para of paras) if (!has.has(para)) out.push({ law, para })
+  }
+  return out
+}
+
+/**
+ * The § an instruction inserts after — „Nach § 48 wird eingefügt", „Nach
+ * § 8a werden folgende §§ 8b bis 8e eingefügt", „Nach § 15 wird folgender
+ * § 16 samt Überschrift angefügt" — which it names and does not change; null
+ * for any other instruction. The draft reader lists such an anchor among
+ * the §§ the instruction may print text for (`DraftUnit.paras`), so the
+ * comparison has no reason to show it: of the 20 §§ instructed and
+ * accounted for by neither list on 20.11.2026, ten were such anchors. The
+ * wording is that of those ten lines.
+ */
+export function anchorOf(instruction: string): string | null {
+  const m = /^\s*Nach\s+(§\s*\d+[a-z]?)\s+(?:wird|werden)\b[^„"“]*?\b(?:eingefügt|angefügt)\b/.exec(instruction)
+  return m ? m[1]!.replace(/^§\s*/, '§ ') : null
+}
+
+/** A § the draft's instructions name that the comparison neither shows nor withholds (`instructedAccount`). */
+export interface InstructedMissing {
+  /** The draft's law key (`DraftUnit.law`). */
+  law: string | null
+  /** Its designation key (`designationKey`): „§ 12", „Anl 1". */
+  para: string
+  /** Every instruction naming it only inserts after it (`anchorOf`): the comparison has no reason to show it. */
+  anchor: boolean
+  instructions: { id: string; text: string }[]
+  /** The law of the comparison the draft's law is, where exactly one is; else null. */
+  printedUnder: string | null
+}
+
+export interface InstructedAccount {
+  /** §§ the draft's instructions name, over its laws. */
+  named: number
+  missing: InstructedMissing[]
+  /** Laws of the comparison that could not be matched to one of the draft's (`draftLawKey`): their §§ count for every law. */
+  unnamedLaws: (string | null)[]
+  /** Laws of the draft the comparison has nothing of, with how many §§ their instructions name. */
+  lawsWithout: { law: string | null; paras: number }[]
+}
+
+/**
+ * The §§ a draft's instructions name, per law, against those the comparison
+ * shows or withholds (21.11.2026) — both by `designationKey`, the laws
+ * matched as the guard matches them (`draftLawKey`), the addresses read as
+ * the guard reads them (`readableBlocks`). Lenient where a law of the
+ * comparison cannot be matched: its §§ count for every law, so that no §
+ * is called missing that may stand under another name. Until 21.11.2026
+ * this was the Land guard harness's accounting alone.
+ */
+export function instructedAccount(printed: readonly TextBlock[], laws: readonly (string | null)[], accounted: readonly { law: string | null; id: string; fromId?: string | null }[]): InstructedAccount {
+  const blocks = readableBlocks(printed)
+  const units = draftUnits(blocks)
+  const bags = landDraftBags(blocks)
+  const keys = [...new Set([...bags.byLaw.keys(), ...bags.general.keys()])]
+  const clauses = articleClauses(blocks)
+  const keyOf = new Map(laws.map((law) => [law, draftLawKey(law, keys, clauses)] as const))
+  const unnamed = new Set<string>()
+  const byLaw = new Map<string | null, Set<string>>()
+  for (const a of accounted) {
+    const ids = [a.id, a.fromId].flatMap((x) => (x ? [designationKey(designationOf(x))] : [])).filter((x): x is string => !!x)
+    const key = keyOf.get(a.law)
+    if (key === undefined) ids.forEach((x) => unnamed.add(x))
+    else byLaw.set(key, new Set([...(byLaw.get(key) ?? []), ...ids]))
+  }
+  for (const set of byLaw.values()) unnamed.forEach((x) => set.add(x))
+  const named = new Map<string | null, Set<string>>()
+  const instructions = new Map<string, { id: string; text: string }[]>()
+  for (const u of units) {
+    for (const p of u.paras) {
+      const k = designationKey(p)
+      if (!k) continue
+      named.set(u.law, (named.get(u.law) ?? new Set<string>()).add(k))
+      instructions.set(`${u.law}|${k}`, [...(instructions.get(`${u.law}|${k}`) ?? []), { id: u.id, text: u.text }])
+    }
+  }
+  return {
+    named: [...named.values()].reduce((n, s) => n + s.size, 0),
+    missing: unaccountedInstructed(named, byLaw).map((m) => {
+      const by = instructions.get(`${m.law}|${m.para}`) ?? []
+      const anchor = by.length > 0 && by.every((u) => {
+        const a = anchorOf(u.text)
+        return a !== null && designationKey(a) === m.para
+      })
+      const under = laws.filter((l) => keyOf.get(l) === m.law)
+      return { ...m, anchor, instructions: by, printedUnder: under.length === 1 ? under[0]! : null }
+    }),
+    unnamedLaws: laws.filter((l) => keyOf.get(l) === undefined),
+    lawsWithout: [...named].filter(([law]) => !byLaw.has(law)).map(([law, paras]) => ({ law, paras: paras.size })),
+  }
+}
+
+/** A designation key as the comparison names a unit: „§ 12" → „§12", „Anl 1" → „Anlage 1", „Art 5" → „Art. 5". */
+const unitIdOf = (key: string): string => key.replace(/^§ /, '§').replace(/^Anl /, 'Anlage ').replace(/^Art /, 'Art. ')
+
+/**
+ * The §§ and Anlagen a draft's instructions change that the Land's
+ * Textgegenüberstellung does not print where the monitor reads it
+ * (21.11.2026): withheld as `unprinted`, so the page names them. Never an
+ * anchor („Nach § 13 wird … eingefügt" names § 13 as a place). Only §§ of a
+ * law the comparison holds: a law it has nothing of may be printed under
+ * another name, and is not called missing. Measured on GP XXVIII: of 1,353
+ * §§ instructed over 67 drafts, 13 stood in neither list, ten of them
+ * anchors; the three listed are Salzburg 34728's § 12 of the
+ * Landesumweltanwaltschafts-Gesetz (printed without its „§ 12" line) and
+ * 35597's Anlagen 1 and 5 (not printed).
+ */
+export function unprintedInstructed(account: InstructedAccount): { law: string | null; id: string; reason: 'unprinted' }[] {
+  return account.missing.filter((m) => !m.anchor).map((m) => ({ law: m.printedUnder, id: unitIdOf(m.para), reason: 'unprinted' as const }))
+}

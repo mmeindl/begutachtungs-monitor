@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { draftUnits } from '../server/utils/annex/annexDraft'
-import { articleClauses, draftLawKey, draftUncheckedReason, guardTguUnits, installedDesignations, notHeld, readableBlocks, refusedAddress, repeatsItsNumber } from '../server/utils/laender/landTguGuard'
+import { articleClauses, draftLawKey, draftUncheckedReason, guardTguUnits, installedDesignations, instructedAccount, notHeld, readableBlocks, refusedAddress, repeatsItsNumber, unprintedInstructed } from '../server/utils/laender/landTguGuard'
 import { STRICT_UNCHECKED } from '../server/utils/laender/landTguStrict'
 
 const unit = (over: Partial<LawDiffUnit>): LawDiffUnit => ({
@@ -261,5 +261,53 @@ describe('two instructions under one number (14.11.2026)', () => {
     const g = guardTguUnits([u74, u79], b)
     expect(g.checks.get(1)?.newWords).toBeGreaterThan(10)
     expect(g.checks.get(1)?.notInDraft).toBe(false)
+  })
+})
+
+// Salzburg 35597, Anlagen 1 and 5; 34728, § 12 (21.11.2026): what the draft changes and the document does not print is named, never an anchor.
+describe('unprintedInstructed — what the draft changes and the comparison neither shows nor withholds', () => {
+  const draft = lawBlocksFromPdfPages([[
+    'Gesetz vom ……, mit dem das Fischereigesetz 2002 geändert wird',
+    'Der Salzburger Landtag hat beschlossen:',
+    'Das Fischereigesetz 2002, LGBl Nr 81/2002, wird geändert wie folgt:',
+    '1. § 5 Abs 2 lautet:',
+    '„(2) Die Landesregierung hat die Fischereiberechtigten über jede Änderung der Schonzeiten rechtzeitig schriftlich zu informieren.“',
+    '2. Nach § 21 wird eingefügt:',
+    '„Maßnahmengebiete',
+    '§ 21a',
+    '(1) Der Landesfischereiverband kann durch Verordnung Teilbereiche von Fischwässern zu Maßnahmengebieten erklären.“',
+    '3. In der Anlage 1 wird das Wort „Bezirk“ durch das Wort „Stimmbezirk“ ersetzt.',
+    '4. Im § 12 wird angefügt:',
+    '„(8) § 8 Abs 1 in der Fassung dieses Gesetzes tritt mit dem auf die Kundmachung folgenden Monatsersten in Kraft.“',
+  ].join('\n')])!
+  const law = 'Fischereigesetz 2002'
+
+  it('lists § 12 and Anlage 1 under the comparison\'s law, and not § 21, which the instruction names only as a place', () => {
+    const account = instructedAccount(draft, [law], [{ law, id: '§5' }, { law, id: '§21a' }])
+    expect(account.missing.map((m) => [m.para, m.anchor])).toEqual(expect.arrayContaining([['§ 21', true], ['Anl 1', false], ['§ 12', false]]))
+    expect(unprintedInstructed(account)).toEqual(expect.arrayContaining([{ law, id: 'Anlage 1', reason: 'unprinted' }, { law, id: '§12', reason: 'unprinted' }]))
+    expect(unprintedInstructed(account)).toHaveLength(2)
+  })
+
+  it('lists nothing a law of the comparison that could not be named may hold, nor a law the comparison has nothing of', () => {
+    // A law of the comparison the draft's could not be matched to: its §§ count for every law.
+    const two = lawBlocksFromPdfPages([[
+      'Gesetz vom ……, mit dem das Fischereigesetz 2002 und das Jagdgesetz 1993 geändert werden',
+      'Der Salzburger Landtag hat beschlossen:',
+      'Artikel I',
+      'Änderung des Fischereigesetzes 2002',
+      'Das Fischereigesetz 2002, LGBl Nr 81/2002, wird geändert wie folgt:',
+      '1. Im § 12 wird angefügt:',
+      '„(8) Dieses Gesetz tritt mit dem auf die Kundmachung folgenden Monatsersten in Kraft.“',
+      'Artikel II',
+      'Änderung des Jagdgesetzes 1993',
+      'Das Jagdgesetz 1993, LGBl Nr 100/1993, wird geändert wie folgt:',
+      '1. Im § 3 wird angefügt:',
+      '„(4) Die Landesregierung hat die Jagdberechtigten zu informieren.“',
+    ].join('\n')])!
+    expect(unprintedInstructed(instructedAccount(two, ['Salzburger Fischereigesetz'], [{ law: 'Salzburger Fischereigesetz', id: '§12' }]))).toEqual([])
+    const account = instructedAccount(two, [law], [{ law, id: '§12' }])
+    expect(account.lawsWithout.map((l) => l.paras)).toEqual([1])
+    expect(unprintedInstructed(account)).toEqual([])
   })
 })

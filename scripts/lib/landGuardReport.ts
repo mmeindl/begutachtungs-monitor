@@ -243,40 +243,13 @@ export function accountingFailed(a: Accounting): boolean {
   return a.both.length > 0 || a.neither.length > 0 || a.unknownShown.length > 0
 }
 
-/**
- * The §§ the draft's instructions name for a law that the comparison
- * neither shows nor withholds — both maps keyed by the draft's law key, with
- * designation keys (`designationKey`). A § opener the reader missed leaves
- * its § in neither list (`landTgu.ts`, `tguParagraphs`: its lines join the
- * § before, or a division heading); so does a § the Land's document does
- * not print. Printed, never failed: which of the two it is is reading work.
- * A law of the draft the comparison has nothing of is left to the caller,
- * which counts it apart: the document may not reach that law at all.
+/*
+ * The §§ a draft instructs that the comparison neither shows nor withholds,
+ * and the anchors among them, are the product's since 21.11.2026: the page
+ * names those of a law the comparison holds (`instructedAccount`,
+ * `landTguGuard.ts`). Re-exported for the harness and its tests.
  */
-export function unaccountedInstructed(named: ReadonlyMap<string | null, ReadonlySet<string>>, accounted: ReadonlyMap<string | null, ReadonlySet<string>>): { law: string | null; para: string }[] {
-  const out: { law: string | null; para: string }[] = []
-  for (const [law, paras] of named) {
-    const has = accounted.get(law)
-    if (!has) continue
-    for (const para of paras) if (!has.has(para)) out.push({ law, para })
-  }
-  return out
-}
-
-/**
- * The § an instruction inserts after — „Nach § 48 wird eingefügt", „Nach
- * § 8a werden folgende §§ 8b bis 8e eingefügt", „Nach § 15 wird folgender
- * § 16 samt Überschrift angefügt" — which it names and does not change; null
- * for any other instruction. The draft reader lists such an anchor among
- * the §§ the instruction may print text for (`DraftUnit.paras`), so the
- * comparison has no reason to show it: of the 20 §§ instructed and
- * accounted for by neither list on 20.11.2026, ten were such anchors. The
- * wording is that of those ten lines.
- */
-export function anchorOf(instruction: string): string | null {
-  const m = /^\s*Nach\s+(§\s*\d+[a-z]?)\s+(?:wird|werden)\b[^„"“]*?\b(?:eingefügt|angefügt)\b/.exec(instruction)
-  return m ? m[1]!.replace(/^§\s*/, '§ ') : null
-}
+export { anchorOf, unaccountedInstructed } from '../../server/utils/laender/landTguGuard'
 
 /** One answer of `compareTgu`, as far as a Land's record reads it. */
 export interface RecordAnswer { available: boolean; units: readonly { change: string }[]; withheld: readonly WithheldItem[] }

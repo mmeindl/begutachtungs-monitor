@@ -57,6 +57,17 @@ describe('withheldNotes — one true sentence per cause (25.10.2026)', () => {
   })
 })
 
+// 21.11.2026: a § or an Anlage the draft changes and the document does not print (Salzburg 35597, Anlagen 1 and 5).
+describe('withheldNotes — what the draft changes and the comparison does not print', () => {
+  it('names it after what the draft rules withhold, in one sentence for a § and an Anlage alike', () => {
+    const notes = withheldNotes([{ law: 'W', id: 'Anlage 5', reason: 'unprinted' }, { law: 'W', id: '§19', reason: 'draftDiffers' }, { law: 'W', id: 'Anlage 1', reason: 'unprinted' }])
+    expect(notes.map((n) => [n.cause, n.ids])).toEqual([['draftDiffers', ['§19']], ['unprinted', ['Anlage 5', 'Anlage 1']]])
+    expect(notes[1]!.lead).toBe('Nicht gezeigt:')
+    expect(notes[1]!.text).toBe('Der Entwurf ändert diese Stellen; in der Textgegenüberstellung fand der Monitor sie nicht – das kann an der Textgegenüberstellung liegen oder daran, wie der Monitor sie liest')
+    expect(withheldNotes([{ law: 'W', id: '§12', reason: 'unprinted' }])[0]!.text).toMatch(/^Der Entwurf ändert diese Stelle;/)
+  })
+})
+
 describe('withheldNotes — the causes of 26.10.2026', () => {
   it('words a division, a gap in the instructions and an annex each in a sentence of its own, in that order', () => {
     const notes = withheldNotes([
