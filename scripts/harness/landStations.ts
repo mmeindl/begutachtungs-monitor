@@ -26,6 +26,13 @@
  * The population is the cached Länder list of GP XXVIII and its drafts
  * (`.cache/eu-laender/server`, written by `corpus:eu-laender`), every pair
  * a draft offers (`LandDraftDetail.comparisons`) but the Textgegenüberstellung.
+ * And the Land laws' pages (21.11.2026): every Landesgesetz of Salzburg's
+ * and Oberösterreich's Landesgesetzblatt index, read as the route reads its
+ * page (`readLandLawPage`, `lawAsDraftDetail`), its first text — Vorlage or
+ * Initiativantrag — against the Landesgesetzblatt; a pair that is a draft's
+ * own documents runs once, under the draft. Counted apart (`lawPages`), held
+ * to the same invariants. Offline, Oberösterreich offers none: the Beilage
+ * page that names its PDF is in no cache.
  * PDFs come from `.cache/eu-laender/docs`, `.harness-cache/land-guard-docs`
  * and this harness's own `.harness-cache/land-stations-docs`; a PDF in none
  * of them is fetched through `landPdfBytes` at one request per second and
@@ -125,6 +132,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { harnessStamp } from '../lib/harnessRecord'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
+import { UpstreamError } from '../../server/utils/upstream/fetch'
 import { landPdfBytes, pagesOfBytes } from '../../server/utils/laender/texts/read'
 import { baselineMoves, landPairChecks, lgblNoneUnchanged, numbersOnly, pairsPerLand, recurringRuns, type PairState } from '../lib/landStationChecks'
 import { residuesOf, type Breach, type Residue } from '../lib/stationChecks'
@@ -146,19 +154,37 @@ if (!outDir) {
 mkdirSync(outDir, { recursive: true })
 // `--cached-only` keeps RIS offline too (21.11.2026): the fetch cache fetches
 // what it does not hold, and a record or XML not on disk would have been
-// asked for. Throwing underneath it, a miss fails its pair as „Fehler".
-if (cachedOnly) globalThis.fetch = (async (input: unknown) => { throw new Error(`nicht im Cache (--cached-only): ${String(input)}`) }) as typeof fetch
+// asked for. Throwing underneath it, a miss fails its pair as „Fehler" —
+// as an error the product's retry loop does not try again, which waited two
+// seconds before each Land page's second try.
+class NotCached extends UpstreamError {
+  readonly retryable = false
+}
+if (cachedOnly) globalThis.fetch = (async (input: unknown) => { throw new NotCached(`nicht im Cache (--cached-only): ${String(input)}`) }) as typeof fetch
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 // The comparison's module defines its Nitro cache at load: the identity
 // stands in for it, so what runs is the comparison itself.
+// Held for the run by its arguments, as Nitro holds it for its TTL: a law's
+// page asks for the Land's register once per law (`readLandLawPage`), and
+// asked anew each time it read the register 452 times (21.11.2026).
 Object.assign(globalThis, {
-  defineCachedFunction: <A extends unknown[], T>(fn: (...a: A) => Promise<T>) => fn,
+  defineCachedFunction: <A extends unknown[], T>(fn: (...a: A) => Promise<T>) => {
+    const held = new Map<string, Promise<T>>()
+    return (...a: A) => {
+      const key = JSON.stringify(a)
+      if (!held.has(key)) held.set(key, fn(...a))
+      return held.get(key)!
+    }
+  },
   DERIVED_CACHE,
   createError: (input: { statusCode?: number; statusMessage?: string }) => Object.assign(new Error(input.statusMessage ?? 'upstream'), input),
 })
 const { compareReadTexts } = await import('../../server/utils/laender/landLawDiffService')
 const { textSources } = await import('../../server/utils/laender/texts/stations')
+const { lawAsDraftDetail, readLandLawPage } = await import('../../server/utils/laender/landLawsService')
+const { fetchLgblIndex } = await import('../../server/utils/laender/lgblIndex')
+const { isLawEntry, lgblParts } = await import('../../server/utils/laender/landLaws')
 
 const sha1 = (s: string) => createHash('sha1').update(s).digest('hex')
 const EU = '.cache/eu-laender'
@@ -175,7 +201,7 @@ const fetched: string[] = []
 const missing: string[] = []
 async function bytesOf(url: string): Promise<Uint8Array> {
   const key = sha1(url)
-  for (const file of [`${EU}/docs/${key}.pdf`, `.harness-cache/land-guard-docs/${key}.pdf`, `.harness-cache/tirol-tgu/docs/${key}.pdf`, `${OWN_DOCS}/${key}.pdf`]) {
+  for (const file of [`${EU}/docs/${key}.pdf`, `.harness-cache/land-guard-docs/${key}.pdf`, `.harness-cache/tirol-tgu/docs/${key}.pdf`, `${OWN_DOCS}/${key}.pdf`, `.cache/laender-ohne-begutachtung/docs/${key}.pdf`]) {
     if (existsSync(file)) return new Uint8Array(readFileSync(file))
   }
   if (cachedOnly) {
@@ -239,6 +265,8 @@ interface ComparisonLine {
   symmetry: string[]
   /** Pages inside either PDF without text (`textlessPages`), which the page says (20.11.2026). */
   droppedPages?: number
+  /** A Land law's page (an Initiativantrag or Vorlage without a draft), not a draft's. */
+  law?: true
 }
 const lines: ComparisonLine[] = []
 /**
@@ -270,22 +298,67 @@ const segmentsOf = (u: LawDiffUnit): string[] =>
       ? [`${u.change === 'inserted' ? '+' : '-'}${(u.change === 'inserted' ? u.toText : u.fromText ?? '')?.slice(0, 160) ?? ''}`]
       : (u.segments ?? []).filter((s) => s.type !== 'equal').map((s) => `${s.type === 'inserted' ? '+' : '-'}${s.text.slice(0, 160)}`)
 
+// --- The Land laws' pages (21.11.2026) -------------------------------------
+// A Landesgesetz's page — an Initiativantrag or a Vorlage that never had a
+// draft — compares its first text with the Landesgesetzblatt through the
+// same readers, and stood in no population. Read as the route reads it
+// (`readLandLawPage`, `lawAsDraftDetail`); only Salzburg and Oberösterreich
+// offer a first text (`firstTextOf`). Its pairs run with the drafts' and
+// under the same invariants, counted apart (`lawPages`).
+const LAW_LANDS: LandCode[] = ['ooe', 'sbg']
+const lawDetails = new Map<string, LandDraftDetail>()
+const lawPages: Record<string, { laws: number; pages: number; firstTextUnread: number; offered: number; failed: number; sameAsDraft: number }> = {}
+/** The documents of every draft pair run, so a law page's pair that is one of them is not run twice. */
+const draftDocs = new Set<string>()
+for (const land of LAW_LANDS.filter((l) => (!onlyLand || l === onlyLand) && !show)) {
+  const count = (lawPages[land] = { laws: 0, pages: 0, firstTextUnread: 0, offered: 0, failed: 0, sameAsDraft: 0 })
+  const index = await fetchLgblIndex(land).catch(() => [])
+  for (const e of index.filter(isLawEntry)) {
+    const parts = lgblParts(e.nr)
+    if (!parts) continue
+    count.laws++
+    const page = await readLandLawPage(land, parts.year, parts.number).catch(() => null)
+    if (!page) {
+      count.failed++
+      continue
+    }
+    count.pages++
+    // A route with an address and no first text: the page that names the PDF was not read (Oberösterreich's Beilage page offline).
+    if (!page.firstText && page.law.route?.url) count.firstTextUnread++
+    if (page.comparisons.some(([a]) => a === 'rv' || a === 'antrag')) {
+      count.offered++
+      lawDetails.set(`${land}-lgbl/${parts.year}/${parts.number}`, lawAsDraftDetail(page))
+    }
+  }
+}
+const lawItems = [...lawDetails.values()].map((d) => ({ id: d.draft.id, land: d.draft.land }))
+
 let done = 0
-for (const item of items) {
+for (const item of [...items, ...lawItems]) {
   const number = item.id.slice(item.id.indexOf('-') + 1)
   const file = `${EU}/server/${sha1(`/api/laender/${item.land}/${encodeURIComponent(number)}`)}.json`
+  const lawDetail = lawDetails.get(item.id)
   done++
-  if (!existsSync(file)) {
+  if (!lawDetail && !existsSync(file)) {
     draftsRun.push({ land: item.land, cached: false, pairs: 0 })
     continue
   }
-  const detail = JSON.parse(readFileSync(file, 'utf8')) as LandDraftDetail
+  const detail = lawDetail ?? JSON.parse(readFileSync(file, 'utf8')) as LandDraftDetail
   const pairs = (detail.comparisons ?? []).filter(([a]) => a !== 'geltend' && a !== 'vorher')
-  draftsRun.push({ land: item.land, cached: true, pairs: pairs.length })
+  if (!lawDetail) draftsRun.push({ land: item.land, cached: true, pairs: pairs.length })
   if (!pairs.length) continue
   const sources = textSources(item.land, detail, pagesOf)
   for (const [from, to] of pairs as [LandTextStation, LandTextStation][]) {
-    const line: ComparisonLine = { land: item.land, draft: item.id, pair: `${from}→${to}`, state: 'verglichen', reason: null, from: null, to: null, stats: null, units: [], withheld: [], unread: [], breaches: [], symmetry: [] }
+    // A law with a draft has its page too, and the page's pair is often the
+    // draft's own documents: compared once, under the draft (the run-across
+    // check would count one comparison as two drafts).
+    const docs = `${sources[from]?.document.url ?? ''}|${sources[to]?.document.label ?? ''}`
+    if (lawDetail && draftDocs.has(docs)) {
+      lawPages[item.land]!.sameAsDraft++
+      continue
+    }
+    if (!lawDetail) draftDocs.add(docs)
+    const line: ComparisonLine = { land: item.land, draft: item.id, pair: `${from}→${to}`, state: 'verglichen', reason: null, from: null, to: null, stats: null, units: [], withheld: [], unread: [], breaches: [], symmetry: [], ...(lawDetail ? { law: true as const } : {}) }
     lines.push(line)
     const a = sources[from]
     const b = sources[to]
@@ -346,7 +419,7 @@ for (const item of items) {
     }
   }
   // The null comparison: nothing may change between the committee's text and the Kundmachung, unless the Landtag changed it.
-  if (sources.ausschuss && sources.lgbl) {
+  if (!lawDetail && sources.ausschuss && sources.lgbl) {
     const line = { land: item.land, draft: item.id, pair: 'ausschuss→lgbl', state: 'verglichen' as PairState, reason: null as string | null, from: null, to: null, stats: null as LandLawDiffResponse['stats'] | null, units: [], withheld: [], unread: [], breaches: [], symmetry: [], residues: [] as Residue[] }
     nullLines.push(line)
     try {
@@ -363,7 +436,7 @@ for (const item of items) {
       line.reason = String(err).slice(0, 200)
     }
   }
-  process.stderr.write(`\r${done}/${items.length} ${item.id}            `)
+  process.stderr.write(`\r${done}/${items.length + lawItems.length} ${item.id}            `)
 }
 process.stderr.write('\n')
 
@@ -401,14 +474,17 @@ for (const { unit, from, to, where } of laterUnits.values()) {
 // --- Output --------------------------------------------------------------
 writeFileSync(join(outDir, 'comparisons.jsonl'), lines.map((l) => JSON.stringify(l)).join('\n') + '\n')
 const out: string[] = []
+/* The drafts' pairs, which /genauigkeit counts, and the law pages' apart. */
+const draftLines = lines.filter((l) => !l.law)
+const lawLines = lines.filter((l) => l.law)
 out.push(`# Länder-Stationen: Vergleiche und Invarianten — ${new Date().toISOString().slice(0, 16)}`)
 out.push('')
-out.push(`Population: ${items.length} Entwürfe (GP XXVIII), ${lines.length} Stationspaare; PDFs geholt: ${fetched.length}, fehlend: ${missing.length}`)
+out.push(`Population: ${items.length} Entwürfe (GP XXVIII), ${draftLines.length} Stationspaare; ${lawItems.length} Seiten von Landesgesetzen, ${lawLines.length} Paare; PDFs geholt: ${fetched.length}, fehlend: ${missing.length}`)
 out.push('')
 out.push('| Paar | angeboten | verglichen | nicht verfügbar | fehlt | Fehler | Einheiten | geändert | neu | entfallen |')
 out.push('|---|---|---|---|---|---|---|---|---|---|')
 const byPair = new Map<string, ComparisonLine[]>()
-for (const l of lines) byPair.set(l.pair, [...(byPair.get(l.pair) ?? []), l])
+for (const l of lines) byPair.set(`${l.law ? 'Gesetz: ' : ''}${l.pair}`, [...(byPair.get(`${l.law ? 'Gesetz: ' : ''}${l.pair}`) ?? []), l])
 for (const [pair, ls] of [...byPair].sort()) {
   const ok = ls.filter((l) => l.state === 'verglichen')
   const sum = (k: keyof LandLawDiffResponse['stats']) => ok.reduce((n, l) => n + (l.stats?.[k] ?? 0), 0)
@@ -417,8 +493,15 @@ for (const [pair, ls] of [...byPair].sort()) {
 out.push('')
 out.push('| Land | Entwürfe | Detail nicht im Cache | mit Paaren | Paare angefragt | verglichen | nicht verfügbar | fehlt (PDF nicht im Cache) | Fehler |')
 out.push('|---|---|---|---|---|---|---|---|---|')
-const perLand = pairsPerLand(draftsRun, lines)
+const perLand = pairsPerLand(draftsRun, draftLines)
 for (const [land, c] of Object.entries(perLand)) out.push(`| ${land} | ${c.drafts} | ${c.uncached} | ${c.withPairs} | ${c.requested} | ${c.compared} | ${c.unavailable} | ${c.missing} | ${c.errored} |`)
+out.push('')
+out.push('| Land: Seiten von Landesgesetzen | Gesetze im Index | Seite gelesen | erster Text nicht gelesen (Seite mit dem PDF nicht im Cache) | mit Paar | dasselbe Paar wie ein Entwurf | verglichen | nicht verfügbar | fehlt (PDF oder RIS nicht im Cache) | Fehler |')
+out.push('|---|---|---|---|---|---|---|---|---|---|')
+for (const [land, c] of Object.entries(lawPages)) {
+  const ls = lawLines.filter((l) => l.land === land)
+  out.push(`| ${land} | ${c.laws} | ${c.pages} | ${c.firstTextUnread} | ${c.offered} | ${c.sameAsDraft} | ${ls.filter((l) => l.state === 'verglichen').length} | ${ls.filter((l) => l.state === 'nicht verfügbar').length} | ${ls.filter((l) => l.state === 'fehlt').length} | ${ls.filter((l) => l.state === 'Fehler').length} |`)
+}
 out.push('')
 out.push('## Invarianten')
 out.push('')
@@ -440,14 +523,14 @@ for (const r of recurring) out.push(`  - ${r.land} ${r.side === 'inserted' ? '+'
 out.push('')
 for (const { l, u } of hits) out.push(`- [${u.violations.join(', ')}] ${l.draft} ${l.pair} ${u.article ?? '-'} ${u.fromId && u.fromId !== u.id ? `${u.fromId} → ` : ''}${u.id} ${u.change}${u.editorial ? ' (redaktionell)' : ''} ${u.segments.slice(0, 4).join(' | ').slice(0, 300)}`)
 for (const k of stale) out.push(`- [angenommen, tritt nicht mehr auf] ${k} — ${acceptedRecord.accepted[k]}`)
-const withheldUnits = lines.flatMap((l) => l.withheld.filter((w) => w.endsWith('|announced')))
-const unreadUnits = lines.flatMap((l) => l.unread)
+const withheldUnits = draftLines.flatMap((l) => l.withheld.filter((w) => w.endsWith('|announced')))
+const unreadUnits = draftLines.flatMap((l) => l.unread)
 out.push('')
 const droppedLines = lines.filter((l) => l.droppedPages)
 out.push(`Seiten ohne Text im Dokument (textlessPages): ${droppedLines.reduce((n, l) => n + l.droppedPages!, 0)} in ${droppedLines.length} Vergleichen${droppedLines.length ? ` — ${droppedLines.map((l) => `${l.draft} ${l.pair}`).join(', ')}` : ''}`)
 const noneUnchanged = lgblNoneUnchanged(lines)
 out.push(`Gegen das Landesgesetzblatt ohne unveränderte Einheit (lgblNoneUnchanged, von Hand lesen): ${noneUnchanged.length} von ${lines.filter((l) => l.pair.endsWith('→lgbl') && l.state === 'verglichen').length} Vergleichen${noneUnchanged.length ? ` — ${noneUnchanged.map((l) => `${l.draft} ${l.pair}`).join(', ')}` : ''}`)
-out.push(`Angekündigter Text nicht gelesen (announcedText.ts): ${withheldUnits.length} Anweisungen zurückgehalten in ${lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length} Vergleichen, ${unreadUnits.length} gezeigt und als „nicht lesbar" genannt in ${lines.filter((l) => l.unread.length).length} Vergleichen`)
+out.push(`Angekündigter Text nicht gelesen (announcedText.ts): ${withheldUnits.length} Anweisungen zurückgehalten in ${draftLines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length} Vergleichen, ${unreadUnits.length} gezeigt und als „nicht lesbar" genannt in ${draftLines.filter((l) => l.unread.length).length} Vergleichen; auf Seiten von Landesgesetzen ${lawLines.flatMap((l) => l.withheld.filter((w) => w.endsWith('|announced'))).length} zurückgehalten, ${lawLines.flatMap((l) => l.unread).length} als „nicht lesbar" genannt`)
 const breachLines = lines.flatMap((l) => l.breaches.map((b) => ({ l, b })))
 const symmetryLines = lines.flatMap((l) => l.symmetry.map((b) => ({ l, b })))
 const kinds = (xs: { b: string }[]) => [...xs.reduce((m, x) => m.set(x.b.split(' | ')[0]!, (m.get(x.b.split(' | ')[0]!) ?? 0) + 1), new Map<string, number>())].map(([k, n]) => `${k} ${n}`).join(', ') || '0'
@@ -546,24 +629,36 @@ writeFileSync(join(outDir, 'summary.md'), out.join('\n'))
 writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   // `at` and `commit`: the builder of /genauigkeit takes only records of one clean commit (`scripts/lib/genauigkeitRound.ts`).
   ...harnessStamp(),
-  pairs: lines.length,
-  compared: lines.filter((l) => l.state === 'verglichen').length,
+  pairs: draftLines.length,
+  compared: draftLines.filter((l) => l.state === 'verglichen').length,
   lands: perLand,
-  units: lines.reduce((n, l) => n + (l.stats?.total ?? 0), 0),
+  units: draftLines.reduce((n, l) => n + (l.stats?.total ?? 0), 0),
   hits: hits.length,
   accepted: accepted.length,
   breaches: breachLines.length,
   symmetry: symmetryLines.length,
   stale: stale.length,
   withheld: withheldUnits.length,
-  withheldPairs: lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length,
+  withheldPairs: draftLines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length,
   unread: unreadUnits.length,
-  unreadPairs: lines.filter((l) => l.unread.length).length,
+  unreadPairs: draftLines.filter((l) => l.unread.length).length,
   // Per class: tried and how the comparison answered, as `station.ts --mutationen` writes it; the misses to read.
   mutations: { ...faults, withheld: faultsWithheld },
-  // The committee's text against the Landesgesetzblatt: pairs, those compared, units held against each other, residues (not unchanged) and those not editorial; against the baseline.
   // Kärnten's date-and-title join held against the texts: finds, clauses alike / other / none to compare, finds listed to read.
   ktnKundmachung: { finds: ktnFinds.length, same: ktnFinds.filter((f) => f.chain === 'same').length, differ: ktnFinds.filter((f) => f.chain === 'differ').length, none: ktnFinds.filter((f) => f.chain === 'none').length, toRead: ktnToRead.length },
+  // The committee's text against the Landesgesetzblatt: pairs, those compared, units held against each other, residues (not unchanged) and those not editorial; against the baseline.
+  // The Land laws' pages, apart from the drafts' pairs (hits, breaches and faults above count both): per Land the laws, pages read, first texts not read, pages with a pair; the pairs and how they ended.
+  lawPages: {
+    lands: lawPages,
+    pairs: lawLines.length,
+    compared: lawLines.filter((l) => l.state === 'verglichen').length,
+    unavailable: lawLines.filter((l) => l.state === 'nicht verfügbar').length,
+    missing: lawLines.filter((l) => l.state === 'fehlt').length,
+    errored: lawLines.filter((l) => l.state === 'Fehler').length,
+    units: lawLines.reduce((n, l) => n + (l.stats?.total ?? 0), 0),
+    withheld: lawLines.flatMap((l) => l.withheld.filter((w) => w.endsWith('|announced'))).length,
+    unread: lawLines.flatMap((l) => l.unread).length,
+  },
   nullComparison: { pairs: nullLines.length, compared: nullCompared.length, units: nullUnits, residues: nullResidues.length, substantive: nullResidues.filter((r) => !r.editorial).length, came: nullCame.length, went: nullWent.length },
 }, null, 1)}\n`)
 console.log(out.join('\n'))
