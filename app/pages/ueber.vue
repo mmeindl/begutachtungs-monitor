@@ -186,10 +186,11 @@ const contact = useContact()
         dort, wie es entsteht. Eine fehlende
         Zuordnung heißt, dass der Monitor keine gefunden hat, nicht, dass es
         keine gibt. Wo etwas fehlt, steht dabei, warum. Wie oft die
-        Ableitungen stimmen, ist gemessen: die Textvergleiche unter
+        Ableitungen stimmen, ist für die meisten gemessen: die Textvergleiche unter
         <NuxtLink to="/genauigkeit" class="link-inline">Genauigkeit</NuxtLink>,
         die Zuordnungen unter
         <NuxtLink to="/datenlage#gemessen" class="link-inline">Datenlage</NuxtLink>.
+        Was nicht gemessen ist, steht ebenfalls unter Genauigkeit.
       </p>
       <p>
         Der Monitor ist
