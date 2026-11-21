@@ -78,6 +78,20 @@
  * „(5)", „Bemessung"; three — a quote and a payload may share a place, so
  * the place is not asked); and a payload's word found again further down the
  * § by the alignment, which keeps order but not adjacency (one).
+ *
+ * ITS READERS (21.11.2026): the 71 §§ not held were read one by one, and
+ * most had a reader fault behind them — an instruction the PDF wraps before
+ * a cited § or a date, a „§" printed as „ß", an address the Bund's grammar
+ * refuses, a place quoted before the verb, „§ 24 b", a count from „0.", a law
+ * named with a comma or a declined adjective, three forms of quotes. Since
+ * then 1,073 held, 44 not held, 48 differing — two of them the Land's two
+ * documents differing (Salzburg 32075 § 24b: „(xx)" against „(14)"; 31782
+ * § 30: „und" against „oder"). The 44: ranges of designations and wordings
+ * left to grammar (refused on purpose), §§ too long for the word difference,
+ * payloads printed for several §§ unnamed, laws the comparison calls by a
+ * new title, and instructions the draft numbers twice, not at all, or out of
+ * sequence. The floor over the §§ it holds is unchanged: every changed
+ * number and swapped word, 329 of 336 dropped sentences (the same seven).
  */
 import type { LawDiffUnit } from '../../../shared/types'
 import { segmentUnits, type LawUnit, type TextBlock } from '../lawtext/lawUnits'
