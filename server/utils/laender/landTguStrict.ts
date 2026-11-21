@@ -708,18 +708,19 @@ export function shownTokens(unit: LawDiffUnit): Marked[] | null {
  */
 function respace(shown: Marked[], wordings: readonly Wording[]): void {
   const vocabulary = (lists: readonly (readonly string[])[]) => new Set(lists.flat())
-  const join = <T>(tokens: T[], word: (t: T) => string, merged: (a: T, b: T) => T, other: ReadonlySet<string>): void => {
+  const join = <T>(tokens: T[], word: (t: T) => string, merged: (a: T, b: T) => T, other: ReadonlySet<string>, apart: (t: T) => boolean = () => false): void => {
     for (let i = 0; i + 1 < tokens.length; i++) {
       const a = word(tokens[i]!)
       const b = word(tokens[i + 1]!)
-      if (other.has(a + b) && !(other.has(a) && other.has(b))) {
+      if (other.has(a + b) && !(other.has(a) && other.has(b)) && !apart(tokens[i]!) && !apart(tokens[i + 1]!)) {
         tokens.splice(i, 2, merged(tokens[i]!, tokens[i + 1]!))
         i = Math.max(-1, i - 2)
       }
     }
   }
   const draftWords = vocabulary(wordings.map((w) => w.tokens))
-  join(shown, (t) => t.word, (a, b) => ({ word: a.word + b.word, marked: a.marked || b.marked }), draftWords)
+  // A designation is no half of a word: „§ 3. (1)" is not „31" (Leitungsrechte-DÜV, § 3).
+  join(shown, (t) => t.word, (a, b) => ({ word: a.word + b.word, marked: a.marked || b.marked }), draftWords, (t) => t.designation === true)
   const shownWords = new Set(shown.map((t) => t.word))
   for (const w of wordings) {
     const pairs = w.tokens.map((word, i) => ({ word, optional: w.optional[i]! }))
@@ -829,9 +830,13 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     // accounts only where it stands whole (Oö. 2025-16103, § 38: „jeweils",
     // one place cut short); and a single word only from what an instruction
     // quotes or prints — in its line it is an address, „Z 8" (Tirol 728/2026).
+    // Never a single figure of the text: one a payload prints somewhere is not
+    // the draft's at any place („binnen [5] Wochen" where the payload says
+    // „Abs. 5"; 21.11.2026). A designation („(1)", „3.") still may be.
     const stretch = words.slice(i, j)
     const partOfQuote = quoted.some((q) => q.length > stretch.length && contains(q, stretch))
-    if (!accounted.slice(i, j).every(Boolean) && !partOfQuote && (stretch.length > 1 ? own : found.flatMap((f) => f.written)).some((t) => contains(t, stretch))) for (let k = i; k < j; k++) accounted[k] = true
+    const figure = stretch.length === 1 && /^\d+$/.test(stretch[0]!) && !shown[i]!.designation
+    if (!accounted.slice(i, j).every(Boolean) && !partOfQuote && !figure && (stretch.length > 1 ? own : found.flatMap((f) => f.written)).some((t) => contains(t, stretch))) for (let k = i; k < j; k++) accounted[k] = true
     if (!accounted.slice(i, j).every(Boolean)) {
       for (let shift = -(j - i); shift <= j - i; shift++) {
         if (shift === 0 || i + shift < 0 || j + shift > shown.length) continue
