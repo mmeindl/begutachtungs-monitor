@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheld, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
 import { annexUnitId, articleUnitLaws } from '#shared/utils/explanationKey'
@@ -9,6 +10,7 @@ import {
   lesefassungLine,
   lesefassungNotRunText,
   mergesIntoNotice,
+  NO_PART_IN_ANNEX_DE,
   outcomeIndex,
   unitList,
   unplacedText,
@@ -332,5 +334,15 @@ describe('witnessNote — a § shown on the draft\'s own text (20.11.2026)', () 
     const two = witnessNote(shown([{ annex: 'a', draft: 'b' }, { annex: 'c', draft: 'd' }]))!
     expect(two.lead).toMatch(/^An zwei Stellen stimmt /)
     expect(two.places).toHaveLength(2)
+  })
+})
+
+describe('a law with no group in the annex (21.11.2026)', () => {
+  // „fand der Monitor", as `unplacedText` hedges: the part may be there under a designation the monitor reads differently.
+  it('is said as the monitor’s finding, never as what the annex does not contain', () => {
+    expect(NO_PART_IN_ANNEX_DE).toBe('In der Gegenüberstellung des Ministeriums fand der Monitor zu diesem Gesetz keinen Teil.')
+    const end = readFileSync(new URL('../app/components/compare/AnnexLawEnd.vue', import.meta.url), 'utf8')
+    expect(end).toContain('NO_PART_IN_ANNEX_DE')
+    expect(end).not.toMatch(/enthält die Gegenüberstellung/)
   })
 })

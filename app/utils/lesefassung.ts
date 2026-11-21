@@ -294,6 +294,14 @@ export function unplacedText(ids: readonly string[], unit: UnitKind = 'paragraph
 }
 
 /**
+ * Under the name of a law the annex has no group for (`AnnexLawEnd`). Hedged
+ * as `unplacedText` is (21.11.2026): until then it said the annex „enthält
+ * … keinen Teil", and where two groups of the annex stay unclaimed
+ * (`annexGroups.ts`) the law's §§ may well stand in one of them.
+ */
+export const NO_PART_IN_ANNEX_DE = 'In der Gegenüberstellung des Ministeriums fand der Monitor zu diesem Gesetz keinen Teil.'
+
+/**
  * Under a law's name where the annex's units could not be told apart by law
  * (`boundaryNote`): the law may well be in it. `explained`: the ministry's
  * reasoning on it stands below, and the second sentence says why here.

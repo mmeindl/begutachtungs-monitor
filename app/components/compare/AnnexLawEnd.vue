@@ -14,7 +14,7 @@
  * from the server.
  */
 import type { ConsolidatedParagraph } from '#shared/types'
-import { laterAmendmentLine, undividedText, unitList, unplacedText, type LawEnd } from '~/utils/lesefassung'
+import { NO_PART_IN_ANNEX_DE, laterAmendmentLine, undividedText, unitList, unplacedText, type LawEnd } from '~/utils/lesefassung'
 
 const props = defineProps<{
   end: LawEnd
@@ -59,7 +59,7 @@ const explained = computed(() => unitList([...new Set(props.end.explanations.map
         {{ undividedText(end.explanations.length > 0, end.unit) }}
       </p>
       <p v-else class="text-sm text-ink-secondary">
-        Zu diesem Gesetz enthält die Gegenüberstellung des Ministeriums keinen Teil.
+        {{ NO_PART_IN_ANNEX_DE }}
       </p>
     </template>
     <p v-if="withheldIds.length" class="text-sm text-ink-secondary">{{ unplacedText(withheldIds, end.unit) }}</p>
