@@ -49,7 +49,7 @@ import type { TextBlock } from '../lawtext/lawUnits'
 import type { ComparisonRow } from '../annex/comparisonRows'
 import { designationKey } from '../annex/annexText'
 import { draftBags, draftReference, draftWordBag, rightColumnCheck, type DraftBags, type RightColumnCheck, type WordBag } from '../annex/rightColumn'
-import { draftUnits } from '../annex/annexDraft'
+import { draftUnits, type DraftUnit } from '../annex/annexDraft'
 import { bareLawName } from './landTgu'
 import { STRICT_UNCHECKED, draftWording, strictCheck, type LawWording, type StrictCheck } from './landTguStrict'
 
@@ -154,6 +154,30 @@ export function installedDesignations(text: string): string[] {
     out.add(`§ ${m[2]}`)
   }
   return [...out]
+}
+
+/** The § a line opens with as its address: „Im § 41 wird …", „In § 88 Abs. 3a wird …", „§ 55 Abs 1 …" — never an anchor („Nach § 13"). */
+const LEADING_ADDRESS_RE = /^\s*(?:(?:Im|In|Dem)\s+)?§\s*(\d+[a-z]*)(?![\d\p{L}])/u
+
+/**
+ * The § an instruction opens with, where the draft reader (`draftUnits`)
+ * read none from it (21.11.2026): the Bund's grammar refuses lines the Land
+ * phrases otherwise — „Im § 41 wird im Abs. 1 das Zitat „…“ durch …, im
+ * Abs. 5 … und im Abs. 7 … ersetzt." (Oö. 2026-16123), „In § 88 Abs. 3a wird
+ * der Punkt nach dem letzten Spiegelstrich durch einen Strichpunkt ersetzt
+ * und folgender Spiegelstrich angefügt:" (2026-16122), „Im § 55 Abs 1
+ * werden die beiden ersten Sätze durch folgende Bestimmungen ersetzt:"
+ * (Salzburg 35597) — and the strict check said no instruction names the §.
+ * Only where the line names no other § outside its quotes: one with two
+ * gives its payload to neither, as an instruction no § was read from does.
+ * For the strict check alone: the bag rule keeps such a unit's words where
+ * every § of its law may draw on them (`draftBags`).
+ */
+export function refusedAddress(unit: DraftUnit): string[] {
+  if (unit.paras.length) return []
+  const outside = unit.text.replace(/„[^„“”"]*[“”"]/g, ' ')
+  const lead = LEADING_ADDRESS_RE.exec(outside)
+  return lead && (outside.match(/§/g) ?? []).length === 1 ? [`§ ${lead[1]}`] : []
 }
 
 /**
@@ -350,7 +374,7 @@ export function guardTguUnits(units: readonly LawDiffUnit[], blocks: readonly Te
     }
     shown.set(u.article, into)
   }
-  const wording = draftWording(blocks!, (unit) => (repeatsItsNumber(unit) ? [] : installedDesignations(unit.text)))
+  const wording = draftWording(blocks!, (unit) => (repeatsItsNumber(unit) ? [] : [...installedDesignations(unit.text), ...refusedAddress(unit)]))
   // Two instructions under one number: which words are whose is not read (`landDraftBags`).
   const mixed = new Map<string | null, Set<string>>()
   for (const unit of draftUnits(blocks!).filter(repeatsItsNumber)) {

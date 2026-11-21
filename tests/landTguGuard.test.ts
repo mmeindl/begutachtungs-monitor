@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { draftUnits } from '../server/utils/annex/annexDraft'
-import { articleClauses, draftLawKey, draftUncheckedReason, guardTguUnits, installedDesignations, notHeld, repeatsItsNumber } from '../server/utils/laender/landTguGuard'
+import { articleClauses, draftLawKey, draftUncheckedReason, guardTguUnits, installedDesignations, notHeld, refusedAddress, repeatsItsNumber } from '../server/utils/laender/landTguGuard'
 import { STRICT_UNCHECKED } from '../server/utils/laender/landTguStrict'
 
 const unit = (over: Partial<LawDiffUnit>): LawDiffUnit => ({
@@ -45,6 +45,38 @@ describe('installedDesignations', () => {
     expect(installedDesignations('§ 5 lautet: „Die Frist nach § 7 beträgt …“')).toEqual([])
     // Not an instruction that writes anything.
     expect(installedDesignations('Im § 5 entfällt der „§ 7“ betreffende Satz.')).toEqual([])
+  })
+})
+
+describe('refusedAddress — the § an instruction opens with, where the draft reader read none (21.11.2026)', () => {
+  const draftUnit = (text: string, paras: string[] = []) => ({ law: null, id: 'Z1', paras, aliases: [], reason: paras.length ? null : 'keine auflösbare Adresse', text, adds: false })
+
+  it('names the one § the line opens with (Oö. 2026-16123 § 41, 2026-16122 § 88, Salzburg 35597 § 55)', () => {
+    expect(refusedAddress(draftUnit('Im § 41 wird im Abs. 1 das Zitat „BGBl. I Nr. 135/2023“ durch das Zitat „BGBl. I Nr. 50/2025“ und im Abs. 7 das Zitat „BGBl. I Nr. 88/2023“ durch das Zitat „BGBl. I Nr. 50/2025“ ersetzt.'))).toEqual(['§ 41'])
+    expect(refusedAddress(draftUnit('In § 88 Abs. 3a wird der Punkt nach dem letzten Spiegelstrich durch einen Strichpunkt ersetzt und folgender Spiegelstrich angefügt: „- Text“'))).toEqual(['§ 88'])
+    expect(refusedAddress(draftUnit('Im § 55 Abs 1 werden die beiden ersten Sätze durch folgende Bestimmungen ersetzt: „In jedes Wahllokal … nach § 12 …“'))).toEqual(['§ 55'])
+  })
+
+  it('names nothing where the reader read a §, the line names a second §, or opens with an anchor', () => {
+    expect(refusedAddress(draftUnit('Im § 41 wird das Wort „a“ durch das Wort „b“ ersetzt.', ['§ 41']))).toEqual([])
+    expect(refusedAddress(draftUnit('Im § 41 Abs. 1 und im § 42 Abs. 2 wird jeweils das Wort „a“ durch das Wort „b“ ersetzt.'))).toEqual([])
+    expect(refusedAddress(draftUnit('In den §§ 38 bis 45a wird das Wort „a“ durch das Wort „b“ ersetzt.'))).toEqual([])
+    expect(refusedAddress(draftUnit('Nach § 13 wird eingefügt: „§ 13a Text“'))).toEqual([])
+  })
+
+  it('holds the § word for word against the instruction (Oö. 2026-16123 § 41)', () => {
+    const draft = lawBlocksFromPdfPages([[
+      'Landesgesetz, mit dem das Oö. Jagdgesetz 2024 geändert wird', 'Der Oö. Landtag hat beschlossen:', 'Artikel I',
+      'Das Oö. Jagdgesetz 2024, LGBl. Nr. 1/2024, wird wie folgt geändert:',
+      '1. Im § 41 wird im Abs. 1 das Zitat „BGBl. I Nr. 135/2023“ durch das Zitat „BGBl. I Nr. 50/2025“, im Abs. 5 Z 2 erster Satz das Wort „Tiere“ durch das Wort „Katzen“ und im Abs. 7 das Zitat „BGBl. I Nr. 88/2023“ durch das Zitat „BGBl. I Nr. 50/2025“ ersetzt.',
+    ].join('\n')])!
+    expect(draftUnits(draft)[0]!.paras).toEqual([])
+    const shown = unit({ id: '§41', fromId: '§41', fromText: 'x', toText: 'y', segments: [
+      { type: 'equal', text: '(1) Es gilt das Tierschutzgesetz, BGBl. I Nr. 118/2004, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. ' },
+      { type: 'removed', text: '135/2023' }, { type: 'inserted', text: '50/2025' },
+      { type: 'equal', text: '. (5) Das Jagdschutzorgan darf 2. Hunde und ' }, { type: 'removed', text: 'Tiere' }, { type: 'inserted', text: 'Katzen' }, { type: 'equal', text: ' töten.' },
+    ] })
+    expect(guardTguUnits([shown], draft).strict.get(0)!.state).toBe('holds')
   })
 })
 

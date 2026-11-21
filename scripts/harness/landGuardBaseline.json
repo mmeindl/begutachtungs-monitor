@@ -1,5 +1,5 @@
 {
- "at": "2026-11-21T08:21:25.076Z",
+ "at": "2026-11-21T08:51:04.638Z",
  "documents": {
   "ktn-104907-2025-32": {
    "land": "ktn",
@@ -2662,9 +2662,8 @@
    "land": "t",
    "state": "beantwortet",
    "available": true,
-   "shown": 73,
+   "shown": 74,
    "withheld": [
-    "draftDiffers · Tiroler Gesundheitsfondsgesetz · §10",
     "draftDiffers · Tiroler Tierseuchenfondsgesetz · §13",
     "unsure · Tiroler Nationalparkgesetz Hohe Tauern · §33"
    ]
