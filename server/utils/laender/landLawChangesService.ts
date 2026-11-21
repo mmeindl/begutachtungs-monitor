@@ -164,7 +164,13 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   // two versions of one § by heading and likeness, and 46 of 1,937 §§ stood twice, „neu" beside „entfallen".
   // The texts cleaned as every Land comparison cleans them (`comparedText`).
   const clean = (u: LawUnit | null): LawUnit | null => u && { ...u, text: comparedText(u.text), blocks: u.blocks.map((b) => ({ ...b, text: comparedText(b.text) })) }
-  const units = diffKnownPairs(pairs.map(([a, b]) => [clean(a), clean(b)] as const))
+  // A heading changed is a change (21.11.2026): RIS keeps it apart from the text, and compared by its text
+  // alone a § whose heading alone changed read „unverändert" (Oö. LGBl. Nr. 53/2017, „Die Überschrift zu
+  // § 8 lautet: Ausnahmen"). Where the two headings differ, both sides are compared with theirs.
+  const headed = (u: LawUnit): LawUnit => (u.heading ? { ...u, text: `${u.heading} ${u.text}`, blocks: [{ kind: 'section', cls: 'section', text: u.heading, gld: null }, ...u.blocks] } : u)
+  const withHeadings = ([a, b]: [LawUnit | null, LawUnit | null]) =>
+    a && b && comparedText(a.heading ?? '') !== comparedText(b.heading ?? '') ? [headed(a), headed(b)] as const : [a, b] as const
+  const units = diffKnownPairs(pairs.map(withHeadings).map(([a, b]) => [clean(a), clean(b)] as const))
   const s = summarizeDiff(units)
   const single = laws.length === 1 ? laws[0]! : null
   return {
@@ -190,5 +196,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-9', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-10', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
 )

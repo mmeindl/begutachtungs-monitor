@@ -166,6 +166,9 @@ const RIS_NOTE = new RegExp(String.raw`\s*\(Anm\.?:?\s*(?:in der Fassung\s*)?${L
 // A line of its own: „*) Fassung LGBl…" or „Anm.: in der Fassung LGBl…", whatever follows („(seit LGBl. Nr. 97/2020 …)").
 const RIS_NOTE_LINE = /^(?:\*\)|Anm\.?:?)\s*(?:in der\s*)?Fassung\s*LGBl/
 
+/** A § or Artikel number standing alone, Vorarlberg's note mark after it included („§ 40*)"). */
+const DESIGNATION = /^(?:§|Art(?:ikel|\.))\s*\d+[a-z]*\.?\s*(?:\*\))?$/
+
 /**
  * One § of RIS's consolidated Landesrecht as a unit: its heading and its
  * Absätze, Ziffern and lines in order — the elements RIS marks `ct="text"`,
@@ -183,7 +186,13 @@ export function konsUnit(xml: string, version: Pick<LandKonsVersion, 'key' | 'la
   // § 23 Abs. 9: „… geltend zu machen. Die Frist beginnt …" gone).
   for (const m of body.matchAll(/<(ueberschrift|absatz|listelem|schlussteil|schluss)\b([^>]*)>([\s\S]*?)<\/\1>/g)) {
     if (!/\bct="text"/.test(m[2]!)) continue
-    let text = decode(m[3]!).replace(RIS_NOTE, '').trim()
+    // A title RIS writes in one element with the number („§ 8<br />Ausnahmen", Vorarlberg's
+    // „<n>§ 40*)</n><br />Hegeabschuss"; 2,503 headings of the harness cache, 21.11.2026): the number
+    // is the id, what follows the break the title. Until then the whole element was skipped as the
+    // designation line, and the title was lost.
+    const br = m[1] === 'ueberschrift' ? m[3]!.search(/<br\s*\/?>/) : -1
+    const joined = br > 0 && DESIGNATION.test(decode(m[3]!.slice(0, br)))
+    let text = decode(joined ? m[3]!.slice(br).replace(/^<br\s*\/?>/, '') : m[3]!).replace(RIS_NOTE, '').trim()
     // The designation leading the first Absatz („§ 5. (1) Wer …" in Wien's records), or standing alone: the unit's id, not its text.
     if (m[1] !== 'ueberschrift' && !blocks.length) text = text.replace(/^(?:§|Art(?:ikel|\.))\s*\d+[a-z]*\.(?:\s+|$)/, '')
     if (!text || RIS_NOTE_LINE.test(text)) continue

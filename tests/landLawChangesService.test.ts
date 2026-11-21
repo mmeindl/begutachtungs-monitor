@@ -79,6 +79,24 @@ describe('compareLandLawChanges — RIS’s two versions of one § are one unit 
     expect(value.units.map((u) => [u.id, u.fromId, u.change])).toEqual([['§29', '§29', 'changed'], ['§66a', '§66a', 'changed']])
     expect(value.withheld).toEqual([])
   })
+
+  it('reads a change made only in the heading as a change, never „unverändert“ (Oö. LGBl. Nr. 53/2017 § 8, 21.11.2026)', async () => {
+    XML['8-old.xml'] = '<risdok><nutzdaten><ueberschrift typ="para" ct="text">§ 8</ueberschrift><absatz typ="abs" ct="text">Von der Anwendung ist ausgenommen.</absatz></nutzdaten></risdok>'
+    XML['8-new.xml'] = '<risdok><nutzdaten><ueberschrift typ="para" ct="text">§ 8<br />Ausnahmen</ueberschrift><absatz typ="abs" ct="text">Von der Anwendung ist ausgenommen.</absatz></nutzdaten></risdok>'
+    XML['novelle3.xml'] = '<risdok><nutzdaten><absatz typ="novao1">1. Die Überschrift zu § 8 lautet: „Ausnahmen“</absatz></nutzdaten></risdok>'
+    const version = (xml: string, from: string, to: string | null, organ: string) => {
+      const r = ref('§ 8', xml, from)
+      Object.assign(r.Data.Metadaten.Landesrecht.LrKons, { Kundmachungsorgan: organ, StammnormBgblnummer: '36/1979', Ausserkrafttretensdatum: to })
+      return r
+    }
+    const neu = version('8-new.xml', '2017-07-01', null, 'LGBl. Nr. 36/1979 zuletzt geändert durch LGBl. Nr. 53/2017')
+    const old = version('8-old.xml', '2010-01-01', '2017-06-30', 'LGBl. Nr. 36/1979 zuletzt geändert durch LGBl. Nr. 1/2010')
+    konsRefsOfLgbl.mockResolvedValue({ refs: [neu], complete: true })
+    konsParagraphHistory.mockResolvedValue([old, neu])
+    const { value } = await compareLandLawChanges('ooe', 'LGBl. Nr. 53/2017', 'novelle3.xml', null, '2017-06-20')
+    expect(value.units.map((u) => [u.id, u.heading, u.change])).toEqual([['§8', 'Ausnahmen', 'changed']])
+    expect(value.units[0]!.segments?.filter((s) => s.type === 'inserted').map((s) => s.text.trim())).toEqual(['Ausnahmen'])
+  })
 })
 
 describe('compareLandLawChanges — a Landesgesetzblatt RIS has not consolidated (20.11.2026)', () => {

@@ -108,4 +108,14 @@ describe('konsUnit', () => {
     // A change made only in the sign is a change.
     expect(diffLandDraft([gt], [konsUnit(xml('lt'), { key: '§5', law: 'X' }, 'X')!]).map((u) => u.change)).toEqual(['changed'])
   })
+  it('reads a title RIS writes in one element with the number as the heading (Oö. Polizeistrafgesetz § 8, 21.11.2026)', () => {
+    const xml = '<nutzdaten><ueberschrift typ="para" ct="text" halign="c">§ 8<br />Ausnahmen</ueberschrift><absatz typ="abs" ct="text" halign="j">Von der Anwendung ist ausgenommen.</absatz></nutzdaten>'
+    const u = konsUnit(xml, { key: '§8', law: 'X' }, 'X')!
+    expect(u.heading).toBe('Ausnahmen')
+    expect(u.text).toBe('Von der Anwendung ist ausgenommen.')
+    // Vorarlberg's form: the number in its own element, a note mark after it (Jagdgesetz § 40).
+    expect(konsUnit('<nutzdaten><ueberschrift typ="art" ct="text"><n>§ 40*)</n><br />Hegeabschuss</ueberschrift><absatz typ="abs" ct="text">Text.</absatz></nutzdaten>', { key: '§40', law: 'X' }, 'X')!.heading).toBe('Hegeabschuss')
+    // The number alone is the id still, never a title.
+    expect(konsUnit('<nutzdaten><ueberschrift typ="para" ct="text">§ 8</ueberschrift><absatz typ="abs" ct="text">Text.</absatz></nutzdaten>', { key: '§8', law: 'X' }, 'X')!.heading).toBeNull()
+  })
 })
