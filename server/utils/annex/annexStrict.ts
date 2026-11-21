@@ -127,6 +127,37 @@ export function divisionStack(words: readonly string[], marked: readonly boolean
   return out
 }
 
+/** „erhalten die Absatzbezeichnungen „(4)" bis „(7)"", as `strictTokens` reads the line: a designation word, then two designations and „bis" between. */
+const RENUMBERING_WORD_RE = /bezeichnung(?:en)?$/
+/** At most this many designations between the two a renumbering quotes: beyond it the line is not read as a range. */
+const MAX_RANGE = 30
+
+/**
+ * The designations a renumbering gives in words between the two it quotes
+ * (21.11.2026): „In § 100 erhalten die Abs. 3 bis 6 die Absatzbezeichnungen
+ * „(4)" bis „(7)"" prints „(5)" and „(6)" nowhere, and the right column shows
+ * them as new. Read only as the line prints it — a designation word, two
+ * numbers or two single letters, ascending, at most `MAX_RANGE` apart — and
+ * held as the quoted ends are: each stands for every place it stands in the
+ * column (`Wording.repeats`). Any other shape adds nothing.
+ */
+function withRenumberedRange(w: DraftWording): DraftWording {
+  const added: string[] = []
+  for (const line of w.text) {
+    for (let i = 0; i + 3 < line.length; i++) {
+      if (!RENUMBERING_WORD_RE.test(line[i]!) || line[i + 2] !== 'bis') continue
+      const [a, b] = [line[i + 1]!, line[i + 3]!]
+      if (/^\d+$/.test(a) && /^\d+$/.test(b) && Number(b) > Number(a) && Number(b) - Number(a) <= MAX_RANGE) {
+        for (let n = Number(a) + 1; n < Number(b); n++) added.push(String(n))
+      } else if (/^[a-z]$/.test(a) && /^[a-z]$/.test(b) && b > a) {
+        for (let c = a.charCodeAt(0) + 1; c < b.charCodeAt(0); c++) added.push(String.fromCharCode(c))
+      }
+    }
+  }
+  if (!added.length) return w
+  return { ...w, wordings: [...w.wordings, ...[...new Set(added)].map((t) => ({ tokens: [t], optional: [false], repeats: true }))] }
+}
+
 /** Blocks whose text keys a law (`segmentUnits`): read as folded, as the rows' law is. */
 const HEADING_KINDS = new Set<TextBlock['kind']>(['title', 'article', 'section'])
 
@@ -257,7 +288,7 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
     const law = wording.get(lawKey)
     const printed = shown.get(group.law) ?? new Set<string>()
     const elsewhere = [...(law?.generalText ?? []), ...[...(law?.byKey ?? [])].filter(([k]) => !printed.has(k)).flatMap(([, w]) => [...w.wordings.map((x) => x.tokens), ...w.text])]
-    const wordings = keys.map((k) => law?.byKey.get(k))
+    const wordings = keys.map((k) => law?.byKey.get(k)).map((w) => w && withRenumberedRange(w))
     const head = payloadHead(wordings, own)
     const aboveParagraph = (words: readonly string[], marked: readonly boolean[]) => divisionStack(words, marked, own, head)
     out.set(groupKey, strictCheck(unit, wordings, { general: law?.general ?? [], elsewhere, placeholders: bgblPlaceholders, aboveParagraph }))
