@@ -68,7 +68,7 @@ import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { asArray } from '../lib/ris'
 import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
-import { harnessKey, kindKey, matchArticle, misnumberedShown, scoredKey, unchangedClass, UNCHANGED_CLASSES, type UnchangedClass } from './konsJudge'
+import { harnessKey, kindKey, matchArticle, misnumberedShown, removalVerdict, scoredKey, unchangedClass, UNCHANGED_CLASSES, type UnchangedClass } from './konsJudge'
 
 interface Verdict {
   bgbl: string
@@ -562,6 +562,10 @@ const gateTally = new Map<string, number>()
  */
 const witnessTally = new Map<string, number>()
 const witnessLines: string[] = []
+/** The §§ the engine took out, by what RIS says of them (`removalVerdict`), and those it moved to another number. */
+const removalTally = new Map<string, number>()
+const removalLines: string[] = []
+let removedRenumbered = 0
 const tally = (map: Map<string, number>, key: string): void => {
   map.set(key, (map.get(key) ?? 0) + 1)
 }
@@ -1091,6 +1095,35 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       console.log(`    ${mark}  ${label.padEnd(9)} ${what}`)
     }
   }
+  // The §§ the engine took out of the law (audit of 20.11.2026). Without a
+  // node in the result they never reached the tally above, so a wrong
+  // repeal and a right one were both invisible. Each standing § the result
+  // no longer carries is held against RIS (`removalVerdict`) — unless the
+  // engine moved it to another number, which the loop above scores under
+  // that number.
+  for (const b of law.paragraphs) {
+    if (after.paragraphs.some((p) => p.id === b.id && isSchedule(p.marker) === isSchedule(b.marker))) continue
+    if (renamed.some((r) => r.level === 'para' && (r.from === b.id || r.from === unitKey(b.marker)))) {
+      removedRenumbered++
+      continue
+    }
+    const label = [...versions.keys()].find((l) => nodeFor([b], l, scoredKey(l) ?? undefined) === b)
+    const pair = label ? pairs.get(label) : undefined
+    let afterTexts: (string | null)[] | null = null
+    if (pair) {
+      afterTexts = []
+      for (const ref of pair.afters) {
+        const tree = await fetchParagraphTree(ref)
+        afterTexts.push(tree ? plainText(tree) : null)
+      }
+    }
+    const last = label ? (versions.get(label) ?? []).at(-1) : undefined
+    const removal = removalVerdict(afterTexts, last?.kundmachungsorgan ?? null, bgblNumber)
+    tally(removalTally, removal)
+    const line = `${bgblNumber}${articleLabel ? ` ${articleLabel}` : ''} — ${kurztitel} ${label ?? b.marker} — ${pair ? `RIS-Fassung dieser Novelle: ${afterTexts!.map((t) => (t === null ? 'unlesbar' : `„${t.slice(0, 80)}"`)).join(' / ')}` : `RIS: letzte Fassung ${last?.inkrafttreten ?? '?'} bis ${last?.ausserkrafttreten ?? 'heute'}, ${last?.kundmachungsorgan ?? 'ohne Kundmachungsorgan'}`}`
+    if (removal !== 'confirmed') removalLines.push(`${removal === 'wrong' ? 'falsch' : 'nicht prüfbar'}: ${line}`)
+    if (verbose) console.log(`    ${removal === 'confirmed' ? '✓' : removal === 'wrong' ? '✗' : '?'}  ${(label ?? b.marker).padEnd(9)} aus dem Ergebnis entfernt — ${removal === 'confirmed' ? 'Aufhebung im RIS bestätigt' : removal === 'wrong' ? 'falsche Aufhebung' : 'nicht prüfbar'}`)
+  }
   if (verbose) {
     for (const d of divergences) {
       const extra = extraTokens(d.before, d.got, d.expected)
@@ -1189,6 +1222,10 @@ console.log(`    unverändert          : ${sum((v) => v.cleanUntouched)} (${pct(
 console.log(`    unvollständig        : ${sum((v) => v.cleanIncomplete)} (${pct(sum((v) => v.cleanIncomplete), clean)})  — der Text des RIS mit Auslassungen`)
 console.log(`    nicht prüfbar        : ${sum((v) => v.cleanUnverifiable)} (${pct(sum((v) => v.cleanUnverifiable), clean)})  — Wortdiff zu groß`)
 if (ambiguousLabels > 0) console.log(`    nicht gewertet       : ${ambiguousLabels}  — zwei RIS-Labels eines Gesetzes mit derselben Nummer`)
+// Outside every line above: a § the result no longer carries has no text to score.
+const removed = (k: string): number => removalTally.get(k) ?? 0
+console.log(`\n  Aus dem Ergebnis entfernt: ${removed('confirmed') + removed('wrong') + removed('unverifiable')} Paragraphen — Aufhebung im RIS bestätigt ${removed('confirmed')}, falsche Aufhebung ${removed('wrong')} (muss 0 sein), nicht prüfbar ${removed('unverifiable')}; umnummeriert, keine Aufhebung: ${removedRenumbered}`)
+for (const line of removalLines) console.log(`    ${line}`)
 if (unchangedListed.length > 0) {
   console.log(`\n  Unverändert gelassen, aber nicht verweigert (${unchangedListed.length}):`)
   for (const line of unchangedListed) console.log(`    ${line}`)
@@ -1303,6 +1340,8 @@ if (jsonFile) {
      */
     markerKey: 'gliederung|orakel|plausibel|zeuge',
     markers: Object.fromEntries([...markerTally].sort(([a], [b]) => a.localeCompare(b))),
+    /** The §§ the engine took out (21.11.2026): RIS repealed them, or not, or cannot say; and those it moved to another number. */
+    removed: { confirmed: removed('confirmed'), wrong: removed('wrong'), unverifiable: removed('unverifiable'), renumbered: removedRenumbered },
   }
   writeFileSync(jsonFile, `${JSON.stringify(record, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonFile}`)
@@ -1314,5 +1353,10 @@ if (jsonFile) {
 const misnumbered = misnumberedShown(Object.fromEntries(markerTally))
 if (misnumbered > 0) {
   console.error(`\n✗ ${misnumbered} gezeigte(r) Paragraph(en) mit dem Text des Gesetzes unter anderen Bezeichnungen (Gliederung oben)`)
+  process.exitCode = 1
+}
+// A § the engine repealed that RIS keeps fails the run the same way.
+if (removed('wrong') > 0) {
+  console.error(`\n✗ ${removed('wrong')} Paragraph(en) aus dem Ergebnis entfernt, die das RIS nach der Novelle weiter führt (oben unter „Aus dem Ergebnis entfernt")`)
   process.exitCode = 1
 }

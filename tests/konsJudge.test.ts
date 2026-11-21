@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kindKey, loadKey, matchArticle, misnumberedShown, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
+import { kindKey, loadKey, matchArticle, misnumberedShown, removalVerdict, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 
 // The BGBl bench's own bookkeeping (19.11.2026): what it got wrong is how a
@@ -101,5 +101,26 @@ describe('misnumberedShown: the §§ the bench fails on for their designations',
     // LMSVG § 28 of BGBl. I Nr. 75/2026: misnumbered, contradicted, not released.
     expect(misnumberedShown({ 'abweichend|widersprochen|plausibel|—': 1, 'abweichend|stumm|unplausibel|—': 2 })).toBe(0)
     expect(misnumberedShown({ 'gleich|bestätigt|plausibel|—': 459, 'gleich|widersprochen|plausibel|gezeigt': 152 })).toBe(0)
+  })
+})
+
+// A § the engine took out of the law had no node, and the bench skipped it
+// before any tally: a wrong repeal and a right one were both invisible
+// (audit of 20.11.2026).
+describe('removalVerdict: whether RIS repealed a § the engine took out', () => {
+  const bgbl = 'BGBl. I Nr. 62/2026'
+  it('confirms it where RIS says the § was repealed by this Bundesgesetzblatt, even with a version of it in between (GSVG § 27f)', () => {
+    expect(removalVerdict(null, 'BGBl. Nr. 560/1978 aufgehoben durch BGBl. I Nr. 62/2026', bgbl)).toBe('confirmed')
+    expect(removalVerdict(['Beitragsgrundlage … (2) Neu gefasst …'], 'BGBl. Nr. 560/1978 aufgehoben durch BGBl. I Nr. 62/2026', bgbl)).toBe('confirmed')
+  })
+  it('calls it wrong where RIS keeps the § or another Bundesgesetzblatt repealed it', () => {
+    expect(removalVerdict(null, 'BGBl. Nr. 560/1978 zuletzt geändert durch BGBl. I Nr. 81/2022', bgbl)).toBe('wrong')
+    expect(removalVerdict(null, 'BGBl. Nr. 560/1978 aufgehoben durch BGBl. I Nr. 7/2027', bgbl)).toBe('wrong')
+    expect(removalVerdict(null, null, bgbl)).toBe('wrong')
+  })
+  it('holds a version this Novelle made of the § to a repeal note, and calls an unreadable one unverifiable', () => {
+    expect(removalVerdict(['Aufgehoben.'], 'BGBl. I Nr. 1/2020 zuletzt geändert durch BGBl. I Nr. 62/2026', bgbl)).toBe('confirmed')
+    expect(removalVerdict(['Der Antrag ist schriftlich einzubringen.'], 'BGBl. I Nr. 1/2020 zuletzt geändert durch BGBl. I Nr. 62/2026', bgbl)).toBe('wrong')
+    expect(removalVerdict([null], 'BGBl. I Nr. 1/2020 zuletzt geändert durch BGBl. I Nr. 62/2026', bgbl)).toBe('unverifiable')
   })
 })

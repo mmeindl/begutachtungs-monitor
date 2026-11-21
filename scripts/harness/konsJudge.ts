@@ -5,6 +5,7 @@
  * (`tests/konsJudge.test.ts`): a harness that judges is held to the rules
  * of production code (decisions.md, „Measuring").
  */
+import { annexKeepsUnit } from '../../server/utils/kons/consolidate'
 import { sameStammnormCited } from '../../server/utils/lawtext/bgblCitation'
 import type { DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { lawNameScore } from '../../server/utils/lawtext/lawNames'
@@ -85,6 +86,34 @@ export function misnumberedShown(markers: Readonly<Record<string, number>>): num
       return designations === 'abweichend' && (oracle === 'bestätigt' || witness === 'gezeigt')
     })
     .reduce((n, [, count]) => n + count, 0)
+}
+
+/** What RIS says of a § the engine took out of the law (`removalVerdict`). */
+export type RemovalVerdict = 'confirmed' | 'wrong' | 'unverifiable'
+
+/**
+ * Whether RIS repealed a § the engine's result no longer carries
+ * (audit of 20.11.2026). Without a node in the result such a § never reached
+ * the bench's tally, so a wrong repeal and a right one were both invisible —
+ * the error class „entfällt" read too wide.
+ *
+ * RIS says it in the Kundmachungsorgan of the §'s last version: „BGBl. Nr.
+ * 560/1978 aufgehoben durch BGBl. I Nr. 62/2026" (GSVG § 27f, whose new
+ * Abs. 2 of the same Novelle stands for 2027 and the § goes after it).
+ * Confirmed where that names this Bundesgesetzblatt — 60 BGBl, 21.11.2026:
+ * every one of the 30 removals of the corpus. Where it does not, and this
+ * Novelle made a version of the §, that version must say nothing but that
+ * the unit goes (`annexKeepsUnit`'s vocabulary; no such version stands in
+ * the corpus); a version RIS's reader cannot read is no proof either way.
+ * Anything else is a § the engine repealed that RIS keeps.
+ */
+export function removalVerdict(afterTexts: readonly (string | null)[] | null, lastOrgan: string | null, bgblNumber: string): RemovalVerdict {
+  const repealedBy = /aufgehoben durch\s+(.+?)\s*$/.exec(lastOrgan ?? '')?.[1] ?? null
+  if (repealedBy !== null && repealedBy.replace(/\s+/g, ' ') === bgblNumber.replace(/\s+/g, ' ')) return 'confirmed'
+  if (afterTexts === null) return 'wrong'
+  const readable = afterTexts.filter((t): t is string => t !== null)
+  if (readable.length === 0) return 'unverifiable'
+  return readable.every((text) => !annexKeepsUnit([{ proposed: text, paraAfter: '' }])) ? 'confirmed' : 'wrong'
 }
 
 /**
