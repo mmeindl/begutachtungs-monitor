@@ -2326,7 +2326,10 @@ export function parseAnnexParts(parts: readonly (readonly AnnexPage[] | null)[],
         : `${unread} der ${parts.length} Dokumente der Textgegenüberstellung ließen sich nicht auslesen. Ohne sie lassen sich die übrigen den Gesetzen des Entwurfs nicht sicher zuordnen; darum zeigt der Monitor die Gegenüberstellung nicht.`),
     }
   }
-  const annex = parseAnnexPdf(read.filter((part) => sameTypesetting(first, part)).flat(), articles)
+  // A § across a page the parse could not read is cut there and marked, as
+  // the Länder's are, never joined to the text after the gap; the gate
+  // leaves it unchecked (`REASON_CUT`, 21.11.2026).
+  const annex = parseAnnexPdf(read.filter((part) => sameTypesetting(first, part)).flat(), articles, { cutAtGaps: true })
   // A part set differently contributes its rows, the pages of it the parse
   // could not vouch for, and its laws whose front matter differs.
   //
@@ -2338,7 +2341,7 @@ export function parseAnnexParts(parts: readonly (readonly AnnexPage[] | null)[],
   // without its schedules. Its pages are set otherwise than the rest and what
   // is on them is missing here — the sentence `droppedPages` puts on the page.
   for (const part of read.filter((p) => !sameTypesetting(first, p))) {
-    const apart = parseAnnexPdf(part, articles)
+    const apart = parseAnnexPdf(part, articles, { cutAtGaps: true })
     if (apart.rows.length > 0) {
       annex.rows.push(...apart.rows)
       annex.droppedPages += apart.droppedPages

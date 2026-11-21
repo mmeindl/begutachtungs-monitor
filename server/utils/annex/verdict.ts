@@ -252,6 +252,12 @@ export const REASON_BOUNDARY = 'die Gesetze der Beilage ließen sich nicht abgre
 export const REASON_NO_BGBL = 'im Entwurf steht keine Fundstelle im Bundesgesetzblatt, über die sich das geltende Recht auffinden ließe'
 export const REASON_UNRESOLVED = 'das geänderte Gesetz ließ sich im RIS Bundesrecht nicht auflösen'
 export const REASON_UNREADABLE_DESIGNATION = 'die Beilage bezeichnet diese Stellen nicht als Paragraphen'
+/**
+ * The § runs across a page of the annex the reader could not read
+ * (`ComparisonRow.cut`, 21.11.2026): what the page shows of it is not the
+ * whole of it, so no check may confirm it.
+ */
+export const REASON_CUT = 'eine Seite der Beilage, über die diese Paragraphen laufen, ließ sich nicht lesen'
 export const REASON_NO_SUCH_PARAGRAPH = 'das RIS Bundesrecht führt diese Paragraphen nicht'
 /**
  * The § RIS does not hold is one the draft itself creates — so the annex's
@@ -667,6 +673,7 @@ export async function verifyAnnex(
   // times over is not worth another 150 requests, and the answer is thrown
   // away. The only call site of the pool that asks for it.
   await mapWithConcurrency([...groups.entries()], concurrency, async ([groupKey, group]) => {
+    if (group.rows.some((row) => row.cut)) return skip(groupKey, REASON_CUT)
     if (looked >= maxParagraphs) return skip(groupKey, REASON_CEILING)
     looked++
     const index = await lawOf(group.law)

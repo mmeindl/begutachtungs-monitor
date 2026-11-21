@@ -6,6 +6,7 @@ import {
   LAW_THRESHOLD,
   REASON_BOUNDARY,
   REASON_CEILING,
+  REASON_CUT,
   REASON_NO_AMENDING,
   REASON_NO_ARTICLES,
   REASON_NO_ASOF,
@@ -628,5 +629,17 @@ describe('verifyAnnex: a § without standing text (20.11.2026)', () => {
     const check = await verifyAnnex(rows, draft(), fakeSources(law))
     expect(check.uncheckedReasons['#§ 1.']).toBe(REASON_TOO_SHORT)
     expect(checkAnnexRows(rows, check).uncheckedParagraphs).toBe(1)
+  })
+})
+
+describe('verifyAnnex: a § across a page the reader did not read (21.11.2026)', () => {
+  it('leaves it unchecked and marked, whatever its text', async () => {
+    // The parse cuts such a § at the gap (`AnnexLayout.cutAtGaps`): what it
+    // shows is not the whole of it, so no check may confirm it.
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE, proposed: `${PROSE} Neu.`, cut: true })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.verdicts['#§ 1.']).toBe('unchecked')
+    expect(check.uncheckedReasons['#§ 1.']).toBe(REASON_CUT)
+    expect(checkAnnexRows(rows, check).rows[0]).toMatchObject({ check: 'unchecked', owesCheck: true, uncheckedReason: REASON_CUT })
   })
 })

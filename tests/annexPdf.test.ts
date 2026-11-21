@@ -1127,6 +1127,14 @@ describe('a page the parse does not read, between two it does (Salzburg 18192, 2
     // Read without the layout, § 5 goes on with the text after the gap.
     expect(read({}).rows.find((r) => r.gld === '§ 5.')!.current).toContain('Ende eines anderen Paragraphen')
   })
+
+  it('is cut the same way in a Bund annex (21.11.2026)', () => {
+    // The Bund read its annexes without the layout, so a § across an unread
+    // page took the text after the gap for its own, unmarked.
+    const five = parseAnnexParts([[headerPage(), first, skipped, third]], ONE_LAW)!.rows.find((r) => r.gld === '§ 5.')!
+    expect(five.cut).toBe(true)
+    expect(five.current).toBe('§ 5. (1) Die Behörde entscheidet')
+  })
 })
 
 describe('a line-final hyphen', () => {
