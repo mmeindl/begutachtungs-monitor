@@ -834,8 +834,10 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     // the draft's at any place („binnen [5] Wochen" where the payload says
     // „Abs. 5"; 21.11.2026). A designation („(1)", „3.") still may be.
     const stretch = words.slice(i, j)
-    const partOfQuote = quoted.some((q) => q.length > stretch.length && contains(q, stretch))
-    const figure = stretch.length === 1 && /^\d+$/.test(stretch[0]!) && !shown[i]!.designation
+    // A designation alone is no part of a wording: „(5)" is not the „5" of „5. Unterabschnitt Urkundenarchiv".
+    const designation = stretch.length === 1 && shown[i]!.designation === true
+    const partOfQuote = !designation && quoted.some((q) => q.length > stretch.length && contains(q, stretch))
+    const figure = stretch.length === 1 && /^\d+$/.test(stretch[0]!) && !designation
     if (!accounted.slice(i, j).every(Boolean) && !partOfQuote && !figure && (stretch.length > 1 ? own : found.flatMap((f) => f.written)).some((t) => contains(t, stretch))) for (let k = i; k < j; k++) accounted[k] = true
     if (!accounted.slice(i, j).every(Boolean)) {
       for (let shift = -(j - i); shift <= j - i; shift++) {

@@ -169,6 +169,35 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     expect(annexStrictChecks(rows, { ...draft, blocks }).get(`${LAW}#§ 3.`)).toMatchObject({ state: 'holds', notInDraft: [], notShown: [] })
   })
 
+  it('holds the headings a payload prints as blocks of their own, and no heading of another law', () => {
+    // RIS sets the heading of each new § of a payload, a division's heading and a title as headings of their own,
+    // which the draft's reader passes over (GSpG §§ 56b, 56c; TabStG Abschnitt 8a; 21.11.2026).
+    const heading = (text: string): TextBlock => ({ kind: 'section', cls: 'ueberschrift/g2', text, gld: null })
+    const blocks: TextBlock[] = [
+      ...DRAFT.slice(0, 3),
+      novao('1. Nach § 9 werden folgende §§ 9a und 9b samt Überschriften eingefügt:'),
+      heading('"Aufsicht über die Anlagen'),
+      abs('(1) Die Behörde überwacht die Anlagen.', '§ 9a.'),
+      heading('Sperre von gemeldeten Anlagen'),
+      abs('(1) Die Behörde kann eine Anlage sperren."', '§ 9b.'),
+      { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 2', gld: null },
+      heading('Änderung des Gesetzes über Anlagen'),
+      { kind: 'other', cls: 'absatz/promkleinlsatz', text: 'Das Gesetz über Anlagen wird wie folgt geändert:', gld: null },
+    ]
+    const check = (proposed: string) => annexStrictChecks([row({ law: LAW, gld: '§ 9b.', para: '§ 9b.', change: 'inserted', current: '', proposed })], { ...draft, blocks }).get(`${LAW}#§ 9b.`)!
+    expect(check('Sperre von gemeldeten Anlagen § 9b. (1) Die Behörde kann eine Anlage sperren.').state).toBe('holds')
+    expect(check('Sperre von gemeldeten Bauten § 9b. (1) Die Behörde kann eine Anlage sperren.')).toMatchObject({ state: 'differs', notInDraft: ['sperre', 'von', 'gemeldeten', 'bauten'] })
+    // The heading that names the next Artikel's law stands after the payload, not in it.
+    expect(check('Änderung des Gesetzes über Anlagen § 9b. (1) Die Behörde kann eine Anlage sperren.').state).toBe('differs')
+  })
+
+  it('takes a lone designation for the draft\'s though a quoted wording carries its figure', () => {
+    // Fruchtsaft-VO § 4: „Abs. 2 wird angefügt" makes the text Abs. 1; „(1)" is no part of the quoted „§ 1 Z 8 bis 14".
+    const blocks = [...DRAFT.slice(0, 3), ...parseRisXml('<absatz typ="novao1">1. Im § 4 Abs. 1 wird der Ausdruck „§ 1 Z 8 bis 12“ durch den Ausdruck „§ 1 Z 8 bis 14“ ersetzt.</absatz><absatz typ="novao1">2. Dem § 4 wird folgender Abs. 2 angefügt:</absatz><absatz typ="abs">„(2) Für die in § 1 Z 13 genannten Erzeugnisse gilt Abs. 1 sinngemäß.“</absatz>')]
+    const rows = [row({ law: LAW, gld: '§ 4.', para: '§ 4.', current: 'Für die in § 1 Z 8 bis 12 genannten Erzeugnisse ist die Klärung zulässig.', proposed: '(1) Für die in § 1 Z 8 bis 14 genannten Erzeugnisse ist die Klärung zulässig. (2) Für die in § 1 Z 13 genannten Erzeugnisse gilt Abs. 1 sinngemäß.' })]
+    expect(annexStrictChecks(rows, { ...draft, blocks }).get(`${LAW}#§ 4.`)).toMatchObject({ state: 'holds' })
+  })
+
   it('reads the annex\'s elision as it says: its designations are no text, and what it leaves out is not missing', () => {
     // „§ 9 Abs. 3 lautet:" restates the whole Absatz; the annex leaves its unchanged first sentence out.
     const blocks = [...DRAFT.slice(0, 3), novao('1. § 9 Abs. 3 lautet:'), abs('"(3) Die Behörde hat den Antrag zu prüfen. Sie entscheidet binnen 14 Tagen."')]

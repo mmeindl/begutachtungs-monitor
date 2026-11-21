@@ -39,10 +39,11 @@
 import type { LawDiffSegment, LawDiffUnit } from '../../../shared/types'
 import { annexParagraphKey, designationKey } from './annexText'
 import type { ComparisonRow } from './comparisonRows'
-import type { TextBlock } from '../lawtext/lawUnits'
+import { segmentUnits, type TextBlock } from '../lawtext/lawUnits'
+import { draftUnits } from './annexDraft'
 import { REASON_CUT, REASON_UNREADABLE_DESIGNATION, type AnnexDraft } from './verdict'
 import { refusedAddress } from '../laender/landTguGuard'
-import { STRICT_UNCHECKED, draftWording, strictCheck, type DraftWording, type StrictCheck } from '../laender/landTguStrict'
+import { STRICT_UNCHECKED, draftWording, strictCheck, strictTokens, type DraftWording, type StrictCheck, type Wording } from '../laender/landTguStrict'
 
 /** Why a § was not held, beside `STRICT_UNCHECKED`: the draft's Gesetzestext could not be read at all. */
 export const DRAFT_UNREAD = 'der Gesetzestext des Entwurfs ließ sich nicht lesen'
@@ -196,6 +197,60 @@ export function elisionChains(words: readonly string[]): boolean[] {
   return out
 }
 
+const DROPPED = new Set<TextBlock['kind']>(['section', 'title', 'para_head'])
+/** From this many words on a heading says whose it is: „5. Unterabschnitt", „Teil III" are designators, and a word of them is any §'s. */
+const MIN_HEADING = 3
+
+/**
+ * The headings a payload prints that the draft's reader passes over
+ * (21.11.2026): inside an instruction RIS sets a title („Der Titel lautet:"),
+ * a division's heading („folgender Abschnitt 8a … eingefügt: „8a.
+ * Sonderbestimmungen …"") and the heading of each new § of a payload that
+ * prints several („folgende §§ 56a bis 56e samt Überschrift") as headings of
+ * their own (`section`, `title`), which `segmentUnits` does not read as text.
+ * Read only where such a block stands inside one instruction — between two
+ * blocks of the same unit, or as the whole payload of an instruction that
+ * ends on a colon — so that the heading naming the next Artikel's law is
+ * never one; and only from `MIN_HEADING` words on. Held as a wording the
+ * instruction quotes (`LawWording.general`): where the column shows it whole.
+ */
+export function payloadHeadings(blocks: readonly TextBlock[]): Map<string | null, Wording[]> {
+  const units = segmentUnits(blocks)
+  const addressed = draftUnits(blocks)
+  const unitOf = new Map<TextBlock, number>()
+  units.forEach((u, i) => u.blocks.forEach((b) => unitOf.set(b, i)))
+  // A unit holds a copy of the instruction line that opens it, its number cut off: the line opens the next unit in order.
+  let last = -1
+  const unitAt = blocks.map((b) => {
+    const own = unitOf.get(b)
+    if (own !== undefined) return (last = own)
+    const next = units[last + 1]?.blocks[0]
+    if (b.kind === 'novao' && next?.kind === 'novao' && next.text.length > 0 && b.text.endsWith(next.text)) return (last += 1)
+    return undefined
+  })
+  const passed = (k: number) => blocks[k] !== undefined && DROPPED.has(blocks[k]!.kind) && unitAt[k] === undefined
+  const out = new Map<string | null, Wording[]>()
+  const heading = (b: TextBlock) => (b.kind === 'section' || b.kind === 'title') && !unitOf.has(b)
+  for (let i = 0; i < blocks.length; i++) {
+    if (!heading(blocks[i]!) || unitAt[i] !== undefined) continue
+    let p = i - 1
+    while (passed(p)) p--
+    let n = i + 1
+    while (passed(n)) n++
+    const unit = unitAt[p]
+    const opens = p >= 0 && blocks[p]!.kind === 'novao' && /:\s*$/.test(blocks[p]!.text)
+    // Each heading of the run, and the run as one: „2. Abschnitt" / „Dislozierte Abgabestellen".
+    const run = blocks.slice(i, n).filter(heading).map((b) => strictTokens(b.text))
+    i = n - 1
+    if (unit === undefined || (unitAt[n] !== unit && !opens)) continue
+    const law = addressed[unit]!.law
+    for (const tokens of run.length > 1 ? [...run, run.flat()] : run) {
+      if (tokens.length >= MIN_HEADING) out.set(law, [...(out.get(law) ?? []), { tokens, optional: tokens.map(() => false), repeats: true }])
+    }
+  }
+  return out
+}
+
 /** Blocks whose text keys a law (`segmentUnits`): read as folded, as the rows' law is. */
 const HEADING_KINDS = new Set<TextBlock['kind']>(['title', 'article', 'section'])
 
@@ -284,6 +339,7 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
   // a payload installs, which `draftUnits` reads, and numbers each instruction as a block of its own. Read on the
   // Bund, `installedDesignations` took citations in quoted text for §§ a payload installs.
   const wording = draftWording(blocks, refusedAddress)
+  const headings = payloadHeadings(blocks)
   const amending = draft.articles.filter((a) => a.amends)
   const lawKeys = [...wording.keys()]
   const lawKeyOf = (law: string | null): string | null | undefined => (law !== null ? law : amending.length === 1 ? amending[0]!.key : amending.length === 0 && lawKeys.length === 1 ? lawKeys[0] : undefined)
@@ -336,7 +392,8 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
       const chains = elisionChains(words)
       return { notText: words.map((_, i) => stack[i]! || elided[i]! || chains[i]!), elided }
     }
-    out.set(groupKey, strictCheck(unit, wordings, { general: law?.general ?? [], elsewhere, placeholders: bgblPlaceholders, layout }))
+    const general = [...(law?.general ?? []), ...(headings.get(lawKey) ?? [])]
+    out.set(groupKey, strictCheck(unit, wordings, { general, elsewhere, placeholders: bgblPlaceholders, layout }))
   }
   return out
 }
