@@ -719,6 +719,18 @@ function respace(shown: Marked[], wordings: readonly Wording[]): void {
     }
   }
   const draftWords = vocabulary(wordings.map((w) => w.tokens))
+  // Two words the column runs together („fürJustiz", „7ist") are parted where the draft prints exactly those two side by side, and the joined form nowhere.
+  const pairs = new Set(wordings.flatMap((w) => w.tokens.slice(1).map((t, k) => `${w.tokens[k]} ${t}`)))
+  for (let i = 0; i < shown.length; i++) {
+    const t = shown[i]!
+    if (draftWords.has(t.word)) continue
+    for (let k = 1; k < t.word.length; k++) {
+      if (!pairs.has(`${t.word.slice(0, k)} ${t.word.slice(k)}`)) continue
+      shown.splice(i, 1, { word: t.word.slice(0, k), marked: t.marked }, { word: t.word.slice(k), marked: t.marked })
+      i++
+      break
+    }
+  }
   // A designation is no half of a word: „§ 3. (1)" is not „31" (Leitungsrechte-DÜV, § 3).
   join(shown, (t) => t.word, (a, b) => ({ word: a.word + b.word, marked: a.marked || b.marked }), draftWords, (t) => t.designation === true)
   const shownWords = new Set(shown.map((t) => t.word))
