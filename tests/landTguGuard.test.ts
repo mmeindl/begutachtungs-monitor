@@ -33,6 +33,13 @@ describe('installedDesignations', () => {
     expect(installedDesignations('Nach § 4 wird eingefügt: „Natura 2000-Landschaftspflegepläne § 4a (1) Zur Erhaltung … zu beachten. Gigabit-Netze § 4b (1) In …“')).toEqual(['§ 4a', '§ 4b'])
   })
 
+  it('reads the verb past a place the instruction quotes before its payload (Oö. 2026-16124 § 44a, 21.11.2026)', () => {
+    expect(installedDesignations('Nach der Überschrift „VII. Abschnitt - Schluss- und Übergangsbestimmungen“ wird folgender neuer § 44a eingefügt: „§ 44a Verweise (1) Soweit in diesem Landesgesetz …“')).toEqual(['§ 44a'])
+    // A verb inside a quote is no verb of the instruction, nor a sub-instruction's after the first quote: a citation replaced is no § installed (Salzburg 32075, § 18).
+    expect(installedDesignations('Im § 5 wird die Wortfolge „wird eingefügt“ gestrichen: „§ 7 Bestellung“')).toEqual([])
+    expect(installedDesignations('Im § 18 werden folgende Änderungen vorgenommen: 15.1. In der Z 6 wird nach dem Wort „bereitstellt“ die Wortfolge „oder verwendet“ eingefügt. 15.2. Im Abs 3 wird das Zitat „§ 8c“ durch das Zitat „§ 8d“ ersetzt.')).toEqual([])
+  })
+
   it('does not take a citation for a designation', () => {
     expect(installedDesignations('§ 5 Abs 2 lautet: „(2) Die Behörde hat gemäß § 7 Abs 1 zu entscheiden.“')).toEqual([])
     expect(installedDesignations('§ 5 lautet: „Die Frist nach § 7 beträgt …“')).toEqual([])

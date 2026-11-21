@@ -182,8 +182,8 @@ const REMOVING = 'entfällt|entfallen|aufgehoben|gestrichen'
 const ADDING = 'eingefügt|angefügt|vorangestellt|angehängt|ergänzt'
 const VERB_RE = new RegExp(`(?<![\\p{L}])(${REMOVING}|${ADDING}|ersetzt|lautet|lauten)(?![\\p{L}])`, 'u')
 const UNIT_WORD = '(?:Wort(?:e|es|folge|folgen|laut|lautes|gruppe)?|Wörter|Wörtern|Ausdruck(?:es|s)?|Ausdrücke|Zitat(?:es|s|e)?|Verweis(?:es|ung)?|Wendung|Zeichenfolge|Wort-\\s+und\\s+Zeichenfolge|Klammerausdruck(?:es|s)?|Klammerzitat(?:es|s)?|Betrag(?:es|s)?|Zahl|Ziffer|Datum|Satzteil(?:es|s)?|Halbsatz(?:es)?|Begriff(?:es|s)?|Bezeichnung|Abkürzung|Jahreszahl|Prozentsatz(?:es)?|Text(?:es|s)?|Passage|Überschrift)'
-/** „nach dem Wort „X"", „vor der Wortfolge „X"": the place, not the text. */
-const ANCHOR_RE = new RegExp(`(?<![\\p{L}])(?:nach|vor|hinter)\\s+(?:de[mnr]\\s+|die\\s+|das\\s+)?(?:\\p{L}+\\s+)?${UNIT_WORD}\\s*$`, 'u')
+/** „nach dem Wort „X"", „vor der Wortfolge „X"" — and at the line's start, „Nach der Überschrift „X"" (Oö. 2026-16124): the place, not the text. */
+const ANCHOR_RE = new RegExp(`(?<![\\p{L}])(?:[Nn]ach|[Vv]or|[Hh]inter)\\s+(?:de[mnr]\\s+|die\\s+|das\\s+)?(?:\\p{L}+\\s+)?${UNIT_WORD}\\s*$`, 'u')
 const NEW_AFTER_RE = /:\s*$|(?<![\p{L}])(?:lautet|lauten|eingefügt|angefügt|vorangestellt|\p{L}*[Bb]ezeichnung(?:en)?|folgende[rnms]?(?:\s+\p{L}+){0,3})\s*$/u
 
 type Role = 'new' | 'old' | 'anchor' | null

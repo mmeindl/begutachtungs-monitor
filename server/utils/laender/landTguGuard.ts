@@ -120,6 +120,8 @@ const INSTALLING_RE = /\b(?:eingefügt|angefügt|lautet|lauten|ersetzt|Bezeichnu
  */
 const INSTALLED_RE = /(?:„|(?<=[.;:“”"])\s+)([^„“”"§()]{0,160}?)§\s*(\d+[a-z]*)\.?(?=[\s“”"]|$)(?!\s*(?:Abs\b|Abs\.|Z\s|Z\d|lit\.|Satz\b|und\s+§|bis\s+§|\p{Ll}))/gu
 const RUNS_ON_RE = /(?:^|\s)(?:bis|und|oder|sowie|bzw\.|des|der|dem|den|die|das|im|in|zum|zur|vom|von|für|mit|nach|gemäß|laut|siehe|über|auf|aus|bei|an|gegen|ohne)\s*$|,\s*$/
+/** The place an instruction opens with, quoted: „Nach der Überschrift „VII. Abschnitt …“" (`installedDesignations`). */
+const PLACE_QUOTE_RE = /^(\s*(?:Nach|Vor)\s+(?:dem|der|den)\s+\p{L}+\s+)„[^„“”"]*[“”"]/u
 
 /**
  * The §§ a Land draft's instruction prints in its payload (12.11.2026).
@@ -134,9 +136,17 @@ const RUNS_ON_RE = /(?:^|\s)(?:bis|und|oder|sowie|bzw\.|des|der|dem|den|die|das|
  * own, and the rule read its whole text as „not in the draft": 10 of the 12
  * alarms of the first run over GP XXVIII (12.11.2026), every one of them
  * text the draft carries word for word.
+ *
+ * The instruction is read up to its first quote — past a place it opens
+ * with in quotes (21.11.2026): „Nach der Überschrift „VII. Abschnitt …“
+ * wird folgender neuer § 44a eingefügt: „§ 44a …" (Oö. 2026-16124) had no
+ * verb before its first quote. Not past any other quote: after it come the
+ * sub-instructions of a unit, and a citation one of them replaces („das
+ * Zitat „§ 8c“ durch das Zitat „§ 8d“", Salzburg 32075) is no § installed.
  */
 export function installedDesignations(text: string): string[] {
-  const instruction = text.slice(0, text.indexOf('„') >= 0 ? text.indexOf('„') : text.length)
+  const head = text.replace(PLACE_QUOTE_RE, '$1 ')
+  const instruction = head.slice(0, head.indexOf('„') >= 0 ? head.indexOf('„') : head.length)
   if (!INSTALLING_RE.test(instruction)) return []
   const out = new Set<string>()
   for (const m of text.matchAll(INSTALLED_RE)) {

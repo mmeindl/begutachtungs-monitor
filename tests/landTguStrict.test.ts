@@ -80,6 +80,8 @@ describe('quoteRoles', () => {
     expect(roles('Im Abs 1 lautet der erste Satz: „Zur Mitfinanzierung leistet das Land Beiträge.“')).toEqual(['new'])
     // The verb before the first quotation is not the third one's: an auxiliary opens its clause (Oö. 2026-16120).
     expect(roles('Im § 7 Abs. 3 entfällt das Wort „geschlechtsbezogene“ und nach dem Wort „Verhaltensweisen“ wird die Wortfolge „in Bezug auf einen im § 3 Abs. 1 genannten Grund“ eingefügt.')).toEqual(['old', 'anchor', 'new'])
+    // The place at the line's start, capitalised (Oö. 2026-16124, § 44a).
+    expect(roles('Nach der Überschrift „VII. Abschnitt - Schluss- und Übergangsbestimmungen“ wird folgender neuer § 44a eingefügt:')).toEqual(['anchor'])
   })
 
   it('does not guess: a range of designations, a replacement left to the reader\'s grammar', () => {
