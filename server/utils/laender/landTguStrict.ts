@@ -236,6 +236,10 @@ export interface Wording {
   repeats: boolean
   /** …and must stand there once at least, where its instruction names one § only. */
   once?: boolean
+  /** A payload under a line that only adds („folgender Abs. 4 wird angefügt:"): it replaces no word the column strikes. */
+  adds?: true
+  /** …or under a line that writes a unit below the § anew („§ 24 Abs. 1 lautet: § 24. „(1) …“"): printed from the §'s designation on, it still rewrites only that unit. */
+  part?: true
   /**
    * A designation the instruction gives („erhält die Absatzbezeichnung
    * „(5)""): a single token accounts only for a place printed as a
@@ -288,6 +292,8 @@ export interface Struck {
   replaced?: (AddressUnit & { line: string })[]
   /** An instruction for the § speaks of designations („erhält die Absatzbezeichnung", „entfällt die bisherige Absatzbezeichnung (1)", „ohne Nummerierung"): a designation struck alone is notation. */
   renumbers?: boolean
+  /** The §§ a line gives another number („§ 44f erhält die Paragraphenbezeichnung „§ 44g.“", „die §§ 81 und 82 erhalten die Paragraphenbezeichnungen …"): their old text moves away from the number. */
+  moves?: string[]
 }
 
 const OPEN = '„»'
@@ -644,6 +650,9 @@ function unitIds(list: string): string[] {
   return out
 }
 
+/** „(der bisherige) § 4 erhält die Paragraphenbezeichnung", „die §§ 81 und 82 erhalten die Paragraphenbezeichnungen", „Der bisherige § 14 wird zu § 22": the §§ a line renumbers. */
+const MOVES_RE = /((?:§§?)\s*[\d\sa-z,]+?(?:\s+(?:und|bis)\s+[\da-z]+)?)\s+(?:samt\s+Überschriften?\s+)?(?:erhält|erhalten)\s+die\s+(?:Paragraphen)?[Bb]ezeichnung|bisherigen?\s+(§\s*\d+[a-z]*)\s+wird\s+(?:zu|in)\s+§/gu
+
 /** A word that can open a unit of the text: a figure of up to three digits, a letter, a letter doubled („5", „5a", „c", „cc") — not „1897)" or „Nr." of a citation. */
 const DESIGNATION_WORD_RE = /^(?:\d{1,3}[a-z]{0,2}|[a-z]|([a-z])\1)$/
 
@@ -905,7 +914,8 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const own = withoutResidue(line).replace(QUOTE_RE, ' ')
       const replaces = ((run.payload.length > 0 && !removesPayload(line)) || quoteRoles(line).some((q) => q.role === 'new')) && /(?<![\p{L}])(?:lautet|lauten|ersetzt)(?![\p{L}])/u.test(own) && !new RegExp(`(?<![\\p{L}])(?:${REMOVING})(?![\\p{L}])`, 'u').test(own)
       const heading = /(?<![\p{L}])(?:Abschnitts)?[Üü]berschrift(?![\p{L}])/u.test(own) && !/(?<![\p{L}])(?:Satz|Sätze)(?![\p{L}])/u.test(own)
-      return { named: quoted.filter((n) => n.tokens.length).map((n) => ({ ...n, places: named })), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line, ...(replaces ? { replaces: true as const } : {}), ...(heading ? { heading: true as const } : {}) }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: /bezeichn?(?:ung|et)|nummerierung/iu.test(line) }
+      const moves = [...own.matchAll(MOVES_RE)].flatMap((m) => addressUnits((m[1] ?? m[2])!).filter((u) => u.level === 0).flatMap((u) => u.ids))
+      return { ...(moves.length ? { moves } : {}), named: quoted.filter((n) => n.tokens.length).map((n) => ({ ...n, places: named })), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line, ...(replaces ? { replaces: true as const } : {}), ...(heading ? { heading: true as const } : {}) }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: /bezeichn?(?:ung|et)|nummerierung/iu.test(line) }
     }
     if (!keys.length) {
       const into = lawOf(draft.law)
@@ -936,6 +946,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
           into.byPosition.push(...struck.byPosition)
           ;(into.replaced ??= []).push(...(struck.replaced ?? []))
           if (struck.renumbers) into.renumbers = true
+          if (struck.moves) (into.moves ??= []).push(...struck.moves)
         }
       }
       for (const t of rangeDesignations(roles)) for (const key of keys) at(draft.law, key).wordings.push(designationWording(t))
@@ -951,11 +962,14 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       }
       if (!run.payload.length || removesPayload(run.line ?? '')) continue
       const pieces = payloadPieces(run.payload)
+      // A line that only adds — „angefügt", „eingefügt", „vorangestellt", not „anstelle des dritten Satzes … eingefügt" (ARHG § 31).
+      const bare = withoutResidue(run.line ?? '').replace(QUOTE_RE, ' ')
+      const adds = new RegExp(`(?<![\\p{L}])(?:${ADDING})(?![\\p{L}])`, 'u').test(bare) && !/(?<![\p{L}])(?:lautet|lauten|ersetzt|anstelle|Stelle)(?![\p{L}])/u.test(bare) ? { adds: true as const } : replacedOf(run.line ?? '').some((u) => u.level > 0) ? { part: true as const } : {}
       const keyed = pieces.some((p) => p.key !== null)
       for (const piece of pieces) {
         if (piece.key !== null) {
           const into = at(draft.law, piece.key)
-          into.wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false })
+          into.wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false, ...adds })
           if (!keys.includes(piece.key)) {
             into.text.push(standing)
             into.written.push(written)
@@ -964,7 +978,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
           // Text before the first § of a payload that prints §§: a division heading, or what the reader did not cut. Whose it is, is not read.
           for (const key of keys) at(draft.law, key).unread ??= STRICT_UNCHECKED.beforeFirst
         } else if (keys.length === 1) {
-          at(draft.law, keys[0]!).wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false })
+          at(draft.law, keys[0]!).wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false, ...adds })
         } else {
           for (const key of keys) at(draft.law, key).unread ??= STRICT_UNCHECKED.severalUnnamed
         }
@@ -1368,11 +1382,11 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   })
   const draft: string[] = []
   const optional: boolean[] = []
-  /** Where each payload stands in `draft`, and whether it prints the § from its own designation on: the whole § rewritten. */
-  const pieces: { from: number; to: number; whole: boolean }[] = []
+  /** Where each payload stands in `draft`; whether its line only adds (`Wording.adds`); and whether it prints the § from its own designation on, under a line that writes no unit below it anew: the whole § rewritten. */
+  const pieces: { from: number; to: number; adds: boolean; whole: boolean }[] = []
   for (const w of all.filter((x) => !x.repeats)) {
     const at = w.tokens.findIndex((t, i) => t === '§' && own.has(w.tokens[i + 1] ?? ''))
-    pieces.push({ from: draft.length, to: draft.length + w.tokens.length, whole: at >= 0 && w.optional.slice(0, at + 2).every(Boolean) })
+    pieces.push({ from: draft.length, to: draft.length + w.tokens.length, adds: w.adds === true, whole: !w.adds && !w.part && at >= 0 && w.optional.slice(0, at + 2).every(Boolean) })
     draft.push(...w.tokens)
     optional.push(...w.optional)
   }
@@ -1579,7 +1593,7 @@ function struckAccount(
   layout: ((words: readonly string[], marked: readonly boolean[]) => { notText: boolean[] }) | undefined,
   own: ReadonlySet<string>,
   shown: readonly Marked[],
-  draft: { at: readonly number[]; pieces: readonly { from: number; to: number; whole: boolean }[]; optional: readonly boolean[] },
+  draft: { at: readonly number[]; pieces: readonly { from: number; to: number; adds: boolean; whole: boolean }[]; optional: readonly boolean[] },
   designations: boolean,
   quoted: readonly (readonly string[])[],
 ): { notInDraft: string[]; by: StruckBy } {
@@ -1777,8 +1791,16 @@ function struckAccount(
       if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(words[k]!) && within(k, r.path, ids)) markUnit(k, c)
     })
   }
+  // A § the annex prints under its old number while a line of the draft gives it another (22.11.2026: „§ 44f erhält die
+  // Paragraphenbezeichnung „§ 44g.“ und nach § 44e wird folgender § 44f eingefügt", AVG): its old text, struck where a new §
+  // takes the number, moves away. Not where the annex prints the § renumbered (`fromId`), where the old text is the §'s own.
+  if ((unit.fromId ?? unit.id) === unit.id && found.some((f) => f.struck?.moves?.some((id) => numbered(unit.id).has(id)))) for (const q of struck) mark(q, 'repealed')
   // Rewritten.
+  // Not a payload whose line only adds (22.11.2026: a new § 81 inserted under the number the old § 81 leaves rewrites nothing of
+  // it, ApoKG); and one printed from the §'s designation on rewrites the § whole only under a line that names no unit below it
+  // („§ 24 Abs. 1 lautet: § 24. „(1) …“" rewrites Abs. 1, RAO).
   for (const piece of draft.pieces) {
+    if (piece.adds) continue
     if (piece.whole) {
       for (const q of struck) mark(q, 'rewritten')
       continue
@@ -1829,13 +1851,18 @@ function struckAccount(
   left.forEach((l, k) => {
     if (renumbers && read[k]!.shape !== undefined && unaccountedAt(k) && !unaccountedAt(k - 1) && !unaccountedAt(k + 1)) mark(l.p, 'notation')
   })
-  // A wording an instruction quotes as new („lautet der erste Satz: „…“") that stands whole in the column across struck words: those it replaces.
+  // A wording an instruction quotes as new („lautet der erste Satz: „…“") that stands whole in the column across struck words: those it replaces —
+  // not a whole sentence struck between two of its words (RAO § 23: „Die Rechtsanwaltskammer darf“ across a kept sentence; 22.11.2026).
   const shownWords = shown.map((t) => t.word)
+  const stopAt = new Set(left.flatMap((l, k) => (read[k]!.stop ? [l.p] : [])))
   for (const q of quoted) {
     if (q.length < 2) continue
     for (const at of placesOf(shownWords, q)) {
-      const places = shown.slice(at, at + q.length).map((t) => t.at).filter((x): x is number => x !== undefined)
-      if (places.length) for (let x = Math.min(...places); x <= Math.max(...places); x++) if (struck.has(x)) mark(x, 'rewritten')
+      const places = shown.slice(at, at + q.length).map((t) => t.at).filter((x): x is number => x !== undefined).sort((a, b) => a - b)
+      for (let i = 0; i + 1 < places.length; i++) {
+        const between = [...Array(places[i + 1]! - places[i]! - 1).keys()].map((d) => places[i]! + 1 + d).filter((x) => struck.has(x))
+        if (!between.some((x) => stopAt.has(x))) for (const x of between) mark(x, 'rewritten')
+      }
     }
   }
   // A twin: the word diff keeps the first equal words it meets, so where the left column prints a phrase twice and the

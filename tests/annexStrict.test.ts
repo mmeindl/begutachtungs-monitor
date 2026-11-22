@@ -444,6 +444,21 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(blocksWith('1. In § 4, § 5 Abs. 2 und der Überschrift des § 6 wird der Ausdruck „Behörde“ jeweils durch den Ausdruck „Stelle“ ersetzt.'), '(1) Die Stelle ist zuständig. (2) Die Stelle entscheidet.', '(1) Die Behörde ist zuständig. Sie ist an Weisungen nicht gebunden. (2) Die Behörde entscheidet.').state).toBe('differs')
   })
 
+  it('takes a payload for what it replaces only: not under a line that only adds, nor the whole § from a unit\'s payload (22.11.2026)', () => {
+    const current = '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet. Sie ist an Weisungen nicht gebunden. (3) Die Frist beträgt vier Wochen.'
+    // A payload under „angefügt" replaces nothing (FMABG § 7, PartFörG § 7 under fault injection).
+    const added = [...blocksWith('1. Dem § 5 wird folgender Abs. 4 angefügt:'), abs('"(4) Sie ist an Weisungen nicht gebunden."')]
+    expect(check(added, '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet. Sie ist an Weisungen nicht gebunden. (3) Die Frist beträgt vier Wochen. (4) Sie ist an Weisungen nicht gebunden.', current)).toMatchObject({ state: 'holds' })
+    expect(check(added, '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet. (3) Die Frist beträgt vier Wochen. (4) Sie ist an Weisungen nicht gebunden.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    // RAO § 24: „§ 24 Abs. 1 lautet: § 24. „(1) …“" prints the § from its designation on, and rewrites Abs. 1 only.
+    const unit = [...blocksWith('1. § 5 Abs. 1 lautet:'), abs('"(1) Die Stelle ist zuständig."', '§ 5.')]
+    expect(check(unit, '(1) Die Stelle ist zuständig. (2) Die Behörde entscheidet. Sie ist an Weisungen nicht gebunden. (3) Die Frist beträgt vier Wochen.', current)).toMatchObject({ state: 'holds' })
+    expect(check(unit, '(1) Die Stelle ist zuständig. (2) Die Behörde entscheidet. (3) Die Frist beträgt vier Wochen.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    // RAO § 23: a wording quoted as new spans no whole sentence struck between two of its words.
+    const quote = blocksWith('1. In § 5 Abs. 2 wird das Wort „entscheidet“ durch die Wortfolge „ist zuständig“ ersetzt.')
+    expect(check(quote, '(1) Die Behörde ist zuständig. (2) Die Behörde ist zuständig. (3) Die Frist beträgt vier Wochen.', '(1) Die Behörde ist zuständig. (2) Die Behörde ist an Weisungen nicht gebunden. Sie entscheidet zuständig. (3) Die Frist beträgt vier Wochen.').state).toBe('differs')
+  })
+
   it('reads no struck text where the column prints nothing new ahead of the § designation', () => {
     // SPG § 57: the heading printed shorter on the right is no heading struck; a heading replaced is.
     const blocks = blocksWith('1. In § 5 Abs. 3 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.')
