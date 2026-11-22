@@ -90,6 +90,19 @@ describe('a Land\'s Erläuterungen', () => {
     ])
   })
 
+  it('reads bare „Zu Z" headings as the Ziffern of the § above them where the whole document writes them so', () => {
+    // Salzburg 32001 (22.11.2026): „Zu § 7 (…):" and below it „Zu Z 3:", „Zu Z 4:" — its Ziffern, not instructions 3 and 4.
+    const doc = (...entries: string[]) => parseLandExplanations([`Erläuterungen\n1. Allgemeines:\nDie Novelle ordnet das Gesetz neu.\n2. Zu den einzelnen Bestimmungen:\n${entries.join('\n')}`])!
+    const byParagraph = doc('Zu § 2 (Begriffsbestimmungen):', 'Die Begriffe werden geschärft.', 'Zu Z 3:', 'Ein Verein ist auch eine Gruppe.', 'Zu Abs 3:', 'Der Absatz bleibt.', 'Zu § 7 (Rechtsgeschäfte):', 'Zu Z 4 (neu):', 'Die Übertragung wird erfasst.')
+    expect(byParagraph.particular.map((e) => [e.heading, e.paras, e.text.join(' ')])).toEqual([
+      ['Zu § 2 (Begriffsbestimmungen):', ['2'], 'Die Begriffe werden geschärft. Zu Z 3: Ein Verein ist auch eine Gruppe. Zu Abs 3: Der Absatz bleibt.'],
+      ['Zu § 7 (Rechtsgeschäfte):', ['7'], 'Zu Z 4 (neu): Die Übertragung wird erfasst.'],
+    ])
+    // One bare „Zu Z" that stands under no § heading: the document heads its instructions so, and none is a §'s.
+    const byInstruction = doc('Zu Z 1:', 'Der Titel wird geändert.', 'Zu § 2:', 'Die Begriffe werden geschärft.', 'Zu Z 3:', 'Die Frist wird verlängert.')
+    expect(byInstruction.particular.map((e) => e.heading)).toEqual(['Zu Z 1:', 'Zu § 2:', 'Zu Z 3:'])
+  })
+
   it('opens an entry at „Zu Abs" where no § stands above it', () => {
     const parse = parseLandExplanations(['Erläuterungen\n1. Allgemeines:\nDie Verordnung regelt die Gebühr.\n2. Zu den einzelnen Bestimmungen:\nZu Abs 1:\nDie Gebühr wird angehoben.\nZu Abs 2:\nDie Frist bleibt.'])!
     expect(parse.particular.map((e) => e.heading)).toEqual(['Zu Abs 1:', 'Zu Abs 2:'])

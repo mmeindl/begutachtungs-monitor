@@ -327,6 +327,44 @@ function isSubHeading(line: string, above: string): boolean {
   return !own.article && !own.several
 }
 
+/** „Zu Z 3:", „Zu Z 1 lit a:", „Zu Z 1 („Drittstaat mit hohem Risiko“):", „Zu den Z 2 und 3:" — Ziffern, and no § and no Artikel of their own. */
+function isBareZiffer(line: string): boolean {
+  if (!/^Zu\s+(?:den\s+)?Z(?:iffer)?n?\.?\s*\d/.test(line) || headingParas(line).length) return false
+  const own = ownArticles(line)
+  return !own.article && !own.several
+}
+
+/** A heading titled by § alone: „Zu § 3 („Weitere Begriffsbestimmungen“):" — not an instruction's „Zu Z 5 (§ 3):", not an Artikel's. */
+function paragraphAlone(heading: string): boolean {
+  return headingParas(heading).length > 0 && !/^Zu\s+(?:den\s+)?Z/.test(heading) && !/^Zu\s+Art/.test(heading)
+}
+
+/**
+ * Whether a document's bare „Zu Z …:" headings are the Ziffern of the §
+ * above them (22.11.2026), decided per document as the Bund's join decides
+ * it (`bareZiffernOfParagraphs` in `explanations/reasoningDiff.ts`): where
+ * every one stands in a run under a heading titled by § alone — read back
+ * over bare Ziffer headings and „Zu Abs" sub-headings. Salzburg's 32001
+ * explains § 7 so, „Zu § 7 (…):" then „Zu Z 3:", „Zu Z 4:"; read as entries
+ * of their own, the instructions numbered 3 and 4 took them, and § 2 and
+ * § 3 got § 7's Begründung. One that stands elsewhere means the document
+ * heads its instructions so — „Zu Z 1:", „Zu Z 2:" —, and then none is a §'s.
+ * Over the 1,365 cached Land PDFs, 210 documents carry bare „Zu Z" headings:
+ * 17 write every one under a § heading (358 entries now part of their §'s),
+ * 12 mix both uses, 181 head instructions so.
+ */
+function ziffernOfParagraphs(headings: readonly string[]): boolean {
+  let any = false
+  for (let i = 0; i < headings.length; i++) {
+    if (!isBareZiffer(headings[i]!)) continue
+    any = true
+    let j = i - 1
+    while (j >= 0 && (isBareZiffer(headings[j]!) || (/^Zu\s+Abs\b/.test(headings[j]!) && !headingParas(headings[j]!).length))) j--
+    if (j < 0 || !paragraphAlone(headings[j]!)) return false
+  }
+  return any
+}
+
 /**
  * The particular part from its first entry on: one entry per „Zu …"
  * heading (`entry`), up to the document's end marker (`END_RE`).
@@ -356,9 +394,10 @@ function particularOf(lines: readonly Line[], entry: RegExp): ParticularExplanat
     particular.push({ article: own.several ? null : mark, paras: headingParas(current.heading), heading: current.heading, text })
   }
   let headingOpen = false
+  const ziffern = ziffernOfParagraphs(body.map((l) => l.text).filter((t) => entry.test(t)))
   for (const l of body) {
     const line = l.text
-    if (current && isSubHeading(line, current.heading)) {
+    if (current && (isSubHeading(line, current.heading) || (ziffern && isBareZiffer(line) && paragraphAlone(current.heading)))) {
       headingOpen = false
       current.lines.push(l)
       continue
