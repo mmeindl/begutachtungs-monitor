@@ -459,6 +459,25 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(quote, '(1) Die Behörde ist zuständig. (2) Die Behörde ist zuständig. (3) Die Frist beträgt vier Wochen.', '(1) Die Behörde ist zuständig. (2) Die Behörde ist an Weisungen nicht gebunden. Sie entscheidet zuständig. (3) Die Frist beträgt vier Wochen.').state).toBe('differs')
   })
 
+  it('takes a §\'s old text for moved away only where a line gives the § another number and the column keeps none of it (22.11.2026)', () => {
+    const old = 'Die Behörde ist zuständig. Sie ist an Weisungen nicht gebunden. Die Frist beträgt vier Wochen.'
+    // AVG § 44f: the § gets another number and a new one takes its place — the annex strikes the old text whole.
+    const taken = [...blocksWith('1. § 5 erhält die Paragraphenbezeichnung „§ 6.“ und nach § 4 wird folgender § 5 eingefügt:'), abs('"Wer eine Anlage betreibt, hat sie der Stelle zu melden."', '§ 5.')]
+    expect(check(taken, 'Wer eine Anlage betreibt, hat sie der Stelle zu melden.', old)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    // The same line, and the annex prints the § where it was, without one of its sentences: it did not move away. A kept
+    // sentence is six words and more, the gate's floor for a stretch of text; below it a kept run says nothing.
+    const stayed = 'Die Behörde ist für die Erteilung der Bewilligung zuständig. Sie ist an Weisungen nicht gebunden. Die Frist beträgt vier Wochen.'
+    expect(check(blocksWith('1. § 5 erhält die Paragraphenbezeichnung „§ 6.“.'), stayed.replace(' Sie ist an Weisungen nicht gebunden.', ''), stayed)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    // APAG § 55: „erhält die Bezeichnung „§ 55. (1)“" gives the §'s text an Absatz designation, and so does „Der bisherige Text
+    // des § 5 erhält die Bezeichnung „(1)“" — no renumbering of the §, and a sentence lost from the column is none it moved.
+    const whole = `§ 5. (1) ${old} (2) Die Behörde entscheidet.`
+    for (const line of ['1. § 5 erhält die Bezeichnung „§ 5. (1)“.', '1. Der bisherige Text des § 5 erhält die Bezeichnung „(1)“.']) {
+      const blocks = [...blocksWith(line, '2. Dem § 5 wird folgender Abs. 2 angefügt:'), abs('"(2) Die Behörde entscheidet."')]
+      expect(check(blocks, whole, `§ 5. ${old}`).state).toBe('holds')
+      expect(check(blocks, whole.replace(' Sie ist an Weisungen nicht gebunden.', ''), `§ 5. ${old}`)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    }
+  })
+
   it('reads a lone struck designation as notation only where a line gives or removes designations (22.11.2026)', () => {
     // „die Bezeichnung „Bundesminister für Inneres““ names a Ressort, and switched the exception on for a struck „3" of „Z 1 bis 3.".
     const current = '(1) Der Bundesminister für Inneres ist zuständig. (2) Dies gilt für die Fälle des § 4 Abs. 1 Z 1 bis 3. (3) Die Frist beträgt vier Wochen.'

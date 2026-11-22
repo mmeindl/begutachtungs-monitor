@@ -657,8 +657,67 @@ function unitIds(list: string): string[] {
  */
 const RENUMBERS_RE = /nummerierung|(?:Absatz|Ziffern?|Paragraphen|Litera|Gliederungs|Unterabsatz)bezeichnung/iu
 
-/** „(der bisherige) § 4 erhält die Paragraphenbezeichnung", „die §§ 81 und 82 erhalten die Paragraphenbezeichnungen", „Der bisherige § 14 wird zu § 22": the §§ a line renumbers. */
-const MOVES_RE = /((?:§§?)\s*[\d\sa-z,]+?(?:\s+(?:und|bis)\s+[\da-z]+)?)\s+(?:samt\s+Überschriften?\s+)?(?:erhält|erhalten)\s+die\s+(?:Paragraphen)?[Bb]ezeichnung|bisherigen?\s+(§\s*\d+[a-z]*)\s+wird\s+(?:zu|in)\s+§/gu
+/** „(der bisherige) § 4 erhält die Paragraphenbezeichnung", „die §§ 81 und 82 erhalten die Paragraphenbezeichnungen", „Der bisherige § 14 wird zu § 22": the §§ a line renumbers, and for the second form the number it gives. */
+const MOVES_RE = /((?:§§?)\s*[\d\sa-z,]+?(?:\s+(?:und|bis)\s+[\da-z]+)?)\s+(?:samt\s+Überschriften?\s+)?(?:erhält|erhalten)\s+die\s+(?:Paragraphen)?[Bb]ezeichnung(?:en)?|bisherigen?\s+(§\s*\d+[a-z]*)\s+wird\s+(?:zu|in)\s+§\s*(\d+[a-z]*)/gu
+
+/**
+ * The § numbers a renumbering line gives, in order: what follows its verb to the end of the clause — „;", „:", a
+ * sentence's end outside a quotation, or „und" before what goes on („und nach § 44e wird …", „und lautet") —, quoted
+ * („„§ 7.“, „8.“ und „§ 11.““) or not („§§ 104b bis 104i"). A designation in brackets is an Absatz's.
+ */
+function givenNumbers(rest: string): string[] {
+  let end = rest.length
+  let depth = 0
+  for (let i = 0; i < rest.length; i++) {
+    const ch = rest[i]!
+    if (OPEN.includes(ch)) depth++
+    else if (CLOSE.includes(ch)) depth = Math.max(0, depth - 1)
+    else if (depth > 0) continue
+    else if (ch === ';' || ch === ':' || (ch === '.' && /^\s+[\p{Lu}§]/u.test(rest.slice(i + 1))) || /^\s(?:und|sowie)\s+(?![„»§\d])/u.test(rest.slice(i))) {
+      end = i
+      break
+    }
+  }
+  const clause = rest.slice(0, end).replace(/(\d)(und|bis)(?![\p{L}])/gu, '$1 $2').replace(/\(\s*(?:neu|\d+[a-z]?)\s*\)/gu, ' ')
+  const parts = clause.match(/\d+[a-z]{0,2}(?![\p{L}\d])|,|(?<![\p{L}])(?:und|sowie|bis)(?![\p{L}])/gu) ?? []
+  // Ids joined by what stands between two of them; a connector before the first or after the last joins nothing.
+  const list: string[] = []
+  for (const part of parts) {
+    const id = /^\d/.test(part)
+    if (id && list.length && /^\d/.test(list.at(-1)!)) list.push(',')
+    if (id || (list.length && /^\d/.test(list.at(-1)!))) list.push(part)
+  }
+  while (list.length && !/^\d/.test(list.at(-1)!)) list.pop()
+  return list.length ? unitIds(list.join(' ')) : []
+}
+
+/**
+ * The §§ a line gives ANOTHER number, read with its quotations: the number it gives decides. „§ 55 erhält die
+ * Bezeichnung „§ 55. (1)“" (APAG) and „Der bisherige Text des § 5 erhält die Bezeichnung „(1)“" give the § an Absatz
+ * designation and move nothing (22.11.2026, a second review of the rule: read as a move, the line made every struck word
+ * of the § one that moved away, and a sentence lost from the column passed). Where the numbers do not pair, the line
+ * stands as a renumbering of each § it names.
+ */
+function movedOf(raw: string): string[] {
+  const line = withoutResidue(raw)
+  const quoted = (at: number): boolean => {
+    let depth = 0
+    for (const ch of line.slice(0, at)) depth = OPEN.includes(ch) ? depth + 1 : CLOSE.includes(ch) ? Math.max(0, depth - 1) : depth
+    return depth > 0
+  }
+  const out: string[] = []
+  for (const m of line.matchAll(MOVES_RE)) {
+    if (quoted(m.index)) continue
+    const from = addressUnits((m[1] ?? m[2])!).filter((u) => u.level === 0).flatMap((u) => u.ids)
+    const to = m[3] !== undefined ? [m[3].toLowerCase()] : givenNumbers(line.slice(m.index + m[0].length))
+    if (!to.length) continue
+    out.push(...from.filter((id, i) => to.length !== from.length || to[i] !== id))
+  }
+  return out
+}
+
+/** The run of kept words that says a § stayed where it is: six, the gate's floor for a stretch of text (`MIN_STANDING_STRETCH`). */
+const MOVED_KEPT_RUN = 6
 
 /** A word that can open a unit of the text: a figure of up to three digits, a letter, a letter doubled („5", „5a", „c", „cc") — not „1897)" or „Nr." of a citation. */
 const DESIGNATION_WORD_RE = /^(?:\d{1,3}[a-z]{0,2}|[a-z]|([a-z])\1)$/
@@ -921,7 +980,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const own = withoutResidue(line).replace(QUOTE_RE, ' ')
       const replaces = ((run.payload.length > 0 && !removesPayload(line)) || quoteRoles(line).some((q) => q.role === 'new')) && /(?<![\p{L}])(?:lautet|lauten|ersetzt)(?![\p{L}])/u.test(own) && !new RegExp(`(?<![\\p{L}])(?:${REMOVING})(?![\\p{L}])`, 'u').test(own)
       const heading = /(?<![\p{L}])(?:Abschnitts)?[Üü]berschrift(?![\p{L}])/u.test(own) && !/(?<![\p{L}])(?:Satz|Sätze)(?![\p{L}])/u.test(own)
-      const moves = [...own.matchAll(MOVES_RE)].flatMap((m) => addressUnits((m[1] ?? m[2])!).filter((u) => u.level === 0).flatMap((u) => u.ids))
+      const moves = movedOf(line)
       return { ...(moves.length ? { moves } : {}), named: quoted.filter((n) => n.tokens.length).map((n) => ({ ...n, places: named })), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line, ...(replaces ? { replaces: true as const } : {}), ...(heading ? { heading: true as const } : {}) }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: quoteRoles(line).some((q) => q.designation) || RENUMBERS_RE.test(own) }
     }
     if (!keys.length) {
@@ -1803,7 +1862,19 @@ function struckAccount(
   // A § the annex prints under its old number while a line of the draft gives it another (22.11.2026: „§ 44f erhält die
   // Paragraphenbezeichnung „§ 44g.“ und nach § 44e wird folgender § 44f eingefügt", AVG): its old text, struck where a new §
   // takes the number, moves away. Not where the annex prints the § renumbered (`fromId`), where the old text is the §'s own.
-  if ((unit.fromId ?? unit.id) === unit.id && found.some((f) => f.struck?.moves?.some((id) => numbered(unit.id).has(id)))) for (const q of struck) mark(q, 'repealed')
+  // And only where the column keeps none of the old text beside what it strikes: a § printed under its old number that
+  // keeps a sentence and loses another did not move away (the second review; every § this accounted for in GP XXVIII
+  // keeps a run of four words at most, a kept sentence is `MOVED_KEPT_RUN` and more).
+  if ((unit.fromId ?? unit.id) === unit.id && found.some((f) => f.struck?.moves?.some((id) => numbered(unit.id).has(id)))) {
+    // Words of the text only: a designation, the „§", an elision mark the column keeps („§ 11. (1) und (2) …") say nothing of it.
+    let run = 0
+    let longest = 0
+    left.forEach((l, k) => {
+      if (struck.has(l.p)) run = 0
+      else if (read[k]!.shape === undefined && !notText?.[k] && words[k] !== '§') longest = Math.max(longest, ++run)
+    })
+    if (longest < MOVED_KEPT_RUN) for (const q of struck) mark(q, 'repealed')
+  }
   // Rewritten.
   // Not a payload whose line only adds (22.11.2026: a new § 81 inserted under the number the old § 81 leaves rewrites nothing of
   // it, ApoKG); and one printed from the §'s designation on rewrites the § whole only under a line that names no unit below it
