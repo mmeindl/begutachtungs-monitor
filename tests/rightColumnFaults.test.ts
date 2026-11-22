@@ -90,6 +90,13 @@ describe('keptSentenceGone: a sentence the right column keeps, lost from it (R-w
     const proposed = 'Zuständigkeit § 5. (1) Die Behörde ist für alle Anträge nach diesem Gesetz zuständig. Sie entscheidet binnen sechs Wochen.'
     expect(keptSentenceGone(current, proposed, SPLIT, words)).toBe('Zuständigkeit § 5. (1) Sie entscheidet binnen sechs Wochen.')
   })
+  it('takes no division heading ahead of the § designation, and no stretch across an elision mark (22.11.2026)', () => {
+    const current = '2. Hauptstück Aufsicht und sonstige Maßnahmen 1. Abschnitt Allgemeines § 21. (1) Die Behörde überwacht die Einhaltung dieses Gesetzes. Sie kann Auskünfte verlangen.'
+    expect(keptSentenceGone(current, current.replace('Auskünfte', 'alle Auskünfte'), SPLIT, words)).toBe('2. Hauptstück Aufsicht und sonstige Maßnahmen 1. Abschnitt Allgemeines § 21. (1) Sie kann alle Auskünfte verlangen.')
+    const elided = '(1) Der Zuschlag steht unter folgenden Voraussetzungen zu: 1. … 2. Der Antrag wurde rechtzeitig und vollständig eingebracht. Die Frist ist offen.'
+    expect(keptSentenceGone(elided, elided.replace('offen', 'gewahrt'), SPLIT, words)).toBe('(1) Der Zuschlag steht unter folgenden Voraussetzungen zu: 1. … 2. Die Frist ist gewahrt.')
+  })
+
   it('gives null where no sentence of the right column stands in the left one', () => {
     expect(keptSentenceGone('(1) Die Frist beträgt vier Wochen.', '(1) Die Frist beträgt sechs Wochen.', SPLIT, words)).toBeNull()
   })

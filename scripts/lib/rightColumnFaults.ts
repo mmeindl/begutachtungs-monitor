@@ -154,11 +154,23 @@ export function lastSentenceGone(text: string, split: RegExp): string | null {
  * before the § designation and the markers after it are cut off (on the
  * Bund's PDF path a row's first „sentence" is the heading stack with the §
  * opening), what is left must be a sentence (`isSentence`) of
- * `MIN_STANDING_STRETCH` words. The right column without it, or null.
+ * `MIN_STANDING_STRETCH` words, no chunk before the § designation and none
+ * that runs across an elision mark. The right column without it, or null.
  */
 export function keptSentenceGone(current: string, proposed: string, split: RegExp, words: (s: string) => readonly string[]): string | null {
   const lawSentence = (s: string): string => s.replace(/^.*§+\.?\s*\d+[a-z]*\.(?:\s+|$)/su, '').replace(/^(?:(?:\(\d+[a-z]?\)|\d+[a-z]?\.|[a-z]{1,2}\)|…|\.\.\.)\s*)+/, '')
-  const kept = proposed.split(split).map(lawSentence).find((s) => isSentence(s) && words(s).length >= MIN_STANDING_STRETCH && current.includes(s))
+  // Nothing that stands before the § designation as a chunk of its own — a division's heading („2. Hauptstück Aufsicht …
+  // Maßnahmen 1."), which the PDF path prints above „§ 21." — and nothing across an elision mark („… zu: 1. … 2. Der"): neither
+  // is a sentence of the law's text (22.11.2026, a second review of the class: 18 of the PDF path's 91 misses were such chunks).
+  const designation = /§\s*\d+[a-z]*\.(?=\s|$)/u.exec(proposed)
+  const textFrom = designation ? designation.index : 0
+  let at = 0
+  const parts = proposed.split(split).map((part) => {
+    const start = proposed.indexOf(part, at)
+    at = start + part.length
+    return { part, end: at }
+  })
+  const kept = parts.filter((p) => p.end > textFrom).map((p) => lawSentence(p.part)).find((s) => isSentence(s) && !/…|\.\.\./u.test(s) && words(s).length >= MIN_STANDING_STRETCH && current.includes(s))
   return kept ? proposed.replace(kept, '').replace(/\s{2,}/g, ' ').trim() : null
 }
 
