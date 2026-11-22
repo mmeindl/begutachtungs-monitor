@@ -231,7 +231,8 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     const blocks = [...DRAFT.slice(0, 3), ...parseRisXml('<absatz typ="novao1">1. In § 3a wird die Wortfolge „der Status des Asylberechtigten“ durch die Wortfolge „die Flüchtlingseigenschaft“ und die Wortfolge „des subsidiär Schutzberechtigten“ durch die Wortfolge „der Status subsidiären Schutzes“ ersetzt.</absatz>')]
     const current = 'Einem Fremden ist von Amts wegen der Status des Asylberechtigten oder des subsidiär Schutzberechtigten zuzuerkennen.'
     const check = (proposed: string) => annexStrictChecks([row({ law: LAW, gld: '§ 3a.', para: '§ 3a.', current, proposed })], { ...draft, blocks }).get(`${LAW}#§ 3a.`)!
-    expect(check('Einem Fremden ist von Amts wegen die Flüchtlingseigenschaft oder der Status subsidiären Schutzes zuzuerkennen.')).toMatchObject({ state: 'holds', notInDraft: [] })
+    // The struck text of that reading (22.11.2026): the old „oder" the diff struck is the twin kept there, no struck text the draft must name.
+    expect(check('Einem Fremden ist von Amts wegen die Flüchtlingseigenschaft oder der Status subsidiären Schutzes zuzuerkennen.')).toMatchObject({ state: 'holds', notInDraft: [], struckNotInDraft: [] })
     // A word the left column carries only across a stretch of kept text is no kept word at that place: „Fremden" stays new, and not the draft's.
     expect(check('Einem Fremden ist von Amts wegen die Flüchtlingseigenschaft Fremden der Status subsidiären Schutzes zuzuerkennen.')).toMatchObject({ state: 'differs', notInDraft: ['fremden'] })
     // A word the left column lacks stays new.
@@ -265,5 +266,65 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     // Right behind the last word it prints, the mark leaves out what the wording goes on with.
     const two = [...DRAFT.slice(0, 3), novao('1. § 9 Abs. 3 und 4 lauten:'), abs('"(3) Die Behörde hat den Antrag zu prüfen.'), abs('(4) Sie entscheidet binnen 14 Tagen."')]
     expect(annexStrictChecks([row({ law: LAW, gld: '§ 9.', para: '§ 9.', current: '(3) Die Behörde ist zuständig. (4) …', proposed: '(3) Die Behörde hat den Antrag zu prüfen. (4) …' })], { ...draft, blocks: two }).get(`${LAW}#§ 9.`)!.state).toBe('holds')
+  })
+})
+
+describe('annexStrictChecks: what the right column strikes, the draft strikes (22.11.2026)', () => {
+  const blocksWith = (...lines: string[]) => [...DRAFT.slice(0, 3), ...lines.map((l) => novao(l))]
+  const STANDING = '(1) Die Behörde ist zuständig. Sie ist an Weisungen nicht gebunden. (2) Die Behörde hat über den Antrag zu entscheiden. (3) Die Frist beträgt vier Wochen.'
+  const check = (blocks: TextBlock[], proposed: string, current = STANDING) => annexStrictChecks([row({ law: LAW, gld: '§ 5.', para: '§ 5.', current, proposed })], { ...draft, blocks }).get(`${LAW}#§ 5.`)!
+
+  it('names a sentence the draft keeps that the column strikes, and holds what an instruction strikes', () => {
+    // The fault „behaltener Satz gestrichen": the page would show a deletion the draft does not make.
+    const lost = STANDING.replace(' Sie ist an Weisungen nicht gebunden.', '')
+    expect(check(blocksWith('1. In § 5 Abs. 3 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.'), lost.replace('vier', 'sechs'))).toMatchObject({ state: 'differs', notInDraft: [], notShown: [], struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    // Struck by a quotation of the old wording, by repeal of its unit, by a payload rewriting it, by its position.
+    expect(check(blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „ Sie ist an Weisungen nicht gebunden.“'), lost)).toMatchObject({ state: 'holds', struckNotInDraft: [], struck: { named: 6 } })
+    expect(check(blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz.'), lost)).toMatchObject({ state: 'holds', struck: { byPosition: 6 } })
+    expect(check([...blocksWith('1. § 5 Abs. 1 lautet:'), abs('"(1) Die Behörde ist zuständig."')], lost)).toMatchObject({ state: 'holds', struck: { rewritten: 6 } })
+    // One sentence struck by position, a second struck with no instruction: more stretches than the draft counts.
+    const two = lost.replace(' Die Frist beträgt vier Wochen.', '')
+    expect(check(blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz.'), two)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
+  })
+
+  it('holds a unit the draft repeals by its designation, shown struck in a row of its own', () => {
+    const rows = (struck: string) => [
+      row({ law: LAW, gld: '§ 5.', para: '§ 5.', change: 'unchanged', current: '(1) Die Behörde ist zuständig.', proposed: '(1) Die Behörde ist zuständig.' }),
+      row({ law: LAW, gld: null, para: '§ 5.', change: 'removed', current: struck, proposed: '' }),
+    ]
+    const of = (blocks: TextBlock[], struck = '(3) Die Frist beträgt vier Wochen.') => annexStrictChecks(rows(struck), { ...draft, blocks }).get(`${LAW}#§ 5.`)!
+    // Until 22.11.2026 such a § was „kein neuer Text" and the check never ran.
+    expect(of(blocksWith('1. In § 5 entfällt Abs. 3.'))).toMatchObject({ state: 'holds', newWords: 0, struck: { repealed: 6 } })
+    expect(of(blocksWith('1. § 5 Abs. 2 und 3 entfallen.'))).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
+    expect(of(blocksWith('1. § 5 samt Überschrift entfällt.'))).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
+    // Another Absatz repealed, or a place named, is not this one.
+    expect(of(blocksWith('1. In § 5 entfällt Abs. 4.'))).toMatchObject({ state: 'differs', struckNotInDraft: ['3', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
+    expect(of(blocksWith('1. In § 5 Abs. 3 entfällt der Punkt.'))).toMatchObject({ state: 'differs' })
+    // A version label the annex prints in the left column is its notation, no struck text.
+    expect(of(blocksWith('1. In § 5 entfällt Abs. 3.'), 'Ab 1.9.2025:')).toMatchObject({ state: 'holds', struck: { repealed: 0 } })
+  })
+
+  it('reads a struck stretch whose twin stands kept inside a repealed unit as the twin the draft strikes', () => {
+    // Fremdenpolizeigesetz § 94 (22.11.2026): the word diff keeps the first „Die Behörde" and strikes the second, which the draft keeps.
+    const blocks = blocksWith('1. In § 5 entfällt Abs. 1; Abs. 2 erhält die Absatzbezeichnung „(1)“.')
+    expect(check(blocks, '(1) Die Behörde entscheidet.', '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet.')).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    // Not where the kept copy stands outside what the draft strikes.
+    expect(check(blocksWith('1. In § 5 entfällt Abs. 3.'), '(1) Die Behörde entscheidet.', '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet.').state).toBe('differs')
+  })
+
+  it('judges the struck text of the reading the check holds: the twin a flipped reading keeps is no struck text', () => {
+    // Staatsanwaltschaftsgesetz § 8b (22.11.2026): the diff strikes „kann die" before the old wording and shows it new after the
+    // inserted one; read with „kann die" kept, every new word is the draft's, and the struck „kann die" is that reading's kept twin.
+    const blocks = blocksWith('1. In § 8b Abs. 2 wird die Wortfolge „Bundesministerin für Justiz“ durch das Wort „Bundesstaatsanwaltschaft“ ersetzt und nach der Wortfolge „internationalen Organisationen“ die Wortfolge „und dem Bundesministerium für Justiz“ eingefügt.')
+    const current = '(2) Zur Berichterstattung gegenüber internationalen Organisationen kann die Bundesministerin für Justiz gemäß § 8 Abs. 2 vorgehen.'
+    const proposed = '(2) Zur Berichterstattung gegenüber internationalen Organisationen und dem Bundesministerium für Justiz kann die Bundesstaatsanwaltschaft gemäß § 8 Abs. 2 vorgehen.'
+    expect(annexStrictChecks([row({ law: LAW, gld: '§ 8b.', para: '§ 8b.', current, proposed })], { ...draft, blocks }).get(`${LAW}#§ 8b.`)).toMatchObject({ state: 'holds', notInDraft: [], struckNotInDraft: [] })
+  })
+
+  it('reads no struck text where the column prints nothing new ahead of the § designation', () => {
+    // SPG § 57: the heading printed shorter on the right is no heading struck; a heading replaced is.
+    const blocks = blocksWith('1. In § 5 Abs. 3 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.')
+    expect(check(blocks, 'Übermittlung § 5. (3) Die Frist beträgt sechs Wochen.', 'Zentrale Informationssammlung; Übermittlung § 5. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    expect(check(blocks, 'Meldung § 5. (3) Die Frist beträgt sechs Wochen.', 'Übermittlung § 5. (3) Die Frist beträgt vier Wochen.').state).toBe('differs')
   })
 })

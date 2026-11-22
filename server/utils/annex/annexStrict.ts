@@ -24,6 +24,13 @@
  * saying it left text out and carries no word. Run on the rows as parsed,
  * before the gate empties the withheld ones.
  *
+ * AND WHAT IT SHOWS STRUCK (22.11.2026): the Bund asks the check to hold the
+ * struck text too (`strictCheck`'s `struck`, `struckAccount`): a § whose
+ * column strikes what no instruction for it strikes differs. So a § the annex
+ * shows only struck, in rows of its own, is held as well, no longer left as
+ * „kein neuer Text"; a version label the left column prints as a row
+ * („Ab 1.9.2025:") is the annex's notation and left out as an elided row is.
+ *
  * A DESIGNATION IS NO FIGURE (21.11.2026): a renumbering's designations — the
  * quoted „(4)", the „5" and „6" it gives in words (`draftWording`) — account only for a place
  * the column prints as a designation (`Wording.designation`). Before, a
@@ -247,6 +254,15 @@ function groupsOf(rows: readonly ComparisonRow[]): Map<string, Group> {
 }
 
 /**
+ * A row the annex's left column prints as a version label, the way RIS heads
+ * a provision with two versions — „Ab 1.9.2025:", „Ab 1.9.2025 bzw. mit dem der
+ * Kundmachung folgenden Tag:" — and the right column does not (22.11.2026: 15
+ * rows of the cached table-path annexes, every one removed). The annex's own
+ * notation, no text of the §: left out of what is held, as an elided row is.
+ */
+const VERSION_LABEL_RE = /^\s*Ab\s+\d{1,2}\.\s?\d{1,2}\.\s?\d{4}(?:\s+bzw\.\s[^:]{0,80})?:\s*$/u
+
+/**
  * One § group as the page shows it, in the shape `strictCheck` reads: the
  * rows' segments one after the other, a space between two rows. Null where a
  * changed row carries no word diff (`MAX_DP_CELLS`): what it shows as new is
@@ -257,6 +273,7 @@ function shownUnit(group: Group, key: string, afters: readonly string[]): LawDif
   const allNew = rows.every((r) => r.change === 'inserted')
   const segments: LawDiffSegment[] = []
   for (const row of rows) {
+    if (row.change === 'removed' && VERSION_LABEL_RE.test(row.current)) continue
     if (segments.length) segments.push({ type: 'equal', text: ' ' })
     if (row.change === 'unchanged') segments.push({ type: 'equal', text: row.proposed })
     else if (row.change === 'inserted') segments.push({ type: 'inserted', text: row.proposed })
@@ -327,7 +344,8 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
   }
   for (const [groupKey, group] of groups) {
     const { own, afters } = keysOf(group)
-    if (!group.rows.some((r) => !r.elided && (r.change === 'inserted' || r.change === 'changed'))) {
+    // A § the annex shows struck in rows of their own is held too (22.11.2026): what it strikes, the draft must strike (`struckAccount`).
+    if (!group.rows.some((r) => !r.elided && (r.change === 'inserted' || r.change === 'changed' || (r.change === 'removed' && r.current.trim() !== '')))) {
       out.set(groupKey, unchecked(STRICT_UNCHECKED.nothingNew))
       continue
     }
@@ -362,7 +380,7 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
       return { notText: words.map((_, i) => stack[i]! || elided[i]! || chains[i]!), elided }
     }
     const general = [...(law?.general ?? []), ...(headings.get(lawKey) ?? [])]
-    out.set(groupKey, strictCheck(unit, wordings, { general, elsewhere, placeholders: bgblPlaceholders, layout }))
+    out.set(groupKey, strictCheck(unit, wordings, { general, generalStruck: law?.generalStruck, elsewhere, placeholders: bgblPlaceholders, layout, struck: true }))
   }
   return out
 }

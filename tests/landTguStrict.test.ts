@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LawDiffSegment, LawDiffUnit } from '../shared/types'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { guardTguUnits, undrafted } from '../server/utils/laender/landTguGuard'
-import { draftWording, quoteRoles, strictTokens } from '../server/utils/laender/landTguStrict'
+import { draftWording, quoteRoles, strictCheck, strictTokens } from '../server/utils/laender/landTguStrict'
 
 const unit = (over: Partial<LawDiffUnit>): LawDiffUnit => ({
   article: null, articleKey: null, fromArticleKey: null, id: '§5', fromId: '§5', heading: null, quotedHeading: null,
@@ -285,5 +285,53 @@ describe('the strict check\'s own misses, closed (21.11.2026)', () => {
     expect(strict2(changed('§8', '(1) … (2) Die Fertigstellung ist der Behörde anzuzeigen. {Dabei} [Die Anzeige ist in elektronischer Form zu übermitteln. Der Anzeige] sind {folgende Unterlagen} anzuschließen:')).state).toBe('holds')
     // „Der Anzeige" lost: the quoted Einleitungsteil does not stand, whoever else writes the sentence before it (§ 9).
     expect(strict2(changed('§8', '(1) … (2) Die Fertigstellung ist der Behörde anzuzeigen. {Dabei} [Die Anzeige ist in elektronischer Form zu übermitteln.] sind {folgende Unterlagen} anzuschließen:')).state).toBe('differs')
+  })
+})
+
+describe('what an instruction strikes (22.11.2026)', () => {
+  const struckOf = (line: string, key = '§ 5') => [...draftWording([{ kind: 'novao', cls: 'absatz/novao1', text: line, gld: null }]).values()][0]?.byKey.get(key)?.struck
+  const units = (line: string) => struckOf(line)?.repealed.map((r) => `${r.level}:${r.ids.join(',')}`)
+
+  it('reads the units a line repeals by designation, and not a place it names', () => {
+    expect(units('1. § 5 Abs. 3 entfällt.')).toEqual(['1:3'])
+    expect(units('1. In § 5 entfallen die Abs. 1, 5 und 6.')).toEqual(['1:1,5,6'])
+    expect(units('1. § 5 Abs. 3 Z 4 sowie Abs. 5 entfällt.')).toEqual(['2:4', '1:5'])
+    expect(units('1. In § 5 entfallen die Ziffern 11 bis 14.')).toEqual(['2:11,12,13,14'])
+    expect(units('1. In § 5 entfallen die Absatzbezeichnung „(1)“ sowie Abs. 2.')).toEqual(['1:2'])
+    expect(units('1. In § 5 wird am Ende der Z 5 der Strichpunkt durch einen Beistrich ersetzt und die Z 6 entfällt.')).toEqual(['2:6'])
+    expect(units('1. § 5 samt Überschrift entfällt.')).toEqual(['0:5'])
+    // The next clause's subject is no object of the verb; a place is no unit; a position counted is no designation.
+    expect(units('1. § 5 Abs. 2 entfällt und die Abs. 3 und 4 erhalten die Absatzbezeichnungen „(2)“ und „(3)“.')).toEqual(['1:2'])
+    expect(units('1. In § 5 Abs. 3 entfällt Z 13 und in Z 13a entfällt die Wortfolge „oder“.')).toEqual(['2:13'])
+    expect(units('1. In § 5 Abs. 2 entfällt der letzte Satz.')).toEqual([])
+  })
+
+  it('counts what a line strikes by position, reads the units it writes anew, and takes a removing payload as the old wording', () => {
+    expect(struckOf('1. In § 5 Abs. 2 entfallen der vorletzte und der letzte Satz.')?.byPosition.map((b) => b.count)).toEqual([2])
+    expect(struckOf('1. In § 5 Abs. 1 entfallen die Sätze sechs und sieben.')?.byPosition.map((b) => b.count)).toEqual([2])
+    expect(struckOf('1. In § 5 Abs. 4 wird der Strichpunkt durch einen Punkt ersetzt; der darauf folgende Halbsatz entfällt.')?.byPosition.map((b) => b.count)).toEqual([1])
+    // „im ersten Satz" is the place of an insertion.
+    expect(struckOf('1. In § 5 Abs. 2 wird im ersten Satz nach dem Wort „Behörde“ das Wort „jedenfalls“ eingefügt.')?.byPosition).toEqual([])
+    const replaced = (line: string) => struckOf(line)?.replaced?.map((r) => `${r.level}:${r.ids.join(',')}`)
+    expect(replaced('1. § 5 Abs. 5 und 6 lautet:')).toEqual(['1:5,6'])
+    expect(replaced('1. In § 5 Abs. 2 werden Z 1 bis 3 durch folgende Z 1 und 2 ersetzt:')).toEqual(['2:1,2,3'])
+    expect(replaced('1. In § 5 Abs. 1 lautet die Z 20 (neu):')).toEqual(['2:20'])
+    expect(replaced('1. In § 5 Abs. 1 lautet der zweite Satz:')).toEqual([])
+    const blocks = [{ kind: 'novao' as const, cls: 'absatz/novao1', text: '1. In § 5 Abs. 2 entfällt der folgende Satz:', gld: null }, { kind: 'abs' as const, cls: 'absatz/abs', text: '„Die Frist beträgt vier Wochen.“', gld: null }]
+    expect([...draftWording(blocks).values()][0]!.byKey.get('§ 5')!.struck!.named.map((n) => n.tokens.join(' '))).toEqual(['die frist beträgt vier wochen'])
+  })
+
+  it('reads a long line of addresses in time', () => {
+    const line = `1. ${Array.from({ length: 80 }, (_, i) => `§ 5 Abs. ${i} Z ${i} lit. a und b sowie`).join(' ')} xyz entfällt.`
+    const t0 = performance.now()
+    struckOf(line)
+    expect(performance.now() - t0).toBeLessThan(500)
+  })
+
+  it('names struck text the draft keeps on a Land\'s §, and leaves the verdict alone unless the caller asks', () => {
+    const wording = [...draftWording([{ kind: 'novao', cls: 'absatz/novao1', text: '1. Im § 5 Abs 2 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.', gld: null }]).values()][0]!
+    const unit = changed('§5', '(1) Die Behörde ist zuständig. {Sie ist an Weisungen nicht gebunden.} (2) Die Frist beträgt {vier} [sechs] Wochen.')
+    expect(strictCheck(unit, [wording.byKey.get('§ 5')], { general: [], elsewhere: [] })).toMatchObject({ state: 'holds', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    expect(strictCheck(unit, [wording.byKey.get('§ 5')], { general: [], elsewhere: [], struck: true }).state).toBe('differs')
   })
 })
