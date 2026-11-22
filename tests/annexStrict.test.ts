@@ -5,6 +5,7 @@ import { insertedStretches } from '../server/utils/annex/rightColumn'
 import { REASON_CUT } from '../server/utils/annex/verdict'
 import { STRICT_UNCHECKED, strictTokens } from '../server/utils/laender/landTguStrict'
 import type { TextBlock } from '../server/utils/lawtext/lawUnits'
+import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { comparisonRow as row, draftArticle as article } from './helpers/builders'
 
 /** A block as `parseRisXml` hands it over: the quotation marks folded to straight ones (`normalizeText`). */
@@ -387,6 +388,29 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     // A line that names the new number as new is this §'s.
     expect(of('1. § 18 entfällt mitsamt Überschrift.', renumbered, '3. Im nunmehrigen § 18 entfällt Abs. 2.')).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
     expect(of('1. § 18 entfällt mitsamt Überschrift.', renumbered, '3. § 19 Abs. 2 entfällt.')).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
+  })
+
+  it('ends a list\'s item where its row ends, before the list\'s Schlussteil, and never at a citation (22.11.2026)', () => {
+    // The table path sets one row per element: the Schlussteil after the last Ziffer is a row of its own, which the draft keeps.
+    const r = (gld: string | null, change: ComparisonRow['change'], current: string) => row({ law: LAW, gld, para: '§ 5.', change, current, proposed: change === 'removed' ? '' : current })
+    const rows = (zifferStruck: boolean, schlussStruck: boolean) => [
+      r('§ 5.', 'unchanged', '(1) Die Behörde hat'),
+      r(null, 'unchanged', '1. die Identität und'),
+      r(null, zifferStruck ? 'removed' : 'unchanged', '2. den Wohnsitz'),
+      r(null, schlussStruck ? 'removed' : 'unchanged', 'des Antragstellers zu prüfen.'),
+      r(null, 'unchanged', '(2) Die Frist beträgt vier Wochen.'),
+    ]
+    const blocks = blocksWith('1. In § 5 Abs. 1 entfällt die Z 2.')
+    expect(annexStrictChecks(rows(true, false), { ...draft, blocks }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'holds', struck: { repealed: 3 } })
+    expect(annexStrictChecks(rows(false, true), { ...draft, blocks }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['des', 'antragstellers', 'zu', 'prüfen'] })
+    expect(annexStrictChecks(rows(true, true), { ...draft, blocks }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['des', 'antragstellers', 'zu', 'prüfen'] })
+    // SpielzeugV Anlage 2: „BGBl." after a comma is printed like a designation, but opens no Litera.
+    const lit = [
+      r('§ 5.', 'unchanged', '2. Spielzeug muss auch'),
+      r(null, 'removed', 'a) der Chemikalienverordnung, BGBl. II Nr. 81/2000, zuletzt geändert durch BGBl. II Nr. 393/2008,'),
+      r(null, 'unchanged', 'b) dem Chemikaliengesetz entsprechen.'),
+    ]
+    expect(annexStrictChecks(lit, { ...draft, blocks: blocksWith('1. In § 5 Z 2 entfällt lit. a.') }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
   })
 
   it('reads no struck text where the column prints nothing new ahead of the § designation', () => {

@@ -631,6 +631,9 @@ function unitIds(list: string): string[] {
   return out
 }
 
+/** A word that can open a unit of the text: a figure, a letter, two letters („5", „5a", „c", „cc"). */
+const DESIGNATION_WORD_RE = /^(?:\d+[a-z]*|[a-z]{1,2})$/
+
 /** A line that names a § by the number a renumbering gives it: „Im nunmehrigen § 18", „§ 18 (neu)". */
 export const NEW_NUMBER_RE = /(?:nunmehrigen?|neuen)\s+§|§\s*\d+[a-z]*\s*\(neu\)/u
 
@@ -1569,12 +1572,40 @@ function struckAccount(
   }
   const notText = layout?.(words, left.map((l) => struck.has(l.p))).notText
   /** Whether a unit opens at `k`: a designation, or a figure printed as one right after the layout's notation („1. bis 14. … 15. jede …"). */
-  const opensAt = (k: number): boolean => read[k]!.designation === true || (read[k]!.shape !== undefined && (notText?.[k - 1] === true || left[k - 1]?.row !== left[k]!.row))
-  /** The left column's unit a designation at `k` opens: up to the next designation of its level or higher. */
+  // Only a figure or one or two letters open a unit: „BGBl." after a comma is printed like a designation (SpielzeugV Anlage 2, 22.11.2026).
+  const opensAt = (k: number): boolean => DESIGNATION_WORD_RE.test(words[k]!) && (read[k]!.designation === true || (read[k]!.shape !== undefined && (notText?.[k - 1] === true || left[k - 1]?.row !== left[k]!.row)))
+  /**
+   * The left column's unit a designation at `k` opens: up to the next designation of its level or higher. A Ziffer's or a
+   * Litera's ends with its row where the next row opens with no deeper designation (22.11.2026): the table path sets one row
+   * per element, and a row after a list's last item is its Schlussteil, which a repeal of that item keeps. Not a row that
+   * closes a deeper list inside the unit (EStG § 25: „aa) … cc) …" then „eingezahlten Beträge entfallen, …" of the lit. a),
+   * and not where the list's earlier items run on over a row of their own too (HonigV § 3: „e) „Presshonig““ then „Durch
+   * Pressen …"). A single row (the PDF path) still runs to the next designation.
+   */
+  const levelAt = (k: number) => levelOf(words[k]!, read[k]!.shape ?? '.')
+  const runsOn = (k: number, level: number): boolean => {
+    // An earlier item of the same list followed by a row with no designation before the next item.
+    for (let j = k - 1; j >= 0; j--) {
+      if (!opensAt(j)) continue
+      if (levelAt(j) < level) return false
+      if (levelAt(j) > level) continue
+      for (let e = j + 1; e < k && !(opensAt(e) && levelAt(e) <= level); e++) if (left[e]!.row !== left[e - 1]!.row && !opensAt(e)) return true
+    }
+    return false
+  }
+  const ends = new Map<number, number>()
   const unitEnd = (k: number): number => {
-    const level = levelOf(words[k]!, read[k]!.shape ?? '.')
+    const known = ends.get(k)
+    if (known !== undefined) return known
+    const level = levelAt(k)
     let e = k + 1
-    while (e < left.length && !(opensAt(e) && levelOf(words[e]!, read[e]!.shape ?? '.') <= level)) e++
+    let deeper = false
+    while (e < left.length && !(opensAt(e) && levelAt(e) <= level)) {
+      if (opensAt(e)) deeper = true
+      else if (level >= 2 && !deeper && left[e]!.row !== left[e - 1]!.row && !runsOn(k, level)) break
+      e++
+    }
+    ends.set(k, e)
     return e
   }
   const markUnit = (k: number, c: keyof StruckBy) => {
