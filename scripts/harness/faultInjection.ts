@@ -92,6 +92,7 @@
  * | neuer Satz fehlt   |  221/228 (96,9 %; 95,7; 96,9)  | 124/125 (99,2 %; 93,8; 99,2) |
  * | behaltener Satz gestrichen | 860/951 (90,4 %; 90,2; 92,8) | 627/686 (91,4 %; 90,9; 93,6) |
  * | … since its second review   | 840/882 (95,2 %; 94,9; 98,2) | 642/679 (94,6 %; 94,0; 98,3) |
+ * | … since its fourth, on the list of the day | 982/1002 (98,0 %; 94,7; 98,3) | 668/680 (98,2 %; 93,3; 98,4) |
  * | Satz links verloren | 815/1027 (79,4 %; 77,8; 82,8) | 242/306 (79,1 %; 79,7; 79,2) |
  *
  * Behaltener Satz gestrichen stood at 792/954 and 579/685 when the check
@@ -120,6 +121,12 @@
  * the mark's line of 22.11.2026 (an objection about struck text alone
  * stands against the Lesefassung) the Lesefassung cases are caught, and the
  * class is held to 95 % on both paths.
+ * A third and a fourth review then narrowed what an instruction accounts
+ * for once more (a wording quoted as new bridges only where its clause
+ * writes anew; a line is read clause by clause, and an address is struck or
+ * written anew only where the line says so). The table's last row is the
+ * round of 22.11.2026, read on the RIS list of that day (258 drafts, where
+ * the rows above stand on the 243 cached since September).
  *
  * **A sentence of another § in the right column, through the chain too**
  * (22.11.2026): R-alt and R-neu were judged by the gate alone, which catches

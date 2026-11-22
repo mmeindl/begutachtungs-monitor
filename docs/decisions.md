@@ -1346,7 +1346,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   every one read, and one of the Länder (Oö. 2026-16124 § 29).
 - **For new wording the draft check reads no address below the §**
   (21.11.2026): a quoted wording accounts at every place it stands. No held
-  § of GP XXVIII depends on it (0 of 3,789).
+  § of GP XXVIII depended on it then (0 of 3,789). Among the drafts
+  published since, one does (22.11.2026, Bundesbahngesetz § 4: the column
+  adds „insbesondere" to the lead-in of Abs. 2, a word the draft writes
+  only elsewhere in the §).
 - **The oracle's check 2 does not stand against a held draft check**
   (22.11.2026): of 60 §§ read where the draft check holds and check 2
   contradicts, 39 were limits of the engine or the oracle, 15 real
@@ -1405,8 +1408,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   notation (the §'s own designation, a designation where an instruction
   gives or removes designations, the caller's elision marks, what stands
   ahead of the § designation in the group's first row). What is left makes
-  the § differ (`struckNotInDraft`). The fault is caught in 860 of 951 and
-  627 of 686 §§.
+  the § differ (`struckNotInDraft`). The fault is caught in 982 of 1,002 and
+  668 of 680 §§ (the round of 22.11.2026, on the list of that day); 860 of
+  951 and 627 of 686 in the rule's first form, before four reviews narrowed
+  what an instruction accounts for, the mark let an objection about struck
+  text stand, and the injector stopped taking a division heading for a
+  sentence.
 - **Each instruction accounts only where and for what it strikes**
   (22.11.2026). The first form of the rule accounted more widely than the
   draft supports, which an independent review showed by probes, and it
@@ -1418,32 +1425,158 @@ gets an entry of its own only where it carries a reason the rule does not.
   removing verb with an object of its own repeals no unit („entfällt die
   Wendung „…“"); under a renumbered §'s new number only a line that names
   the number as new speaks of it; on the table path a Ziffer or Litera ends
-  with its row where an undesignated row follows (a Schlussteil); a quoted
-  old wording accounts in the places its line names; each line that strikes
-  by position pays for as many stretches as it counts, in its own unit, a
-  heading line only in the heading, a line that writes a sentence anew only
-  in the sentences its wording replaces; a payload under a line that only
-  adds accounts for nothing, and one printed from the § designation rewrites
-  the whole § only under a line that names no unit below it; only a line
-  about designations lets a lone struck designation pass as notation.
-  Twelve §§ became „nicht bestätigt" by it, every one read: four are the
-  ministry's two documents differing (those two, and MuSchG § 27 and InvFG
-  2011 § 10, where the annex strikes a second sentence the draft keeps),
-  seven limits of the check, one undecided.
-- **What the struck-text check does not do, measured** (22.11.2026). It
-  does not map a unit named in the new numbering back („Abs. 7 (neu)"). It
-  does not locate a parent the column prints only in an elided row
-  („(1) …"), the largest class of false objections left. It counts a quoted
-  wording at every place of its unit (once without „jeweils" would have
-  marked 5 sound §§) and a piece of a §'s own quote wherever it stands (its
-  place: 11). A last list item on the PDF path runs to the next designation
-  (the first sentence end: 9 moves, 5 sound §§ marked). The zone ahead of
-  the § designation is notation (read as text: 7 §§, all layout). It does
-  not ask the other direction, old wording the draft replaces that still
-  stands in the column (51 candidates, most of them places the check cannot
-  read), and it compares no signs („<" against „≤"). The Länder do not ask
-  for struck text: there a § that differs is withheld, and 21 shown §§
-  would newly differ.
+  with its row where an undesignated row follows (a Schlussteil), unless an
+  earlier item of the list ran on over a row of its own; a quoted old
+  wording accounts in the places its line names; a line that names its
+  sentences („der zweite Satz", „die Sätze drei bis fünf") accounts for
+  those sentences of the unit it names, counted as the left column ends
+  them, whole and nothing beside them; a line whose position cannot be
+  counted so (a part such as „der Schlussteil", a unit printed with an
+  elision or a list in it, a second unit named behind the position) pays
+  for as many stretches as it counts, in its own unit, and where each
+  position is a whole sentence it is charged per sentence; a heading line
+  pays only in the heading (ahead of the § designation, else of the first
+  unit, else up to the first row's first sentence end); a payload accounts
+  only inside the units its line writes anew or names, and only in the
+  sentences that line names; a payload under a line that only adds accounts
+  for nothing, and one printed from the § designation rewrites the whole §
+  only under a line that writes this § and names no unit below it; only a
+  line about designations lets a lone struck designation pass as notation.
+  Twelve §§ became „nicht bestätigt" by the first of these, every one read:
+  four are the ministry's two documents differing (those two, and MuSchG
+  § 27 and InvFG 2011 § 10, where the annex strikes a second sentence the
+  draft keeps), seven limits of the check, one undecided.
+- **A fix of the struck-text rule is attacked by a reader before it ships**
+  (22.11.2026). Four reviews in a row, each by readers who had not written
+  the code, found the fix before them accounting for more than the draft
+  strikes; two of the holes had cleared a real § (above), a third was found
+  only on drafts the check had never been measured on (below). The rule
+  that came of it: a change that lets the check account for more is given
+  to an independent reader with the instruction to break it, and every
+  finding to a second reader who tries to refute it; a change that makes it
+  account for less needs the corpus read alone, every § that moves and,
+  for a change to how a line is read, every real instruction line through
+  the reader before and after (9,401 distinct lines of GP XXVIII, a matter
+  of seconds). Removing a reading can move the accounting to a looser
+  fallback: when „§ 5 Abs. 1 erster Satz lautet:" stopped counting as the
+  Absatz written anew, its payload, printed from the § designation on,
+  would have counted as the whole §. The fallback is checked with the fix.
+- **What a third review found the second fix had opened, and how each was
+  closed** (22.11.2026). A figure ends no sentence only before a month's
+  name or right behind an article or a preposition fused with one („des
+  18. Lebensjahres"), and a unit's own designation ends none: read
+  otherwise, „der zweite Satz" ran on into the third after „der Gruppe 2."
+  A wording quoted as new accounts for struck words between its own only
+  under a line that quotes no wording it replaces (next rule). Only a
+  struck stretch that lies in one sentence charges that sentence; one that
+  reaches a word back across a sentence end had freed every other stretch
+  of the sentence before. A row with no designation that another item of
+  the list follows is not read as the item's continuation: the next item
+  may open another Absatz's list, whose „(2)" stands in an elided row, so a
+  repealed Ziffer printed over two rows ends with its first and is marked.
+  An id list is read a level up („In § 31 Abs. 19 Z 1, 20 und 21": Abs. 20
+  and 21) only where the column prints the unit it stands in whole, without
+  an elision and with Ziffern of its own below the id. The heading zone
+  ends at the § designation only where that stands after no sentence end
+  and no Absatz: not at a citation of the § in its own text. A line that
+  names another unit behind its position („entfällt der zweite Satz, in
+  Abs. 3 der letzte Satz") counts its stretches and names no sentence. The
+  kept words of a sentence a line names cover no twin elsewhere in the §;
+  what does belong to the sentence is the cut the word diff shifts at its
+  edge, where the next sentence opens with the words it opens with (SchOG
+  § 40, LWA-G § 14), under a line that removes the sentence.
+- **A wording quoted as new accounts for struck words between its own only
+  where its clause writes anew** (22.11.2026, `Wording.bridges`): under
+  „lautet" or „ersetzt", in a line that quotes no wording as old („lautet
+  der erste Satz: „…“", a division heading written anew in a block of its
+  own). Not beside a quoted old wording: such a line names what it strikes.
+  Closing that moved ten §§ to „nicht bestätigt", seven of them differences
+  between the ministry's two documents the bridge had hidden: the column
+  strikes „1982" (E-ControlG § 28), „(TEN-E-VO)" (UVP-G § 30), the verb
+  „besitzen" (Schifffahrtsgesetz § 40), „§ 30 Abs. 5" (Übernahmegesetz
+  § 35), turns „oder" into a comma (SPG § 91c), strikes 144 where the line
+  quotes 146 (StVG § 170) and a title the line quotes otherwise
+  (Indirekteinleiterverordnung § 4); three are a Vermerk too many (an
+  editorial „(Anm. 1)" of the consolidated text, a line that names the § by
+  its new number, the word diff's cut at a date). Nor under a line that
+  inserts: an insertion strikes nothing, and under „nach dem Wort „mit“
+  die Wortfolge „1. Oktober 2027“ eingefügt" a clause dropped between the
+  day and the year still passed.
+- **An instruction line is read clause by clause, and an address is struck
+  or written anew only where the line says so** (22.11.2026). Reading 39
+  drafts the check had never been measured on (next rule) found
+  Integrationsgesetz § 23 shown without a Vermerk: „… entfällt § 16b und
+  wird folgender § 23 samt Überschrift eingefügt" was read as repealing §
+  23, because „folgender" ends like the article „der", and all 197 words the
+  column struck of an old § 23 no line removes were accounted for. A
+  removing verb strikes what stands in its own clause; a further address
+  right before the next verb or its auxiliary is that clause's subject. A
+  review of the whole grammar then found the same kind of misreading in
+  other shapes, each on real lines, and each is closed: the subject of a
+  removing verb and the address „lautet" is said of stand at the head of
+  their clause, never behind a noun they belong to („Der letzte Satz des § 5
+  Abs. 2 entfällt", „Die Überschriften zu den §§ 20 bis 43 entfallen", read
+  as 24 §§ repealed, „Punkt 5. der Anlage 1 lautet:", read as the Anlage
+  written anew); an article behind a noun marks no object („entfällt der
+  letzte Satz der Z 3"); „lautet" writes the address anew only with nothing
+  of its own beside it („§ 5 Abs. 8 1. Satz lautet:", „In § 270 Abs. 3
+  lautet Satz 7:", „Anhang 3 Tabelle 3 lautet:" write a part); below a part
+  the reader does not know („§ 14 Tarifpost 6 Abs. 3") an address is not
+  located; a quotation that only says where is a place whatever follows it
+  („nach „zu tragen hat“ der Punkt durch einen Beistrich ersetzt", „nach der
+  Nummerierung „93“"); an „entfällt" earlier in the line makes no wording
+  struck that a later clause inserts; a sentence a line adds or keeps is no
+  position it strikes („dem folgender Satz angefügt wird", „der erste Satz
+  erhält die Absatzbezeichnung"). 45 of the 9,401 lines change in what they
+  repeal, write anew or count, and 38 quotations in their role, each read.
+  On the page they changed one § of both lists: Fremdenpolizeigesetz § 2
+  lost a „nicht geprüft" that came only from a place the reader could not
+  read („nach der Nummerierung „100/2005“"), its column read against the
+  draft's lines and sound. None became „nicht bestätigt"; the widest of the
+  holes stood behind an Anlage the gate marks anyway (2.
+  Tierhaltungsverordnung, Anlage 1, where the annex leaves the heading of
+  Anlage 2 out).
+- **Read on drafts the check was never measured on** (22.11.2026). The
+  harnesses read the RIS list as it was cached on 09.09.2026 (243 drafts),
+  and every rule of the struck-text check was tuned on those. The list
+  fetched on 22.11.2026 holds 258, 39 of them new. Of the new drafts' §§,
+  the dangerous direction was read whole: all 68 that are shown without a
+  Vermerk on the draft check's word alone while the column strikes text.
+  66 are sound, one was wrong (Integrationsgesetz § 23, above), one lies
+  inside a declared limit (Bundesbahngesetz § 4: for new wording the check
+  reads no address below the §). Of the 109 that carry „nicht bestätigt",
+  every second was read (55): 23 real differences of substance between the
+  ministry's two documents, 9 of form only, 6 from how the annex is set, 12
+  limits of the check, 5 faults of the monitor's own PDF reader (a following
+  §'s first row run into the one before, left-column headings around an
+  inserted § dropped, a § designation printed without a full stop, a
+  schedule's last item lost), none of the five shown without a Vermerk. A
+  round's figures are taken on the list as it stands that day.
+- **What the struck-text check does not do, measured** (22.11.2026). It does
+  not map a unit named in the new numbering back („Abs. 7 (neu)"). It
+  locates a parent the column prints only in an elided row („(1) …") only
+  where a list restarts at a row's start, still the largest class of false
+  objections. It counts a quoted wording at every place of its unit (once
+  without „jeweils" would have marked 5 sound §§) and a piece of a §'s own
+  quote wherever it stands (its place: 11). A last list item on the PDF path
+  runs to the next designation (the first sentence end: 9 moves, 5 sound §§
+  marked). The zone ahead of the § designation is notation (read as text: 7
+  §§, all layout). Where a unit a payload's line names is not located, or
+  the line's address is not read, the payload accounts between its own words
+  wherever they align. A single kept word between two struck stretches joins
+  them. A wording a line inserts is asked of the column only where the line
+  names one §. A sentence that really ends on an article and a figure is
+  read on into the next (none among about 330 such places of the corpus);
+  the id list read a level up also passes where the column leaves a Ziffer
+  of the list out without a mark and changes the wording in the Absatz of
+  that number; a § without Absätze that cites a § of its own number in its
+  first sentence ends its heading zone there; a renumbering line that runs
+  on into „und § 2 wird …" reads the § as moved. It does not ask the other
+  direction, old wording the draft replaces that still stands in the column
+  (51 candidates, most of them places the check cannot read), and it
+  compares no signs („<" against „≤"). The Länder do not ask for struck
+  text: there a § that differs is withheld, and 28 shown §§ would newly
+  differ.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a
@@ -1454,18 +1587,23 @@ gets an entry of its own only where it carries a reason the rule does not.
 - **An objection about struck text alone stands whatever the Lesefassung
   says** (the maintainer's decision of 22.11.2026, `overrules` in
   `annexMark.ts`). The cell's rule had let the confirmation stand, since
-  such an objection names no wording the column lacks, and 39 of about
-  1,640 injected kept sentences passed that way. A second review read 27
-  of them: in every one the draft check named exactly the lost sentence
-  and the oracle confirmed wrongly. The price: 19 §§ of the corpus the
-  confirmation had kept unmarked, each read as a false alarm of the draft
-  check (a parent printed only in an elided row, a unit named in the new
-  numbering, layout), carry „nicht bestätigt" until the check reads those
-  shapes. Where the objection names new words too, the confirmation still
-  stands: in all 13 such §§ the struck and the new words are one
-  replacement at one place (a word the PDF runs together on the left, a
-  figure renumbered), and letting every struck-text objection stand marked
-  them for nothing.
+  such an objection names no wording the column lacks, and 39 of about 1,640
+  injected kept sentences passed that way. A second review read 27 of them:
+  in every one the draft check named exactly the lost sentence and the
+  oracle confirmed wrongly. The price: 19 §§ of the corpus the confirmation
+  had kept unmarked, each read as a false alarm of the draft check (a parent
+  printed only in an elided row, a unit named in the new numbering, layout),
+  carry „nicht bestätigt" until the check reads those shapes; 17 of them are
+  shown without the gate's own mark. On the round of 22.11.2026 there are 26
+  such §§: those 17, three the later fixes made (a § the lines name by its
+  new number without „(neu)", twice, and an editorial „(Anm. 1)" of the
+  consolidated text) and six in drafts published since, of which three were
+  read, false alarms too (the designation of an elided Absatz, a stray
+  letter in the ministry's PDF, an elision printed without its full stop).
+  Where the objection names new words too, the confirmation still stands: in
+  all 13 such §§ the struck and the new words are one replacement at one
+  place (a word the PDF runs together on the left, a figure renumbered), and
+  letting every struck-text objection stand marked them for nothing.
 - **The annex section asks the Lesefassung of the same draft**
   (21.11.2026, `readAndCheck` in `textComparisonService.ts`): the mark
   needs the oracle's word, so the section waits for it. A Lesefassung run
@@ -1665,9 +1803,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   §§ the page showed without a mark before the fault, and under each value
   of the cell's rule over its own such §§ (`chain[].byRule`). A class is
   held to 95 % only where the chain can reach it (`CHAIN_FLOORED`: a figure,
-  a word, the last new sentence, on both paths; a sentence of another § in
-  the right column, old text on both paths and proposed text on the PDF
-  path); a class not held carries
+  a word, the last new sentence, on both paths; since 22.11.2026 a sentence
+  the draft keeps struck in the right column, on both paths; a sentence of
+  another § in the right column, old text on both paths and proposed text on
+  the PDF path); a class not held carries
   its reason in the record (`CHAIN_NOT_FLOORED` → `notFloored`), so a floor
   never fails by construction and never passes by silence.
 - **A sentence of another § in the right column is judged through the
@@ -3499,6 +3638,9 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | The same where no changed row prints anything (word dropped / added / figure changed) | 99.0 / 99.7 / 99.6 % (PDF), 99.5 / 99.9 / 99.7 % (table), floored; 65.0 / 23.8 / 95.8 % and 66.7 / 28.0 / 97.1 % while check 3 asked only whether a word stands anywhere in the annex. Withdrawn without injection: 6 of 1,549 PDF and 2 of 1,153 table confirmations, each read (four engine gaps behind a refusal, one result without a heading the annex prints, three correct results the annex prints wrongly: TDBG § 40b, HSG § 7, BD-EG § 38) | GP XXVIII · 19.11.2026 |
 | A struck Absatz put back under its old number (fault class Zurück) | 45 of 45 (PDF), 25 of 25 (table); 41 of 46 and 20 of 25 before checks 4 and 5 read a struck Absatz that opens like the next | GP XXVIII · 19.11.2026 |
 | The annex gate as shipped (left check, rule 1, rule 2 per §) under fault injection | another §'s sentence in the right column withheld 68.9 / 79.5 % (old text, PDF / table: 818 of 1,187, 283 of 358) and 79.5 / 75.6 % (proposed text: 941 of 1,184, 270 of 357); a sentence of the left column lost 62.8 / 66.4 % (774 of 1,231, 249 of 375); another §'s sentence in both columns alike 2.4 / 0 % (29 of 1,187, 0 of 358), outside the gate by construction | GP XXVIII, `faultInjection.ts --json` · 19.11.2026 |
+| A sentence the draft keeps, lost from the right column, judged through the whole chain | 982 of 1,002 (98.0 %, PDF) and 668 of 680 (98.2 %, table), held to 95 % on both paths; 860 of 951 and 627 of 686 when the draft check first read struck text, 216 of 955 and 148 of 683 while it read new words only | GP XXVIII, the RIS list of the day (258 drafts), `faultInjection.ts --json` · 22.11.2026 |
+| The other classes held to 95 % through the chain (PDF / table) | a figure 99.3 / 99.7 %, a word 98.7 / 99.1 %, the last new sentence gone 96.9 / 99.2 %, another §'s sentence in the right column 100 / 100 % (old text) and 99.6 % (proposed text, PDF; 283 of 283 on the table path, not held there); not held: a designation 89.4 / 92.3 %, a sentence of the left column lost 79.4 / 78.8 % | same |
+| §§ of the ministries' annexes the page shows, by mark | 6,266: 4,719 without a Vermerk, 755 „nicht bestätigt", 792 „nicht geprüft" | same round, `annexPdf.ts --json`, both paths |
 | § comparison, the two null comparisons (`station.ts`) | last parliamentary text → Kundmachung 452 residues in 4,867 units, 1 not editorial; one draft read as HTML → as XML 6 in 4,675, 3 not editorial; 453 pairs of 91 drafts, no invariant breached | GP XXVIII · 19.11.2026 |
 | § comparison under fault injection (`station.ts --mutationen`) | 22,787 changes of substance in nine classes, set into 7,153 units of the later texts: every one shown as a change of substance, none „redaktionell", none „unverändert". Before the rules of 20.11.2026: two numbers joined 0 of 234, a range collapsed 0 of 146, „%" → „‰" 89 of 106 | GP XXVIII, 91 drafts · 20.11.2026 |
 | Silent omission read (`silentOmissions`) under fault injection | a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16 | GP XXVIII · 14.11.2026 |
@@ -3642,6 +3784,24 @@ circular of 10.12.2015).
   sentence struck, but only where a Lesefassung exists and confirms: the
   rule would have marked up to 907 more §§, 39 % of the shown ones instead
   of 23 %. The draft check reads struck text instead.
+- **A row with no designation that another list item follows, read as
+  the item's continuation** (22.11.2026). It cleared no § of the corpus, and
+  the item that follows may open the next Absatz's list, whose designation
+  stands in an elided row: the row is then a Schlussteil a repeal of the
+  Ziffer before it keeps. A repealed Ziffer printed over two rows is marked.
+- **An address below a part the reader does not know, read as if the part
+  were not named** („§ 14 Tarifpost 6 Abs. 3" as Abs. 3 of § 14;
+  22.11.2026). The column may print an „(3)" in every Tarifpost, and each
+  counted as written anew. Ten real lines of two drafts lose that reading,
+  and no § of theirs moves.
+- **No bridge across a date, as the narrower cure for a wording that
+  accounts for struck words between its own** (22.11.2026). A date is where
+  the hole was found, not what it is: an insertion strikes nothing wherever
+  it stands. The wording says instead whether its clause writes anew.
+- **Any noun behind „nach" or „vor" as a place** (22.11.2026). „… wird vor
+  dem Schlusspunkt die Wortfolge „X“ eingefügt" would read the new wording
+  as the place. The nouns a place is named by are listed, and a bare „nach
+  „X“" is one.
 
 ### Länder and EU
 
