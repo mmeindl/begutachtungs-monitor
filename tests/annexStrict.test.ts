@@ -383,4 +383,17 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(blocks, 'Übermittlung § 5. (3) Die Frist beträgt sechs Wochen.', 'Zentrale Informationssammlung; Übermittlung § 5. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'holds', struckNotInDraft: [] })
     expect(check(blocks, 'Meldung § 5. (3) Die Frist beträgt sechs Wochen.', 'Übermittlung § 5. (3) Die Frist beträgt vier Wochen.').state).toBe('differs')
   })
+
+  it('reads the head zone only off the designation the group opens with, never off a citation of the § in its text (22.11.2026)', () => {
+    // AWG 2002 § 28c (table path): the rows print no „§ 28c."; the first „§ 28c" is the citation „des § 28c in der Fassung …",
+    // and the struck lead-in of Abs. 3 before it, which no instruction strikes, was taken for the head zone.
+    const rows = (cite: string) => [
+      row({ law: LAW, gld: '§ 5.', para: '§ 5.', change: 'removed', current: '(3) Bei der Festlegung der Beiträge sind folgende Mindestanforderungen einzuhalten:', proposed: '' }),
+      row({ law: LAW, gld: null, para: '§ 5.', change: 'changed', current: `1. Dies gilt nicht für Regime, die bei Inkrafttreten des ${cite} in der Fassung der Novelle bestehen, betreffend Batterien und Fahrzeuge.`, proposed: `1. Dies gilt nicht für Regime, die bei Inkrafttreten des ${cite} in der Fassung der Novelle bestehen, betreffend Fahrzeuge.` }),
+    ]
+    const blocks = blocksWith('1. Im § 5 Abs. 3 Z 1 entfällt die Wortfolge „ Batterien und“.')
+    const struck = ['3', 'bei', 'der', 'festlegung', 'der', 'beiträge', 'sind', 'folgende', 'mindestanforderungen', 'einzuhalten']
+    expect(annexStrictChecks(rows('§ 6'), { ...draft, blocks }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: struck })
+    expect(annexStrictChecks(rows('§ 5'), { ...draft, blocks }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: struck })
+  })
 })

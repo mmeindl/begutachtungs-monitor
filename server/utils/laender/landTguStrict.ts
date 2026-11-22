@@ -1484,10 +1484,14 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
  * `strictCheck` returns: where it holds only with the diff read the other way
  * (`keptElsewhere`), the twin the diff struck is kept there and is no struck
  * text — is accounted for by the first of:
- *  - notation, no text: the §'s own designation; what the left column prints
- *    ahead of it where the right column prints nothing new there (a heading
- *    printed shorter, a division's heading — `keptDeletion` in
- *    `kons/tguOracle.ts` leaves that zone out alike); what the caller's
+ *  - notation, no text: the §'s own designation („§ N.", never a citation of
+ *    the § in its text); what the left column prints ahead of the one the
+ *    group opens with, where the right column prints nothing new there (a
+ *    heading printed shorter, a division's heading — `keptDeletion` in
+ *    `kons/tguOracle.ts` leaves that zone out alike; measured 22.11.2026:
+ *    read as struck text, the zone moves 7 PDF §§, every one a page header,
+ *    the previous §'s tail, a heading the row cut, or a division heading the
+ *    annex prints on the left only); what the caller's
  *    layout reads as no text (the Bund's elision marks and the designations
  *    that introduce them); the words a new stretch keeps of the removed one
  *    beside it; and a designation, where an instruction for the § gives
@@ -1584,11 +1588,16 @@ function struckAccount(
   // Notation. What the left column prints ahead of the §'s designation, where the right column prints nothing new there:
   // a heading printed shorter or not at all, a division's heading, a line of the page above (`keptDeletion` in
   // `kons/tguOracle.ts` leaves it out alike: a heading is not struck by being printed shorter).
-  const ownAt = left.findIndex((_, k) => words[k] === '§' && own.has(words[k + 1] ?? ''))
-  const head = ownAt >= 0 && !diff.slice(0, left[ownAt]!.p).some((d) => d.kind === 'inserted') ? left[ownAt]!.p : 0
+  // The §'s designation is „§ N." as a designation prints it, a full stop after the number — not a citation of the § in its own
+  // text („des Inkrafttretens des § 28c in der Fassung …", „gemäß § 13 Abs. 1"; 22.11.2026). The head zone runs only up to the one
+  // the group opens with, in its first row and after no Absatz: a table's rows print none, and then there is no head zone.
+  const designatedAt = (k: number) => words[k] === '§' && own.has(words[k + 1] ?? '') && read[k + 1]?.shape === '.'
+  const ownAt = left.findIndex((l, k) => designatedAt(k) && l.row === left[0]!.row)
+  const opener = ownAt >= 0 && !read.slice(0, ownAt).some((t) => t.designation && t.shape === '()')
+  const head = opener && !diff.slice(0, left[ownAt]!.p).some((d) => d.kind === 'inserted') ? left[ownAt]!.p : 0
   const renumbers = designations || found.some((f) => f.struck?.renumbers)
   left.forEach((l, k) => {
-    if (l.p < head || (words[k] === '§' && own.has(words[k + 1] ?? '')) || (words[k - 1] === '§' && own.has(l.word)) || (designations && opensAt(k)) || notText?.[k]) mark(l.p, 'notation')
+    if (l.p < head || designatedAt(k) || designatedAt(k - 1) || (designations && opensAt(k)) || notText?.[k]) mark(l.p, 'notation')
   })
   let p = 0
   segments.forEach((s, i) => {
