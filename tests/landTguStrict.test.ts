@@ -375,6 +375,25 @@ describe('what an instruction strikes (22.11.2026)', () => {
     expect(performance.now() - t0).toBeLessThan(500)
   })
 
+  it('reads the struck text of a § of three hundred Absätze in time (22.11.2026)', () => {
+    // A second review of the check: a repeal per Absatz and one line of 300 places took 2.9 and 5.4 s; every rule asked each word
+    // anew whether a unit opens there and which unit it runs in.
+    const novao = (text: string) => ({ kind: 'novao' as const, cls: 'absatz/novao1', text, gld: null })
+    const timed = (segments: LawDiffSegment[], blocks: ReturnType<typeof novao>[]) => {
+      const wording = [...draftWording(blocks).values()][0]!.byKey.get('§ 5')
+      const t0 = performance.now()
+      const check = strictCheck(unit({ segments }), [wording], { general: [], elsewhere: [], struck: true })
+      return { ms: performance.now() - t0, check }
+    }
+    const range = Array.from({ length: 300 }, (_, i) => i + 1)
+    const repeals = timed(range.flatMap((a): LawDiffSegment[] => [{ type: 'equal', text: `(${a}) Satz ${a} gilt: 1. eins, ` }, { type: 'removed', text: '2. zwei, ' }, { type: 'equal', text: '3. drei. ' }]), range.map((a) => novao(`${a}. In § 5 Abs. ${a} entfällt die Z 2.`)))
+    expect(repeals.check).toMatchObject({ state: 'holds', struck: { repealed: 600 } })
+    expect(repeals.ms).toBeLessThan(1000)
+    const places = timed(range.flatMap((a): LawDiffSegment[] => [{ type: 'equal', text: `(${a}) Satz ${a} gilt: 1. eins, 2. zwei, ` }, { type: 'removed', text: 'Wort extra ' }, { type: 'equal', text: '3. drei. ' }]), [novao(`1. In § 5 ${range.map((a) => `Abs. ${a} Z 3`).join(', ')} entfällt jeweils der letzte Satz.`)])
+    expect(places.check.struckNotInDraft).toHaveLength(600)
+    expect(places.ms).toBeLessThan(1000)
+  })
+
   it('names struck text the draft keeps on a Land\'s §, and leaves the verdict alone unless the caller asks', () => {
     const wording = [...draftWording([{ kind: 'novao', cls: 'absatz/novao1', text: '1. Im § 5 Abs 2 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.', gld: null }]).values()][0]!
     const unit = changed('§5', '(1) Die Behörde ist zuständig. {Sie ist an Weisungen nicht gebunden.} (2) Die Frist beträgt {vier} [sechs] Wochen.')

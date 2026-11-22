@@ -1795,7 +1795,11 @@ function struckAccount(
   // Only a figure or one or two letters open a unit: „BGBl." after a comma is printed like a designation (SpielzeugV Anlage 2, 22.11.2026);
   // and in brackets only a figure, an Absatz.
   // Nor a figure inside a citation or a date (`Marked.inline`; 22.11.2026: „am 31.12. des Vorjahres" ended a Ziffer, GütbefG § 20).
-  const opensAt = (k: number): boolean => DESIGNATION_WORD_RE.test(words[k]!) && (read[k]!.shape !== '()' || /^\d/.test(words[k]!)) && (read[k]!.designation === true || read[k]!.listed === true || (read[k]!.shape !== undefined && (notText?.[k - 1] === true || left[k - 1]?.row !== left[k]!.row))) && !read[k]!.inline
+  // Asked of every word by every rule below: kept once per word (22.11.2026, a second review of the check timed a synthetic §
+  // of 300 Absätze at 2.9 s where it took 27 ms).
+  const opened: (boolean | undefined)[] = []
+  const opensAt = (k: number): boolean => (opened[k] ??= opensAtWord(k))
+  const opensAtWord = (k: number): boolean => DESIGNATION_WORD_RE.test(words[k]!) && (read[k]!.shape !== '()' || /^\d/.test(words[k]!)) && (read[k]!.designation === true || read[k]!.listed === true || (read[k]!.shape !== undefined && (notText?.[k - 1] === true || left[k - 1]?.row !== left[k]!.row))) && !read[k]!.inline
   /**
    * The left column's unit a designation at `k` opens: up to the next designation of its level or higher. A Ziffer's or a
    * Litera's ends with its row where the next row opens with no deeper designation (22.11.2026): the table path sets one row
@@ -1872,7 +1876,25 @@ function struckAccount(
    */
   const within = (k: number, path: readonly AddressPart[] | undefined, ids: ReadonlySet<string>): boolean => (path ?? []).every((part) => (part.level === 0
     ? part.ids.some((id) => ids.has(id))
-    : left.some((_, j) => j < k && opensAt(j) && levelOf(words[j]!, read[j]!.shape ?? '.') === part.level && part.ids.includes(words[j]!) && k < unitEnd(j))))
+    : enclosingOf(k, part.level) >= 0 && part.ids.includes(words[enclosingOf(k, part.level)]!)))
+  /**
+   * The unit of a level that `k` runs in, opened before it: the nearest designation of that level before `k`, where `k` stands
+   * before its end — an earlier one of the level ends before that one opens. -1 where none. Kept per level.
+   */
+  const enclosed = new Map<number, Int32Array>()
+  const enclosingOf = (k: number, level: number): number => {
+    let at = enclosed.get(level)
+    if (!at) {
+      at = new Int32Array(left.length).fill(-1)
+      let j = -1
+      for (let x = 0; x < left.length; x++) {
+        if (j >= 0 && x < unitEnd(j)) at[x] = j
+        if (opensAt(x) && levelAt(x) === level) j = x
+      }
+      enclosed.set(level, at)
+    }
+    return k >= 0 && k < left.length ? at[k]! : -1
+  }
   // Notation. What the left column prints ahead of the §'s designation, where the right column prints nothing new there:
   // a heading printed shorter or not at all, a division's heading, a line of the page above (`keptDeletion` in
   // `kons/tguOracle.ts` leaves it out alike: a heading is not struck by being printed shorter).
@@ -1950,10 +1972,7 @@ function struckAccount(
     // Where the column prints no unit of a level the line names around the place (the annex elides the Absatz: „(1) …"), which
     // unit it is cannot be told, and the place is not refused; it is refused where the column prints another one there.
     // A wording that opens with a designation („„(3) Das …“", printed inside Abs. 2) stands in the unit of the word before it.
-    const enclosing = (at: number, level: number) => {
-      for (let j = opensAt(at) ? at - 1 : at; j >= 0; j--) if (opensAt(j) && levelAt(j) === level && at < unitEnd(j)) return j
-      return -1
-    }
+    const enclosing = enclosingOf
     const inPlace = (at: number, width: number) => !units.length || units.some((u) => [...u.path, u].every((part) => {
       if (part.level === 0) return part.ids.some((id) => ids.has(id))
       if (part.fresh) return true
@@ -2246,7 +2265,11 @@ function struckAccount(
   const positional = found.flatMap((f) => f.struck?.byPosition ?? [])
   // A stretch counts against a line only inside the unit the line strikes in: a sentence struck in Abs. 3 is not „der letzte Satz" of Abs. 2.
   const leftAt = new Map(left.map((l, k) => [l.p, k]))
-  const inPlace = (x: (typeof positional)[number], q: number) => !x.places.length || x.places.some((u) => left.some((l, k) => opensAt(k) && levelOf(words[k]!, read[k]!.shape ?? '.') === u.level && u.ids.includes(words[k]!) && leftAt.get(q)! >= k && leftAt.get(q)! < unitEnd(k) && within(k, u.path, ownFor(x.line))))
+  const inPlace = (x: (typeof positional)[number], q: number) => !x.places.length || x.places.some((u) => {
+    const at = leftAt.get(q)!
+    const k = opensAt(at) && levelAt(at) === u.level ? at : enclosingOf(at, u.level)
+    return k >= 0 && u.ids.includes(words[k]!) && within(k, u.path, ownFor(x.line))
+  })
   // The sentence each left word stands in.
   const sentence: number[] = []
   left.forEach((_, k) => sentence.push(k > 0 ? sentence[k - 1]! + (read[k - 1]!.stop ? 1 : 0) : 0))

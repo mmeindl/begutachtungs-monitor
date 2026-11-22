@@ -91,19 +91,34 @@
  * | Wort getauscht     | 1354/1372 (98,7 %; 98,5; 99,3) | 868/876 (99,1 %; 99,0; 99,8) |
  * | neuer Satz fehlt   |  221/228 (96,9 %; 95,7; 96,9)  | 124/125 (99,2 %; 93,8; 99,2) |
  * | behaltener Satz gestrichen | 860/951 (90,4 %; 90,2; 92,8) | 627/686 (91,4 %; 90,9; 93,6) |
+ * | … since its second review   | 840/882 (95,2 %; 94,9; 98,2) | 642/679 (94,6 %; 94,0; 98,3) |
  * | Satz links verloren | 815/1027 (79,4 %; 77,8; 82,8) | 242/306 (79,1 %; 79,7; 79,2) |
  *
  * Behaltener Satz gestrichen stood at 792/954 and 579/685 when the check
  * first read struck text; an independent review then found it accounting
  * more widely than the draft supports (an address without its parents, a
- * position counted for any sentence, a payload for its whole §). Of the 91
- * PDF misses since, by what accounts for the struck sentence in the
- * harness's own line (`; gestrichen: …` against the unfaulted §): a payload
- * of the same or the next unit 38, the Lesefassung confirming against the
- * check 23, the head zone ahead of the § designation 14 (on this path a
- * division heading the injector takes for a sentence), a position the draft
- * counts in that unit 8, a repeal 5, a quoted old wording 3. Of the 58 on
- * the table path: a position 25, a payload 17, the Lesefassung 16.
+ * position counted for any sentence, a payload for its whole §). A second
+ * review found it still accounting a payload for text it does not replace
+ * and the injector cutting division headings as sentences; since both were
+ * closed (the payload inside the units its line names, a line that names
+ * its sentence only for that sentence, a new § under an old number for
+ * nothing of the old one; no chunk before the § designation and none
+ * across an elision), the class builds 882 and 679 faults and is held to
+ * 95 % on the PDF path. What still passes, by the growth of each class of
+ * struck words over the unfaulted § of the same run (the table's rule in
+ * force): on the PDF path, of 42, the Lesefassung confirming against the
+ * check's objection 26; a payload 14 — of the ten reproduced one § at a
+ * time, six holes (a unit the line names that the column does not print
+ * where the check finds it, so the payload is not held to it, four; a line
+ * naming its sentence without a verb; a sentence line in a unit whose
+ * sentences cannot be counted) and three limits (a payload writing the unit
+ * anew, the PDF path's last list item running to the end of its Absatz,
+ * twice), one not isolated; a position counted 2. On the table path, of
+ * 37, the Lesefassung 27 (five of them without reading the faulted row),
+ * a position counted where the column's sentences cannot be counted 9,
+ * a line that writes a Ziffer's lead-in paying for the Absatz's own 1. Under the mark's line of
+ * 22.11.2026 (an objection about struck text alone stands against the
+ * Lesefassung) the Lesefassung cases are caught.
  *
  * **A sentence of another § in the right column, through the chain too**
  * (22.11.2026): R-alt and R-neu were judged by the gate alone, which catches
@@ -138,12 +153,10 @@
  * fault, while it read no old text: 216 of 955 and 148 of 683 were caught.
  * Since it holds what the column strikes against what the draft strikes,
  * what passes is struck text an instruction for the § accounts for (the
- * classes above) — in none of the misses the review read did the faulted
- * column agree with the draft —, and on the PDF path a division's heading
- * the injector takes for the row's first sentence (`keptSentenceGone`).
- * Zahl, Wort and neuer Satz fehlt are held to 95 % under
- * `--mindestens` (`CHAIN_FLOORED`), on both paths; the two foreign sentences
- * as said above. Neuer Satz fehlt stood at
+ * classes above) — in none of the misses the reviews read did the faulted
+ * column agree with the draft. Zahl, Wort and neuer Satz fehlt are held to
+ * 95 % under `--mindestens` (`CHAIN_FLOORED`), on both paths; behaltener
+ * Satz gestrichen on the PDF path; the two foreign sentences as said above. Neuer Satz fehlt stood at
  * 206 of 233 on the PDF path while the draft check excused missing wording
  * behind an elision mark as far as the column's edge: every one of the 27
  * misses was a § that closes on such a mark. Since the mark stands only for
@@ -743,7 +756,7 @@ const chainFaults: Record<ChainKey, ChainTally> = {
   rneu: chainTally('fremder Entwurfssatz rechts'),
 }
 /** The classes held to 95 % under `--mindestens` (withheld or marked, the rule in force), on both paths unless `CHAIN_NOT_FLOORED` names one. */
-const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg', 'ralt', 'rneu']
+const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg', 'rweg', 'ralt', 'rneu']
 const CHAIN_FLOOR = 95
 /**
  * Why a class is not held to the floor (22.11.2026), on one path or on both:
@@ -755,7 +768,7 @@ const CHAIN_FLOOR = 95
  */
 const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why: string }>> = {
   bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
-  rweg: { why: 'die Prüfung gegen den Entwurf rechnet einen gestrichenen Satz dem Entwurf zu, wo eine Anordnung dieselbe oder die nächste Einheit neu fasst oder in derselben Einheit Sätze nur nach ihrer Lage streicht („der letzte Satz entfällt“); oder die Lesefassung bestätigt den Paragraphen gegen ihren Einwand; auf dem PDF-Pfad hält der Injektor auch eine Abschnittsüberschrift vor der Paragraphenbezeichnung für einen Satz' },
+  rweg: { path: 'table', why: 'die Lesefassung bestätigt den Paragraphen gegen den Einwand der Prüfung gegen den Entwurf; oder die Prüfung rechnet einen gestrichenen Satz einer Anordnung zu, die in derselben Einheit Sätze nur nach ihrer Lage streicht, wo die Spalte die Sätze der Einheit nicht abzählbar druckt (eine Liste, eine Auslassung)' },
   links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
   rneu: { path: 'table', why: 'beginnt der Paragraph des Spenders mit einer Überschrift, ist der Spender diese Überschrift; eine Überschrift am Ende des neuen Textes halten die Prüfung gegen den Entwurf und das Orakel für die des folgenden Paragraphen' },
 }
