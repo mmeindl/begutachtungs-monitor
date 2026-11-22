@@ -279,6 +279,15 @@ describe('what the figures count', () => {
     expect(refusals(more)).toEqual(['annex-pdf.json does not balance: 6 §§ marked of 5 shown'])
   })
 
+  it('does not ask for a floored class the harness says cannot occur on the path', () => {
+    const records = round()
+    records['fi-xml.json'].result.push({ key: 'Lücke', tried: 0, caught: 0, floored: true, floor: 'nicht anwendbar' })
+    expect(refusals(records)).toEqual([])
+    // Tried too seldom where it can occur is still unheld.
+    records['fi-pdf.json'].result.push({ key: 'Lücke', tried: 14, caught: 14, floored: true, floor: 'nicht gehalten' })
+    expect(refusals(records)).toEqual([expect.stringContaining('fi-pdf.json: the floored class „Lücke" was tried 14 times')])
+  })
+
   it('refuses a fault record without the chain, and one whose floored chain class fell', () => {
     const none = round()
     delete none['fi-xml.json'].chain

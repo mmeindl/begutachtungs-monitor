@@ -61,7 +61,8 @@ interface KonsRecord extends Stamped {
   witness?: Record<string, number>
 }
 
-interface FaultClass extends GenauigkeitFault { floored?: boolean }
+/** `floor` on a floored class: „gehalten", „verfehlt", „nicht gehalten" (tried too seldom), or „nicht anwendbar" where the class cannot occur on the path. */
+interface FaultClass extends GenauigkeitFault { floored?: boolean; floor?: string }
 /** An annex fault class: `alreadyWithheld` of its `caught` sat at a § the gate withheld without the fault too. */
 interface AnnexFaultClass extends GenauigkeitFault { alreadyWithheld?: number }
 interface FaultRecord extends Stamped {
@@ -214,9 +215,16 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
       if (c.floored && c.floor === 'verfehlt') refusals.push(`${name}: the chain's class „${c.key}" was held to the floor and fell (${c.withheld + c.marked} of ${c.tried} caught)`)
     }
   }
-  /** Floored classes tried too seldom for their share to say anything, per path: the oracle's and the chain's. */
+  /**
+   * Floored classes tried too seldom for their share to say anything, per
+   * path: the oracle's and the chain's. Not a class the harness says cannot
+   * occur on the path („nicht anwendbar", 21.11.2026: Lücke on the table
+   * path, where a cell holds one unit and opens no §) — nothing was left
+   * unmeasured there, and asking for `--erlaube-ungehalten` would name a
+   * gap in the record that is none.
+   */
   const unheld = Object.entries(faults).flatMap(([path, record]) => [
-    ...(record.result ?? []).filter((f) => f.floored && f.tried < FLOOR_MIN_TRIES),
+    ...(record.result ?? []).filter((f) => f.floored && f.floor !== 'nicht anwendbar' && f.tried < FLOOR_MIN_TRIES),
     ...(record.chain ?? []).filter((c) => c.floored && c.tried < FLOOR_MIN_TRIES),
   ].map((f) => ({ path: path as 'pdf' | 'table', key: f.key, tried: f.tried })))
   const allowed = new Set(options.allowUnheld ?? [])
