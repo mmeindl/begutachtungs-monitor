@@ -165,7 +165,7 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         oder einen Absatz und zählen, wie viele dieser Fehler die Prüfung
         bemerkt. Das zeigen die Balken. Sie sagen nicht, wie oft der Monitor
         falsch liegt: Was die Prüfung bemerkt, wird nicht
-        gezeigt<template v-if="annex.marks"> oder trägt eine Marke</template>.
+        gezeigt<template v-if="annex.marks"> oder trägt einen Vermerk</template>.
       </p>
       <div class="mt-6 space-y-10">
         <section

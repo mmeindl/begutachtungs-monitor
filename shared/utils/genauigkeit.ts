@@ -302,7 +302,7 @@ function chainBar(label: string, faults: readonly ChainFault[]): FaultBar {
 /**
  * The line under a bar: „1.063 von 1.339 eingebauten Fehlern gefangen", and
  * where a caught fault leaves the § on the page, how many do — „: 880 nicht
- * mehr gezeigt, 183 mit Marke gezeigt". Without it „gefangen" reads as „not
+ * mehr gezeigt, 183 mit Vermerk gezeigt". Without it „gefangen" reads as „not
  * shown", which a wrong word in the ministry's annex never is (22.11.2026):
  * the § stays, marked „nicht bestätigt".
  */
@@ -310,9 +310,9 @@ export function faultNoteDe(fault: FaultBar): string {
   const caught = `${n(fault.caught)} von ${n(fault.tried)} eingebauten Fehlern gefangen`
   if (fault.withheld === undefined || fault.caught === 0) return caught
   const marked = fault.caught - fault.withheld
-  if (fault.withheld === 0) return `${caught}: alle mit Marke gezeigt`
+  if (fault.withheld === 0) return `${caught}: alle mit Vermerk gezeigt`
   if (marked === 0) return `${caught}: alle nicht mehr gezeigt`
-  return `${caught}: ${n(fault.withheld)} nicht mehr gezeigt, ${n(marked)} mit Marke gezeigt`
+  return `${caught}: ${n(fault.withheld)} nicht mehr gezeigt, ${n(marked)} mit Vermerk gezeigt`
 }
 
 /** „Oberösterreich, Salzburg, Tirol und Wien". */
@@ -354,7 +354,7 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
     return {
       ...frame,
       result: [
-        `Die Textgegenüberstellungen enthalten ${n(a.confirmed + a.unchecked + a.withheld)} Paragraphen. ${n(a.confirmed)} hat die Prüfung bestätigt, ${n(a.unchecked)} zeigt der Monitor mit der Marke „nicht geprüft“, ${n(a.withheld)} zeigt er nicht.`,
+        `Die Textgegenüberstellungen enthalten ${n(a.confirmed + a.unchecked + a.withheld)} Paragraphen. ${n(a.confirmed)} hat die Prüfung bestätigt, ${n(a.unchecked)} zeigt der Monitor mit dem Vermerk „nicht geprüft“, ${n(a.withheld)} zeigt er nicht.`,
         // Whose error the bars below are (20.11.2026): „übernimmt Wort für Wort" beside „ein Satz verloren" read as a contradiction.
         'Der Monitor übernimmt den Text Wort für Wort, muss ihn aber aus einem PDF oder einer Tabelle herauslesen. Dabei kann ein Satz verloren gehen oder beim falschen Paragraphen landen.',
       ],
@@ -375,11 +375,11 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
   return {
     ...frame,
     result: [
-      `Die Textgegenüberstellungen enthalten ${n(marks.shown + a.withheld)} Paragraphen. ${n(marks.clean)} zeigt der Monitor ohne Marke, ${n(marks.unconfirmed)} mit der Marke „nicht bestätigt“, ${n(marks.unchecked)} mit der Marke „nicht geprüft“, ${n(a.withheld)} zeigt er nicht.`,
+      `Die Textgegenüberstellungen enthalten ${n(marks.shown + a.withheld)} Paragraphen. ${n(marks.clean)} zeigt der Monitor ohne Vermerk, ${n(marks.unconfirmed)} mit dem Vermerk „nicht bestätigt“, ${n(marks.unchecked)} mit dem Vermerk „nicht geprüft“, ${n(a.withheld)} zeigt er nicht.`,
       // Whose error the bars below are (20.11.2026): „übernimmt Wort für Wort" beside „ein Satz verloren" read as a contradiction.
       'Der Monitor übernimmt den Text Wort für Wort, muss ihn aber aus einem PDF oder einer Tabelle herauslesen. Dabei kann er ein Wort falsch lesen, und ein Satz kann verloren gehen oder beim falschen Paragraphen landen.',
       // What „gefangen" does with the § (22.11.2026): the page's opening says a caught fault is not shown, and here most are — marked.
-      'Fällt der Prüfung im neuen Text etwas auf, zeigt der Monitor den Paragraphen trotzdem und setzt die Marke „nicht bestätigt“. Unter jedem Balken steht, wie oft der Paragraph danach nicht mehr gezeigt wird und wie oft er mit einer Marke stehen bleibt.',
+      'Fällt der Prüfung im neuen Text etwas auf, zeigt der Monitor den Paragraphen trotzdem und setzt den Vermerk „nicht bestätigt“. Unter jedem Balken steht, wie oft der Paragraph danach nicht mehr gezeigt wird und wie oft er mit einem Vermerk stehen bleibt.',
     ],
     faults: [
       chainBar('Ein Wort oder eine Zahl im neuen Text falsch, ein neuer Satz fehlt', classes(chain, CHAIN_WORDING)),
@@ -390,11 +390,11 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
       blindBar,
     ],
     rule:
-      'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Die linke Spalte muss dem RIS am Stichtag entsprechen; was rechts als neu markiert ist, darf nicht schon im Gesetz stehen und muss im Gesetzestext des Entwurfs stehen. Sonst zeigt der Monitor den Paragraphen nicht. Danach hält er den neuen und den gestrichenen Text Wort für Wort gegen den Gesetzestext des Entwurfs. Geht das auf, bleibt der Paragraph ohne Marke. Geht es nicht auf, bleibt er nur dann ohne Marke, wenn der ganze Paragraph, den der Monitor selbst zusammensetzt, die Gegenüberstellung bestätigt und in ihr kein Wortlaut fehlt, den der Entwurf nennt; sonst steht „nicht bestätigt“. Lässt sich weder das eine noch das andere prüfen, steht „nicht geprüft“.',
+      'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Die linke Spalte muss dem RIS am Stichtag entsprechen; was rechts als neu markiert ist, darf nicht schon im Gesetz stehen und muss im Gesetzestext des Entwurfs stehen. Sonst zeigt der Monitor den Paragraphen nicht. Danach hält er den neuen und den gestrichenen Text Wort für Wort gegen den Gesetzestext des Entwurfs. Geht das auf, bleibt der Paragraph ohne Vermerk. Geht es nicht auf, bleibt er nur dann ohne Vermerk, wenn der ganze Paragraph, den der Monitor selbst zusammensetzt, die Gegenüberstellung bestätigt und in ihr kein Wortlaut fehlt, den der Entwurf nennt; sonst steht „nicht bestätigt“. Lässt sich weder das eine noch das andere prüfen, steht „nicht geprüft“.',
     measured: [
-      `In ${n(a.drafts)} Entwürfen der ${r.gp}. Gesetzgebungsperiode: ${n(marks.clean)} Paragraphen ohne Marke gezeigt, ${n(marks.unconfirmed)} mit „nicht bestätigt“, ${n(marks.unchecked)} mit „nicht geprüft“, ${n(a.withheld)} nicht gezeigt.`,
+      `In ${n(a.drafts)} Entwürfen der ${r.gp}. Gesetzgebungsperiode: ${n(marks.clean)} Paragraphen ohne Vermerk gezeigt, ${n(marks.unconfirmed)} mit „nicht bestätigt“, ${n(marks.unchecked)} mit „nicht geprüft“, ${n(a.withheld)} nicht gezeigt.`,
       standingSentence,
-      'Die Fehler sind in Paragraphen eingebaut, die der Monitor vorher ohne Marke gezeigt hat.',
+      'Die Fehler sind in Paragraphen eingebaut, die der Monitor vorher ohne Vermerk gezeigt hat.',
     ],
     missed: [
       blindSentence,
@@ -403,7 +403,7 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
       'Fehlt ein Satz in der linken Spalte, steht er rechts als neu. Schreibt der Entwurf diesen Satz selbst, etwa weil er den Absatz neu fasst, geht der Abgleich mit dem Gesetzestext trotzdem auf.',
       // The one shape of a foreign sentence that passes (22.11.2026): both word-for-word checks take a heading at the foot of a § for the next §'s.
       'Steht am Ende des neuen Textes eine Überschrift von anderswo, fällt das nicht auf: Die Prüfung hält sie für die Überschrift des folgenden Paragraphen.',
-      'Wie oft eine Marke zu Unrecht steht, zeigt dieser Test nicht: Er baut Fehler ein und zählt, wie viele auffallen.',
+      'Wie oft ein Vermerk zu Unrecht steht, zeigt dieser Test nicht: Er baut Fehler ein und zählt, wie viele auffallen.',
     ],
   }
 }
@@ -581,8 +581,8 @@ export function genauigkeitKurz(r: GenauigkeitRecord = GENAUIGKEIT): { shows: st
     check: [
       // Two marks since 22.11.2026, and „nicht geprüft … aber nicht bestätigt" would read as the other one's name.
       r.annex.marks
-        ? 'Ein Paragraph mit der Marke „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.'
-        : 'Ein Paragraph mit der Marke „nicht geprüft“ ist gezeigt, aber nicht bestätigt.',
+        ? 'Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.'
+        : 'Ein Paragraph mit dem Vermerk „nicht geprüft“ ist gezeigt, aber nicht bestätigt.',
       `Bei Entwürfen der Bundesländer ist der neue Text bei ${n(tgu.strict.held)} von ${n(tgu.shown)} gezeigten Paragraphen Wort für Wort am Entwurf geprüft, bei den übrigen nicht. Vor dem Zitieren im Dokument des Bundeslandes nachsehen.`,
       'Der Monitor ist kein amtliches Angebot. Zitiert wird aus dem verlinkten Original.',
     ],

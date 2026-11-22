@@ -220,7 +220,7 @@ describe('genauigkeitArten', () => {
     const { marks, withheld } = r.annex
     const art = genauigkeitArten(r)[1]!
     expect(marks!.clean + marks!.unconfirmed + marks!.unchecked).toBe(marks!.shown)
-    expect(art.result[0]).toBe(`Die Textgegenüberstellungen enthalten ${formatNumberDe(marks!.shown + withheld)} Paragraphen. ${formatNumberDe(marks!.clean)} zeigt der Monitor ohne Marke, 640 mit der Marke „nicht bestätigt“, 618 mit der Marke „nicht geprüft“, ${formatNumberDe(withheld)} zeigt er nicht.`)
+    expect(art.result[0]).toBe(`Die Textgegenüberstellungen enthalten ${formatNumberDe(marks!.shown + withheld)} Paragraphen. ${formatNumberDe(marks!.clean)} zeigt der Monitor ohne Vermerk, 640 mit dem Vermerk „nicht bestätigt“, 618 mit dem Vermerk „nicht geprüft“, ${formatNumberDe(withheld)} zeigt er nicht.`)
     expect(art.measured[0]).toContain('640 mit „nicht bestätigt“, 618 mit „nicht geprüft“')
     // The gate's own verdicts are no sentence's figure any more: they do not say what stands on the page.
     expect([...art.result, ...art.measured].join(' ')).not.toContain('hat die Prüfung bestätigt')
@@ -244,11 +244,11 @@ describe('genauigkeitArten', () => {
     ])
     expect(bars.map((b) => b.blind ?? false)).toEqual([false, false, false, false, false, true])
     expect(bars.slice(0, 5).map(faultNoteDe)).toEqual([
-      '492 von 500 eingebauten Fehlern gefangen: alle mit Marke gezeigt',
-      '72 von 80 eingebauten Fehlern gefangen: alle mit Marke gezeigt',
-      '140 von 160 eingebauten Fehlern gefangen: 4 nicht mehr gezeigt, 136 mit Marke gezeigt',
-      '114 von 120 eingebauten Fehlern gefangen: 100 nicht mehr gezeigt, 14 mit Marke gezeigt',
-      '96 von 120 eingebauten Fehlern gefangen: 80 nicht mehr gezeigt, 16 mit Marke gezeigt',
+      '492 von 500 eingebauten Fehlern gefangen: alle mit Vermerk gezeigt',
+      '72 von 80 eingebauten Fehlern gefangen: alle mit Vermerk gezeigt',
+      '140 von 160 eingebauten Fehlern gefangen: 4 nicht mehr gezeigt, 136 mit Vermerk gezeigt',
+      '114 von 120 eingebauten Fehlern gefangen: 100 nicht mehr gezeigt, 14 mit Vermerk gezeigt',
+      '96 von 120 eingebauten Fehlern gefangen: 80 nicht mehr gezeigt, 16 mit Vermerk gezeigt',
     ])
   })
 
@@ -265,7 +265,7 @@ describe('genauigkeitArten', () => {
     const art = genauigkeitArten(r)[1]!
     expect(art.result[0]).toContain(`${formatNumberDe(r.annex.confirmed)} hat die Prüfung bestätigt`)
     expect(art.faults.map((f) => f.withheld)).toEqual([undefined, undefined, undefined])
-    expect(genauigkeitKurz(r).check[0]).toBe('Ein Paragraph mit der Marke „nicht geprüft“ ist gezeigt, aber nicht bestätigt.')
+    expect(genauigkeitKurz(r).check[0]).toBe('Ein Paragraph mit dem Vermerk „nicht geprüft“ ist gezeigt, aber nicht bestätigt.')
   })
 
   it('says of the annex\'s refused standing text what was measured, never whose error it is', () => {
@@ -330,7 +330,7 @@ describe('in short', () => {
   })
 
   it('names both marks where a round counts them: either one is shown and not vouched for', () => {
-    expect(genauigkeitKurz(withMarks()).check[0]).toBe('Ein Paragraph mit der Marke „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.')
+    expect(genauigkeitKurz(withMarks()).check[0]).toBe('Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.')
   })
 
   it('sets every blind spot apart, with what it means for a reader', () => {
