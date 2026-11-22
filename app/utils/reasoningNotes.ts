@@ -50,13 +50,17 @@ const EXPLANATIONS_OF_DE = { me: 'des Entwurfs', rv: 'der Regierungsvorlage' } a
 
 export function explanationsMissingNote(missing: readonly ExplanationsMissing[] | null | undefined): string | null {
   if (!missing?.length) return null
-  // „Nicht lesbar", not „Nicht veröffentlicht", for both: the record does
-  // not prove that nothing was published (`shared/utils/gaps.ts`).
+  // Never „Nicht veröffentlicht": the record does not prove that nothing
+  // was published (`shared/utils/gaps.ts`). Erläuterungen held as a PDF only
+  // are the monitor's scope, „Nicht im Monitor" (22.11.2026: it reads none
+  // of Parliament's PDFs, and no reading failed); Erläuterungen the record
+  // does not list are „Nicht lesbar", and that word leads where the two
+  // sides differ.
   const sentence = ({ side, kind }: ExplanationsMissing) =>
     kind === 'pdfOnly'
       ? `Die Erläuterungen ${EXPLANATIONS_OF_DE[side]} gibt es nur als PDF.`
       : `Erläuterungen ${EXPLANATIONS_OF_DE[side]} führt das Parlament nicht als eigenes Dokument.`
-  return gapDe('unreadable', `${missing.map(sentence).join(' ')} Die Begründungen sind deshalb nicht verglichen.`)
+  return gapDe(missing.every((m) => m.kind === 'pdfOnly') ? 'outOfScope' : 'unreadable', `${missing.map(sentence).join(' ')} Die Begründungen sind deshalb nicht verglichen.`)
 }
 
 /**

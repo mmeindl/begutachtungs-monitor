@@ -262,11 +262,12 @@ const readLawDiff = defineCachedFunction(
       if (!found.has(id)) return answer(missingStationReason(id, rvLinked, promulgatedAs, first, first?.kind === 'bundesratsantrag' && motionTextOf(content) !== null, rvTreaty))
     }
     if (!comparable(from)) {
-      // A text only as PDF is „nicht lesbar", and the sentence says „nur als
-      // PDF": the source chose the form, the comparison does not read it
-      // (`shared/utils/gaps.ts`).
+      // A text only as PDF is „Nicht im Monitor" (22.11.2026; „Nicht lesbar"
+      // until then): the source chose the form, and this comparison reads no
+      // Bund text from a PDF, for every text of the kind. No reading failed
+      // (`shared/utils/gaps.ts`, `outOfScope`).
       return answer(gapDe(
-        'unreadable',
+        'outOfScope',
         from !== 'me'
           ? `Den Gesetzestext ${lawStationGenitiveDe(from, first)} gibt es nur als PDF.`
           : risRowExists
@@ -275,7 +276,7 @@ const readLawDiff = defineCachedFunction(
       ))
     }
     if (!comparable(to)) {
-      return answer(gapDe('unreadable', `Den Gesetzestext ${lawStationGenitiveDe(to, first)} gibt es nur als PDF.`))
+      return answer(gapDe('outOfScope', `Den Gesetzestext ${lawStationGenitiveDe(to, first)} gibt es nur als PDF.`))
     }
 
     // Each side brings its own format now that the Kundmachung is among the

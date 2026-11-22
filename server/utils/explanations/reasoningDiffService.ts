@@ -99,8 +99,8 @@ const compareMeToRv = defineCachedFunction(
           gp,
           inr,
           meDoc
-            ? gapDe('unreadable', 'Die Erläuterungen der Regierungsvorlage gibt es nicht als HTML; verglichen sind sie deshalb nicht.')
-            : gapDe('unreadable', 'Die Erläuterungen des Entwurfs gibt es nicht als HTML; verglichen sind sie deshalb nicht.'),
+            ? gapDe('outOfScope', 'Die Erläuterungen der Regierungsvorlage gibt es nicht als HTML; verglichen sind sie deshalb nicht.')
+            : gapDe('outOfScope', 'Die Erläuterungen des Entwurfs gibt es nicht als HTML; verglichen sind sie deshalb nicht.'),
           [meDoc, rvDoc].filter((d): d is TraceLink => d !== null),
         ),
         explanationsMissing,

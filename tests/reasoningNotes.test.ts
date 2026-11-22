@@ -17,7 +17,7 @@ describe('reasoningGapNote', () => {
 describe('explanationsMissingNote', () => {
   it('sagt, welche Erläuterungen nicht gelesen wurden — nie „nicht veröffentlicht"', () => {
     expect(explanationsMissingNote([{ side: 'rv', kind: 'pdfOnly' }])).toBe(
-      'Nicht lesbar: Die Erläuterungen der Regierungsvorlage gibt es nur als PDF. Die Begründungen sind deshalb nicht verglichen.',
+      'Nicht im Monitor: Die Erläuterungen der Regierungsvorlage gibt es nur als PDF. Die Begründungen sind deshalb nicht verglichen.',
     )
     expect(explanationsMissingNote([{ side: 'me', kind: 'notListed' }, { side: 'rv', kind: 'pdfOnly' }])).toBe(
       'Nicht lesbar: Erläuterungen des Entwurfs führt das Parlament nicht als eigenes Dokument. Die Erläuterungen der Regierungsvorlage gibt es nur als PDF. Die Begründungen sind deshalb nicht verglichen.',
@@ -62,7 +62,7 @@ describe('landReasoningGapNote (17.11.2026)', () => {
 // Before 19.11.2026 a failed /begruendung left every change without a
 // Begründung and without a word — the page's grammar for „unchanged".
 describe('reasoningComparisonNote (19.11.2026)', () => {
-  const missing = { available: false, unavailableReason: 'Nicht lesbar: Die Erläuterungen des Entwurfs gibt es nicht als HTML; verglichen sind sie deshalb nicht.', explanationsMissing: [{ side: 'me' as const, kind: 'pdfOnly' as const }] }
+  const missing = { available: false, unavailableReason: 'Nicht im Monitor: Die Erläuterungen des Entwurfs gibt es nicht als HTML; verglichen sind sie deshalb nicht.', explanationsMissing: [{ side: 'me' as const, kind: 'pdfOnly' as const }] }
 
   it('sagt, dass die Begründungen gerade nicht abrufbar sind, wo die Anfrage scheiterte und die Liste Änderungen zeigt', () => {
     expect(reasoningComparisonNote(undefined, true, 3)).toBe(
