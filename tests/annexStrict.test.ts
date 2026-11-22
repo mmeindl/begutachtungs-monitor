@@ -591,10 +591,10 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(annexStrictChecks([r('§ 5.', 'Zuständigkeit', 'Zuständigkeit der Behörde'), r(null, body, 'Die Behörde ist zuständig.')], { ...draft, blocks: heading }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
   })
 
-  it('ends a unit where it ends: the closing row of a deeper list, an item run on over rows, the subject of the next clause (22.11.2026)', () => {
+  it('ends a unit where it ends: the closing row of a deeper list, a row before another list, the subject of the next clause (22.11.2026)', () => {
     // A second review of the check: an earlier Ziffer's Litera list closing with a row of its own made the repeal of the last
-    // Ziffer take the list's Schlussteil; a repealed Ziffer printed over two rows ended with its first; „entfällt Abs. 2 und
-    // Abs. 3 erhält die Absatzbezeichnung „(2)“" repealed Abs. 3 too (GVG-B § 12).
+    // Ziffer take the list's Schlussteil; „entfällt Abs. 2 und Abs. 3 erhält die Absatzbezeichnung „(2)“" repealed Abs. 3 too
+    // (GVG-B § 12).
     const r = (gld: string | null, change: ComparisonRow['change'], current: string) => row({ law: LAW, gld, para: '§ 5.', change, current, proposed: change === 'removed' ? '' : current })
     const closing = (z2: boolean, schluss: boolean) => [
       r('§ 5.', 'unchanged', '(1) Die Behörde hat'),
@@ -616,7 +616,31 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
       r(null, 'removed', '– den Meldezettel,'),
       r(null, 'unchanged', '3. das Alter des Antragstellers zu prüfen.'),
     ]
-    expect(annexStrictChecks(dashes, z2).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    // A repealed Ziffer printed over two rows ends with its first: a Vermerk too many, and the price of the two shapes below.
+    expect(annexStrictChecks(dashes, z2).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['den', 'meldezettel'] })
+    // A third review: taken into the Ziffer because another item follows, such a row was the Absatz's Schlussteil before the
+    // next Absatz's list (its „(2)" in an elided row), or the lead-in of a second list.
+    const next = (schluss: boolean) => [
+      r('§ 5.', 'unchanged', '(1) Die Behörde hat'),
+      r(null, 'unchanged', '1. die Identität und'),
+      r(null, 'removed', '2. den Wohnsitz'),
+      r(null, schluss ? 'removed' : 'unchanged', 'des Antragstellers zu prüfen.'),
+      r(null, 'unchanged', '1. den Namen,'),
+      r(null, 'unchanged', '2. die Anschrift.'),
+    ]
+    expect(annexStrictChecks(next(false), z2).get(`${LAW}#§ 5.`)?.state).toBe('holds')
+    expect(annexStrictChecks(next(true), z2).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['des', 'antragstellers', 'zu', 'prüfen'] })
+    const second = (lead: boolean) => [
+      r('§ 5.', 'unchanged', '(1) Der Antrag hat zu enthalten:'),
+      r(null, 'unchanged', '1. den Namen,'),
+      r(null, 'removed', '2. die Anschrift.'),
+      r(null, lead ? 'removed' : 'unchanged', 'Dem Antrag sind beizulegen:'),
+      r(null, 'unchanged', '3. der Nachweis,'),
+      r(null, 'unchanged', '4. die Vollmacht.'),
+      r(null, 'unchanged', '(2) Die Frist beträgt vier Wochen.'),
+    ]
+    expect(annexStrictChecks(second(false), z2).get(`${LAW}#§ 5.`)?.state).toBe('holds')
+    expect(annexStrictChecks(second(true), z2).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['dem', 'antrag', 'sind', 'beizulegen'] })
     const current = '(1) Die Behörde ist zuständig. (2) Die Hilfe umfasst die Kosten der Rückreise. (3) Der Bundesminister kann Beratungsstellen einrichten. Er bedient sich dabei der Agentur.'
     const renumbered = blocksWith('1. In § 5 entfällt Abs. 2 und Abs. 3 erhält die Absatzbezeichnung „(2)“.')
     expect(check(renumbered, '(1) Die Behörde ist zuständig. (2) Der Bundesminister kann Beratungsstellen einrichten. Er bedient sich dabei der Agentur.', current).state).toBe('holds')
@@ -682,5 +706,56 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     const struck = check(added, longer.replace('der Anlagen im Bundesgebiet zu', 'zu'), tasks)
     expect(struck.state).toBe('differs')
     expect(struck.struckNotInDraft).toContain('bundesgebiet')
+  })
+
+  it('pays for no more than the second fix meant to: what a third review found it had opened (22.11.2026)', () => {
+    const second = blocksWith('1. In § 5 Abs. 1 entfällt der zweite Satz.')
+    // A figure after a noun ends its sentence („… der Gruppe 2. Ausgenommen …"): the sentence named does not run on into the next.
+    const groups = '(1) Die Regel gilt für Stoffe der Gruppe 2. Ausgenommen sind Stoffe der Klasse 3. Die Behörde kann Ausnahmen gewähren. (2) Die Frist beträgt vier Wochen.'
+    const without = groups.replace(' Ausgenommen sind Stoffe der Klasse 3.', '')
+    expect(check(second, without, groups).state).toBe('holds')
+    expect(check(second, without.replace('Behörde kann', 'Behörde'), groups)).toMatchObject({ state: 'differs', struckNotInDraft: ['kann'] })
+    // …and one after an article is an ordinal, which ends none („des 18. Lebensjahres").
+    const age = '(1) Anspruch haben Personen nach Vollendung des 18. Lebensjahres. Die Behörde kann Ausnahmen gewähren. Sie entscheidet binnen vier Wochen. (2) Die Frist beträgt vier Wochen.'
+    expect(check(second, age.replace(' Die Behörde kann Ausnahmen gewähren.', ''), age).state).toBe('holds')
+    expect(check(second, age.replace(' Sie entscheidet binnen vier Wochen.', ''), age).state).toBe('differs')
+    // A unit's own designation ends no sentence, behind an elision either (EStG § 16 Abs. 1 Z 7).
+    const costs = '(1) Werbungskosten sind auch: 1. bis 6. … 7. Ausgaben für Arbeitsmittel wie Werkzeug. Ausgaben für digitale Arbeitsmittel sind zu kürzen. Ist die Nutzungsdauer länger als ein Jahr, ist Z 8 anzuwenden. 8. … (2) Die Frist beträgt vier Wochen.'
+    const z7 = blocksWith('1. In § 5 Abs. 1 Z 7 entfällt der zweite Satz.')
+    expect(check(z7, costs.replace(' Ausgaben für digitale Arbeitsmittel sind zu kürzen.', ''), costs).state).toBe('holds')
+    expect(check(z7, costs.replace('7. Ausgaben für Arbeitsmittel wie Werkzeug. ', '7. '), costs).state).toBe('differs')
+    // A wording quoted as new under a line that quotes what it replaces accounts for nothing struck between its words.
+    const dated = '(1) Die Regelung tritt mit 1. April 2026 in Kraft, wobei sie bis zum 1. Jänner 2027 befristet ist. (2) Die Frist beträgt vier Wochen.'
+    const date = blocksWith('1. In § 5 Abs. 1 wird das Datum „1. April 2026“ durch das Datum „1. Oktober 2027“ ersetzt.')
+    expect(check(date, dated.replace('1. April 2026', '1. Oktober 2027'), dated).state).toBe('holds')
+    expect(check(date, '(1) Die Regelung tritt mit 1. Oktober 2027 befristet ist. (2) Die Frist beträgt vier Wochen.', dated).state).toBe('differs')
+    // A stretch across a sentence end charges no sentence: it frees no second stretch of the sentence the draft keeps.
+    const three = '(1) Satz A gilt immer. Satz B gilt hier sicher leider nie. Satz C gilt oft. (2) Die Frist beträgt vier Wochen.'
+    const closing = blocksWith('1. In § 5 Abs. 1 entfällt der Schlusssatz.')
+    expect(check(closing, three.replace(' Satz C gilt oft.', ''), three).state).toBe('holds')
+    expect(check(closing, '(1) Satz A gilt immer. Satz gilt hier sicher (2) Die Frist beträgt vier Wochen.', three).state).toBe('differs')
+    // An id list is read a level up only where the unit it stands in is printed whole: with Z 2 elided, „Z 1 und 2" is not Abs. 2.
+    const fees = '(1) Es gilt: 1. die Frist von 710 Tagen, … (2) Die Gebühr beträgt 710 Euro. (3) Die Frist beträgt vier Wochen.'
+    const both = blocksWith('1. In § 5 Abs. 1 Z 1 und 2 wird die Zahl „710“ jeweils durch die Zahl „720“ ersetzt.')
+    expect(check(both, fees.replace('710 Tagen', '720 Tagen'), fees).state).toBe('holds')
+    expect(check(both, fees.replaceAll('710', '720'), fees)).toMatchObject({ state: 'differs', struckNotInDraft: ['710'] })
+    // A citation of the § in its own text is not the designation a heading ends at.
+    const heading = [...blocksWith('1. Die Überschrift zu § 5 lautet:'), abs('"Zuständigkeit"')]
+    const cited = '(1) Die Behörde ist zuständig. Sie entscheidet binnen vier Wochen. (2) Die Frist nach § 5. Abs. 1 gilt.'
+    expect(check(heading, 'Zuständigkeit (1) Die Behörde ist zuständig. (2) Die Frist nach § 5. Abs. 1 gilt.', cited)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'entscheidet', 'binnen', 'vier', 'wochen'] })
+    // A line that names another unit behind its first position counts its stretches, one for each.
+    const lettered = '(1) A gilt. (2) Satz A gilt. Satz B gilt. Satz C gilt. Satz D gilt hier sicher leider nie. (3) Satz E gilt. Satz F gilt.'
+    const two = blocksWith('1. In § 5 Abs. 2 entfällt der zweite Satz, in Abs. 3 der letzte Satz.')
+    expect(check(two, lettered.replace(' Satz B gilt.', '').replace(' Satz F gilt.', ''), lettered).state).toBe('holds')
+    expect(check(two, '(1) A gilt. (2) Satz A gilt. Satz C gilt. gilt hier sicher (3) Satz E gilt. Satz F gilt.', lettered).state).toBe('differs')
+    // The kept words of a named sentence cover no twin: the same sentence struck in another Absatz is not the one the line strikes…
+    const twin = '(1) Satz A gilt. Die Behörde entscheidet binnen vier Wochen. Satz C gilt. (2) Satz D gilt. (3) Die Behörde entscheidet binnen vier Wochen. (4) Satz E gilt.'
+    expect(check(second, twin.replace('(3) Die Behörde entscheidet binnen vier Wochen. ', '(3) '), twin)).toMatchObject({ state: 'differs', struckNotInDraft: ['die', 'behörde', 'entscheidet', 'binnen', 'vier', 'wochen'] })
+    // …but the cut the word diff shifts at its edge is: the next sentence opens with the words it opens with (SchOG § 40).
+    const school = '(1) Die Aufnahme in das Aufbaugymnasium erfordert eine Prüfung. Die Aufnahme in ein Gymnasium für Berufstätige erfordert keine. (2) Die Frist beträgt vier Wochen.'
+    const first = blocksWith('1. In § 5 Abs. 1 entfällt der erste Satz.')
+    const lost = school.replace('Die Aufnahme in das Aufbaugymnasium erfordert eine Prüfung. ', '')
+    expect(check(first, lost, school)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    expect(check(first, lost.replace(' für Berufstätige', ''), school)).toMatchObject({ state: 'differs', struckNotInDraft: ['für', 'berufstätige'] })
   })
 })
