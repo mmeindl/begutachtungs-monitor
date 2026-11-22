@@ -254,4 +254,16 @@ describe('annexStrictChecks: the Bund\'s annex rows against the draft\'s wording
     // A figure before a mark is the law's: „binnen [21] …" is no designation.
     expect(check('(3) … Sie entscheidet binnen 14 … Tagen.', '(3) … Sie entscheidet binnen 21 … Tagen.').state).toBe('differs')
   })
+
+  it('reads a mark at the column\'s end as standing only for what follows the last word it prints', () => {
+    // GSP-AV § 232 (22.11.2026): „… betragen. (6) …" does not stand for the sentence the column lost before „(6)".
+    const blocks = [...DRAFT.slice(0, 3), novao('1. § 9 Abs. 3 lautet:'), abs('"(3) Die Behörde hat den Antrag zu prüfen. Sie entscheidet binnen 14 Tagen."')]
+    const check = (current: string, proposed: string) => annexStrictChecks([row({ law: LAW, gld: '§ 9.', para: '§ 9.', current, proposed })], { ...draft, blocks }).get(`${LAW}#§ 9.`)!
+    const current = '(3) Die Behörde hat den Antrag zu prüfen. Sie entscheidet binnen einem Monat. (4) bis (6) …'
+    expect(check(current, '(3) Die Behörde hat den Antrag zu prüfen. Sie entscheidet binnen 14 Tagen. (4) bis (6) …').state).toBe('holds')
+    expect(check(current, '(3) Die Behörde hat den Antrag zu prüfen. (4) bis (6) …')).toMatchObject({ state: 'differs', notShown: ['sie', 'entscheidet', 'binnen', '14', 'tagen'] })
+    // Right behind the last word it prints, the mark leaves out what the wording goes on with.
+    const two = [...DRAFT.slice(0, 3), novao('1. § 9 Abs. 3 und 4 lauten:'), abs('"(3) Die Behörde hat den Antrag zu prüfen.'), abs('(4) Sie entscheidet binnen 14 Tagen."')]
+    expect(annexStrictChecks([row({ law: LAW, gld: '§ 9.', para: '§ 9.', current: '(3) Die Behörde ist zuständig. (4) …', proposed: '(3) Die Behörde hat den Antrag zu prüfen. (4) …' })], { ...draft, blocks: two }).get(`${LAW}#§ 9.`)!.state).toBe('holds')
+  })
 })

@@ -1075,6 +1075,11 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     while (after < draft.length && aligned.at[after]! < 0) after++
     const from = before >= 0 ? aligned.at[before]! : -1
     const to = after < draft.length ? aligned.at[after]! : shown.length
+    // Where no word of the wording is aligned on one side, the window would run to the column's edge
+    // (22.11.2026): there the mark stands for the missing words only right at the aligned neighbour on the
+    // other side. „… betragen. (6) …" does not stand for the sentence the column lost before „(6)".
+    if (before < 0 && after < draft.length) return layout.elided[to - 1] === true
+    if (before >= 0 && after >= draft.length) return layout.elided[from + 1] === true
     for (let i = from + 1; i < to; i++) if (layout.elided[i]) return true
     return false
   }
