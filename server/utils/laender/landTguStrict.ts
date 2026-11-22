@@ -143,6 +143,13 @@ const levelOf = (word: string, shape: Shape): number => (/^\d/.test(word) ? (sha
 
 /** What follows a word that ends a sentence: „." (a closing mark between) before neither a small letter nor a figure — a semicolon ends none („erster Satz" counts to the full stop). */
 const STOP_RE = /^[“”"»«)\]]*[.!?][“”"»«)\]]*(?=\s|$)(?!\s*[\p{Ll}\d])/u
+/**
+ * A figure with a full stop that is an ordinal, not a sentence's end (22.11.2026): before a month's name („bis 31. Dezember
+ * 2025"), or after a word that is no address word and no joiner („gemäß dem 2. Hauptstück", „des 18. Lebensjahres"). In the
+ * GP XXVIII annexes' left columns 706 dates and 711 such ordinals; a sentence ends on a figure after an address word („nach
+ * Abs. 3.") or after a joiner („Z 1 und 2.").
+ */
+const MONTH_AFTER_RE = /^\.\s+(?:Jänner|Januar|Feber|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)(?![\p{L}])/u
 /** Words a full stop follows as an abbreviation, not as a sentence's end. */
 const ABBREVIATIONS = new Set(['abs', 'z', 'lit', 'nr', 'art', 's', 'bgbl', 'lgbl', 'abl', 'vgl', 'bzw', 'ca', 'gem', 'lt', 'usw', 'etc', 'dh', 'zb', 'ua', 'idf', 'ff', 'sublit', 'anl', 'ziff'])
 
@@ -198,7 +205,8 @@ function markedTokens(text: string): Marked[] {
       const designation = designationForm(flat, m.index, m[0].length, out)
       // A shape also where the figure is printed like one but not read as a unit's start: „… 15." after an elision mark the caller reads as a word.
       const like = designation || (/^(?:\d+[a-z]*|[a-z]{1,2})$/.test(word) && /[.)]/.test(flat[m.index + m[0].length] ?? ''))
-      const stop = !designation && !ABBREVIATIONS.has(word) && cased.length === flat.length && STOP_RE.test(cased.slice(m.index + m[0].length, m.index + m[0].length + 8))
+      // A word is no designation for this though `designationForm` takes it for one („… Werkzeug und Berufskleidung). Ausgaben …").
+      const stop = !(designation && DESIGNATION_WORD_RE.test(word)) && !ABBREVIATIONS.has(word) && cased.length === flat.length && STOP_RE.test(cased.slice(m.index + m[0].length, m.index + m[0].length + 8)) && !(/^\d{1,3}$/.test(word) && (MONTH_AFTER_RE.test(cased.slice(m.index + m[0].length, m.index + m[0].length + 14)) || (/^\p{L}+$/u.test(out.at(-1)?.word ?? '') && !ADDRESS_WORDS.has(out.at(-1)!.word) && !/^(?:und|oder|sowie|bis|bzw)$/.test(out.at(-1)!.word) && /[\p{L}]\s*$/u.test(flat.slice(0, m.index)))))
       if (word) out.push({ word, marked: on, designation, ...(like ? { shape: shapeOf(flat, m.index, m[0].length) } : {}), ...(stop ? { stop: true as const } : {}) })
     }
   }
@@ -240,6 +248,8 @@ export interface Wording {
   adds?: true
   /** …or under a line that writes a unit below the § anew („§ 24 Abs. 1 lautet: § 24. „(1) …“"): printed from the §'s designation on, it still rewrites only that unit. */
   part?: true
+  /** A payload's instruction line: what it writes anew, the line says (`struckAccount`). */
+  line?: string
   /**
    * A designation the instruction gives („erhält die Absatzbezeichnung
    * „(5)""): a single token accounts only for a place printed as a
@@ -286,8 +296,8 @@ export interface Struck {
   /** …each with the places its line names (`places`): it accounts only there, or anywhere in the § where they name the § whole or nothing below it. */
   named: { tokens: string[]; line: string; designation?: true; places?: AddressUnit[] }[]
   repealed: (AddressUnit & { line: string })[]
-  /** …`replaces` where the line writes the stretch anew (a payload, a quoted new wording), `heading` where it is the heading. */
-  byPosition: { count: number; places: AddressUnit[]; line: string; replaces?: true; heading?: true }[]
+  /** …`replaces` where the line writes the stretch anew (a payload, a quoted new wording), `heading` where it is the heading; `sentences` where it counts sentences only, which ones („erster", „dritter bis sechster", „letzter" -1) of the units it names first (`in`; none: the §). */
+  byPosition: { count: number; places: AddressUnit[]; line: string; replaces?: true; heading?: true; sentences?: { at: number[]; in: AddressUnit[] } }[]
   /** The units the instructions write anew by address („§ 14 Abs. 5 und 6 lautet:"; level 0 the § itself): their old words are rewritten. */
   replaced?: (AddressUnit & { line: string })[]
   /** An instruction for the § speaks of designations („erhält die Absatzbezeichnung", „entfällt die bisherige Absatzbezeichnung (1)", „ohne Nummerierung"): a designation struck alone is notation. */
@@ -875,7 +885,10 @@ function replacedOf(raw: string): AddressUnit[] {
 const ORDINAL = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte|letzte|vorletzte|drittletzte|nachfolgende|(?:darauf\\s+)?folgende|beiden\\s+ersten|beiden\\s+letzten|(?:ersten|letzten)\\s+beiden)[nrsm]?'
 const POSITION_UNIT = '(?:Satz|Sätze|Halbsatz|Teilsatz|Satzteil|Absatz|Unterabsatz|Spiegelstrich|Teilstrich|Strich|Zeile|Zeilen|Spalte|Aufzählungspunkt|Klammerausdruck|Eintrag)'
 /** „der vorletzte und der letzte Satz", „der zweite, der dritte und der vierte Satz", „letzter Satz": ordinals and the unit they count. */
-const BY_ORDINAL_RE = new RegExp(`(?<![\\p{L}])((?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\\s+)?(${ORDINAL}(?:\\s*(?:,|und|sowie)\\s*(?:(?:de[rnms]|die|das)\\s+)?${ORDINAL})*)\\s+${POSITION_UNIT}(?![\\p{L}])`, 'gu')
+const BY_ORDINAL_RE = new RegExp(`(?<![\\p{L}])((?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\\s+)?(${ORDINAL}(?:\\s*(?:,|und|sowie|bis)\\s*(?:(?:de[rnms]|die|das)\\s+)?${ORDINAL})*)\\s+${POSITION_UNIT}(?![\\p{L}])`, 'gu')
+/** Which sentence an ordinal names: from the unit's start (1, 2, …) or from its end (-1 the last); none for „folgende". */
+const ORDINAL_AT: Record<string, number[]> = { erste: [1], zweite: [2], dritte: [3], vierte: [4], fünfte: [5], sechste: [6], siebente: [7], siebte: [7], achte: [8], neunte: [9], zehnte: [10], letzte: [-1], vorletzte: [-2], drittletzte: [-3] }
+const ordinalAt = (word: string): number[] | null => (/beiden\s+ersten|ersten\s+beiden/u.test(word) ? [1, 2] : /beiden\s+letzten|letzten\s+beiden/u.test(word) ? [-2, -1] : ORDINAL_AT[word.replace(/[nrsm]$/u, '')] ?? null)
 /** „die Sätze sechs und sieben", „die Sätze drei bis fünf": sentences counted in words after the noun. */
 const CARDINALS = ['zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn']
 const BY_CARDINAL_RE = new RegExp(`(?<![\\p{L}])(?:die\\s+)?(?:Sätze|Halbsätze)\\s+(${CARDINALS.join('|')})(?:\\s+(und|bis)\\s+(${CARDINALS.join('|')}))?(?![\\p{L}])`, 'gu')
@@ -896,25 +909,56 @@ const BY_DESCRIPTION_RE = /(?<![\p{L}])((?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\s+(?:gesam
  * angefügt").
  */
 function byPositionOf(raw: string): number {
+  return positionsOf(raw).count
+}
+
+/**
+ * …and which sentences, where every position the line counts is a sentence it names by its ordinal or its number („erster
+ * Satz", „der dritte bis sechste Satz", „die beiden letzten Sätze", „die Sätze vier bis sechs"; 22.11.2026): the line
+ * then says which sentence of its unit it strikes or writes anew, not only how many.
+ */
+function positionsOf(raw: string): { count: number; sentences: number[] | null } {
   const line = withoutResidue(raw).replace(QUOTE_RE, ' „“ ')
-  if (!new RegExp(`(?<![\\p{L}])(?:${REMOVING}|ersetzt|lautet|lauten|Stelle)(?![\\p{L}])`, 'u').test(line)) return 0
+  if (!new RegExp(`(?<![\\p{L}])(?:${REMOVING}|ersetzt|lautet|lauten|Stelle)(?![\\p{L}])`, 'u').test(line)) return { count: 0, sentences: null }
   let count = 0
-  const place = (at: number) => /(?:^|\s)(?:[Ii]m|[Ii]n|nach|vor|von|zu|dem)\s*$/u.test(line.slice(0, at))
+  const sentences: (number | null)[] = []
+  // „wird der letzte Satz durch den folgenden Satz ersetzt": the new sentence, no position.
+  const place = (at: number) => /(?:^|\s)(?:[Ii]m|[Ii]n|nach|vor|von|zu|dem|durch)\s*$/u.test(line.slice(0, at))
   // Bare, the position is struck only by a verb right after it with nothing else to strike: „zweiter Satz entfällt."
   // …and „§ 51 zweiter Satz wird durch folgende Sätze ersetzt" (RAO), the position the subject „durch" replaces.
   const struckBare = (end: number) => new RegExp(`^\\s*(?:${REMOVING}|wird\\s+aufgehoben|werden\\s+aufgehoben|lautet|lauten)(?![\\p{L}])\\s*(?:[.;:,]|und\\s|$)|^\\s*(?:wird|werden)\\s+durch(?![\\p{L}])`, 'u').test(line.slice(end))
   for (const m of line.matchAll(BY_ORDINAL_RE)) {
     if (place(m.index) || (!m[1] && !struckBare(m.index + m[0].length))) continue
-    // „die beiden ersten", „die letzten beiden": two.
-    count += [...m[2]!.matchAll(new RegExp(ORDINAL, 'gu'))].length + (m[2]!.match(/beiden/gu)?.length ?? 0)
+    // „die beiden ersten", „die letzten beiden": two; „der dritte bis sechste": four.
+    const at = [...m[2]!.matchAll(new RegExp(`((?:beiden\\s+(?:ersten|letzten)|(?:ersten|letzten)\\s+beiden)[nrsm]?|${ORDINAL})|(?<![\\p{L}])bis(?![\\p{L}])`, 'gu'))].map((o) => (o[1] ? ordinalAt(o[1]) : 'bis' as const))
+    const named: (number | null)[] = []
+    at.forEach((o, i) => {
+      const [from, to] = [named.at(-1), at[i + 1]]
+      if (o === 'bis') {
+        if (typeof from === 'number' && from > 0 && Array.isArray(to) && to.length === 1 && to[0]! > from && to[0]! - from <= MAX_RANGE) for (let n = from + 1; n < to[0]!; n++) named.push(n)
+        else named.push(null)
+      } else named.push(...(o ?? [null]))
+    })
+    count += named.length
+    sentences.push(...(/S(?:atz|ätze)$/u.test(m[0]) ? named : named.map(() => null)))
   }
-  for (const m of line.matchAll(BY_CARDINAL_RE)) count += !m[2] ? 1 : m[2] === 'und' ? 2 : CARDINALS.indexOf(m[3]!) - CARDINALS.indexOf(m[1]!) + 1
+  for (const m of line.matchAll(BY_CARDINAL_RE)) {
+    const n = !m[2] ? 1 : m[2] === 'und' ? 2 : CARDINALS.indexOf(m[3]!) - CARDINALS.indexOf(m[1]!) + 1
+    count += n
+    const [a, b] = [m[1], m[3]].map((c) => (c ? CARDINALS.indexOf(c) + 2 : 0))
+    const named = !m[2] ? [null] : m[2] === 'und' ? [a!, b!] : Array.from({ length: Math.max(0, n) }, (_, i) => a! + i)
+    sentences.push(...(/^(?:die\s+)?Sätze/u.test(m[0]) && m[2] ? named : named.map(() => null)))
+  }
   // „der Überschrift des § 38" in the list of places of a line that quotes what it replaces (E-ControlG, 22.11.2026: „In § 4, …
   // der Überschrift des § 38, … wird der Ausdruck „E-Control“ jeweils durch … ersetzt" counted twelve positions in each §): a place.
   const quotesOld = quoteRoles(raw).some((q) => q.role === 'old')
   const ofAddress = (end: number) => quotesOld && /^\s*(?:des|der|zu|zum|zur)\s+(?:§|Art|Anl|\d|[IVXL]+\.|(?:\d+\.\s*)?(?:Abschnitt|Unterabschnitt|Hauptstück|Teil))/u.test(line.slice(end))
-  for (const m of line.matchAll(BY_DESCRIPTION_RE)) if (!place(m.index) && !ofAddress(m.index + m[0].length) && (m[1] || struckBare(m.index + m[0].length))) count++
-  return count
+  for (const m of line.matchAll(BY_DESCRIPTION_RE)) {
+    if (place(m.index) || ofAddress(m.index + m[0].length) || !(m[1] || struckBare(m.index + m[0].length))) continue
+    count++
+    sentences.push(null)
+  }
+  return { count, sentences: count && sentences.every((x): x is number => x !== null) ? sentences as number[] : null }
 }
 
 /** What every § of a draft is written as, per law key. */
@@ -965,7 +1009,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const line = run.line ?? ''
       const quoted: Struck['named'] = quoteRoles(line).filter((q) => q.role === 'old').map((q) => ({ tokens: strictTokens(q.text), line, ...(q.designation ? { designation: true as const } : {}) }))
       if (run.line !== null && removesPayload(run.line)) quoted.push(...run.payload.map((b) => ({ tokens: strictTokens(`${b.gld ?? ''} ${b.text}`.replace(FOOTER_RE, ' ')), line })))
-      const count = byPositionOf(line)
+      const { count, sentences } = positionsOf(line)
       // Where it strikes by position: the units the line names („In § 5 Abs. 2 entfällt der letzte Satz"), none for the § itself.
       const bare = withoutResidue(line).replace(QUOTE_RE, ' „“ ')
       const named = [...bare.matchAll(ADDRESS_RE)].flatMap((m) => {
@@ -974,6 +1018,9 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         return /^\s*\(neu\)/u.test(bare.slice(m.index + m[0].length)) ? units.map((u, i) => (i === units.length - 1 ? { ...u, fresh: true as const } : u)) : units
       })
       const places = named.filter((u) => u.level > 0)
+      // The sentences it names are those of the units its first address names: „In § 41 Abs. 2 entfällt Z 1 und 2 und der dritte Satz lautet" counts in Abs. 2.
+      const first = [...bare.matchAll(ADDRESS_RE)][0]
+      const of = first ? addressUnits(first[0], contextAt(bare, first.index)).filter((u) => u.level > 0) : []
       // „In § 35 Abs. 1c und 1d entfällt jeweils der letzte Satz": once in each unit it names.
       const each = /(?<![\p{L}])jeweils(?![\p{L}])/u.test(line) ? Math.max(1, places.reduce((n, u) => n + u.ids.length, 0)) : 1
       // …and one that writes the position anew, with no removing verb beside: „lautet der zweite Satz:", „wird der letzte Satz durch folgenden Satz ersetzt".
@@ -981,7 +1028,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const replaces = ((run.payload.length > 0 && !removesPayload(line)) || quoteRoles(line).some((q) => q.role === 'new')) && /(?<![\p{L}])(?:lautet|lauten|ersetzt)(?![\p{L}])/u.test(own) && !new RegExp(`(?<![\\p{L}])(?:${REMOVING})(?![\\p{L}])`, 'u').test(own)
       const heading = /(?<![\p{L}])(?:Abschnitts)?[Üü]berschrift(?![\p{L}])/u.test(own) && !/(?<![\p{L}])(?:Satz|Sätze)(?![\p{L}])/u.test(own)
       const moves = movedOf(line)
-      return { ...(moves.length ? { moves } : {}), named: quoted.filter((n) => n.tokens.length).map((n) => ({ ...n, places: named })), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line, ...(replaces ? { replaces: true as const } : {}), ...(heading ? { heading: true as const } : {}) }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: quoteRoles(line).some((q) => q.designation) || RENUMBERS_RE.test(own) }
+      return { ...(moves.length ? { moves } : {}), named: quoted.filter((n) => n.tokens.length).map((n) => ({ ...n, places: named })), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line, ...(replaces ? { replaces: true as const } : {}), ...(heading ? { heading: true as const } : {}), ...(sentences ? { sentences: { at: sentences, in: of } } : {}) }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: quoteRoles(line).some((q) => q.designation) || RENUMBERS_RE.test(own) }
     }
     if (!keys.length) {
       const into = lawOf(draft.law)
@@ -1035,7 +1082,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       for (const piece of pieces) {
         if (piece.key !== null) {
           const into = at(draft.law, piece.key)
-          into.wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false, ...adds })
+          into.wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false, ...adds, ...(run.line !== null ? { line: run.line } : {}) })
           if (!keys.includes(piece.key)) {
             into.text.push(standing)
             into.written.push(written)
@@ -1044,7 +1091,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
           // Text before the first § of a payload that prints §§: a division heading, or what the reader did not cut. Whose it is, is not read.
           for (const key of keys) at(draft.law, key).unread ??= STRICT_UNCHECKED.beforeFirst
         } else if (keys.length === 1) {
-          at(draft.law, keys[0]!).wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false, ...adds })
+          at(draft.law, keys[0]!).wordings.push({ tokens: piece.tokens, optional: piece.optional, repeats: false, ...adds, ...(run.line !== null ? { line: run.line } : {}) })
         } else {
           for (const key of keys) at(draft.law, key).unread ??= STRICT_UNCHECKED.severalUnnamed
         }
@@ -1449,10 +1496,10 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   const draft: string[] = []
   const optional: boolean[] = []
   /** Where each payload stands in `draft`; whether its line only adds (`Wording.adds`); and whether it prints the § from its own designation on, under a line that writes no unit below it anew: the whole § rewritten. */
-  const pieces: { from: number; to: number; adds: boolean; whole: boolean }[] = []
+  const pieces: { from: number; to: number; adds: boolean; whole: boolean; line?: string }[] = []
   for (const w of all.filter((x) => !x.repeats)) {
     const at = w.tokens.findIndex((t, i) => t === '§' && own.has(w.tokens[i + 1] ?? ''))
-    pieces.push({ from: draft.length, to: draft.length + w.tokens.length, adds: w.adds === true, whole: !w.adds && !w.part && at >= 0 && w.optional.slice(0, at + 2).every(Boolean) })
+    pieces.push({ from: draft.length, to: draft.length + w.tokens.length, adds: w.adds === true, whole: !w.adds && !w.part && at >= 0 && w.optional.slice(0, at + 2).every(Boolean), ...(w.line !== undefined ? { line: w.line } : {}) })
     draft.push(...w.tokens)
     optional.push(...w.optional)
   }
@@ -1661,7 +1708,7 @@ function struckAccount(
   layout: ((words: readonly string[], marked: readonly boolean[]) => { notText: boolean[] }) | undefined,
   own: ReadonlySet<string>,
   shown: readonly Marked[],
-  draft: { at: readonly number[]; pieces: readonly { from: number; to: number; adds: boolean; whole: boolean }[]; optional: readonly boolean[] },
+  draft: { at: readonly number[]; pieces: readonly { from: number; to: number; adds: boolean; whole: boolean; line?: string }[]; optional: readonly boolean[] },
   designations: boolean,
   quoted: readonly (readonly string[])[],
 ): { notInDraft: string[]; by: StruckBy } {
@@ -1875,6 +1922,52 @@ function struckAccount(
     })
     if (longest < MOVED_KEPT_RUN) for (const q of struck) mark(q, 'repealed')
   }
+  // The sentences a line names by their ordinal (`Struck.byPosition[].sentences`; 22.11.2026), counted in each unit its first
+  // address names as the left column ends them (`Marked.stop`): the left words they hold. None where they cannot be counted —
+  // a unit the column does not print, prints with an elision in it or the line names by its new number, a § named whole whose
+  // column prints Absätze, an ordinal past the unit's last sentence: the line then counts as a number of stretches (below).
+  const sentenceWords = new Map<object, Set<number> | null>()
+  const namedSentences = (x: Struck['byPosition'][number]): Set<number> | null => {
+    if (!x.sentences) return null
+    if (sentenceWords.has(x)) return sentenceWords.get(x)!
+    const ids = ownFor(x.line)
+    const ranges: [number, number, number][] = []
+    let readable = true
+    if (!x.sentences.in.length) {
+      // From the §'s designation on: a heading above it ends no sentence, and „§ 5." does not either.
+      if (left.some((_, k) => opensAt(k) && levelAt(k) === 1)) readable = false
+      else {
+        const at = left.findIndex((_, k) => designatedAt(k))
+        ranges.push([at < 0 ? 0 : at + 2, left.length, 0])
+      }
+    } else for (const u of x.sentences.in) for (const id of u.ids) {
+      const k = u.fresh ? -1 : left.findIndex((_, j) => opensAt(j) && levelAt(j) === u.level && words[j] === id && within(j, u.path, ids))
+      if (k < 0) readable = false
+      else ranges.push([k, unitEnd(k), u.level])
+    }
+    const out = new Set<number>()
+    for (const [a, b, level] of readable ? ranges : []) {
+      if (notText?.slice(a, b).some(Boolean)) readable = false
+      const of: number[] = []
+      let n = 1
+      for (let j = a; j < b; j++) {
+        of.push(n)
+        if (read[j]!.stop && j < b - 1) n++
+      }
+      // A list inside the unit („… zu enthalten: 1. …, 2. …") ends no sentence the column prints, and a draft counts its end
+      // as one or not (KFG § 57a Abs. 3 counts it, 22.11.2026): sentences count only from the side the list is not on.
+      const deep = of.map((_, i) => opensAt(a + i) && levelAt(a + i) > level)
+      for (const o of x.sentences.at) {
+        const t = o > 0 ? o : n + 1 + o
+        const span = of.flatMap((v, i) => (v === t ? [i] : []))
+        if (t < 1 || t > n || deep.some((d, i) => d && (o > 0 ? i <= span.at(-1)! : i >= span[0]!))) readable = false
+        for (const i of span) out.add(a + i)
+      }
+    }
+    const result = readable && out.size ? out : null
+    sentenceWords.set(x, result)
+    return result
+  }
   // Rewritten.
   // Not a payload whose line only adds (22.11.2026: a new § 81 inserted under the number the old § 81 leaves rewrites nothing of
   // it, ApoKG); and one printed from the §'s designation on rewrites the § whole only under a line that names no unit below it
@@ -1884,6 +1977,14 @@ function struckAccount(
     if (piece.whole) {
       for (const q of struck) mark(q, 'rewritten')
       continue
+    }
+    // Under a line that names the sentences it writes anew, only in those (22.11.2026): the word diff pairs a word of the new
+    // sentence into the kept one beside it, and the span between its words crossed that one („§ 123a Abs. 2 erster Satz
+    // lautet:", LFG; and a payload opening with „(4)" under „§ 16 Abs. 4 erster Satz lautet:" took the whole Absatz).
+    const named = found.flatMap((f) => f.struck?.byPosition ?? []).filter((x) => piece.line !== undefined && x.line === piece.line).map(namedSentences).filter((x) => x !== null)
+    const only = named.length ? new Set(named.flatMap((x) => [...x])) : null
+    const rewrite = (q: number) => {
+      if (!only || only.has(leftOf.get(q) ?? -1)) mark(q, 'rewritten')
     }
     const places: number[] = []
     let opens: Marked | null = null
@@ -1906,7 +2007,7 @@ function struckAccount(
       while (x > lo && x < hi && !at.has(x) && (diff[x]!.kind !== 'equal' || (diff[x + step]?.kind !== 'equal' && diff[x - step]?.kind !== 'equal') || at.has(x + step))) x += step
       return at.has(x)
     })
-    for (let q = lo; q <= hi; q++) if (at.has(q) || enclosed(q)) mark(q, 'rewritten')
+    for (let q = lo; q <= hi; q++) if (at.has(q) || enclosed(q)) rewrite(q)
     // The unit it replaces: the left column's of the designation it opens with, the nearest one — printed as a designation,
     // whether or not it stands where a unit begins („… und der Handbücher 1. An Bord …", the payload's own „1.")…
     let unit: [number, number] | null = null
@@ -1917,14 +2018,14 @@ function struckAccount(
         if (read[k]!.shape !== undefined && words[k] === opens!.word && levelOf(words[k]!, read[k]!.shape ?? '.') === level && (best < 0 || Math.abs(l.p - opens!.at!) < Math.abs(left[best]!.p - opens!.at!))) best = k
       })
       if (best >= 0) {
-        markUnit(best, 'rewritten')
+        for (let e = best, end = unitEnd(best); e < end; e++) rewrite(left[e]!.p)
         unit = [left[best]!.p, left[unitEnd(best)]?.p ?? diff.length]
       }
     }
     // …and, inside that unit, at its edges up to the first word both columns keep: „[Soweit durch Verordnung zugelassen,] {Die Abgabenbehörde} kann …".
     const inUnit = (q: number) => unit !== null && q >= unit[0] && q < unit[1]
-    for (let q = lo - 1; q >= 0 && inUnit(q) && diff[q]!.kind !== 'equal'; q--) mark(q, 'rewritten')
-    for (let q = hi + 1; q < diff.length && inUnit(q) && diff[q]!.kind !== 'equal'; q++) mark(q, 'rewritten')
+    for (let q = lo - 1; q >= 0 && inUnit(q) && diff[q]!.kind !== 'equal'; q--) rewrite(q)
+    for (let q = hi + 1; q < diff.length && inUnit(q) && diff[q]!.kind !== 'equal'; q++) rewrite(q)
   }
   // A designation struck alone — beside it nothing struck that is not accounted for — where an instruction speaks of designations.
   const unaccountedAt = (k: number) => k >= 0 && k < left.length && struck.has(left[k]!.p) && !cls.has(left[k]!.p)
@@ -1962,6 +2063,15 @@ function struckAccount(
           break
         }
       }
+    }
+  }
+  // A line that names its sentences strikes or writes anew every struck word in them, however the word diff cuts them into
+  // stretches, and nothing beside them (22.11.2026; before, its count paid for any one stretch in its unit, and a sentence it
+  // writes anew with no word of the old one went unpaid). Where they stand is known, so a twin of a struck stretch may stand there.
+  for (const x of found.flatMap((f) => f.struck?.byPosition ?? [])) {
+    for (const k of namedSentences(x) ?? []) {
+      if (!cover.has(left[k]!.p)) cover.set(left[k]!.p, 'byPosition')
+      if (struck.has(left[k]!.p)) mark(left[k]!.p, 'byPosition')
     }
   }
   twins()
@@ -2011,7 +2121,7 @@ function struckAccount(
   }
   // Each line as many stretches as it counts, inside its own unit: the allowances are not pooled over the § (a positional line
   // for Abs. 3 let a second stretch pass in Abs. 1).
-  const free = positional.map((x) => x.count)
+  const free = positional.map((x) => (namedSentences(x) ? 0 : x.count))
   for (const st of stretches) {
     const i = positional.findIndex((x, j) => free[j]! > 0 && fits(x, st))
     if (i < 0) continue

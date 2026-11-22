@@ -506,4 +506,29 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(annexStrictChecks(rows('§ 6'), { ...draft, blocks }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: struck })
     expect(annexStrictChecks(rows('§ 5'), { ...draft, blocks }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: struck })
   })
+
+  it('lets a line that names its sentences account for those sentences, all of them and nothing beside them (22.11.2026)', () => {
+    // A second review of the check: „§ 16 Abs. 4 erster Satz lautet: „(4) …“" (HlSchG) took the whole Absatz, and a kept
+    // sentence beside the one written anew passed; a count of two let a kept neighbour pass in its window.
+    const current = '(1) Die Probenahme obliegt dem Landeshauptmann. Er wählt die Betriebe nach Risiko aus. Die Ergebnisse sind jährlich zu veröffentlichen. Die Kosten trägt der Bund. (2) Die Behörde entscheidet.'
+    const first = [...blocksWith('1. § 5 Abs. 1 erster Satz lautet:'), abs('"(1) Die Durchführung der Probenahme obliegt dem Landeshauptmann hinsichtlich des Kontrollplanes."')]
+    const sound = current.replace('Die Probenahme obliegt dem Landeshauptmann.', 'Die Durchführung der Probenahme obliegt dem Landeshauptmann hinsichtlich des Kontrollplanes.')
+    expect(check(first, sound, current).state).toBe('holds')
+    expect(check(first, sound.replace(' Er wählt die Betriebe nach Risiko aus.', ''), current)).toMatchObject({ state: 'differs', struckNotInDraft: ['er', 'wählt', 'die', 'betriebe', 'nach', 'risiko', 'aus'] })
+    const two = [...blocksWith('1. In § 5 Abs. 1 lauten der zweite und dritte Satz:'), abs('"Die Auswahl erfolgt risikobasiert. Die Ergebnisse sind zu veröffentlichen."')]
+    const both = current.replace('Er wählt die Betriebe nach Risiko aus. Die Ergebnisse sind jährlich zu veröffentlichen.', 'Die Auswahl erfolgt risikobasiert. Die Ergebnisse sind zu veröffentlichen.')
+    expect(check(two, both, current).state).toBe('holds')
+    expect(check(two, both.replace(' Die Kosten trägt der Bund.', ''), current)).toMatchObject({ state: 'differs', struckNotInDraft: ['die', 'kosten', 'trägt', 'der', 'bund'] })
+    // A sentence written anew with no word of the old one: before, nothing of it was accounted (`rewrittenIn` empty). A date
+    // („31. Dezember") ends no sentence.
+    const dated = '(1) Die Frist endet am 31. Dezember 2025. Anträge sind schriftlich einzubringen. Sie sind zu begründen. (2) Die Behörde entscheidet.'
+    const second = [...blocksWith('1. § 5 Abs. 1 zweiter Satz lautet:'), abs('"Eine Verlängerung um sechs Monate ist zulässig."')]
+    expect(check(second, dated.replace('Anträge sind schriftlich einzubringen.', 'Eine Verlängerung um sechs Monate ist zulässig.'), dated)).toMatchObject({ state: 'holds', struck: { byPosition: 4 } })
+    // One sentence struck by position that the word diff cuts in two at a kept run is one sentence (TDBG § 43, GrEStG § 16).
+    const ruled = '(1) Die Behörde ist zuständig. Die nähere Regelung wird einer Verordnung im Einvernehmen mit dem Bundesminister für Justiz vorbehalten. (2) Die Frist beträgt vier Wochen.'
+    const cut = [...blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz.', '2. Dem § 5 Abs. 1 wird folgender Satz angefügt:'), abs('"Das Einvernehmen mit dem Bundesminister für Justiz ist herzustellen."')]
+    const shown = '(1) Die Behörde ist zuständig. Das Einvernehmen mit dem Bundesminister für Justiz ist herzustellen. (2) Die Frist beträgt vier Wochen.'
+    expect(check(cut, shown, ruled)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    expect(check(cut, shown.replace(' (2) Die Frist beträgt vier Wochen.', ''), ruled).state).toBe('differs')
+  })
 })

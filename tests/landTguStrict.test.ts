@@ -350,6 +350,19 @@ describe('what an instruction strikes (22.11.2026)', () => {
     expect(struckOf('1. In der Anlage 2 zu § 5 entfallen die Zeilen betreffend den Lehrberuf X.')?.repealed ?? []).toEqual([])
   })
 
+  it('reads which sentences a line names, and of which unit (22.11.2026)', () => {
+    const sentences = (line: string) => struckOf(line)?.byPosition.map((b) => b.sentences && `${b.sentences.at.join(',')} in ${b.sentences.in.map((u) => `${u.level}:${u.ids.join(',')}`).join(' ') || '§'}`)
+    expect(sentences('1. § 5 Abs. 1 erster bis dritter Satz lauten:')).toEqual(['1,2,3 in 1:1'])
+    expect(sentences('1. In § 5 Abs. 3 entfallen die beiden letzten Sätze.')).toEqual(['-2,-1 in 1:3'])
+    expect(sentences('1. In § 5 Abs. 3 entfallen die Sätze vier bis sechs.')).toEqual(['4,5,6 in 1:3'])
+    expect(sentences('1. In § 5 lautet der erste Satz:')).toEqual(['1 in §'])
+    // The sentence counts in the unit the line names first, not in the units it repeals.
+    expect(sentences('1. In § 5 Abs. 2 entfällt Z 1 und 2 und der dritte Satz lautet:')).toEqual(['3 in 1:2'])
+    // „durch den folgenden Satz" is the new sentence; a Schlussteil is no sentence it can count.
+    expect(sentences('1. In § 5 wird der letzte Satz durch den folgenden Satz ersetzt:')).toEqual(['-1 in §'])
+    expect(sentences('1. In § 5 Abs. 2 entfällt der Schlussteil.')).toEqual([undefined])
+  })
+
   it('reads a long line of addresses in time', () => {
     const line = `1. ${Array.from({ length: 80 }, (_, i) => `§ 5 Abs. ${i} Z ${i} lit. a und b sowie`).join(' ')} xyz entfällt.`
     const t0 = performance.now()
