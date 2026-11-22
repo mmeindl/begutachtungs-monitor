@@ -50,7 +50,7 @@ import { printedQuotes, segmentUnits, type TextBlock } from '../lawtext/lawUnits
 import { draftUnits } from './annexDraft'
 import { REASON_CUT, REASON_UNREADABLE_DESIGNATION, type AnnexDraft } from './verdict'
 import { refusedAddress } from '../laender/landTguGuard'
-import { STRICT_UNCHECKED, draftWording, strictCheck, strictTokens, type DraftWording, type StrictCheck, type Wording } from '../laender/landTguStrict'
+import { NEW_NUMBER_RE, STRICT_UNCHECKED, draftWording, strictCheck, strictTokens, type DraftWording, type StrictCheck, type Wording } from '../laender/landTguStrict'
 
 /** Why a § was not held, beside `STRICT_UNCHECKED`: the draft's Gesetzestext could not be read at all. */
 export const DRAFT_UNREAD = 'der Gesetzestext des Entwurfs ließ sich nicht lesen'
@@ -371,7 +371,14 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
     const law = wording.get(lawKey)
     const printed = shown.get(group.law) ?? new Set<string>()
     const elsewhere = [...(law?.generalText ?? []), ...[...(law?.byKey ?? [])].filter(([k]) => !printed.has(k)).flatMap(([, w]) => [...w.wordings.map((x) => x.tokens), ...w.text])]
-    const wordings = keys.map((k) => law?.byKey.get(k))
+    // What an instruction under the new number strikes is the § that had that number before (22.11.2026: BohrarbV § 19, renumbered
+    // to § 18, took „§ 18 entfällt mitsamt Überschrift" for a repeal of itself) — unless the line names the number as new.
+    const wordings = keys.map((k, i) => {
+      const w = law?.byKey.get(k)
+      if (i === 0 || !w?.struck) return w
+      const ours = <T extends { line: string }>(xs: readonly T[] | undefined) => (xs ?? []).filter((x) => NEW_NUMBER_RE.test(x.line))
+      return { ...w, struck: { ...w.struck, named: ours(w.struck.named), repealed: ours(w.struck.repealed), byPosition: ours(w.struck.byPosition), replaced: ours(w.struck.replaced) } }
+    })
     const head = payloadHead(wordings, own)
     const layout = (words: readonly string[], marked: readonly boolean[]) => {
       const elided = words.map((w) => w === ELISION_WORD)

@@ -631,6 +631,9 @@ function unitIds(list: string): string[] {
   return out
 }
 
+/** A line that names a § by the number a renumbering gives it: „Im nunmehrigen § 18", „§ 18 (neu)". */
+export const NEW_NUMBER_RE = /(?:nunmehrigen?|neuen)\s+§|§\s*\d+[a-z]*\s*\(neu\)/u
+
 /** One part of an address: its level (0 the § or the Anlage, 1 the Absatz, 2 the Ziffer, 3 the Litera, 4 the Sublitera) and its ids. */
 interface AddressPart { level: number; ids: string[] }
 /** A unit an address names, with the parts above it the address names too (`path`, from the § down): „§ 5 Abs. 2 Z 3" is the Ziffer 3 of Abs. 2 of § 5. */
@@ -1577,13 +1580,18 @@ function struckAccount(
   const markUnit = (k: number, c: keyof StruckBy) => {
     for (let e = k, end = unitEnd(k); e < end; e++) mark(left[e]!.p, c)
   }
+  // Which number of the § an instruction's address names (22.11.2026): the one the left column prints, or, where the line
+  // names the number as new („Im nunmehrigen § 18", „§ 18 (neu)"), the one the annex renumbers it to (`LawDiffUnit.fromId`).
+  // „§ 18 entfällt" beside „der bisherige § 19 erhält die Bezeichnung „§ 18.“" is another §, and repeals nothing of this one.
+  const numbered = (id: string) => new Set([id.replace(/^§\s*/, '').toLowerCase()])
+  const ownFor = (line: string): ReadonlySet<string> => (NEW_NUMBER_RE.test(line) ? numbered(unit.fromId ?? unit.id) : numbered(unit.id))
   /**
    * Whether the left column's word at `k` stands inside the parts an address names above its unit (22.11.2026): the §
    * this group's, each Absatz, Ziffer or Litera a unit the left column opens with that designation and `k` runs in. A
    * part the column prints no designation for is not located, and nothing in it is the instruction's.
    */
-  const within = (k: number, path: readonly AddressPart[] | undefined): boolean => (path ?? []).every((part) => (part.level === 0
-    ? part.ids.some((id) => own.has(id))
+  const within = (k: number, path: readonly AddressPart[] | undefined, ids: ReadonlySet<string>): boolean => (path ?? []).every((part) => (part.level === 0
+    ? part.ids.some((id) => ids.has(id))
     : left.some((_, j) => j < k && opensAt(j) && levelOf(words[j]!, read[j]!.shape ?? '.') === part.level && part.ids.includes(words[j]!) && k < unitEnd(j))))
   // Notation. What the left column prints ahead of the §'s designation, where the right column prints nothing new there:
   // a heading printed shorter or not at all, a division's heading, a line of the page above (`keptDeletion` in
@@ -1659,8 +1667,9 @@ function struckAccount(
   for (const run of runsLeft()) if (named.some((n) => contains(n, run.map((q) => diff[q]!.word)))) for (const q of run) mark(q, 'named')
   // Repealed, and the units a line writes anew by address (rewritten).
   for (const [r, c] of [...found.flatMap((f) => f.struck?.repealed ?? []).map((x) => [x, 'repealed'] as const), ...found.flatMap((f) => f.struck?.replaced ?? []).map((x) => [x, 'rewritten'] as const)]) {
+    const ids = ownFor(r.line)
     if (r.level === 0) {
-      if (r.ids.some((id) => own.has(id)) && within(0, r.path)) for (let q = 0; q < diff.length; q++) mark(q, c)
+      if (r.ids.some((id) => ids.has(id)) && within(0, r.path, ids)) for (let q = 0; q < diff.length; q++) mark(q, c)
       continue
     }
     left.forEach((_, k) => {
@@ -1668,7 +1677,7 @@ function struckAccount(
       // …or a designation the word diff keeps while it strikes what follows („wenn 1. [dessen Antrag … 2. …]").
       const unaccounted = (x: number) => struck.has(x) && !cls.has(x)
       const opens = opensAt(k) || (read[k]!.shape !== undefined && ((struck.has(left[k]!.p) && !unaccounted(left[k - 1]?.p ?? -1)) || (!struck.has(left[k]!.p) && struck.has(left[k + 1]?.p ?? -1))))
-      if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(words[k]!) && within(k, r.path)) markUnit(k, c)
+      if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(words[k]!) && within(k, r.path, ids)) markUnit(k, c)
     })
   }
   // Rewritten.
@@ -1777,7 +1786,7 @@ function struckAccount(
   const allowed = positional.reduce((n, x) => n + x.count, 0)
   // A stretch counts against a line only inside the unit the line strikes in: a sentence struck in Abs. 3 is not „der letzte Satz" of Abs. 2.
   const leftAt = new Map(left.map((l, k) => [l.p, k]))
-  const inPlace = (q: number) => positional.some((x) => !x.places.length || x.places.some((u) => left.some((l, k) => opensAt(k) && levelOf(words[k]!, read[k]!.shape ?? '.') === u.level && u.ids.includes(words[k]!) && leftAt.get(q)! >= k && leftAt.get(q)! < unitEnd(k) && within(k, u.path))))
+  const inPlace = (q: number) => positional.some((x) => !x.places.length || x.places.some((u) => left.some((l, k) => opensAt(k) && levelOf(words[k]!, read[k]!.shape ?? '.') === u.level && u.ids.includes(words[k]!) && leftAt.get(q)! >= k && leftAt.get(q)! < unitEnd(k) && within(k, u.path, ownFor(x.line)))))
   if (stretches.length && stretches.length <= allowed && stretches.every((st) => inPlace(st[0]!))) for (const st of stretches) for (const q of st) mark(q, 'byPosition')
   for (const c of cls.values()) by[c]++
   const notInDraft = stretches.flat().filter((q) => !cls.has(q)).map((q) => diff[q]!.word)

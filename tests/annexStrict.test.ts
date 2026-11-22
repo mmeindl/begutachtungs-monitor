@@ -377,6 +377,18 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(blocksWith('1. § 5 Abs. 3 und § 5 des Zustellgesetzes entfallen.'), '(1) Die Behörde ist zuständig.', '(1) Die Behörde ist zuständig. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
   })
 
+  it('takes no repeal of the § a renumbered § takes the number of for its own (BohrarbV § 19, 22.11.2026)', () => {
+    // „§ 18 entfällt mitsamt Überschrift" is the old § 18; the left column prints the old § 19, which becomes § 18.
+    const rows = [row({ law: LAW, gld: '§ 19.', para: '§ 19.', paraAfter: '§ 18.', current: '§ 19. (1) Die Behörde ist zuständig. (2) Die Frist beträgt vier Wochen.', proposed: '§ 18. (1) Die Behörde ist zuständig.' })]
+    const of = (...lines: string[]) => annexStrictChecks(rows, { ...draft, blocks: blocksWith(...lines) }).get(`${LAW}#§ 19.`)!
+    const renumbered = '2. Der bisherige § 19 erhält die Paragraphenbezeichnung „§ 18.“.'
+    expect(of('1. § 18 entfällt mitsamt Überschrift.', renumbered)).toMatchObject({ state: 'differs', struckNotInDraft: ['2', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
+    expect(of('1. § 18 entfällt mitsamt Überschrift; die bisherigen §§ 19 und 20 erhalten die Paragraphenbezeichnungen „§ 18.“ und „§ 19.“.')).toMatchObject({ state: 'differs', struckNotInDraft: ['2', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
+    // A line that names the new number as new is this §'s.
+    expect(of('1. § 18 entfällt mitsamt Überschrift.', renumbered, '3. Im nunmehrigen § 18 entfällt Abs. 2.')).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
+    expect(of('1. § 18 entfällt mitsamt Überschrift.', renumbered, '3. § 19 Abs. 2 entfällt.')).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
+  })
+
   it('reads no struck text where the column prints nothing new ahead of the § designation', () => {
     // SPG § 57: the heading printed shorter on the right is no heading struck; a heading replaced is.
     const blocks = blocksWith('1. In § 5 Abs. 3 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.')
