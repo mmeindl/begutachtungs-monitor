@@ -608,8 +608,8 @@ function removesPayload(line: string): boolean {
 const UNIT_ID = String.raw`(?:\d+(?:\.\d+)*[a-z]*|(?:aa|bb|cc|dd|ee|ff|gg|hh|ii|jj|kk|ll|mm|nn|[a-z])(?![a-z])|[IVXLC]+(?![\p{L}]))`
 const UNIT_IDS = String.raw`${UNIT_ID}(?:\s*(?:,|und|bis|sowie)\s*${UNIT_ID})*`
 /** An address part a repeal names: „§ 9", „§§ 24 bis 28", „Abs. 2 und 3 sowie 14 bis 16", „Z 4", „lit. c und d", „sublit. cc". */
-const UNIT_PART = String.raw`(§§?|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])\s*(${UNIT_IDS})(?![\p{L}\d])`
-const UNIT_LEVEL: Record<string, number> = { '§': 0, '§§': 0, anlage: 0, anlagen: 0, anhang: 0, anhänge: 0, abs: 1, absatz: 1, absätze: 1, z: 2, ziffer: 2, ziffern: 2, lit: 3, litera: 3, sublit: 4 }
+const UNIT_PART = String.raw`(§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])\s*(${UNIT_IDS})(?![\p{L}\d])`
+const UNIT_LEVEL: Record<string, number> = { '§': 0, '§§': 0, art: 0, artikel: 0, anlage: 0, anlagen: 0, anhang: 0, anhänge: 0, abs: 1, absatz: 1, absätze: 1, z: 2, ziffer: 2, ziffern: 2, lit: 3, litera: 3, sublit: 4 }
 /** The verbs that open or close a clause of an instruction line. */
 const ANY_VERB_RE = new RegExp(`(?<![\\p{L}])(?:${REMOVING}|${ADDING}|ersetzt|lautet|lauten|erhält|erhalten|tritt|treten)(?![\\p{L}])|;`, 'gu')
 /** A place, not what is repealed: „In § 4 Abs. 1 entfallen …", „In der Anlage 2 entfallen die Zeilen …", „am Ende der Z 5", „der nunmehrige Abs. 1" (renumbered). „die bisherige Z 6 entfällt" is the subject. */
@@ -652,8 +652,8 @@ function addressUnits(text: string, context: readonly AddressPart[] = []): Addre
   for (const m of text.matchAll(new RegExp(UNIT_PART, 'gu'))) {
     const word = m[1]!.replace(/\.$/, '').toLowerCase()
     const level = UNIT_LEVEL[word]!
-    // An Anlage is keyed as the annex keys its group (`designationKey`): „Anl 7".
-    const ids = unitIds(m[2]!).map((id) => (word.startsWith('anl') || word.startsWith('anh') ? `anl ${id}` : id))
+    // An Anlage is keyed as the annex keys its group (`designationKey`): „Anl 7"; an Artikel „Art 11" (a Verfassungsgesetz is keyed by them).
+    const ids = unitIds(m[2]!).map((id) => (word.startsWith('anl') || word.startsWith('anh') ? `anl ${id}` : word.startsWith('art') ? `art ${id}` : id))
     if (level > last && out.length) {
       const parent = out.pop()!
       parents = [...parent.path, { level: parent.level, ids: parent.ids }]
@@ -684,9 +684,12 @@ function contextAt(line: string, end: number): AddressPart[] {
 }
 let walked: { line: string; at: { end: number; context: AddressPart[] }[] } | null = null
 
+/** What a removing verb's clause opens with where its object is no unit: an article and a word that is no address part („entfällt die Wortfolge", „der letzte Satz"), not „die bisherige Z 6". */
+const OWN_OBJECT_RE = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\s+)?(?:Abs\.?|Z|lit\.?)\s*\d+[a-z]*\s+)?(?:die|der|das|den)\s+(?!(?:§|Art|Artikel|Anlagen?|Anh(?:ang|änge)|Absätze|Absatz|Abs|Ziffern|Ziffer|Z|litera|lit|sublit|bisherigen?|nunmehrigen?)(?![\p{L}]))\p{L}/u
+
 /** An address part said of the verb as its object: after an article, or first after the verb — not a place („in Abs. 1", „am Ende der Z 5"). */
 const OBJECT_BEFORE_RE = /(?:^\s*(?:jeweils\s+)?|(?<!(?:Ende|nach|vor|[Ii]n|[Ii]m|zu|von|aus)\s+)(?:die|der|das|den)\s+|(?:und|sowie|,)\s+)$/u
-const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie)\s*(?=(?:§§?|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
+const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie)\s*(?=(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
 
 /** The units a verb at `v` in `line` is said of: the addresses after it in its clause that are its objects, else the one right before it that is its subject. */
 function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): AddressUnit[] {
@@ -701,6 +704,9 @@ function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): A
   const opensClause = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\s+)?(?:Abs\.?|Z|lit\.?)\s*\d+[a-z]*\s+)?(?:(?:die|der|das|den)\s|§|Abs|Absätze|Z\s|Ziffer|lit)/u.test(after)
   const objects = opensClause ? [...after.matchAll(ADDRESS_RE)].filter((m) => OBJECT_BEFORE_RE.test(after.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, afterAt + m.index!))) : []
   if (objects.length) return objects
+  // A removing verb with an object of its own — a wording („§ 42 Abs. 4 entfällt die Wendung „…“", „In Art. 11 Abs. 6 entfällt die
+  // Wortfolge „…“"), a stretch it counts or describes („entfällt der letzte Satz", „der Klammerausdruck") — repeals no unit: the address before it is its place.
+  if (new RegExp(`^(?:${REMOVING})$`).test(v[0]) && OWN_OBJECT_RE.test(after)) return []
   // „In § 19 Z 3 lautet neu:": what „lautet" is said of, where it has no object, is the address before it, „In" or not.
   if (/^laute[tn]$/u.test(v[0])) return after.search(ADDRESS_RE) >= 0 ? [] : [...before.matchAll(ADDRESS_RE)].slice(-1).filter((m) => !/(?:^|\s)(?:nach|vor|zu|von)\s*$/u.test(before.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, beforeAt + m.index!)))
   // „§ 5 Abs. 3 entfällt", „und die Z 6 entfällt", „§ 21 wird ersatzlos gestrichen", „§ 56 samt Überschrift entfällt".
@@ -710,6 +716,9 @@ function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): A
 /** What may stand between a subject's address and its verb, or between two addresses of one subject: „samt Überschrift", „wird", „sowie die", and an Anhang the list names besides, which is no unit of the § („… sowie Anhang XIII entfallen"). */
 const SUBJECT_FILLER_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?|(?:,|und|sowie)\s*(?:die\s+|der\s+)?(?:Anlagen?|Anh(?:ang|änge))\s+[\dIVXLC]+[a-z]?|(?<![\p{L}])(?:wird|werden|ersatzlos|und|sowie|die|der)(?![\p{L}])|[,;]/gu
 
+/** An address of another law: its parts and the law's name after „des" or „der" („§ 5 des Zustellgesetzes"), not „Z 3 der Anlage". */
+const FOREIGN_PART_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*)+(?:des|der)\s+(?!Anlage|Anhang)\p{Lu}[\p{L}\d-]*`, 'gu')
+
 /**
  * The address right before a verb that is its subject — „§ 5 Abs. 3 entfällt",
  * „und die Z 6 entfällt", „§ 581 samt Überschrift und § 582 entfallen" — walked
@@ -717,6 +726,8 @@ const SUBJECT_FILLER_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?|(?:,|und
  * without bound on a long line); none where the line names it as a place.
  */
 function subjectUnits(before: string, context: (at: number) => AddressPart[] = () => []): AddressUnit[] {
+  // Another law's § in the list is no unit of this one: „§ 5 Abs. 3 und § 5 des Zustellgesetzes entfallen".
+  before = before.replace(FOREIGN_PART_RE, (m) => ' '.repeat(m.length))
   const parts = [...before.matchAll(new RegExp(UNIT_PART, 'gu'))]
   const filler = (text: string) => text.replace(SUBJECT_FILLER_RE, ' ').trim() === ''
   const last = parts.length - 1
@@ -793,7 +804,8 @@ function byPositionOf(raw: string): number {
   let count = 0
   const place = (at: number) => /(?:^|\s)(?:[Ii]m|[Ii]n|nach|vor|von|zu|dem)\s*$/u.test(line.slice(0, at))
   // Bare, the position is struck only by a verb right after it with nothing else to strike: „zweiter Satz entfällt."
-  const struckBare = (end: number) => new RegExp(`^\\s*(?:${REMOVING}|wird\\s+aufgehoben|werden\\s+aufgehoben|lautet|lauten)(?![\\p{L}])\\s*(?:[.;:,]|und\\s|$)`, 'u').test(line.slice(end))
+  // …and „§ 51 zweiter Satz wird durch folgende Sätze ersetzt" (RAO), the position the subject „durch" replaces.
+  const struckBare = (end: number) => new RegExp(`^\\s*(?:${REMOVING}|wird\\s+aufgehoben|werden\\s+aufgehoben|lautet|lauten)(?![\\p{L}])\\s*(?:[.;:,]|und\\s|$)|^\\s*(?:wird|werden)\\s+durch(?![\\p{L}])`, 'u').test(line.slice(end))
   for (const m of line.matchAll(BY_ORDINAL_RE)) {
     if (place(m.index) || (!m[1] && !struckBare(m.index + m[0].length))) continue
     // „die beiden ersten", „die letzten beiden": two.

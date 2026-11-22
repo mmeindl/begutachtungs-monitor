@@ -359,6 +359,24 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(list, '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet.', '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'differs', struckNotInDraft: ['3', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
   })
 
+  it('repeals no unit by a verb that has an object of its own, and reads „Art." as an address (22.11.2026)', () => {
+    // B-VG Art. 11, SchUG § 42: „entfällt die Wortfolge „…““ was read as a repeal of the Absatz the line names as its place.
+    const current = '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet und andere. Sie ist an Weisungen nicht gebunden.'
+    const lost = '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet.'
+    expect(check(blocksWith('1. § 5 Abs. 2 entfällt die Wendung „ und andere“.'), lost, current)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    expect(check(blocksWith('1. § 5 Abs. 2 entfällt.'), '(1) Die Behörde ist zuständig.', current)).toMatchObject({ state: 'holds' })
+    const art = (line: string, proposed: string) => annexStrictChecks([row({ law: LAW, gld: 'Art. 11.', para: 'Art. 11.', current: `Artikel 11. ${current}`, proposed: `Artikel 11. ${proposed}` })], { ...draft, blocks: blocksWith(line) }).get(`${LAW}#Art. 11.`)!
+    expect(art('1. In Art. 11 Abs. 2 entfällt die Wortfolge „ und andere“.', lost)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    expect(art('1. Art. 11 Abs. 2 entfällt.', '(1) Die Behörde ist zuständig.')).toMatchObject({ state: 'holds' })
+    // RAO § 51: „§ 51 zweiter Satz wird durch folgende Sätze ersetzt" replaces a sentence by position, not the whole §.
+    const sentences = '(1) Die Behörde ist zuständig. Die Frist beträgt vier Wochen. (2) Anträge sind schriftlich einzubringen. Mündliche Anträge sind unzulässig. (3) Die Behörde entscheidet. Sie ist an Weisungen nicht gebunden.'
+    const replaced = [...blocksWith('1. § 5 zweiter Satz wird durch folgenden Satz ersetzt:'), abs('"Die Frist beträgt sechs Wochen."')]
+    expect(check(replaced, '(1) Die Behörde ist zuständig. Die Frist beträgt sechs Wochen. (2) Anträge sind schriftlich einzubringen. Mündliche Anträge sind unzulässig. (3) Die Behörde entscheidet. Sie ist an Weisungen nicht gebunden.', sentences)).toMatchObject({ state: 'holds' })
+    expect(check(replaced, '(1) Die Behörde ist zuständig. Die Frist beträgt sechs Wochen. (2) Anträge sind schriftlich einzubringen. (3) Die Behörde entscheidet.', sentences)).toMatchObject({ state: 'differs', struckNotInDraft: ['mündliche', 'anträge', 'sind', 'unzulässig', 'sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    // „§ 5 Abs. 3 und § 5 des Zustellgesetzes entfallen": another law's § is no unit of this one, and Abs. 3 is repealed.
+    expect(check(blocksWith('1. § 5 Abs. 3 und § 5 des Zustellgesetzes entfallen.'), '(1) Die Behörde ist zuständig.', '(1) Die Behörde ist zuständig. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
+  })
+
   it('reads no struck text where the column prints nothing new ahead of the § designation', () => {
     // SPG § 57: the heading printed shorter on the right is no heading struck; a heading replaced is.
     const blocks = blocksWith('1. In § 5 Abs. 3 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.')
