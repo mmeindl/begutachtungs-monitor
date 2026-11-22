@@ -653,11 +653,15 @@ function unitIds(list: string): string[] {
   const out: string[] = []
   const parts = list.split(/\s*(,|und|sowie|bis)\s*/u)
   for (let i = 0; i < parts.length; i += 2) {
-    const id = parts[i]!.toLowerCase()
+    let id = parts[i]!.toLowerCase()
     const prev = out.at(-1)
     if (parts[i - 1] === 'bis' && prev !== undefined) {
-      if (/^\d+$/.test(prev) && /^\d+$/.test(id) && Number(id) > Number(prev) && Number(id) - Number(prev) <= MAX_RANGE) for (let n = Number(prev) + 1; n < Number(id); n++) out.push(String(n))
-      else if (/^[a-z]$/.test(prev) && /^[a-z]$/.test(id) && id > prev) for (let c = prev.charCodeAt(0) + 1; c < id.charCodeAt(0); c++) out.push(String.fromCharCode(c))
+      // „§§ 34a bis e", „§ 48a bis § 48d": letters after one figure (22.11.2026, BUAG, BAO).
+      const stem = /^(\d+)([a-z])$/.exec(prev)
+      if (stem && /^[a-z]$/.test(id)) id = stem[1] + id
+      const [from, to] = stem && id.startsWith(stem[1]!) && /^\d+[a-z]$/.test(id) ? [prev.slice(-1), id.slice(-1)] : [prev, id]
+      if (/^\d+$/.test(from) && /^\d+$/.test(to) && Number(to) > Number(from) && Number(to) - Number(from) <= MAX_RANGE) for (let n = Number(from) + 1; n < Number(to); n++) out.push(String(n))
+      else if (/^[a-z]$/.test(from) && /^[a-z]$/.test(to) && to > from) for (let c = from.charCodeAt(0) + 1; c < to.charCodeAt(0); c++) out.push(`${stem?.[1] ?? ''}${String.fromCharCode(c)}`)
     }
     out.push(id)
   }
@@ -761,13 +765,12 @@ function addressUnits(text: string, context: readonly AddressPart[] = []): Addre
   for (const m of text.matchAll(new RegExp(UNIT_PART, 'gu'))) {
     const word = m[1]!.replace(/\.$/, '').toLowerCase()
     const level = UNIT_LEVEL[word]!
-    // „Abs. 3 bis Abs. 5": one range, its unit word repeated (22.11.2026).
+    // „Abs. 3 bis Abs. 5", „§ 48a bis § 48d": one range, its unit word repeated (22.11.2026).
     const from = out.at(-1)?.ids.at(-1)
-    const to = /^\d+$/.test(m[2]!) ? Number(m[2]) : NaN
-    const ranged = level === last && /^\s*bis\s*$/u.test(text.slice(end, m.index)) && from !== undefined && /^\d+$/.test(from) && to > Number(from) && to - Number(from) <= MAX_RANGE
+    const ranged = level === last && /^\s*bis\s*$/u.test(text.slice(end, m.index)) && from !== undefined && !/\s/.test(from)
     end = m.index! + m[0].length
     if (ranged) {
-      for (let n = Number(from) + 1; n <= to; n++) out.at(-1)!.ids.push(String(n))
+      out.at(-1)!.ids.push(...unitIds(`${from} bis ${m[2]!}`).slice(1))
       continue
     }
     // An Anlage is keyed as the annex keys its group (`designationKey`): „Anl 7"; an Artikel „Art 11" (a Verfassungsgesetz is keyed by them).
@@ -834,8 +837,8 @@ function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): A
   return subjectUnits(before, (at) => contextAt(line, beforeAt + at))
 }
 
-/** What may stand between a subject's address and its verb, or between two addresses of one subject: „samt Überschrift", „wird", „sowie die", and an Anhang the list names besides, which is no unit of the § („… sowie Anhang XIII entfallen"). */
-const SUBJECT_FILLER_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?|(?:,|und|sowie)\s*(?:die\s+|der\s+)?(?:Anlagen?|Anh(?:ang|änge))\s+[\dIVXLC]+[a-z]?|(?<![\p{L}])(?:wird|werden|ersatzlos|und|sowie|die|der)(?![\p{L}])|[,;]/gu
+/** What may stand between a subject's address and its verb, or between two addresses of one subject: „samt Überschrift", „wird", „sowie die", „bis", and an Anhang the list names besides, which is no unit of the § („… sowie Anhang XIII entfallen"). */
+const SUBJECT_FILLER_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?|(?:,|und|sowie)\s*(?:die\s+|der\s+)?(?:Anlagen?|Anh(?:ang|änge))\s+[\dIVXLC]+[a-z]?|(?<![\p{L}])(?:wird|werden|ersatzlos|und|sowie|bis|die|der)(?![\p{L}])|[,;]/gu
 
 /** An address of another law: its parts and the law's name after „des" or „der" („§ 5 des Zustellgesetzes"), not „Z 3 der Anlage". */
 const FOREIGN_PART_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*)+(?:des|der)\s+(?!Anlage|Anhang)\p{Lu}[\p{L}\d-]*`, 'gu')
@@ -2041,8 +2044,13 @@ function struckAccount(
   // („§ 24 Abs. 1 lautet: § 24. „(1) …“" rewrites Abs. 1, RAO).
   for (const piece of draft.pieces) {
     if (piece.adds) continue
+    // …and only under a line that writes this § anew, by either number the group goes by („§ 18 lautet:", „§ 18 wird durch …
+    // ersetzt:"), or names no § („Der 2. Abschnitt lautet:"): a § it prints under a number another § had replaces nothing of
+    // that one, as a payload under a line that only adds (22.11.2026: „§ 17 wird durch folgenden § 18 ersetzt:" took every
+    // struck word of the old § 18, which a later line numbers § 19, HSG-WirtschaftsVO).
     if (piece.whole) {
-      for (const q of struck) mark(q, 'rewritten')
+      const said = piece.line === undefined ? [] : replacedOf(piece.line).filter((u) => u.level === 0)
+      if (!said.length || said.some((u) => u.ids.some((id) => own.has(id)))) for (const q of struck) mark(q, 'rewritten')
       continue
     }
     // Under a line that names the sentences it writes anew, only in those (22.11.2026): the word diff pairs a word of the new

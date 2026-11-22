@@ -320,6 +320,11 @@ describe('what an instruction strikes (22.11.2026)', () => {
     expect(units('1. § 5 Abs. 2 entfällt und die Abs. 3 und 4 erhalten die Absatzbezeichnungen „(2)“ und „(3)“.')).toEqual(['1:2'])
     expect(units('1. In § 5 Abs. 3 entfällt Z 13 und in Z 13a entfällt die Wortfolge „oder“.')).toEqual(['2:13'])
     expect(units('1. In § 5 Abs. 2 entfällt der letzte Satz.')).toEqual([])
+    // A range of lettered numbers, its unit word repeated or its figure left out (22.11.2026).
+    const ranged = (line: string, key: string) => struckOf(line, key)?.repealed.map((r) => `${r.level}:${r.ids.join(',')}`)
+    expect(ranged('1. Die § 34a bis § 34d samt Überschrift entfallen.', '§ 34b')).toEqual(['0:34a,34b,34c,34d'])
+    expect(ranged('1. Die §§ 34a bis e entfallen.', '§ 34c')).toEqual(['0:34a,34b,34c,34d,34e'])
+    expect(units('1. In § 5 entfallen Abs. 3 bis Abs. 5.')).toEqual(['1:3,4,5'])
   })
 
   it('counts what a line strikes by position, reads the units it writes anew, and takes a removing payload as the old wording', () => {

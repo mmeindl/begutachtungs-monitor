@@ -562,4 +562,20 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     ]
     expect(annexStrictChecks(rows, { ...draft, blocks: blocksWith('1. In § 5 Abs. 2 Z 2 entfällt die Wortfolge „51 Abs. 7,“.') }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'holds', struck: { named: 3 } })
   })
+
+  it('takes a new § printed under a number another § had for nothing of that one (22.11.2026)', () => {
+    // A second review of the check: „§§ 5 bis 7 … durch folgende §§ 7 bis 9 ersetzt:" printed a new § 9, and its payload
+    // took every struck word of the old § 9, which the draft keeps as § 16 (IVS-G; HSG-WirtschaftsVO § 18 alike).
+    const old = 'Die Anbieter haften nach den Bestimmungen des bürgerlichen Rechts.'
+    const rows = (struck: boolean) => [
+      row({ law: LAW, gld: '§ 9.', para: '§ 9.', paraAfter: '§ 9.', change: 'inserted', current: '', proposed: '§ 9. Die Daten sind über den Zugangspunkt bereitzustellen.' }),
+      row({ law: LAW, gld: '§ 9.', para: '§ 9.', paraAfter: '§ 16.', current: old, proposed: struck ? '§ 16.' : `§ 16. ${old}` }),
+    ]
+    const replaced = (line: string) => ({ ...draft, blocks: [...blocksWith(line), abs('"§ 7. Die Behörde ist zuständig.'), abs('§ 8. Die Frist beträgt vier Wochen.'), abs('§ 9. Die Daten sind über den Zugangspunkt bereitzustellen."'), novao('2. Der bisherige § 9 wird zu § 16.')] })
+    const others = replaced('1. Die bisherigen §§ 5 bis 7 werden durch folgende §§ 7 bis 9 ersetzt:')
+    expect(annexStrictChecks(rows(false), others).get(`${LAW}#§ 9.`)?.state).toBe('holds')
+    expect(annexStrictChecks(rows(true), others).get(`${LAW}#§ 9.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['die', 'anbieter', 'haften', 'nach', 'den', 'bestimmungen', 'des', 'bürgerlichen', 'rechts'] })
+    // A line that writes this § anew rewrites it whole.
+    expect(annexStrictChecks(rows(true), replaced('1. Die bisherigen §§ 5 bis 9 werden durch folgende §§ 7 bis 9 ersetzt:')).get(`${LAW}#§ 9.`)?.state).toBe('holds')
+  })
 })
