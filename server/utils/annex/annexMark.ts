@@ -25,15 +25,21 @@
  *    reason (a § the gate marks keeps that mark);
  *  - verified, or unchecked with nothing owed (`REASON_NOTHING_TO_COMPARE`):
  *    - shows no change: not asked;
- *    - shows only deletions, or the draft check held it with no new word: the
- *      draft check reads no old text, so it confirmed nothing — clean where
- *      the oracle confirms, else „nicht geprüft" (`MARK_DELETIONS`);
+ *    - shows only deletions, or the draft check held it with no new word:
+ *      since 22.11.2026 the draft check reads struck text too
+ *      (`struckAccount`). Clean where every struck word is the draft's by a
+ *      quotation, a repeal or a unit written anew, and there is one at least;
+ *      „nicht bestätigt" where it objects to struck text alone, unless the
+ *      oracle confirms; else — struck by a position the draft only counts,
+ *      nothing the check could read, or its own objection to wording — clean
+ *      where the oracle confirms, „nicht geprüft" (`MARK_DELETIONS`) where not;
  *    - the draft check holds: clean;
  *    - it objects: „nicht bestätigt". Where the oracle confirms, the § is
  *      clean only where the objection names no wording of the draft the
  *      column lacks (`StrictCheck.notShown` empty): the oracle holds the
- *      column by containment, vouching for the words it shows and blind by
- *      design to wording it lacks (`OBJECTION_OVER_CONFIRMATION`);
+ *      column by containment, vouching for the words it shows — struck
+ *      text included (its checks 2 and 4) — and blind by design to wording
+ *      it lacks (`OBJECTION_OVER_CONFIRMATION`);
  *    - it could not run: clean where the oracle confirms, else „nicht
  *      geprüft" with the reason in the Länder's words.
  */
@@ -78,8 +84,14 @@ export const MARK_UNASSIGNED = DRAFT_CHECK_REASON_DE.unassigned
 export const MARK_WORDING = DRAFT_CHECK_REASON_DE.wording
 export const MARK_LONG = DRAFT_CHECK_REASON_DE.long
 export const MARK_DRAFT_UNREAD = DRAFT_CHECK_REASON_DE.draftUnread
-/** The draft check reads new text only; a § that shows no new wording is no § it can confirm. True of a § that only strikes, and of one whose new tokens are notation alone. */
-export const MARK_DELETIONS = 'die Gegenüberstellung zeigt hier keinen neuen Wortlaut, und Streichungen liest der Abgleich Wort für Wort nicht'
+/**
+ * A § that shows no new wording, whose struck text the draft check cannot
+ * confirm: the draft strikes it only by a position it counts („der letzte
+ * Satz entfällt"), the check read nothing of it, or objects to wording, not
+ * to the struck text. True of a § that only strikes, and of one whose new
+ * tokens are notation alone.
+ */
+export const MARK_DELETIONS = 'die Gegenüberstellung zeigt hier keinen neuen Wortlaut, und was sie streicht, nennt der Gesetzestext des Entwurfs nicht so, dass es sich Wort für Wort bestätigen lässt'
 
 /** What the page shows of a §: as the gate says, „nicht geprüft" with a reason, or „nicht bestätigt". */
 export type AnnexMark = { kind: 'gate' } | { kind: 'unchecked'; reason: string } | { kind: 'unconfirmed' }
@@ -108,6 +120,9 @@ export function markReasonOf(reason: string | null): string {
   return kind === 'wording' ? MARK_WORDING : kind === 'long' ? MARK_LONG : MARK_UNASSIGNED
 }
 
+/** Whether the oracle's confirmation stands against the draft check's objection, by the one cell's value (`OBJECTION_OVER_CONFIRMATION`). */
+const overrules = (confirmed: boolean, strict: StrictCheck, objection: ObjectionRule): boolean => confirmed && (objection === 'clean' || (objection === 'missing' && strict.notShown.length === 0))
+
 /** The table, for one §. `objection` is the one cell's value; the harness asks all three. */
 export function markOf(input: MarkInput, objection: ObjectionRule = OBJECTION_OVER_CONFIRMATION): AnnexMark {
   if (input.verdict === 'withheld') return GATE
@@ -115,9 +130,16 @@ export function markOf(input: MarkInput, objection: ObjectionRule = OBJECTION_OV
   if (!input.showsChange) return GATE
   const confirmed = input.oracleConfirmed === true
   const strict = input.strict
-  if (!input.showsNewText || (strict?.state === 'holds' && strict.newWords === 0)) return confirmed ? GATE : { kind: 'unchecked', reason: MARK_DELETIONS }
+  if (!input.showsNewText || (strict?.state === 'holds' && strict.newWords === 0)) {
+    // An objection to struck text alone (22.11.2026): the column strikes what the draft keeps.
+    if (strict?.state === 'differs' && strict.struckNotInDraft?.length && !strict.notInDraft.length && !strict.notShown.length) return overrules(confirmed, strict, objection) ? GATE : UNCONFIRMED
+    if (confirmed) return GATE
+    // Every struck word the draft's by a quotation, a repeal or a unit written anew — not merely by a position it counts.
+    const by = strict?.state === 'holds' ? strict.struck : undefined
+    return by && by.named + by.repealed + by.rewritten > 0 && by.byPosition === 0 ? GATE : { kind: 'unchecked', reason: MARK_DELETIONS }
+  }
   if (strict?.state === 'holds') return GATE
-  if (strict?.state === 'differs') return confirmed && (objection === 'clean' || (objection === 'missing' && strict.notShown.length === 0)) ? GATE : UNCONFIRMED
+  if (strict?.state === 'differs') return overrules(confirmed, strict, objection) ? GATE : UNCONFIRMED
   return confirmed ? GATE : { kind: 'unchecked', reason: markReasonOf(strict?.reason ?? null) }
 }
 

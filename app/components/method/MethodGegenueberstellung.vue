@@ -114,6 +114,12 @@ const copy = computed(() => COPY[props.kind])
             Reihenfolge im Gesetzestext {{ copy.item }}<template v-if="kind === 'entwurf'">, oder unsere eigene
               Lesung des ganzen Paragraphen nach dem Entwurf bestätigt ihn</template>.
           </li>
+          <!-- Every kind: the draft check reads the struck text of every annex it holds (22.11.2026, `struckAccount`). -->
+          <li>
+            Was die Gegenüberstellung als gestrichen zeigt, streicht oder ersetzt auch der Gesetzestext
+            {{ copy.item }}<template v-if="kind === 'entwurf'">, oder unsere eigene Lesung des ganzen
+              Paragraphen nach dem Entwurf bestätigt die Streichung</template>.
+          </li>
           <li>Zeigt die rechte Spalte von einem Paragraphen nichts, hebt der Gesetzestext {{ copy.item }} ihn auch auf.</li>
         </ul>
         Einem neuen Paragraphen steht links nichts gegenüber; bei ihm zählen nur

@@ -67,6 +67,7 @@ import { holdsAsAnnex } from '../../server/utils/annex/olderAnnex'
 import { annexSources, draftRenditionOf, fetchParagraphXml, resolveKonsLaw } from '../lib/productionSources'
 import { annexStrictChecks } from '../../server/utils/annex/annexStrict'
 import { MARK_DELETIONS, MARK_DRAFT_UNREAD, MARK_LONG, MARK_UNASSIGNED, MARK_WORDING, annexMarks, type AnnexMark, type ObjectionRule } from '../../server/utils/annex/annexMark'
+import type { StruckBy } from '../../server/utils/laender/landTguStrict'
 import { REASON_NOTHING_TO_COMPARE } from '../../server/utils/annex/verdict'
 import { consolidate } from '../../server/utils/kons/consolidate'
 import { oracleConfirmedRows } from '../../shared/utils/annexOutcomes'
@@ -249,13 +250,22 @@ interface MarkRecord {
   markedWord: Record<MarkReasonKey, number>
   /** The gate's marked §§ the oracle confirms — kept marked; counted for a later rule. */
   gateMarkedConfirmed: number
+  /**
+   * Since the draft check reads struck text (22.11.2026, `struckAccount`):
+   * the §§ „nicht bestätigt" whose objection is struck text alone (`struck`),
+   * and the §§ showing no new wording that the table shows clean on the draft
+   * check's word, the oracle not confirming — the „nicht geprüft" for
+   * deletions they carried before (`deletionsCleared`).
+   */
+  struckUnconfirmed: number
+  deletionsCleared: number
   /** The §§ the table decides (shown, not marked by the gate): the oracle's word by the draft check's state. */
   table: Record<'confirmed' | 'notConfirmed' | 'noLesefassung', Record<StrictCell, number>>
 }
 type MarkReasonKey = 'deletions' | 'unassigned' | 'wording' | 'long' | 'draftUnread'
 const MARK_REASON_KEY: Record<string, MarkReasonKey> = { [MARK_DELETIONS]: 'deletions', [MARK_UNASSIGNED]: 'unassigned', [MARK_WORDING]: 'wording', [MARK_LONG]: 'long', [MARK_DRAFT_UNREAD]: 'draftUnread' }
 const noCells = (): Record<StrictCell, number> => ({ holds: 0, 'holds-empty': 0, differs: 0, unchecked: 0, 'no-new-text': 0 })
-const noMarks = (): MarkRecord => ({ shownParas: 0, unconfirmedParas: 0, unconfirmedParasBy: { clean: 0, unconfirmed: 0, missing: 0 }, markedWord: { deletions: 0, unassigned: 0, wording: 0, long: 0, draftUnread: 0 }, gateMarkedConfirmed: 0, table: { confirmed: noCells(), notConfirmed: noCells(), noLesefassung: noCells() } })
+const noMarks = (): MarkRecord => ({ shownParas: 0, unconfirmedParas: 0, unconfirmedParasBy: { clean: 0, unconfirmed: 0, missing: 0 }, markedWord: { deletions: 0, unassigned: 0, wording: 0, long: 0, draftUnread: 0 }, gateMarkedConfirmed: 0, struckUnconfirmed: 0, deletionsCleared: 0, table: { confirmed: noCells(), notConfirmed: noCells(), noLesefassung: noCells() } })
 
 /**
  * `--zeilen=<path>`: every draft's rows as the response would carry them,
@@ -624,6 +634,9 @@ interface MarkedParagraph {
   strictReason: string | null
   notInDraft: string[]
   notShown: string[]
+  /** Struck words no instruction strikes, and the struck words by what accounts for them (`struckAccount`). */
+  struckNotInDraft: string[]
+  struck: StruckBy | null
   oracle: boolean | null
   mark: AnnexMark
   /** The same § under each value of `OBJECTION_OVER_CONFIRMATION`. */
@@ -660,6 +673,8 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft, lesefa
         strictReason: s?.reason ?? null,
         notInDraft: s?.notInDraft ?? [],
         notShown: s?.notShown ?? [],
+        struckNotInDraft: s?.struckNotInDraft ?? [],
+        struck: s?.struck ?? null,
         oracle: confirmed === null ? null : printed.length > 0 && printed.every((r) => confirmed.has(r)),
         mark: marks.get(key)!,
         markBy: { clean: by.clean.get(key)!, unconfirmed: by.unconfirmed.get(key)!, missing: by.missing.get(key)! },
@@ -675,6 +690,8 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft, lesefa
     if (q.mark.kind === 'unconfirmed') markRecord.unconfirmedParas++
     for (const rule of ['clean', 'unconfirmed', 'missing'] as const) if (q.markBy[rule].kind === 'unconfirmed') markRecord.unconfirmedParasBy[rule]++
     if (q.mark.kind === 'unchecked') markRecord.markedWord[MARK_REASON_KEY[q.mark.reason]!]++
+    if (q.mark.kind === 'unconfirmed' && q.struckNotInDraft.length && !q.notInDraft.length && !q.notShown.length) markRecord.struckUnconfirmed++
+    if (q.mark.kind === 'gate' && q.population !== 'marked' && q.showsChange && !q.oracle && (q.strict === 'no-new-text' || q.strict === 'holds-empty')) markRecord.deletionsCleared++
     if (q.population === 'marked') {
       if (q.oracle) markRecord.gateMarkedConfirmed++
       continue
@@ -887,6 +904,7 @@ console.log(`      davon Paragraphen mit ≥ ${MIN_PROSE_TOKENS} vergleichbaren 
   console.log(`      „nicht geprüft“ aus der Tabelle: ${word} — nur Streichungen ${msum((m) => m.markedWord.deletions)}, keiner Anordnung zugeordnet ${msum((m) => m.markedWord.unassigned)}, Anordnung nicht lesbar ${msum((m) => m.markedWord.wording)}, zu lang ${msum((m) => m.markedWord.long)}, Entwurf ungelesen ${msum((m) => m.markedWord.draftUnread)}`)
   console.log(`      markiert insgesamt (Tor + Tabelle): ${gateMarked + word + msum((m) => m.unconfirmedParas)} (${pct(gateMarked + word + msum((m) => m.unconfirmedParas))}); je Wert ${(['missing', 'clean', 'unconfirmed'] as const).map((rule) => gateMarked + word + msum((m) => m.unconfirmedParasBy[rule])).join(' / ')}`)
   console.log(`      vom Tor markiert und von der Lesefassung bestätigt (bleibt markiert): ${msum((m) => m.gateMarkedConfirmed)}`)
+  console.log(`      gestrichener Text: „nicht bestätigt“ allein wegen Gestrichenem ${msum((m) => m.struckUnconfirmed)}; nur Streichungen, ohne die Lesefassung bestätigt ${msum((m) => m.deletionsCleared)}`)
   const cells: StrictCell[] = ['holds', 'holds-empty', 'differs', 'unchecked', 'no-new-text']
   console.log(`      Lesefassung \\ Entwurfsprüfung   ${cells.map((c) => c.padStart(12)).join('')}`)
   for (const [key, label] of [['confirmed', 'bestätigt'], ['notConfirmed', 'nicht bestätigt'], ['noLesefassung', 'keine Lesefassung']] as const) {
@@ -984,6 +1002,8 @@ if (jsonPath) {
       markedWordParas: Object.values(r.gate.marks.markedWord).reduce((a, b) => a + b, 0),
       markedWord: r.gate.marks.markedWord,
       gateMarkedConfirmed: r.gate.marks.gateMarkedConfirmed,
+      struckUnconfirmed: r.gate.marks.struckUnconfirmed,
+      deletionsCleared: r.gate.marks.deletionsCleared,
       markTable: r.gate.marks.table,
       rowsNoPara: r.gate.rowsNoPara,
       changeRowsNoPara: r.gate.changeRowsNoPara,

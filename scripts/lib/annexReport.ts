@@ -159,6 +159,14 @@ export interface AnnexDraftReport {
   markedWordParas?: number
   markedWord?: Record<'deletions' | 'unassigned' | 'wording' | 'long' | 'draftUnread', number>
   gateMarkedConfirmed?: number
+  /**
+   * Since the draft check reads struck text (22.11.2026): the §§ „nicht
+   * bestätigt" for struck text alone, and the §§ showing no new wording the
+   * table now shows clean on the draft check's word (the oracle not
+   * confirming); absent in older reports.
+   */
+  struckUnconfirmed?: number
+  deletionsCleared?: number
   markTable?: Record<'confirmed' | 'notConfirmed' | 'noLesefassung', Record<'holds' | 'holds-empty' | 'differs' | 'unchecked' | 'no-new-text', number>>
   rowsNoPara: number
   /** …of those, shown as a change — class B, see the header */

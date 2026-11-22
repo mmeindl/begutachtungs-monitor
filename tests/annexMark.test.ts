@@ -81,6 +81,26 @@ describe('markOf: the table, one line at a time', () => {
     expect(markOf(heldEmpty)).toEqual({ kind: 'unchecked', reason: MARK_DELETIONS })
     expect(markOf({ ...heldEmpty, oracleConfirmed: true })).toEqual({ kind: 'gate' })
   })
+
+  it('reads a § that only strikes by what the draft check made of its struck text (22.11.2026)', () => {
+    const struck = (over: Partial<NonNullable<StrictCheck['struck']>>) => ({ named: 0, rewritten: 0, repealed: 0, byPosition: 0, notation: 0, ...over })
+    const removed = (s: StrictCheck) => verified({ showsNewText: false, strict: s })
+    // Every struck word repealed, quoted or rewritten by the draft: clean, without the oracle.
+    expect(markOf(removed(strict('holds', { newWords: 0, struck: struck({ repealed: 6 }) })))).toEqual({ kind: 'gate' })
+    expect(markOf(verified({ strict: strict('holds', { newWords: 0, struck: struck({ named: 2, notation: 1 }) }) }))).toEqual({ kind: 'gate' })
+    // Struck only by a position the draft counts, or nothing but notation: „nicht geprüft" unless the oracle confirms.
+    expect(markOf(removed(strict('holds', { newWords: 0, struck: struck({ repealed: 3, byPosition: 6 }) })))).toEqual({ kind: 'unchecked', reason: MARK_DELETIONS })
+    expect(markOf(removed(strict('holds', { newWords: 0, struck: struck({ notation: 2 }) })))).toEqual({ kind: 'unchecked', reason: MARK_DELETIONS })
+    expect(markOf({ ...removed(strict('holds', { newWords: 0, struck: struck({ byPosition: 6 }) })), oracleConfirmed: true })).toEqual({ kind: 'gate' })
+    // Struck text the draft keeps: „nicht bestätigt", unless the oracle confirms — it sees struck text (its checks 2 and 4).
+    const kept = removed(strict('differs', { newWords: 0, struckNotInDraft: ['sie', 'ist', 'zuständig'], struck: struck({}) }))
+    expect(markOf(kept)).toEqual({ kind: 'unconfirmed' })
+    expect(markOf({ ...kept, oracleConfirmed: null })).toEqual({ kind: 'unconfirmed' })
+    expect(markOf({ ...kept, oracleConfirmed: true })).toEqual({ kind: 'gate' })
+    expect(markOf({ ...kept, oracleConfirmed: true }, 'unconfirmed')).toEqual({ kind: 'unconfirmed' })
+    // An objection to wording the column lacks is no objection to struck text: as before.
+    expect(markOf(removed(strict('differs', { newWords: 0, notShown: ['frist'], struckNotInDraft: ['x'] })))).toEqual({ kind: 'unchecked', reason: MARK_DELETIONS })
+  })
 })
 
 describe('the reasons are the Länder\'s words where the fact is the same', () => {
