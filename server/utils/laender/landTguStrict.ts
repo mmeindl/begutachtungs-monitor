@@ -1588,9 +1588,11 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
  * shown that differ newly by it, 22 are the two documents differing, 13 how
  * the annex is set, 11 limits of this check, 5 undecided. Of a kept sentence
  * lost from the right column (fault injection, through the page's whole
- * chain) it catches 83 % (PDF) and 85 % (table path); what passes is struck
- * text an instruction accounts for as a whole — a position it only counts,
- * a unit a payload writes anew.
+ * chain) it caught 83 % (PDF) and 85 % (table path); since an independent
+ * review of it (22.11.2026: addresses as paths, each instruction only where
+ * and for what it strikes) 90 % and 91 %. What passes is struck text an
+ * instruction accounts for: a payload of the same or the next unit, a
+ * position counted in that unit, the head zone (`scripts/harness/faultInjection.ts`).
  */
 function struckAccount(
   unit: LawDiffUnit,

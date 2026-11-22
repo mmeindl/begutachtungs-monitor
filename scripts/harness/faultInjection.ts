@@ -79,26 +79,37 @@
  * Over the §§ the page showed without a mark before the fault: withheld,
  * marked (either pill), shown without a mark; under each value of
  * `OBJECTION_OVER_CONFIRMATION`, each over the §§ it shows without a mark.
- * GP XXVIII, 22.11.2026, since the draft check reads struck text, the rule
- * in force ('missing'; under 'clean' and 'unconfirmed' in brackets):
+ * GP XXVIII, 22.11.2026, since the struck-text check reads an address as a
+ * path and each instruction only for what it strikes there, the rule in
+ * force ('missing'; under 'clean' and 'unconfirmed' in brackets):
  *
  * | 22.11.2026 | PDF | Tabelle |
  * |---|---:|---:|
- * | Zahl im Text       | 1073/1080 (99,4 %; 98,9; 99,6) | 610/612 (99,7 %; 98,9; 99,7) |
- * | Bezeichnung        |  445/488 (91,2 %; 90,3; 91,0)  | 263/283 (92,9 %; 89,5; 92,9) |
- * | Wort getauscht     | 1360/1378 (98,7 %; 98,5; 99,3) | 871/879 (99,1 %; 99,0; 99,8) |
- * | neuer Satz fehlt   |  223/230 (97,0 %; 95,7; 96,9)  | 124/125 (99,2 %; 93,8; 99,2) |
- * | behaltener Satz gestrichen | 792/954 (83,0 %; 83,0; 84,5) | 579/685 (84,5 %; 84,1; 85,4) |
- * | Satz links verloren | 819/1031 (79,4 %; 77,9; 83,0) | 242/306 (79,1 %; 79,7; 79,3) |
+ * | Zahl im Text       | 1069/1076 (99,3 %; 98,9; 99,6) | 610/612 (99,7 %; 98,9; 99,7) |
+ * | Bezeichnung        |  444/486 (91,4 %; 90,5; 91,2)  | 263/282 (93,3 %; 89,8; 93,2) |
+ * | Wort getauscht     | 1354/1372 (98,7 %; 98,5; 99,3) | 868/876 (99,1 %; 99,0; 99,8) |
+ * | neuer Satz fehlt   |  221/228 (96,9 %; 95,7; 96,9)  | 124/125 (99,2 %; 93,8; 99,2) |
+ * | behaltener Satz gestrichen | 860/951 (90,4 %; 90,2; 92,8) | 627/686 (91,4 %; 90,9; 93,6) |
+ * | Satz links verloren | 815/1027 (79,4 %; 77,8; 82,8) | 242/306 (79,1 %; 79,7; 79,2) |
+ *
+ * Behaltener Satz gestrichen stood at 792/954 and 579/685 when the check
+ * first read struck text; an independent review then found it accounting
+ * more widely than the draft supports (an address without its parents, a
+ * position counted for any sentence, a payload for its whole §). Of the 91
+ * PDF misses since, by what accounts for the struck sentence in the
+ * harness's own line (`; gestrichen: …` against the unfaulted §): a payload
+ * of the same or the next unit 38, the Lesefassung confirming against the
+ * check 23, the head zone ahead of the § designation 14 (on this path a
+ * division heading the injector takes for a sentence), a position the draft
+ * counts in that unit 8, a repeal 5, a quoted old wording 3. Of the 58 on
+ * the table path: a position 25, a payload 17, the Lesefassung 16.
  *
  * A kept sentence struck passed wherever the draft check held before the
  * fault, while it read no old text: 216 of 955 and 148 of 683 were caught.
  * Since it holds what the column strikes against what the draft strikes,
- * what passes is struck text the draft's instructions for the § account
- * for as a whole: stretches no more than they strike by a position they
- * only count („der letzte Satz entfällt"), text inside a unit a payload
- * writes anew — often the draft's own text lacks the sentence there, so the
- * faulted column agrees with it —, and on the PDF path a division's heading
+ * what passes is struck text an instruction for the § accounts for (the
+ * classes above) — in none of the misses the review read did the faulted
+ * column agree with the draft —, and on the PDF path a division's heading
  * the injector takes for the row's first sentence (`keptSentenceGone`).
  * Zahl, Wort and neuer Satz fehlt are held to 95 % under
  * `--mindestens` (`CHAIN_FLOORED`), on both paths. Neuer Satz fehlt stood at
@@ -711,7 +722,7 @@ const CHAIN_FLOOR = 95
  */
 const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why: string }>> = {
   bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
-  rweg: { why: 'die Prüfung gegen den Entwurf rechnet einen gestrichenen Satz dem Entwurf zu, wo dessen Anordnungen an dieser Stelle Sätze nur nach ihrer Lage streichen („der letzte Satz entfällt“) oder die Einheit neu fassen' },
+  rweg: { why: 'die Prüfung gegen den Entwurf rechnet einen gestrichenen Satz dem Entwurf zu, wo eine Anordnung dieselbe oder die nächste Einheit neu fasst oder in derselben Einheit Sätze nur nach ihrer Lage streicht („der letzte Satz entfällt“); oder die Lesefassung bestätigt den Paragraphen gegen ihren Einwand; auf dem PDF-Pfad hält der Injektor auch eine Abschnittsüberschrift vor der Paragraphenbezeichnung für einen Satz' },
   links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
 }
 const notFlooredOf = (key: ChainKey): string | undefined => {
@@ -1033,7 +1044,10 @@ function judgeChain(cite: string, rows: readonly ComparisonRow[], draft: { artic
     if (!inForce) continue
     if (markOf(input).kind === 'gate') {
       tally.unmarked++
-      tally.misses.push(`${cite} ${c.para.para}${c.para.law ? ` [${c.para.law.slice(0, 28)}]` : ''} — Entwurfsprüfung ${input.strict?.state ?? '—'}${input.strict?.state === 'holds' ? ` (${input.strict.newWords} neue Wörter)` : ''}, Orakel ${oracleAfter ? 'bestätigt' : 'nicht'}`)
+      // What accounts for the struck words (`struckAccount`), to tell a miss's class from the harness's own line (22.11.2026).
+      const by = input.strict?.struck
+      const struck = by ? `; gestrichen: benannt ${by.named}, neu gefasst ${by.rewritten}, aufgehoben ${by.repealed}, nach Lage ${by.byPosition}, Notation ${by.notation}` : ''
+      tally.misses.push(`${cite} ${c.para.para}${c.para.law ? ` [${c.para.law.slice(0, 28)}]` : ''} — Entwurfsprüfung ${input.strict?.state ?? '—'}${input.strict?.state === 'holds' ? ` (${input.strict.newWords} neue Wörter)` : ''}, Orakel ${oracleAfter ? 'bestätigt' : 'nicht'}${struck}`)
     } else tally.marked++
   }
 }
