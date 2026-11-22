@@ -178,12 +178,25 @@ function ofParagraphs(count: number): string {
 /* The fault classes                                                    */
 /* ------------------------------------------------------------------ */
 
-/** The Lesefassung's result, one word or figure wrong (`faultInjection.ts`, „Wortfehler im Ergebnis"). */
-export const RESULT_WORDS = ['Wort-weg', 'Wort-weg-Sinn', 'Wort-neu', 'Wort-tausch', 'Zahl', 'Datum', 'Verweis', 'Ziffer-Reihe', 'Überschrift', 'Ungedruckt-weg', 'Ungedruckt-neu', 'Ungedruckt-Zahl'] as const
+/**
+ * The Lesefassung's result, one word or figure wrong (`faultInjection.ts`,
+ * „Wortfehler im Ergebnis"); since 21.11.2026 also the label of a Ziffer or
+ * a Litera, and a comma lost where a changed row of the annex prints the place.
+ */
+export const RESULT_WORDS = ['Wort-weg', 'Wort-weg-Sinn', 'Wort-neu', 'Wort-tausch', 'Zahl', 'Datum', 'Verweis', 'Ziffer-Reihe', 'Überschrift', 'Ungedruckt-weg', 'Ungedruckt-neu', 'Ungedruckt-Zahl', 'Bezeichnung', 'Komma'] as const
 /** …its structure wrong: a unit too many, two Absätze swapped, a unit missing, a struck Absatz back. */
 export const RESULT_STRUCTURE = ['E', 'E-neben', 'Reihe', 'Fehlt', 'Lücke', 'Zurück', 'Zurück-gleich'] as const
 /** …a unit missing that RIS lacks too and the annex skips in silence: a blind spot by construction. */
 export const RESULT_BLIND = ['Lücke-beide'] as const
+/**
+ * …a comma lost where the annex prints nothing that changes (an Absatz it
+ * elides, leaves out or prints unchanged): there the check compares the
+ * words without their punctuation, so it is blind by construction too
+ * (`faultInjection.ts`, „Ungedruckt-Komma", 21.11.2026). A bar of its own:
+ * among the words' classes it would only lower their share, and no reader
+ * would learn where a comma is not held.
+ */
+export const RESULT_BLIND_COMMA = ['Ungedruckt-Komma'] as const
 /** …a § shown on the draft's own text (`draftWitness`): its new text misread by our reader — a word lost, a figure, two words swapped, cut at a line's end (20.11.2026). */
 export const RESULT_WITNESS = ['Payload'] as const
 
@@ -193,6 +206,14 @@ export const ANNEX_MISFILED = ['R-alt', 'R-neu'] as const
 export const ANNEX_LOST = ['L'] as const
 /** …another §'s sentence in both columns alike, read as unchanged: by construction outside the gate. */
 export const ANNEX_BLIND = ['U'] as const
+/**
+ * …and the faults the gate was never built to see: a figure, a label, a word,
+ * a sentence of the new text gone, a kept sentence struck. A round records
+ * what the gate alone made of them, and no sentence reads it: they are the
+ * draft check's and the mark's, drawn from `chain` (22.11.2026). Listed so
+ * that a class the gate's record gains needs a decision.
+ */
+export const ANNEX_GATE_ALONE = ['Zahl', 'Spalte-Bezeichnung', 'Wort', 'Satz-weg', 'R-weg'] as const
 
 /**
  * The same annex, a fault judged through everything the page does with a §
@@ -413,6 +434,9 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
   const witnessed = r.lesefassung.funnel.witnessed ?? 0
   const notLaw = bench.shown - bench.identical
   const blind = total(classes(r.lesefassung.faults, RESULT_BLIND))
+  // A round before 21.11.2026 did not try it: the bar and its sentences stand where one did.
+  const blindComma = classes(r.lesefassung.faults, RESULT_BLIND_COMMA)
+  const comma = total(blindComma)
   const breaches = (count: number) => (count === 0 ? 'kein Regelverstoß' : count === 1 ? 'ein Regelverstoß' : `${n(count)} Regelverstöße`)
   const st = r.stations
   const stFaults = st.faults?.length ? total(st.faults) : null
@@ -441,8 +465,9 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         // The second reading (20.11.2026): the draft's instruction misread, where the annex contradicts and the draft's PDF decides.
         bar('Zweite Lesung am PDF: der neue Text des Entwurfs falsch gelesen', classes(r.lesefassung.faults, RESULT_WITNESS)),
         bar('Ein Textteil fehlt, und weder RIS noch Textgegenüberstellung enthalten ihn', classes(r.lesefassung.faults, RESULT_BLIND), true),
+        ...(blindComma.length ? [bar('Ein Komma fehlt in Text, den der Entwurf unverändert lässt', blindComma, true)] : []),
       ],
-      consequence: 'Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen.',
+      consequence: `Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen.${blindComma.length ? ' In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen.' : ''}`,
       rule:
         'Der Monitor setzt den Paragraphen selbst zusammen, aus dem geltenden Text im RIS und den Anweisungen des Entwurfs, und hält ihn gegen die Textgegenüberstellung des Ministeriums. Was sie als geltend zeigt, muss so im RIS stehen, was sie als neu zeigt, in unserem Ergebnis; ihre Absätze müssen in derselben Reihenfolge stehen, und unser Ergebnis darf nichts ändern, was sie nicht zeigt.',
       measured: [
@@ -456,6 +481,10 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       ],
       missed: [
         `Fehlt unserem Ergebnis ein Teil, den auch der geltende Text im RIS nicht hat und den die Gegenüberstellung stillschweigend überspringt, fällt das kaum auf: ${blind.caught === 0 ? 'keiner' : n(blind.caught)} von ${n(blind.tried)} Versuchen gefangen.`,
+        // Where the annex prints nothing that changes, the check compares the words, not their punctuation (21.11.2026).
+        ...(blindComma.length
+          ? [`Fehlt unserem Ergebnis ein Komma in Text, den der Entwurf unverändert lässt, fällt das kaum auf: ${comma.caught === 0 ? 'keiner' : n(comma.caught)} von ${n(comma.tried)} Versuchen gefangen. Dort vergleicht die Prüfung die Wörter, nicht die Satzzeichen.`]
+          : []),
         'Bei der zweiten Lesung am PDF: eine Ziffer in einem Platzhalter für ein künftiges Bundesgesetzblatt („BGBl. I Nr. xxx/2025“) vergleicht keine der Prüfungen.',
         'Liest der Monitor den neuen Text an genau der Stelle falsch, an der auch die Textgegenüberstellung vom Gesetzestext abweicht, bestätigt sie den Fehler.',
       ],

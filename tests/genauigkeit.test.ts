@@ -3,6 +3,7 @@ import type { GenauigkeitRecord } from '../shared/types'
 import { formatNumberDe } from '../shared/utils/format'
 import {
   ANNEX_BLIND,
+  ANNEX_GATE_ALONE,
   ANNEX_LOST,
   ANNEX_MISFILED,
   CHAIN_LABEL,
@@ -18,6 +19,7 @@ import {
   LAND_OTHER_DRAFT,
   LAND_OWN_DRAFT,
   RESULT_BLIND,
+  RESULT_BLIND_COMMA,
   RESULT_STRUCTURE,
   RESULT_WITNESS,
   RESULT_WORDS,
@@ -62,6 +64,23 @@ function withMarks(): GenauigkeitRecord {
   return r
 }
 
+/**
+ * The record with the two comma classes a round since 21.11.2026 tries, at
+ * figures of its own: one comma lost where a changed row of the annex prints
+ * the place, one where none does.
+ */
+function withComma(): GenauigkeitRecord {
+  const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+  for (const path of ['pdf', 'table'] as const) {
+    r.lesefassung.faults[path] = [
+      ...r.lesefassung.faults[path].filter((f) => !f.key.includes('Komma')),
+      { key: 'Komma', tried: 100, caught: 99 },
+      { key: 'Ungedruckt-Komma', tried: 100, caught: 1 },
+    ]
+  }
+  return r
+}
+
 describe('shareDe', () => {
   it('rounds down to a tenth, so a share never claims a catch that was not measured', () => {
     expect(shareDe(1391, 1393)).toBe('99,8')
@@ -86,8 +105,8 @@ describe('rangeDe', () => {
 
 describe('the fault classes', () => {
   it('places every class the record carries in exactly one group, so a new one needs a decision', () => {
-    const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND, ...RESULT_WITNESS] as string[]
-    const annex = [...ANNEX_MISFILED, ...ANNEX_LOST, ...ANNEX_BLIND] as string[]
+    const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND, ...RESULT_BLIND_COMMA, ...RESULT_WITNESS] as string[]
+    const annex = [...ANNEX_MISFILED, ...ANNEX_LOST, ...ANNEX_BLIND, ...ANNEX_GATE_ALONE] as string[]
     const land = [...LAND_OWN_DRAFT, ...LAND_OTHER_DRAFT, ...LAND_WORDING] as string[]
     const chain = [...CHAIN_WORDING, ...CHAIN_LABEL, ...CHAIN_STRUCK, ...CHAIN_LOST, ...CHAIN_MISFILED] as string[]
     for (const [groups, keys] of [
@@ -190,6 +209,22 @@ describe('genauigkeitArten', () => {
     expect(tries(annex!.faults)).toBe(tries(chain ? [...chain.pdf, ...chain.table, ...gate.filter((f) => (ANNEX_BLIND as readonly string[]).includes(f.key))] : gate))
     for (const art of genauigkeitArten()) for (const fault of art.faults) expect(fault.tried).toBeGreaterThan(0)
     expect(tries(land!.faults)).toBe(tries(GENAUIGKEIT.laender.tgu.faults))
+  })
+
+  it('sets a comma lost in text the draft leaves unchanged apart as a blind spot, and counts one at a changed place with the words (21.11.2026)', () => {
+    const art = genauigkeitArten(withComma())[0]!
+    expect(art.faults.at(-1)).toEqual({ label: 'Ein Komma fehlt in Text, den der Entwurf unverändert lässt', tried: 200, caught: 2, blind: true })
+    expect(art.missed).toContain('Fehlt unserem Ergebnis ein Komma in Text, den der Entwurf unverändert lässt, fällt das kaum auf: 2 von 200 Versuchen gefangen. Dort vergleicht die Prüfung die Wörter, nicht die Satzzeichen.')
+    expect(art.consequence).toBe('Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen. In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen.')
+    // A round that did not try the comma has neither the bar nor its sentences, and the printed comma is one of the words.
+    const before = withComma()
+    for (const path of ['pdf', 'table'] as const) before.lesefassung.faults[path] = before.lesefassung.faults[path].filter((f) => !f.key.includes('Komma'))
+    const without = genauigkeitArten(before)[0]!
+    expect(without.faults.filter((f) => f.blind)).toHaveLength(1)
+    expect(without.consequence).toBe('Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen.')
+    expect(without.missed.join(' ')).not.toContain('Komma')
+    expect(art.faults[0]!.tried - without.faults[0]!.tried).toBe(200)
+    expect(art.faults[0]!.caught - without.faults[0]!.caught).toBe(198)
   })
 
   it('draws the station comparison\'s injected changes as a bar, and says them in a sentence, once a round carries them', () => {
@@ -334,13 +369,19 @@ describe('in short', () => {
   })
 
   it('sets every blind spot apart, with what it means for a reader', () => {
-    for (const art of [...genauigkeitArten(), ...genauigkeitArten(withMarks())]) {
-      if (art.faults.length) {
-        // A Land's Textgegenüberstellung has no blind class since 20.11.2026: its blind spot is the §§ not held word for word, a count in the sentence.
-        // Nor has the Bund's station comparison: what it cannot see — one word misread alike in both texts — no fault can be injected for.
-        expect(art.faults.filter((f) => f.blind)).toHaveLength(['land-gegenueberstellung', 'stationen'].includes(art.id) ? 0 : 1)
-        expect(art.consequence).toMatch(/\.$/)
-      } else expect(art.consequence).toBeNull()
+    for (const r of [GENAUIGKEIT, withMarks(), withComma()]) {
+      const comma = [...r.lesefassung.faults.pdf, ...r.lesefassung.faults.table].some((f) => (RESULT_BLIND_COMMA as readonly string[]).includes(f.key))
+      for (const art of genauigkeitArten(r)) {
+        const blind = art.faults.filter((f) => f.blind)
+        // The Lesefassung and the ministry's annex have a class no check can see, the Lesefassung a second one where a round tried the comma.
+        // A Land's Textgegenüberstellung has none since 20.11.2026: its blind spot is the §§ not held word for word, a count in the sentence.
+        // Nor has a comparison of stations: what it cannot see — one word misread alike in both texts — no fault can be injected for.
+        expect(blind).toHaveLength(art.id === 'lesefassung' ? (comma ? 2 : 1) : art.id === 'gegenueberstellung' ? 1 : 0)
+        if (blind.length || art.id === 'land-gegenueberstellung') expect(art.consequence).toMatch(/\.$/)
+        else expect(art.consequence).toBeNull()
+        // What the page prints under „Was die Prüfung übersieht": the consequence, or the first thing the check misses.
+        expect(art.consequence ?? art.missed[0]).toMatch(/\.$/)
+      }
     }
   })
 })
