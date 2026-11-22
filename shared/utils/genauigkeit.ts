@@ -200,20 +200,18 @@ export const RESULT_BLIND_COMMA = ['Ungedruckt-Komma'] as const
 /** …a § shown on the draft's own text (`draftWitness`): its new text misread by our reader — a word lost, a figure, two words swapped, cut at a line's end (20.11.2026). */
 export const RESULT_WITNESS = ['Payload'] as const
 
-/** The annex: a sentence of another § in the right column, old or proposed text. */
-export const ANNEX_MISFILED = ['R-alt', 'R-neu'] as const
-/** …a sentence of the left column lost, so standing law reads as new. */
-export const ANNEX_LOST = ['L'] as const
-/** …another §'s sentence in both columns alike, read as unchanged: by construction outside the gate. */
+/** The annex: another §'s sentence in both columns alike, read as unchanged. By construction outside the gate, and outside every check after it. */
 export const ANNEX_BLIND = ['U'] as const
 /**
- * …and the faults the gate was never built to see: a figure, a label, a word,
- * a sentence of the new text gone, a kept sentence struck. A round records
- * what the gate alone made of them, and no sentence reads it: they are the
- * draft check's and the mark's, drawn from `chain` (22.11.2026). Listed so
- * that a class the gate's record gains needs a decision.
+ * …and the gate's other classes: a sentence of another § in the right
+ * column, a sentence of the left column lost, and the faults the gate was
+ * never built to see (a figure, a label, a word, a sentence of the new text
+ * gone, a kept sentence struck). A round records what the gate alone made of
+ * them, and no sentence reads it: what the page does with a § is the mark's,
+ * drawn from `chain` (22.11.2026). Listed so that a class the gate's record
+ * gains needs a decision.
  */
-export const ANNEX_GATE_ALONE = ['Zahl', 'Spalte-Bezeichnung', 'Wort', 'Satz-weg', 'R-weg'] as const
+export const ANNEX_GATE_ALONE = ['L', 'R-alt', 'R-neu', 'Zahl', 'Spalte-Bezeichnung', 'Wort', 'Satz-weg', 'R-weg'] as const
 
 /**
  * The same annex, a fault judged through everything the page does with a §
@@ -313,7 +311,7 @@ function bar(label: string, faults: readonly GenauigkeitFault[], blind = false):
   return { label, ...total(faults), ...(blind ? { blind } : {}) }
 }
 
-type ChainFault = NonNullable<GenauigkeitRecord['annex']['chain']>['pdf'][number]
+type ChainFault = GenauigkeitRecord['annex']['chain']['pdf'][number]
 
 /** A group of the chain's classes as one bar, with what catching did with the §. */
 function chainBar(label: string, faults: readonly ChainFault[]): FaultBar {
@@ -352,9 +350,6 @@ export function landList(codes: readonly string[]): string {
  * both (`marks`, `chain`) and the sentences are built on them: the gate's own
  * verdicts (`confirmed`, `unchecked`) no longer say what stands on the page,
  * and its figures for a fault understate what the page does with it.
- *
- * The sentences for a record without the two (the round of 20.11.2026) stay
- * until the first round that carries them is committed, and go with it.
  */
 function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
   const a = r.annex
@@ -371,28 +366,6 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
     consequence: 'So ein Satz sieht aus wie unveränderter Text, steht aber beim falschen Paragraphen. Unveränderten Text prüft der Monitor nicht.',
   }
   const { marks, chain } = a
-  if (!marks || !chain) {
-    return {
-      ...frame,
-      result: [
-        `Die Textgegenüberstellungen enthalten ${n(a.confirmed + a.unchecked + a.withheld)} Paragraphen. ${n(a.confirmed)} hat die Prüfung bestätigt, ${n(a.unchecked)} zeigt der Monitor mit dem Vermerk „nicht geprüft“, ${n(a.withheld)} zeigt er nicht.`,
-        // Whose error the bars below are (20.11.2026): „übernimmt Wort für Wort" beside „ein Satz verloren" read as a contradiction.
-        'Der Monitor übernimmt den Text Wort für Wort, muss ihn aber aus einem PDF oder einer Tabelle herauslesen. Dabei kann ein Satz verloren gehen oder beim falschen Paragraphen landen.',
-      ],
-      faults: [
-        bar('Ein Satz von anderswo steht in der rechten Spalte (neuer Text)', classes(a.faults, ANNEX_MISFILED)),
-        bar('Ein Satz fehlt in der linken Spalte (alter Text)', classes(a.faults, ANNEX_LOST)),
-        blindBar,
-      ],
-      rule:
-        'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Die linke Spalte muss dem RIS am Stichtag entsprechen; was rechts als neu markiert ist, darf nicht schon im Gesetz stehen und muss im Gesetzestext des Entwurfs stehen.',
-      measured: [
-        `In ${n(a.drafts)} Entwürfen der ${r.gp}. Gesetzgebungsperiode: ${n(a.confirmed)} Paragraphen bestätigt, ${n(a.withheld)} nicht gezeigt, und ${n(a.unchecked)} gezeigt, ohne dass die Prüfung sie bestätigen konnte – etwa weil sie nur neuen Text enthalten, dem nichts Geltendes gegenübersteht.`,
-        standingSentence,
-      ],
-      missed: [blindSentence],
-    }
-  }
   return {
     ...frame,
     result: [
@@ -434,7 +407,6 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
   const witnessed = r.lesefassung.funnel.witnessed ?? 0
   const notLaw = bench.shown - bench.identical
   const blind = total(classes(r.lesefassung.faults, RESULT_BLIND))
-  // A round before 21.11.2026 did not try it: the bar and its sentences stand where one did.
   const blindComma = classes(r.lesefassung.faults, RESULT_BLIND_COMMA)
   const comma = total(blindComma)
   const breaches = (count: number) => (count === 0 ? 'kein Regelverstoß' : count === 1 ? 'ein Regelverstoß' : `${n(count)} Regelverstöße`)
@@ -465,9 +437,9 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         // The second reading (20.11.2026): the draft's instruction misread, where the annex contradicts and the draft's PDF decides.
         bar('Zweite Lesung am PDF: der neue Text des Entwurfs falsch gelesen', classes(r.lesefassung.faults, RESULT_WITNESS)),
         bar('Ein Textteil fehlt, und weder RIS noch Textgegenüberstellung enthalten ihn', classes(r.lesefassung.faults, RESULT_BLIND), true),
-        ...(blindComma.length ? [bar('Ein Komma fehlt in Text, den der Entwurf unverändert lässt', blindComma, true)] : []),
+        bar('Ein Komma fehlt in Text, den der Entwurf unverändert lässt', blindComma, true),
       ],
-      consequence: `Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen.${blindComma.length ? ' In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen.' : ''}`,
+      consequence: 'Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen. In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen.',
       rule:
         'Der Monitor setzt den Paragraphen selbst zusammen, aus dem geltenden Text im RIS und den Anweisungen des Entwurfs, und hält ihn gegen die Textgegenüberstellung des Ministeriums. Was sie als geltend zeigt, muss so im RIS stehen, was sie als neu zeigt, in unserem Ergebnis; ihre Absätze müssen in derselben Reihenfolge stehen, und unser Ergebnis darf nichts ändern, was sie nicht zeigt.',
       measured: [
@@ -482,9 +454,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       missed: [
         `Fehlt unserem Ergebnis ein Teil, den auch der geltende Text im RIS nicht hat und den die Gegenüberstellung stillschweigend überspringt, fällt das kaum auf: ${blind.caught === 0 ? 'keiner' : n(blind.caught)} von ${n(blind.tried)} Versuchen gefangen.`,
         // Where the annex prints nothing that changes, the check compares the words, not their punctuation (21.11.2026).
-        ...(blindComma.length
-          ? [`Fehlt unserem Ergebnis ein Komma in Text, den der Entwurf unverändert lässt, fällt das kaum auf: ${comma.caught === 0 ? 'keiner' : n(comma.caught)} von ${n(comma.tried)} Versuchen gefangen. Dort vergleicht die Prüfung die Wörter, nicht die Satzzeichen.`]
-          : []),
+        `Fehlt unserem Ergebnis ein Komma in Text, den der Entwurf unverändert lässt, fällt das kaum auf: ${comma.caught === 0 ? 'keiner' : n(comma.caught)} von ${n(comma.tried)} Versuchen gefangen. Dort vergleicht die Prüfung die Wörter, nicht die Satzzeichen.`,
         'Bei der zweiten Lesung am PDF: eine Ziffer in einem Platzhalter für ein künftiges Bundesgesetzblatt („BGBl. I Nr. xxx/2025“) vergleicht keine der Prüfungen.',
         'Liest der Monitor den neuen Text an genau der Stelle falsch, an der auch die Textgegenüberstellung vom Gesetzestext abweicht, bestätigt sie den Fehler.',
       ],
@@ -609,9 +579,7 @@ export function genauigkeitKurz(r: GenauigkeitRecord = GENAUIGKEIT): { shows: st
     ],
     check: [
       // Two marks since 22.11.2026, and „nicht geprüft … aber nicht bestätigt" would read as the other one's name.
-      r.annex.marks
-        ? 'Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.'
-        : 'Ein Paragraph mit dem Vermerk „nicht geprüft“ ist gezeigt, aber nicht bestätigt.',
+      'Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.',
       `Bei Entwürfen der Bundesländer ist der neue Text bei ${n(tgu.strict.held)} von ${n(tgu.shown)} gezeigten Paragraphen Wort für Wort am Entwurf geprüft, bei den übrigen nicht. Vor dem Zitieren im Dokument des Bundeslandes nachsehen.`,
       'Der Monitor ist kein amtliches Angebot. Zitiert wird aus dem verlinkten Original.',
     ],

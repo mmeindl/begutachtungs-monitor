@@ -52,7 +52,7 @@ const funnel = wegFunnel()
 const drafts = GENAUIGKEIT.lesefassung.funnel.drafts
 const risOnly = GENAUIGKEIT.lesefassung.risOnly
 const annex = GENAUIGKEIT.annex
-const annexShown = annex.confirmed + annex.unchecked
+const annexShown = annex.marks.shown
 
 /** The sentences of one kind, under „Im Einzelnen". */
 function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; lines: string[] }[] {
@@ -165,7 +165,7 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         oder einen Absatz und zählen, wie viele dieser Fehler die Prüfung
         bemerkt. Das zeigen die Balken. Sie sagen nicht, wie oft der Monitor
         falsch liegt: Was die Prüfung bemerkt, wird nicht
-        gezeigt<template v-if="annex.marks"> oder trägt einen Vermerk</template>.
+        gezeigt oder trägt einen Vermerk.
       </p>
       <div class="mt-6 space-y-10">
         <section

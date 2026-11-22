@@ -4,8 +4,6 @@ import { formatNumberDe } from '../shared/utils/format'
 import {
   ANNEX_BLIND,
   ANNEX_GATE_ALONE,
-  ANNEX_LOST,
-  ANNEX_MISFILED,
   CHAIN_LABEL,
   CHAIN_LOST,
   CHAIN_MISFILED,
@@ -42,9 +40,9 @@ import {
  */
 
 /**
- * The committed record with what a round since 22.11.2026 adds for the
- * ministry's annex: what the page shows of a § (`marks`) and the faults
- * judged through the whole chain (`chain`), the same on both paths.
+ * The record with the ministry's annex at figures of its own: what the page
+ * shows of a § (`marks`) and the faults judged through the whole chain
+ * (`chain`), the same on both paths.
  */
 function withMarks(): GenauigkeitRecord {
   const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
@@ -106,15 +104,14 @@ describe('rangeDe', () => {
 describe('the fault classes', () => {
   it('places every class the record carries in exactly one group, so a new one needs a decision', () => {
     const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND, ...RESULT_BLIND_COMMA, ...RESULT_WITNESS] as string[]
-    const annex = [...ANNEX_MISFILED, ...ANNEX_LOST, ...ANNEX_BLIND, ...ANNEX_GATE_ALONE] as string[]
+    const annex = [...ANNEX_BLIND, ...ANNEX_GATE_ALONE] as string[]
     const land = [...LAND_OWN_DRAFT, ...LAND_OTHER_DRAFT, ...LAND_WORDING] as string[]
     const chain = [...CHAIN_WORDING, ...CHAIN_LABEL, ...CHAIN_STRUCK, ...CHAIN_LOST, ...CHAIN_MISFILED] as string[]
     for (const [groups, keys] of [
       [result, [...GENAUIGKEIT.lesefassung.faults.pdf, ...GENAUIGKEIT.lesefassung.faults.table].map((f) => f.key)],
       [annex, [...GENAUIGKEIT.annex.faults.pdf, ...GENAUIGKEIT.annex.faults.table].map((f) => f.key)],
       [land, GENAUIGKEIT.laender.tgu.faults.map((f) => f.key)],
-      // The chain's classes, once a round carries them — and every group then has a class the round tried, or its bar would be empty.
-      [chain, [...(GENAUIGKEIT.annex.chain?.pdf ?? []), ...(GENAUIGKEIT.annex.chain?.table ?? [])].map((f) => f.key)],
+      [chain, [...GENAUIGKEIT.annex.chain.pdf, ...GENAUIGKEIT.annex.chain.table].map((f) => f.key)],
     ] as const) {
       expect(new Set(groups).size).toBe(groups.length)
       for (const key of keys) expect(groups).toContain(key)
@@ -203,10 +200,10 @@ describe('genauigkeitArten', () => {
     const [lesefassung, annex, , land] = genauigkeitArten()
     const tries = (faults: { tried: number }[]) => faults.reduce((n, f) => n + f.tried, 0)
     expect(tries(lesefassung!.faults)).toBe(tries([...GENAUIGKEIT.lesefassung.faults.pdf, ...GENAUIGKEIT.lesefassung.faults.table]))
-    // The ministry's annex: the chain's classes where a round carries them, and of the gate's only the blind one beside them.
+    // The ministry's annex: the chain's classes, and of the gate's only the blind one beside them.
     const gate = [...GENAUIGKEIT.annex.faults.pdf, ...GENAUIGKEIT.annex.faults.table]
     const chain = GENAUIGKEIT.annex.chain
-    expect(tries(annex!.faults)).toBe(tries(chain ? [...chain.pdf, ...chain.table, ...gate.filter((f) => (ANNEX_BLIND as readonly string[]).includes(f.key))] : gate))
+    expect(tries(annex!.faults)).toBe(tries([...chain.pdf, ...chain.table, ...gate.filter((f) => (ANNEX_BLIND as readonly string[]).includes(f.key))]))
     for (const art of genauigkeitArten()) for (const fault of art.faults) expect(fault.tried).toBeGreaterThan(0)
     expect(tries(land!.faults)).toBe(tries(GENAUIGKEIT.laender.tgu.faults))
   })
@@ -216,13 +213,10 @@ describe('genauigkeitArten', () => {
     expect(art.faults.at(-1)).toEqual({ label: 'Ein Komma fehlt in Text, den der Entwurf unverändert lässt', tried: 200, caught: 2, blind: true })
     expect(art.missed).toContain('Fehlt unserem Ergebnis ein Komma in Text, den der Entwurf unverändert lässt, fällt das kaum auf: 2 von 200 Versuchen gefangen. Dort vergleicht die Prüfung die Wörter, nicht die Satzzeichen.')
     expect(art.consequence).toBe('Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen. In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen.')
-    // A round that did not try the comma has neither the bar nor its sentences, and the printed comma is one of the words.
+    // The comma at a changed place is one of the words: without it their bar is 200 tries and 198 catches shorter.
     const before = withComma()
-    for (const path of ['pdf', 'table'] as const) before.lesefassung.faults[path] = before.lesefassung.faults[path].filter((f) => !f.key.includes('Komma'))
+    for (const path of ['pdf', 'table'] as const) before.lesefassung.faults[path] = before.lesefassung.faults[path].filter((f) => f.key !== 'Komma')
     const without = genauigkeitArten(before)[0]!
-    expect(without.faults.filter((f) => f.blind)).toHaveLength(1)
-    expect(without.consequence).toBe('Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen.')
-    expect(without.missed.join(' ')).not.toContain('Komma')
     expect(art.faults[0]!.tried - without.faults[0]!.tried).toBe(200)
     expect(art.faults[0]!.caught - without.faults[0]!.caught).toBe(198)
   })
@@ -254,8 +248,8 @@ describe('genauigkeitArten', () => {
     const r = withMarks()
     const { marks, withheld } = r.annex
     const art = genauigkeitArten(r)[1]!
-    expect(marks!.clean + marks!.unconfirmed + marks!.unchecked).toBe(marks!.shown)
-    expect(art.result[0]).toBe(`Die Textgegenüberstellungen enthalten ${formatNumberDe(marks!.shown + withheld)} Paragraphen. ${formatNumberDe(marks!.clean)} zeigt der Monitor ohne Vermerk, 640 mit dem Vermerk „nicht bestätigt“, 618 mit dem Vermerk „nicht geprüft“, ${formatNumberDe(withheld)} zeigt er nicht.`)
+    expect(marks.clean + marks.unconfirmed + marks.unchecked).toBe(marks.shown)
+    expect(art.result[0]).toBe(`Die Textgegenüberstellungen enthalten ${formatNumberDe(marks.shown + withheld)} Paragraphen. ${formatNumberDe(marks.clean)} zeigt der Monitor ohne Vermerk, 640 mit dem Vermerk „nicht bestätigt“, 618 mit dem Vermerk „nicht geprüft“, ${formatNumberDe(withheld)} zeigt er nicht.`)
     expect(art.measured[0]).toContain('640 mit „nicht bestätigt“, 618 mit „nicht geprüft“')
     // The gate's own verdicts are no sentence's figure any more: they do not say what stands on the page.
     expect([...art.result, ...art.measured].join(' ')).not.toContain('hat die Prüfung bestätigt')
@@ -291,16 +285,6 @@ describe('genauigkeitArten', () => {
     expect(faultNoteDe({ label: '', tried: 1339, caught: 1063 })).toBe('1.063 von 1.339 eingebauten Fehlern gefangen')
     expect(faultNoteDe({ label: '', tried: 30, caught: 30, withheld: 30 })).toBe('30 von 30 eingebauten Fehlern gefangen: alle nicht mehr gezeigt')
     expect(faultNoteDe({ label: '', tried: 20, caught: 0, withheld: 0 })).toBe('0 von 20 eingebauten Fehlern gefangen')
-  })
-
-  it('keeps the sentences of a round before the mark for a record that carries none', () => {
-    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
-    delete r.annex.marks
-    delete r.annex.chain
-    const art = genauigkeitArten(r)[1]!
-    expect(art.result[0]).toContain(`${formatNumberDe(r.annex.confirmed)} hat die Prüfung bestätigt`)
-    expect(art.faults.map((f) => f.withheld)).toEqual([undefined, undefined, undefined])
-    expect(genauigkeitKurz(r).check[0]).toBe('Ein Paragraph mit dem Vermerk „nicht geprüft“ ist gezeigt, aber nicht bestätigt.')
   })
 
   it('says of the annex\'s refused standing text what was measured, never whose error it is', () => {
@@ -364,19 +348,18 @@ describe('in short', () => {
     expect(genauigkeitKurz(r).check[1]).toContain('bei 17 von 20 gezeigten Paragraphen Wort für Wort')
   })
 
-  it('names both marks where a round counts them: either one is shown and not vouched for', () => {
-    expect(genauigkeitKurz(withMarks()).check[0]).toBe('Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.')
+  it('names both marks: either one is shown and not vouched for', () => {
+    expect(genauigkeitKurz().check[0]).toBe('Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.')
   })
 
   it('sets every blind spot apart, with what it means for a reader', () => {
     for (const r of [GENAUIGKEIT, withMarks(), withComma()]) {
-      const comma = [...r.lesefassung.faults.pdf, ...r.lesefassung.faults.table].some((f) => (RESULT_BLIND_COMMA as readonly string[]).includes(f.key))
       for (const art of genauigkeitArten(r)) {
         const blind = art.faults.filter((f) => f.blind)
-        // The Lesefassung and the ministry's annex have a class no check can see, the Lesefassung a second one where a round tried the comma.
+        // The ministry's annex has a class no check can see, the Lesefassung two.
         // A Land's Textgegenüberstellung has none since 20.11.2026: its blind spot is the §§ not held word for word, a count in the sentence.
         // Nor has a comparison of stations: what it cannot see — one word misread alike in both texts — no fault can be injected for.
-        expect(blind).toHaveLength(art.id === 'lesefassung' ? (comma ? 2 : 1) : art.id === 'gegenueberstellung' ? 1 : 0)
+        expect(blind).toHaveLength(art.id === 'lesefassung' ? 2 : art.id === 'gegenueberstellung' ? 1 : 0)
         if (blind.length || art.id === 'land-gegenueberstellung') expect(art.consequence).toMatch(/\.$/)
         else expect(art.consequence).toBeNull()
         // What the page prints under „Was die Prüfung übersieht": the consequence, or the first thing the check misses.

@@ -120,9 +120,9 @@ export interface GenauigkeitRecord {
      * check's). `confirmed` and `unchecked` above are the gate's own verdicts,
      * which no longer say what a reader sees: a § the gate verifies may carry
      * either mark, and one it leaves unchecked for having nothing to compare
-     * carries none. Absent in rounds before 22.11.2026.
+     * carries none.
      */
-    marks?: { shown: number; clean: number; unconfirmed: number; unchecked: number }
+    marks: { shown: number; clean: number; unconfirmed: number; unchecked: number }
     /**
      * Faults put into §§ the page showed without a mark, judged through the
      * whole chain the page runs — gate, draft check, Lesefassung, mark
@@ -132,9 +132,8 @@ export interface GenauigkeitRecord {
      * shown with „nicht bestätigt" — so a sentence that says „caught" has to
      * say which. `held` on a class the round held to the floor on that path
      * (only ever `true`; a boolean for the same reason as `unheld`'s `path`).
-     * Absent in rounds before 22.11.2026.
      */
-    chain?: GenauigkeitPaths<(GenauigkeitFault & { withheld: number; held?: boolean })[]>
+    chain: GenauigkeitPaths<(GenauigkeitFault & { withheld: number; held?: boolean })[]>
   }
 
   /** The comparisons between the Bund's stations (`station.ts`). */

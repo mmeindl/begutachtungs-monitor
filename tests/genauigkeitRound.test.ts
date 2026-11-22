@@ -263,8 +263,8 @@ describe('what the figures count', () => {
 
   it('takes a fault judged through the whole chain as caught where the § is withheld or marked, and says which class was held', () => {
     const { chain } = build(round()).annex
-    expect(chain!.pdf).toEqual([{ key: 'zahl', tried: 100, caught: 99, withheld: 0, held: true }, { key: 'rweg', tried: 50, caught: 40, withheld: 1 }])
-    expect(chain!.table).toEqual(chain!.pdf)
+    expect(chain.pdf).toEqual([{ key: 'zahl', tried: 100, caught: 99, withheld: 0, held: true }, { key: 'rweg', tried: 50, caught: 40, withheld: 1 }])
+    expect(chain.table).toEqual(chain.pdf)
   })
 
   it('refuses an annex record written before the mark, or one whose shown §§ are not the gate\'s', () => {
