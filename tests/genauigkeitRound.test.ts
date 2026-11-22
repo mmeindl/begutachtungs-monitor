@@ -24,6 +24,10 @@ function faultRecord(path: 'pdf' | 'table') {
       { key: 'Lücke-beide', tried: 10, caught: 3, floored: false },
     ],
     floor: { min: 95, passed: true, failed: [], unheld: [] },
+    chain: [
+      { key: 'zahl', tried: 100, withheld: 0, marked: 99, unmarked: 1, floored: true, floor: 'gehalten' },
+      { key: 'rweg', tried: 50, withheld: 1, marked: 39, unmarked: 10, floored: false },
+    ],
   }
 }
 
@@ -41,7 +45,7 @@ function round(): Record<string, any> {
     'fi-xml.json': faultRecord('table'),
     'acc.json': { ...stamp, ...reach(2), reports: [{ citation: '1/ME', touched: 3, shown: 2, causes: { verweigert: 1 }, failures: [] }, { citation: '2/ME', touched: 1, shown: 1, causes: {}, failures: [] }] },
     'acc-ris.json': { ...stamp, ...reach(1), reports: [{ citation: '4D9E1224', touched: 1, shown: 0, causes: { 'kein-anhang': 1 }, failures: [] }] },
-    'annex-pdf.json': { ...stamp, drafts: [{ note: null, verifiedParas: 5, withheldParas: 1, withheldStanding: 0, uncheckedParas: 0 }] },
+    'annex-pdf.json': { ...stamp, drafts: [{ note: null, verifiedParas: 5, withheldParas: 1, withheldStanding: 0, uncheckedParas: 0, shownParas: 5, unconfirmedParas: 1, markedParas: 0, markedWordParas: 1 }] },
     'annex-xml.json': { ...stamp, drafts: [] },
     'station.json': {
       ...stamp, ...reach(91), drafts: 91, pairs: 453, breaches: [], residues: [], nullUnits: { 'parlament-bgbl': 10, 'html-xml': 5 },
@@ -245,6 +249,43 @@ describe('what the figures count', () => {
       'unplausibel|kein Orakel|abweichend|verweigert|—': 16,
     }
     expect(build(records).lesefassung.bench.ungated).toEqual({ shown: 1364, identical: 1359 })
+  })
+
+  it('adds up what the page shows of the annex: the mark, not the gate\'s verdict (22.11.2026)', () => {
+    const records = round()
+    records['annex-xml.json'].drafts = [
+      { note: null, verifiedParas: 3, withheldParas: 2, withheldStanding: 1, uncheckedParas: 4, shownParas: 7, unconfirmedParas: 2, markedParas: 1, markedWordParas: 0 },
+      // A refused annex is left out, as it is of the gate's figures.
+      { note: 'abgelehnt', verifiedParas: 0, withheldParas: 9, withheldStanding: 0, uncheckedParas: 0 },
+    ]
+    expect(build(records).annex.marks).toEqual({ shown: 12, unconfirmed: 3, unchecked: 2, clean: 7 })
+  })
+
+  it('takes a fault judged through the whole chain as caught where the § is withheld or marked, and says which class was held', () => {
+    const { chain } = build(round()).annex
+    expect(chain!.pdf).toEqual([{ key: 'zahl', tried: 100, caught: 99, withheld: 0, held: true }, { key: 'rweg', tried: 50, caught: 40, withheld: 1 }])
+    expect(chain!.table).toEqual(chain!.pdf)
+  })
+
+  it('refuses an annex record written before the mark, or one whose shown §§ are not the gate\'s', () => {
+    const before = round()
+    delete before['annex-pdf.json'].drafts[0].shownParas
+    expect(refusals(before)).toEqual(['annex-pdf.json was written before the mark was counted (no "shownParas"): run annexPdf.ts on the code of the round'])
+    const off = round()
+    off['annex-pdf.json'].drafts[0].shownParas = 7
+    expect(refusals(off)).toEqual(['annex-pdf.json does not balance: 7 §§ shown ≠ 5 the gate verified or left unchecked'])
+    const more = round()
+    more['annex-pdf.json'].drafts[0].unconfirmedParas = 5
+    expect(refusals(more)).toEqual(['annex-pdf.json does not balance: 6 §§ marked of 5 shown'])
+  })
+
+  it('refuses a fault record without the chain, and one whose floored chain class fell', () => {
+    const none = round()
+    delete none['fi-xml.json'].chain
+    expect(refusals(none)).toEqual(['fi-xml.json was written before faults were judged through the whole chain (no "chain"): run faultInjection.ts on the code of the round'])
+    const fell = round()
+    fell['fi-pdf.json'].chain[0] = { key: 'zahl', tried: 100, withheld: 0, marked: 90, unmarked: 10, floored: true, floor: 'verfehlt' }
+    expect(refusals(fell)).toEqual(['fi-pdf.json: the chain\'s class „zahl" was held to the floor and fell (90 of 100 caught)'])
   })
 
   it('leaves out an annex fault at a § the gate had withheld before the fault: it says nothing about the fault', () => {

@@ -110,6 +110,27 @@ export interface GenauigkeitRecord {
     unchecked: number
     /** Faults injected into confirmed annex §§ (`faultInjection.ts`, its annex classes), caught by the gate as shipped. */
     faults: GenauigkeitPaths<GenauigkeitFault[]>
+    /**
+     * What the page shows of the §§ it does not withhold, since the mark stands
+     * on top of the gate (`annex/annexMark.ts`, 21.11.2026): without a mark,
+     * with „nicht bestätigt", with „nicht geprüft" (the gate's and the draft
+     * check's). `confirmed` and `unchecked` above are the gate's own verdicts,
+     * which no longer say what a reader sees: a § the gate verifies may carry
+     * either mark, and one it leaves unchecked for having nothing to compare
+     * carries none. Absent in rounds before 22.11.2026.
+     */
+    marks?: { shown: number; clean: number; unconfirmed: number; unchecked: number }
+    /**
+     * Faults put into §§ the page showed without a mark, judged through the
+     * whole chain the page runs — gate, draft check, Lesefassung, mark
+     * (`faultInjection.ts`, `chain`): caught where the § is then withheld or
+     * carries a mark. `withheld` is the first of the two, and the difference
+     * is not small: a wrong word in the new text is never withheld, the § is
+     * shown with „nicht bestätigt" — so a sentence that says „caught" has to
+     * say which. `held` on a class the round held to the floor on that path.
+     * Absent in rounds before 22.11.2026.
+     */
+    chain?: GenauigkeitPaths<(GenauigkeitFault & { withheld: number; held?: true })[]>
   }
 
   /** The comparisons between the Bund's stations (`station.ts`). */

@@ -71,6 +71,14 @@ interface FaultRecord extends Stamped {
   result: FaultClass[]
   /** The floor's outcome (`--mindestens`); absent in a record written before 20.11.2026 or without the flag. */
   floor?: { min: number; passed: boolean; failed: string[]; unheld: string[] } | null
+  /**
+   * The same faults judged through the whole chain the page runs (21.11.2026):
+   * withheld, marked with either pill, or shown without a mark, over the §§
+   * the page showed without a mark before the fault. `floor` on a class held
+   * to the floor: „gehalten", „verfehlt", or „nicht gehalten" where it was
+   * tried too seldom.
+   */
+  chain?: { key: string; tried: number; withheld: number; marked: number; unmarked: number; floored?: boolean; floor?: string }[]
 }
 
 interface AccountingRecord extends Stamped {
@@ -78,7 +86,18 @@ interface AccountingRecord extends Stamped {
 }
 
 interface AnnexRecord extends Stamped {
-  drafts: { note: string | null; verifiedParas: number; withheldParas: number; withheldStanding: number; uncheckedParas: number }[]
+  drafts: {
+    note: string | null
+    verifiedParas: number
+    withheldParas: number
+    withheldStanding: number
+    uncheckedParas: number
+    /** The mark's own counts (21.11.2026): §§ shown, „nicht bestätigt", „nicht geprüft" by the gate and by the draft check. */
+    shownParas?: number
+    unconfirmedParas?: number
+    markedParas?: number
+    markedWordParas?: number
+  }[]
 }
 
 interface StationRecord extends Stamped {
@@ -186,9 +205,20 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
       if (!record.floor.passed) refusals.push(`${name}: the floor of ${record.floor.min} % failed${record.floor.failed.length ? ` (${record.floor.failed.join(', ')})` : ''}`)
     }
   }
-  /** Floored classes tried too seldom for their share to say anything, per path. */
-  const unheld = Object.entries(faults).flatMap(([path, record]) =>
-    (record.result ?? []).filter((f) => f.floored && f.tried < FLOOR_MIN_TRIES).map((f) => ({ path: path as 'pdf' | 'table', key: f.key, tried: f.tried })))
+  // The chain (21.11.2026): what the page does with a fault, not what one check does. A class the harness held to the floor
+  // and that fell is a failed round, as a failed floor of the oracle's classes is.
+  for (const [path, record] of Object.entries(faults)) {
+    const name = `fi-${path === 'table' ? 'xml' : 'pdf'}.json`
+    if (record.path !== undefined && !record.chain) refusals.push(`${name} was written before faults were judged through the whole chain (no "chain"): run faultInjection.ts on the code of the round`)
+    for (const c of record.chain ?? []) {
+      if (c.floored && c.floor === 'verfehlt') refusals.push(`${name}: the chain's class „${c.key}" was held to the floor and fell (${c.withheld + c.marked} of ${c.tried} caught)`)
+    }
+  }
+  /** Floored classes tried too seldom for their share to say anything, per path: the oracle's and the chain's. */
+  const unheld = Object.entries(faults).flatMap(([path, record]) => [
+    ...(record.result ?? []).filter((f) => f.floored && f.tried < FLOOR_MIN_TRIES),
+    ...(record.chain ?? []).filter((c) => c.floored && c.tried < FLOOR_MIN_TRIES),
+  ].map((f) => ({ path: path as 'pdf' | 'table', key: f.key, tried: f.tried })))
   const allowed = new Set(options.allowUnheld ?? [])
   for (const u of unheld) {
     if (!allowed.has(u.key)) refusals.push(`fi-${u.path === 'table' ? 'xml' : 'pdf'}.json: the floored class „${u.key}" was tried ${u.tried} times, fewer than ${FLOOR_MIN_TRIES}, so the floor did not hold it: pass --erlaube-ungehalten=${u.key} to write it anyway, named in the record`)
@@ -233,6 +263,26 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
 
   const gated = [...annexPdf.drafts, ...annexXml.drafts].filter((d) => d.note === null)
   const annexSum = (pick: (d: AnnexRecord['drafts'][number]) => number): number => gated.reduce((n, d) => n + pick(d), 0)
+  // The mark (21.11.2026): what a reader sees of a § is the mark's word, not the gate's. A record without it describes a
+  // page that no longer exists; one whose shown §§ are not the gate's verified and unchecked ones counts something else.
+  for (const [name, record] of [['annex-pdf.json', annexPdf], ['annex-xml.json', annexXml]] as const) {
+    const own = record.drafts.filter((d) => d.note === null)
+    if (own.some((d) => d.shownParas === undefined || d.unconfirmedParas === undefined || d.markedParas === undefined || d.markedWordParas === undefined)) {
+      refusals.push(`${name} was written before the mark was counted (no "shownParas"): run annexPdf.ts on the code of the round`)
+      continue
+    }
+    const shown = own.reduce((n, d) => n + d.shownParas!, 0)
+    const gateShown = own.reduce((n, d) => n + d.verifiedParas + d.uncheckedParas, 0)
+    if (shown !== gateShown) refusals.push(`${name} does not balance: ${shown} §§ shown ≠ ${gateShown} the gate verified or left unchecked`)
+    const marked = own.reduce((n, d) => n + d.unconfirmedParas! + d.markedParas! + d.markedWordParas!, 0)
+    if (marked > shown) refusals.push(`${name} does not balance: ${marked} §§ marked of ${shown} shown`)
+  }
+  const marks = {
+    shown: annexSum((d) => d.shownParas ?? 0),
+    unconfirmed: annexSum((d) => d.unconfirmedParas ?? 0),
+    unchecked: annexSum((d) => (d.markedParas ?? 0) + (d.markedWordParas ?? 0)),
+  }
+  const chainOf = (record: FaultRecord) => (record.chain ?? []).map((c) => ({ key: c.key, tried: c.tried, caught: c.withheld + c.marked, withheld: c.withheld, ...(c.floored && c.floor === 'gehalten' ? { held: true as const } : {}) }))
 
   /* --- The Bund's stations and the Länder ------------------------------- */
 
@@ -276,6 +326,8 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
       withheldStanding: annexSum((d) => d.withheldStanding),
       unchecked: annexSum((d) => d.uncheckedParas),
       faults: { pdf: annexClasses(faults.pdf.annex), table: annexClasses(faults.table.annex) },
+      marks: { ...marks, clean: marks.shown - marks.unconfirmed - marks.unchecked },
+      chain: { pdf: chainOf(faults.pdf), table: chainOf(faults.table) },
     },
     stations: {
       drafts: station.drafts,
