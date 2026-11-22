@@ -168,6 +168,15 @@ describe('lautetMissing (22.11.2026)', () => {
     expect(lautetMissing(instruction, '§14', { id: '§14', heading: null, text: '(6) § 13 Abs. 3, 6 und 7 gelten sinngemäß.' })).toEqual(['6a', '6b'])
     expect(lautetMissing(instruction, '§14', { id: '§14', heading: null, text: '(6) § 13 Abs. 3, 6, 6a, 6b und 7 gelten sinngemäß.' })).toEqual([])
   })
+  it('takes only the quoted wording where the instruction quotes it, not the instruction that goes on (Wien LGBl. Nr. 37/2026 § 143)', () => {
+    const wien = z('Die Überschrift zu § 143 lautet: "Inkrafttreten und Übergangsbestimmungen" ; der bisherige § 143 erhält die Absatzbezeichnung "(1)" ; diesem wird folgender Abs. 2 angefügt: "(2) In der Fassung der 2. Dienstrechts-Novelle 2026 tritt § 7 Abs. 4 mit 1. November 2026 in Kraft."')
+    const ris = { id: '§143', heading: 'Inkrafttreten und Übergangsbestimmungen', text: '(1) Dieses Gesetz tritt am 1. Jänner 2018 in Kraft. (2) In der Fassung der 2. Dienstrechts-Novelle 2026 tritt § 7 Abs. 4 mit 1. November 2026 in Kraft.' }
+    expect(lautetMissing(wien, '§143', ris)).toEqual([])
+    // A quoted word RIS's version lacks is still found.
+    expect(lautetMissing(wien, '§143', { ...ris, text: '(1) Dieses Gesetz tritt am 1. Jänner 2018 in Kraft.' })).toEqual(expect.arrayContaining(['november', 'novelle']))
+    // An unquoted wording runs to the instruction's end, as before.
+    expect(lautetMissing(z('Der § 93 lautet: § 93 Inkrafttreten (1) Art. VII tritt am 1. Jänner 2019 in Kraft.'), '§93', { id: '§93', heading: 'Inkrafttreten', text: '(1) Art. VII tritt in Kraft.' })).toEqual(['am', 'jänner', '2019'])
+  })
   it('checks nothing it cannot hold to one § (null)', () => {
     expect(lautetMissing(instruction, '§16', { id: '§16', heading: null, text: 'x' })).toBeNull()
     expect(lautetMissing(z('In § 14 Abs. 6 wird das Wort "sechs" durch das Wort "sieben" ersetzt.'), '§14', { id: '§14', heading: null, text: 'x' })).toBeNull()

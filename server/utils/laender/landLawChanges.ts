@@ -377,6 +377,16 @@ const wordsOf = (s: string) => new Set(s.toLowerCase().match(/[\p{L}\p{N}]+/gu) 
  * and the version RIS ties to it is the one after the expiry, without the
  * words the Landesgesetzblatt writes — compared with the one before, the
  * page showed them as removed by the Landesgesetzblatt that enacted them.
+ *
+ * Where the instruction quotes its wording, only what stands inside the
+ * quotes is wording (22.11.2026): Wien goes on after it — „Die Überschrift
+ * zu § 143 lautet: „…“; der bisherige § 143 erhält die Absatzbezeichnung
+ * „(1)“; diesem wird folgender Abs. 2 angefügt: „(2) …“" —, and „bisherige",
+ * „erhält", „angefügt" are the instruction's words, in no version of the §.
+ * Run against RIS over the laws matched since (237 instructions checked),
+ * that withheld § 143 of the Wiener Bedienstetengesetz and § 49 of the
+ * Wiener Gleichbehandlungsgesetz (LGBl. Nr. 37/2026) for no missing word.
+ * An unquoted wording runs to the instruction's end, as before.
  */
 export function lautetMissing(instruction: LawUnit, key: string, unit: Pick<LawUnit, 'id' | 'heading' | 'text'>): string[] | null {
   const at = /\blautet\b[^:„"]*:/.exec(instruction.text)
@@ -385,7 +395,9 @@ export function lautetMissing(instruction: LawUnit, key: string, unit: Pick<LawU
   const keys = lgblNamedParagraphs(head).filter((k) => k.startsWith('§'))
   if (keys.length !== 1 || keys[0] !== key || /Inhaltsverzeichnis|Anlage|Anhang/.test(head) || subInstructionHeads(instruction.text).length) return null
   const ris = wordsOf(`${unit.id} ${unit.heading ?? ''} ${unit.text}`)
-  return [...wordsOf(instruction.text.slice(at.index + at[0].length))].filter((w) => !ris.has(w))
+  const rest = instruction.text.slice(at.index + at[0].length)
+  const wording = /^\s*[„"]/.test(rest) ? [...rest.matchAll(/„([^“”]*)[“”]|"([^"]*)"/g)].map((m) => m[1] ?? m[2]!).join(' ') : rest
+  return [...wordsOf(wording)].filter((w) => !ris.has(w))
 }
 
 /**
