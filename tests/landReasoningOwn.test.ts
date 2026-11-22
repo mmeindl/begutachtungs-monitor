@@ -168,3 +168,14 @@ describe('Begründungsvergleich eines Landes — der § eines neuen Gesetzes (21
     expect(entryAt(r, other)).toBeNull()
   })
 })
+
+describe('Begründungsvergleich eines Landes — „Im § 7 werden folgende Änderungen vorgenommen" (22.11.2026)', () => {
+  it('joins Salzburg\'s grouped instruction at the § its head names, not at a § its payloads cite', async () => {
+    // Salzburg 32001, Z 7: read whole, the citation „(§ 2 Abs 1 Z 2)" in a payload named § 2.
+    const text = 'Im § 7 werden folgende Änderungen vorgenommen: 7.1. Im Abs 1: 7.1.1. In der Z 3 werden nach dem Wort Einräumung die Worte oder Übertragung eingefügt. 7.1.2. Nach der Z 3 wird eingefügt: 3a. die Einräumung oder Übertragung des Rechts, ein Bauwerk auf fremden Grund zu errichten (Superädifikat); 7.1.3. Die Z 4 lautet: 4. die Bestandgabe von und, mit Ausnahme von Geh-, Fahr-, Bringungs-, Seil- und Leitungsrechten und der Dienstbarkeit der Schiabfahrt, die Einräumung sonstiger Nutzungs- und Benutzungsrechte an a) einer Fläche von mehr als 0,5 ha oder b) Gebäuden (§ 2 Abs 1 Z 2) oder Teilen davon; 7.2. Abs 2 lautet:'
+    const grouped = unit('Z7', 'changed', { text })
+    const particular = (word: string) => ['Zu § 2:', 'Die Begriffe werden geschärft.', 'Zu § 7:', `Die Übertragung wird erfasst, ${word}.`].join('\n')
+    const r = await compare([grouped], particular('alt'), particular('neu'))
+    expect(entryAt(r, grouped)).toMatchObject({ label: '§ 7', comparable: true, changed: true })
+  })
+})

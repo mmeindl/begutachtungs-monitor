@@ -123,6 +123,26 @@ function ownPassages(entries: readonly LandReasoningEntry[], units: readonly Law
   return { general: [], special }
 }
 
+/**
+ * „Im § 7 werden folgende Änderungen vorgenommen:" — Salzburg's one unit for
+ * every change to a §, its numbered sub-instructions and their payloads,
+ * unquoted, after the colon (22.11.2026). The § join reads a unit's whole
+ * instruction line (`addressedParagraphOf`), and through the payloads'
+ * citations it read § 2 for § 7 (Salzburg 32001, Z 7) or nothing at all.
+ * The head names the §, and the join is handed that alone. Over the 916
+ * changed instruction units of the cached Länder comparisons, 59 open so;
+ * read whole, 18 of them named another § than their head or none.
+ */
+const GROUPED_RE = /\bfolgende\s+Änderungen\s+vorgenommen\s*$/
+function groupedHead(unit: LawDiffUnit): LawDiffUnit {
+  if (isParagraphUnit(unit)) return unit
+  const cut = (text: string | null) => {
+    const head = text?.split(':')[0]
+    return head !== undefined && GROUPED_RE.test(head) ? `${head}:` : text
+  }
+  return { ...unit, toText: cut(unit.toText), fromText: cut(unit.fromText) }
+}
+
 /** An entry of a text's Erläuterungen as the Begründungsvergleich reads it: the page's entry and its Artikel („I", „2"), null under none. */
 export type LandReasoningEntry = LandExplanationsResponse['particular'][number] & { article: string | null }
 
@@ -175,7 +195,7 @@ export async function compareLandReasoning(
   const before = reasonsByParagraph(inputs.before)
   const after = reasonsByParagraph(inputs.after)
   if (!before.size || !after.size) return unavailable(gapDe('unreadable', 'In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen.'))
-  const units = inputs.comparison.units
+  const units = inputs.comparison.units.map(groupedHead)
   const result = compareReasoningByParagraph(units, before, after, null, { before: ownPassages(inputs.before, units, 'before'), after: ownPassages(inputs.after, units, 'after') })
   return {
     available: true,
@@ -195,10 +215,11 @@ export async function compareLandReasoning(
 /**
  * Held a day in the derived layer, like the comparison it reads. The name
  * counts up with what the answer holds (2: the § of a new law joined by its
- * own designation, 21.11.2026), so an answer cached before is not served
- * for a day after a deploy.
+ * own designation, 21.11.2026; 3: a document's bare „Zu Z" read as its §'s
+ * Ziffern, a grouped instruction joined at its head's §, 22.11.2026), so an
+ * answer cached before is not served for a day after a deploy.
  */
 export const cachedLandReasoning = defineCachedFunction(
   (land: LandCode, number: string, detail: LandDraftDetail): Promise<LandReasoningResponse> => compareLandReasoning(land, number, detail),
-  { name: 'land-reasoning-2', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+  { name: 'land-reasoning-3', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
