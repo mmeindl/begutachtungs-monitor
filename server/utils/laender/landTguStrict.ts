@@ -268,7 +268,8 @@ export interface DraftWording {
  * Satz:", „entfällt der Schlussteil"), as many stretches as they name.
  */
 export interface Struck {
-  named: { tokens: string[]; line: string; designation?: true }[]
+  /** …each with the places its line names (`places`): it accounts only there, or anywhere in the § where they name the § whole or nothing below it. */
+  named: { tokens: string[]; line: string; designation?: true; places?: AddressUnit[] }[]
   repealed: (AddressUnit & { line: string })[]
   byPosition: { count: number; places: AddressUnit[]; line: string }[]
   /** The units the instructions write anew by address („§ 14 Abs. 5 und 6 lautet:"; level 0 the § itself): their old words are rewritten. */
@@ -631,14 +632,14 @@ function unitIds(list: string): string[] {
   return out
 }
 
-/** A word that can open a unit of the text: a figure, a letter, two letters („5", „5a", „c", „cc"). */
-const DESIGNATION_WORD_RE = /^(?:\d+[a-z]*|[a-z]{1,2})$/
+/** A word that can open a unit of the text: a figure of up to three digits, a letter, a letter doubled („5", „5a", „c", „cc") — not „1897)" or „Nr." of a citation. */
+const DESIGNATION_WORD_RE = /^(?:\d{1,3}[a-z]{0,2}|[a-z]|([a-z])\1)$/
 
 /** A line that names a § by the number a renumbering gives it: „Im nunmehrigen § 18", „§ 18 (neu)". */
 export const NEW_NUMBER_RE = /(?:nunmehrigen?|neuen)\s+§|§\s*\d+[a-z]*\s*\(neu\)/u
 
 /** One part of an address: its level (0 the § or the Anlage, 1 the Absatz, 2 the Ziffer, 3 the Litera, 4 the Sublitera) and its ids. */
-interface AddressPart { level: number; ids: string[] }
+interface AddressPart { level: number; ids: string[]; fresh?: true }
 /** A unit an address names, with the parts above it the address names too (`path`, from the § down): „§ 5 Abs. 2 Z 3" is the Ziffer 3 of Abs. 2 of § 5. */
 export interface AddressUnit extends AddressPart { path: AddressPart[] }
 
@@ -660,12 +661,14 @@ function addressUnits(text: string, context: readonly AddressPart[] = []): Addre
     const level = UNIT_LEVEL[word]!
     // An Anlage is keyed as the annex keys its group (`designationKey`): „Anl 7"; an Artikel „Art 11" (a Verfassungsgesetz is keyed by them).
     const ids = unitIds(m[2]!).map((id) => (word.startsWith('anl') || word.startsWith('anh') ? `anl ${id}` : word.startsWith('art') ? `art ${id}` : id))
+    // „Abs. 7 (neu)": a number of the new count, which the left column does not print.
+    const fresh = /^\s*\(neu\)/u.test(text.slice(m.index! + m[0].length))
     if (level > last && out.length) {
       const parent = out.pop()!
-      parents = [...parent.path, { level: parent.level, ids: parent.ids }]
+      parents = [...parent.path, { level: parent.level, ids: parent.ids, ...(parent.fresh ? { fresh: true as const } : {}) }]
     }
     parents = parents.filter((p) => p.level < level)
-    out.push({ level, ids, path: parents })
+    out.push({ level, ids, path: parents, ...(fresh ? { fresh: true as const } : {}) })
     last = level
   }
   return out
@@ -682,7 +685,8 @@ function contextAt(line: string, end: number): AddressPart[] {
       const previous = at.at(-1)?.context ?? []
       const deeper = unit.level > (previous.at(-1)?.level ?? -1)
       const parents = deeper ? previous : previous.filter((p) => p.level < unit.level)
-      at.push({ end: m.index + m[0].length, context: [...parents, { level: unit.level, ids: unit.ids }] })
+      const fresh = /^\s*\(neu\)/u.test(line.slice(m.index + m[0].length))
+      at.push({ end: m.index + m[0].length, context: [...parents, { level: unit.level, ids: unit.ids, ...(fresh ? { fresh: true as const } : {}) }] })
     }
     walked = { line, at }
   }
@@ -868,15 +872,20 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
     // What each run's line strikes (`Struck`): the wording it quotes as old, and the payload under a line whose last verb removes.
     const struckOf = (run: Run): Struck => {
       const line = run.line ?? ''
-      const named: Struck['named'] = quoteRoles(line).filter((q) => q.role === 'old').map((q) => ({ tokens: strictTokens(q.text), line, ...(q.designation ? { designation: true as const } : {}) }))
-      if (run.line !== null && removesPayload(run.line)) named.push(...run.payload.map((b) => ({ tokens: strictTokens(`${b.gld ?? ''} ${b.text}`.replace(FOOTER_RE, ' ')), line })))
+      const quoted: Struck['named'] = quoteRoles(line).filter((q) => q.role === 'old').map((q) => ({ tokens: strictTokens(q.text), line, ...(q.designation ? { designation: true as const } : {}) }))
+      if (run.line !== null && removesPayload(run.line)) quoted.push(...run.payload.map((b) => ({ tokens: strictTokens(`${b.gld ?? ''} ${b.text}`.replace(FOOTER_RE, ' ')), line })))
       const count = byPositionOf(line)
       // Where it strikes by position: the units the line names („In § 5 Abs. 2 entfällt der letzte Satz"), none for the § itself.
       const bare = withoutResidue(line).replace(QUOTE_RE, ' „“ ')
-      const places = [...bare.matchAll(ADDRESS_RE)].flatMap((m) => addressUnits(m[0], contextAt(bare, m.index))).filter((u) => u.level > 0)
+      const named = [...bare.matchAll(ADDRESS_RE)].flatMap((m) => {
+        const units = addressUnits(m[0], contextAt(bare, m.index))
+        // „In § 52 Abs. 3 (neu)": the place's number is of the new count.
+        return /^\s*\(neu\)/u.test(bare.slice(m.index + m[0].length)) ? units.map((u, i) => (i === units.length - 1 ? { ...u, fresh: true as const } : u)) : units
+      })
+      const places = named.filter((u) => u.level > 0)
       // „In § 35 Abs. 1c und 1d entfällt jeweils der letzte Satz": once in each unit it names.
       const each = /(?<![\p{L}])jeweils(?![\p{L}])/u.test(line) ? Math.max(1, places.reduce((n, u) => n + u.ids.length, 0)) : 1
-      return { named: named.filter((n) => n.tokens.length), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: /bezeichn?(?:ung|et)|nummerierung/iu.test(line) }
+      return { named: quoted.filter((n) => n.tokens.length).map((n) => ({ ...n, places: named })), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: /bezeichn?(?:ung|et)|nummerierung/iu.test(line) }
     }
     if (!keys.length) {
       const into = lawOf(draft.law)
@@ -1572,8 +1581,9 @@ function struckAccount(
   }
   const notText = layout?.(words, left.map((l) => struck.has(l.p))).notText
   /** Whether a unit opens at `k`: a designation, or a figure printed as one right after the layout's notation („1. bis 14. … 15. jede …"). */
-  // Only a figure or one or two letters open a unit: „BGBl." after a comma is printed like a designation (SpielzeugV Anlage 2, 22.11.2026).
-  const opensAt = (k: number): boolean => DESIGNATION_WORD_RE.test(words[k]!) && (read[k]!.designation === true || (read[k]!.shape !== undefined && (notText?.[k - 1] === true || left[k - 1]?.row !== left[k]!.row)))
+  // Only a figure or one or two letters open a unit: „BGBl." after a comma is printed like a designation (SpielzeugV Anlage 2, 22.11.2026);
+  // and in brackets only a figure, an Absatz.
+  const opensAt = (k: number): boolean => DESIGNATION_WORD_RE.test(words[k]!) && (read[k]!.shape !== '()' || /^\d/.test(words[k]!)) && (read[k]!.designation === true || (read[k]!.shape !== undefined && (notText?.[k - 1] === true || left[k - 1]?.row !== left[k]!.row)))
   /**
    * The left column's unit a designation at `k` opens: up to the next designation of its level or higher. A Ziffer's or a
    * Litera's ends with its row where the next row opens with no deeper designation (22.11.2026): the table path sets one row
@@ -1653,7 +1663,7 @@ function struckAccount(
   // …and „Dublin-Verordnung" where it prints „Dublin - Verordnung": one word parted where the column has the two side by side and not the one.
   const vocabulary = new Set(words)
   const pairs = new Set(words.slice(1).map((w, k) => `${words[k]} ${w}`))
-  const named: string[][] = []
+  const named: { tokens: string[]; law: boolean }[] = []
   for (const n of [...found.flatMap((f) => f.struck?.named ?? []), ...general]) {
     // A designation an instruction removes or replaces („entfällt die Absatzbezeichnung „(1)“") accounts for that
     // designation where the column prints it as one — never for the same figure in the text, nor for a stretch that holds it.
@@ -1681,11 +1691,36 @@ function struckAccount(
         break
       }
     }
-    named.push(tokens)
-    for (const at of placesOf(words, tokens)) for (let k = at; k < at + tokens.length; k++) mark(left[k]!.p, 'named')
+    // Inside the unit its line names (22.11.2026): „In § 5 Abs. 1 entfällt das Wort „nicht““ is not the „nicht" of Abs. 2. A
+    // law-wide line (no § named) at every place. Measured and not built: as often as the line says (once without „jeweils"),
+    // which moved five §§ more, every one a line that lists its places and means every occurrence (LMBG § 20, GSpG § 21).
+    const ids = ownFor(n.line)
+    const law = !found.some((f) => f.struck?.named.includes(n))
+    // The places of this § the line names („In § 1 Abs. 1, § 6, § 7 … wird der Ausdruck „Umwelt“ …"): none, or this § whole, is the whole §.
+    const mine = (n.places ?? []).filter((u) => (u.level === 0 ? u.ids.some((id) => ids.has(id)) : u.path.every((x) => x.level > 0 || x.ids.some((id) => ids.has(id)))))
+    const units = law || mine.some((u) => u.level === 0) ? [] : mine
+    // Where the column prints no unit of a level the line names around the place (the annex elides the Absatz: „(1) …"), which
+    // unit it is cannot be told, and the place is not refused; it is refused where the column prints another one there.
+    // A wording that opens with a designation („„(3) Das …“", printed inside Abs. 2) stands in the unit of the word before it.
+    const enclosing = (at: number, level: number) => {
+      for (let j = opensAt(at) ? at - 1 : at; j >= 0; j--) if (opensAt(j) && levelAt(j) === level && at < unitEnd(j)) return j
+      return -1
+    }
+    const inPlace = (at: number, width: number) => !units.length || units.some((u) => [...u.path, u].every((part) => {
+      if (part.level === 0) return part.ids.some((id) => ids.has(id))
+      if (part.fresh) return true
+      const j = enclosing(at, part.level)
+      return j < 0 || (part.ids.includes(words[j]!) && at + width <= unitEnd(j))
+    }))
+    named.push({ tokens, law })
+    for (const a of placesOf(words, tokens).filter((x) => inPlace(x, tokens.length))) for (let k = a; k < a + tokens.length; k++) mark(left[k]!.p, 'named')
   }
   // …and a struck stretch that stands in such a wording, though the wording does not stand whole in the column: „Der Leiter der
   // internen Revision [hat.]" where the draft replaces „Der Leiter der internen Revision hat die Anforderungen … zu erfüllen.".
+  // A piece of a law-wide wording only with the word beside it on one side the wording's too (22.11.2026): not any stretch that
+  // spells a piece of it („und" of „Bundesminister für Arbeit und Soziales"). Measured and not built: the place of a piece of a
+  // §'s own wording — refused where the column prints another unit there, it moved 11 §§ more to „nicht bestätigt", where the
+  // column prints the unit's designation in a row the check does not see or in a form it does not read.
   const runsLeft = (): number[][] => {
     const runs: number[][] = []
     left.forEach((l) => {
@@ -1695,7 +1730,16 @@ function struckAccount(
     })
     return runs
   }
-  for (const run of runsLeft()) if (named.some((n) => contains(n, run.map((q) => diff[q]!.word)))) for (const q of run) mark(q, 'named')
+  const leftOf = new Map(left.map((l, k) => [l.p, k]))
+  const piece = (run: readonly number[], n: (typeof named)[number]): boolean => {
+    const seq = run.map((q) => diff[q]!.word)
+    const k = leftOf.get(run[0]!)!
+    // A piece, not the whole wording: that one counts only where its line names it (above).
+    if (seq.length >= n.tokens.length) return false
+    if (!n.law) return contains(n.tokens, seq)
+    return placesOf(n.tokens, seq).some((o) => (o > 0 && words[k - 1] === n.tokens[o - 1]) || (o + seq.length < n.tokens.length && words[k + seq.length] === n.tokens[o + seq.length]))
+  }
+  for (const run of runsLeft()) if (named.some((n) => piece(run, n))) for (const q of run) mark(q, 'named')
   // Repealed, and the units a line writes anew by address (rewritten).
   for (const [r, c] of [...found.flatMap((f) => f.struck?.repealed ?? []).map((x) => [x, 'repealed'] as const), ...found.flatMap((f) => f.struck?.replaced ?? []).map((x) => [x, 'rewritten'] as const)]) {
     const ids = ownFor(r.line)

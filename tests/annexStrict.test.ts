@@ -413,6 +413,20 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(annexStrictChecks(lit, { ...draft, blocks: blocksWith('1. In § 5 Z 2 entfällt lit. a.') }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
   })
 
+  it('takes a wording quoted as old only where its line names it, and a piece of a law-wide one only in its own words (22.11.2026)', () => {
+    // A wording quoted for Abs. 1 accounted for every place of the § it stood at.
+    const twice = '(1) Die Behörde entscheidet nach Anhörung des Beirats. (2) Die Frist beginnt nach Anhörung des Beirats zu laufen.'
+    const quoted = blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „ nach Anhörung des Beirats“.')
+    expect(check(quoted, '(1) Die Behörde entscheidet. (2) Die Frist beginnt nach Anhörung des Beirats zu laufen.', twice)).toMatchObject({ state: 'holds', struck: { named: 4 } })
+    expect(check(quoted, '(1) Die Behörde entscheidet. (2) Die Frist beginnt zu laufen.', twice)).toMatchObject({ state: 'differs', struckNotInDraft: ['nach', 'anhörung', 'des', 'beirats'] })
+    expect(check(blocksWith('1. In § 5 Abs. 1 entfällt das Wort „nicht“.'), '(1) Die Behörde ist zuständig. (2) Sie ist an Weisungen gebunden.', '(1) Die Behörde ist nicht zuständig. (2) Sie ist an Weisungen nicht gebunden.')).toMatchObject({ state: 'differs', struckNotInDraft: ['nicht'] })
+    // A law-wide line: its wording at every place, a piece of it only beside its own words — not „und" of „… Arbeit und Soziales".
+    const law = blocksWith('1. Im gesamten Bundesgesetz wird die Wortfolge „Bundesminister für Arbeit und Soziales“ durch die Wortfolge „Bundesministerin für Arbeit“ ersetzt.', '2. In § 5 Abs. 1 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.')
+    const current = '(1) Die Frist beträgt vier Wochen. (2) Die Behörde hat den Antrag zu prüfen und zu entscheiden.'
+    expect(check(law, '(1) Die Frist beträgt sechs Wochen. (2) Die Behörde hat den Antrag zu prüfen und zu entscheiden.', current)).toMatchObject({ state: 'holds' })
+    expect(check(law, '(1) Die Frist beträgt sechs Wochen. (2) Die Behörde hat den Antrag zu prüfen zu entscheiden.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['und'] })
+  })
+
   it('reads no struck text where the column prints nothing new ahead of the § designation', () => {
     // SPG § 57: the heading printed shorter on the right is no heading struck; a heading replaced is.
     const blocks = blocksWith('1. In § 5 Abs. 3 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.')
