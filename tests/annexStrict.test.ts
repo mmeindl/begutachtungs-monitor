@@ -337,6 +337,28 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(annexStrictChecks([row({ law: LAW, gld: '§ 8b.', para: '§ 8b.', current, proposed })], { ...draft, blocks }).get(`${LAW}#§ 8b.`)).toMatchObject({ state: 'holds', notInDraft: [], struckNotInDraft: [] })
   })
 
+  it('takes a unit an instruction names only inside the parents its address names (22.11.2026)', () => {
+    // The review of the struck-text check: „In § 5 Abs. 2 entfällt die Z 3" repealed every Ziffer 3 of the §.
+    const current = '(1) Die Behörde hat zu prüfen: 1. die Identität, 2. die Staatsangehörigkeit, 3. den Wohnsitz. (2) Der Antrag hat zu enthalten: 1. den Namen, 2. die Anschrift, 3. die Unterschrift.'
+    const lostAbs1 = '(1) Die Behörde hat zu prüfen: 1. die Identität, 2. die Staatsangehörigkeit, (2) Der Antrag hat zu enthalten: 1. den Namen, 2. die Anschrift, 3. die Unterschrift.'
+    const lostAbs2 = '(1) Die Behörde hat zu prüfen: 1. die Identität, 2. die Staatsangehörigkeit, 3. den Wohnsitz. (2) Der Antrag hat zu enthalten: 1. den Namen, 2. die Anschrift,'
+    for (const line of ['1. In § 5 Abs. 2 entfällt die Z 3.', '1. § 5 Abs. 2 Z 3 entfällt.']) {
+      expect(check(blocksWith(line), lostAbs2, current)).toMatchObject({ state: 'holds', struck: { repealed: 3 } })
+      expect(check(blocksWith(line), lostAbs1, current)).toMatchObject({ state: 'differs', struckNotInDraft: ['3', 'den', 'wohnsitz'] })
+    }
+    const rewritten = [...blocksWith('1. In § 5 Abs. 2 lautet die Z 3:'), abs('"3. die eigenhändige Unterschrift."')]
+    expect(check(rewritten, lostAbs1.replace('3. die Unterschrift', '3. die eigenhändige Unterschrift'), current)).toMatchObject({ state: 'differs', struckNotInDraft: ['3', 'den', 'wohnsitz'] })
+    // A position the draft names in Abs. 2 Z 3 is not the one of Abs. 1 Z 3.
+    const sentences = '(1) Es gilt: 1. A gilt. 2. B gilt. 3. C gilt. Cc gilt auch. (2) Ferner gilt: 1. D gilt. 2. E gilt. 3. F gilt. Ff gilt auch.'
+    const position = blocksWith('1. In § 5 Abs. 2 Z 3 entfällt der letzte Satz.')
+    expect(check(position, sentences.replace(' Ff gilt auch.', ''), sentences)).toMatchObject({ state: 'holds', struck: { byPosition: 3 } })
+    expect(check(position, sentences.replace(' Cc gilt auch.', ''), sentences)).toMatchObject({ state: 'differs', struckNotInDraft: ['cc', 'gilt', 'auch'] })
+    // A line that lists several §§ gives this § only its own Absätze (EU-JZG § 42b).
+    const list = blocksWith('1. § 4 Abs. 3 und § 5 Abs. 2 entfallen.')
+    expect(check(list, '(1) Die Behörde ist zuständig. (3) Die Frist beträgt vier Wochen.', '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'holds', struck: { repealed: 4 } })
+    expect(check(list, '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet.', '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'differs', struckNotInDraft: ['3', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
+  })
+
   it('reads no struck text where the column prints nothing new ahead of the § designation', () => {
     // SPG § 57: the heading printed shorter on the right is no heading struck; a heading replaced is.
     const blocks = blocksWith('1. In § 5 Abs. 3 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.')

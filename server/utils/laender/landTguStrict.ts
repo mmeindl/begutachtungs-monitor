@@ -269,10 +269,10 @@ export interface DraftWording {
  */
 export interface Struck {
   named: { tokens: string[]; line: string; designation?: true }[]
-  repealed: { level: number; ids: string[]; line: string }[]
-  byPosition: { count: number; places: { level: number; ids: string[] }[]; line: string }[]
+  repealed: (AddressUnit & { line: string })[]
+  byPosition: { count: number; places: AddressUnit[]; line: string }[]
   /** The units the instructions write anew by address („§ 14 Abs. 5 und 6 lautet:"; level 0 the § itself): their old words are rewritten. */
-  replaced?: { level: number; ids: string[]; line: string }[]
+  replaced?: (AddressUnit & { line: string })[]
   /** An instruction for the § speaks of designations („erhält die Absatzbezeichnung", „entfällt die bisherige Absatzbezeichnung (1)", „ohne Nummerierung"): a designation struck alone is notation. */
   renumbers?: boolean
 }
@@ -631,45 +631,80 @@ function unitIds(list: string): string[] {
   return out
 }
 
+/** One part of an address: its level (0 the § or the Anlage, 1 the Absatz, 2 the Ziffer, 3 the Litera, 4 the Sublitera) and its ids. */
+interface AddressPart { level: number; ids: string[] }
+/** A unit an address names, with the parts above it the address names too (`path`, from the § down): „§ 5 Abs. 2 Z 3" is the Ziffer 3 of Abs. 2 of § 5. */
+export interface AddressUnit extends AddressPart { path: AddressPart[] }
+
 /**
  * The units an address names, each at its lowest level: „§ 42 Abs. 3 und 4" two
  * Absätze, „§ 2 Abs. 3 Z 4 sowie Abs. 5" a Ziffer and an Absatz — a part no
- * deeper than the one before opens the next address.
+ * deeper than the one before opens the next address. Each with the parts
+ * above it (22.11.2026): the address's own, else those of `context`, the
+ * place the line names before it („In § 5 Abs. 2 entfällt die Z 3"). Without
+ * them „the Z 3" was every Ziffer 3 of the §, and „§ 42 Abs. 2, § 42b
+ * Abs. 11 … entfallen" gave § 42b the Absätze of § 42.
  */
-function addressUnits(text: string): { level: number; ids: string[] }[] {
-  const out: { level: number; ids: string[] }[] = []
+function addressUnits(text: string, context: readonly AddressPart[] = []): AddressUnit[] {
+  const out: AddressUnit[] = []
+  let parents = [...context]
   let last = -1
   for (const m of text.matchAll(new RegExp(UNIT_PART, 'gu'))) {
     const word = m[1]!.replace(/\.$/, '').toLowerCase()
     const level = UNIT_LEVEL[word]!
     // An Anlage is keyed as the annex keys its group (`designationKey`): „Anl 7".
-    const unit = { level, ids: unitIds(m[2]!).map((id) => (word.startsWith('anl') || word.startsWith('anh') ? `anl ${id}` : id)) }
-    if (level > last && out.length) out[out.length - 1] = unit
-    else out.push(unit)
+    const ids = unitIds(m[2]!).map((id) => (word.startsWith('anl') || word.startsWith('anh') ? `anl ${id}` : id))
+    if (level > last && out.length) {
+      const parent = out.pop()!
+      parents = [...parent.path, { level: parent.level, ids: parent.ids }]
+    }
+    parents = parents.filter((p) => p.level < level)
+    out.push({ level, ids, path: parents })
     last = level
   }
   return out
 }
+
+/** The parts of the address a line names last before `end`, the deepest with what it stands in: the place of what follows („In § 5 Abs. 2 entfällt die Z 3"). */
+function contextAt(line: string, end: number): AddressPart[] {
+  // Walked once per line: a line of a thousand addresses asks at each.
+  if (walked?.line !== line) {
+    const at: { end: number; context: AddressPart[] }[] = []
+    for (const m of line.matchAll(new RegExp(UNIT_PART, 'gu'))) {
+      const unit = addressUnits(m[0], at.at(-1)?.context ?? [])[0]!
+      // A part no deeper than the one before opens the next address, as in `addressUnits`.
+      const previous = at.at(-1)?.context ?? []
+      const deeper = unit.level > (previous.at(-1)?.level ?? -1)
+      const parents = deeper ? previous : previous.filter((p) => p.level < unit.level)
+      at.push({ end: m.index + m[0].length, context: [...parents, { level: unit.level, ids: unit.ids }] })
+    }
+    walked = { line, at }
+  }
+  return walked.at.filter((x) => x.end <= end).at(-1)?.context ?? []
+}
+let walked: { line: string; at: { end: number; context: AddressPart[] }[] } | null = null
 
 /** An address part said of the verb as its object: after an article, or first after the verb — not a place („in Abs. 1", „am Ende der Z 5"). */
 const OBJECT_BEFORE_RE = /(?:^\s*(?:jeweils\s+)?|(?<!(?:Ende|nach|vor|[Ii]n|[Ii]m|zu|von|aus)\s+)(?:die|der|das|den)\s+|(?:und|sowie|,)\s+)$/u
 const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie)\s*(?=(?:§§?|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
 
 /** The units a verb at `v` in `line` is said of: the addresses after it in its clause that are its objects, else the one right before it that is its subject. */
-function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): { level: number; ids: string[] }[] {
+function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): AddressUnit[] {
   const v = verbs[i]!
-  const after = line.slice(v.index! + v[0].length, verbs[i + 1]?.index ?? line.length)
-  const before = line.slice(i > 0 ? verbs[i - 1]!.index! + verbs[i - 1]![0].length : 0, v.index)
+  const afterAt = v.index! + v[0].length
+  const after = line.slice(afterAt, verbs[i + 1]?.index ?? line.length)
+  const beforeAt = i > 0 ? verbs[i - 1]!.index! + verbs[i - 1]![0].length : 0
+  const before = line.slice(beforeAt, v.index)
   // „entfallen die Abs. 2 und 3 sowie 14 bis 16", „entfallen der Klammerausdruck „X“ in Abs. 1 und der Abs. 4" — not „entfällt der letzte Satz", „entfällt im Abs. 2 der …".
   // Only where the verb opens its clause: in „§ 359 Abs. 2 entfällt und die Abs. 3 und 4 erhalten …" what follows is the next clause's subject.
   // „entfällt nach Abs. 2 der Abs. 3", „entfallen in Z 1 die Wortfolge „X“ … sowie die Z 5": a place, then the objects.
   const opensClause = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\s+)?(?:Abs\.?|Z|lit\.?)\s*\d+[a-z]*\s+)?(?:(?:die|der|das|den)\s|§|Abs|Absätze|Z\s|Ziffer|lit)/u.test(after)
-  const objects = opensClause ? [...after.matchAll(ADDRESS_RE)].filter((m) => OBJECT_BEFORE_RE.test(after.slice(0, m.index))).flatMap((m) => addressUnits(m[0])) : []
+  const objects = opensClause ? [...after.matchAll(ADDRESS_RE)].filter((m) => OBJECT_BEFORE_RE.test(after.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, afterAt + m.index!))) : []
   if (objects.length) return objects
   // „In § 19 Z 3 lautet neu:": what „lautet" is said of, where it has no object, is the address before it, „In" or not.
-  if (/^laute[tn]$/u.test(v[0])) return after.search(ADDRESS_RE) >= 0 ? [] : [...before.matchAll(ADDRESS_RE)].slice(-1).filter((m) => !/(?:^|\s)(?:nach|vor|zu|von)\s*$/u.test(before.slice(0, m.index))).flatMap((m) => addressUnits(m[0]))
+  if (/^laute[tn]$/u.test(v[0])) return after.search(ADDRESS_RE) >= 0 ? [] : [...before.matchAll(ADDRESS_RE)].slice(-1).filter((m) => !/(?:^|\s)(?:nach|vor|zu|von)\s*$/u.test(before.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, beforeAt + m.index!)))
   // „§ 5 Abs. 3 entfällt", „und die Z 6 entfällt", „§ 21 wird ersatzlos gestrichen", „§ 56 samt Überschrift entfällt".
-  return subjectUnits(before)
+  return subjectUnits(before, (at) => contextAt(line, beforeAt + at))
 }
 
 /** What may stand between a subject's address and its verb, or between two addresses of one subject: „samt Überschrift", „wird", „sowie die", and an Anhang the list names besides, which is no unit of the § („… sowie Anhang XIII entfallen"). */
@@ -681,7 +716,7 @@ const SUBJECT_FILLER_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?|(?:,|und
  * part by part from the verb back (a pattern anchored at the end backtracks
  * without bound on a long line); none where the line names it as a place.
  */
-function subjectUnits(before: string): { level: number; ids: string[] }[] {
+function subjectUnits(before: string, context: (at: number) => AddressPart[] = () => []): AddressUnit[] {
   const parts = [...before.matchAll(new RegExp(UNIT_PART, 'gu'))]
   const filler = (text: string) => text.replace(SUBJECT_FILLER_RE, ' ').trim() === ''
   const last = parts.length - 1
@@ -689,7 +724,7 @@ function subjectUnits(before: string): { level: number; ids: string[] }[] {
   let first = last
   while (first > 0 && filler(before.slice(parts[first - 1]!.index! + parts[first - 1]![0].length, parts[first]!.index))) first--
   if (PLACE_BEFORE_RE.test(before.slice(0, parts[first]!.index))) return []
-  return addressUnits(before.slice(parts[first]!.index, parts[last]!.index! + parts[last]![0].length))
+  return addressUnits(before.slice(parts[first]!.index, parts[last]!.index! + parts[last]![0].length), context(parts[first]!.index!))
 }
 
 /**
@@ -702,7 +737,7 @@ function subjectUnits(before: string): { level: number; ids: string[] }[] {
  * Z 5"). Of an address, its lowest level: „§ 42 Abs. 3 und 4" repeals two
  * Absätze, not the §.
  */
-function repealedOf(raw: string): { level: number; ids: string[] }[] {
+function repealedOf(raw: string): AddressUnit[] {
   const line = withoutResidue(raw).replace(QUOTE_RE, ' „“ ')
   const verbs = [...line.matchAll(ANY_VERB_RE)]
   return verbs.flatMap((v, i) => (new RegExp(`^(?:${REMOVING})$`).test(v[0]) ? unitsOf(line, verbs, i) : [])).filter((u) => u.ids.length)
@@ -716,15 +751,16 @@ function repealedOf(raw: string): { level: number; ids: string[] }[] {
  * counts („In § 5 Abs. 2 wird „X“ durch „Y“ ersetzt", „lautet der zweite
  * Satz:"), which is named or struck by position.
  */
-function replacedOf(raw: string): { level: number; ids: string[] }[] {
+function replacedOf(raw: string): AddressUnit[] {
   if (quoteRoles(raw).some((q) => q.role === 'old') || byPositionOf(raw)) return []
   const line = withoutResidue(raw).replace(QUOTE_RE, ' „“ ')
   const verbs = [...line.matchAll(ANY_VERB_RE)]
   return verbs.flatMap((v, i) => {
     if (v[0] === 'lautet' || v[0] === 'lauten') return unitsOf(line, verbs, i)
     // „… werden Z 1 bis 3 durch folgende Z 1 und 2 ersetzt": what stands before „durch".
-    const durch = v[0] === 'ersetzt' ? /^(.*?)(?<![\p{L}])durch\s+(?:die\s+)?folgende/u.exec(line.slice(i > 0 ? verbs[i - 1]!.index! + verbs[i - 1]![0].length : 0, v.index)) : null
-    return durch ? [...durch[1]!.matchAll(ADDRESS_RE)].filter((m) => !PLACE_BEFORE_RE.test(durch[1]!.slice(0, m.index))).flatMap((m) => addressUnits(m[0])) : []
+    const from = i > 0 ? verbs[i - 1]!.index! + verbs[i - 1]![0].length : 0
+    const durch = v[0] === 'ersetzt' ? /^(.*?)(?<![\p{L}])durch\s+(?:die\s+)?folgende/u.exec(line.slice(from, v.index)) : null
+    return durch ? [...durch[1]!.matchAll(ADDRESS_RE)].filter((m) => !PLACE_BEFORE_RE.test(durch[1]!.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, from + m.index!))) : []
   }).filter((u) => u.ids.length)
 }
 
@@ -818,7 +854,8 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       if (run.line !== null && removesPayload(run.line)) named.push(...run.payload.map((b) => ({ tokens: strictTokens(`${b.gld ?? ''} ${b.text}`.replace(FOOTER_RE, ' ')), line })))
       const count = byPositionOf(line)
       // Where it strikes by position: the units the line names („In § 5 Abs. 2 entfällt der letzte Satz"), none for the § itself.
-      const places = [...withoutResidue(line).replace(QUOTE_RE, ' „“ ').matchAll(ADDRESS_RE)].flatMap((m) => addressUnits(m[0])).filter((u) => u.level > 0)
+      const bare = withoutResidue(line).replace(QUOTE_RE, ' „“ ')
+      const places = [...bare.matchAll(ADDRESS_RE)].flatMap((m) => addressUnits(m[0], contextAt(bare, m.index))).filter((u) => u.level > 0)
       // „In § 35 Abs. 1c und 1d entfällt jeweils der letzte Satz": once in each unit it names.
       const each = /(?<![\p{L}])jeweils(?![\p{L}])/u.test(line) ? Math.max(1, places.reduce((n, u) => n + u.ids.length, 0)) : 1
       return { named: named.filter((n) => n.tokens.length), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: /bezeichn?(?:ung|et)|nummerierung/iu.test(line) }
@@ -1451,6 +1488,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
  *  - `repealed`: a unit an instruction repeals by its designation („Abs. 3
  *    entfällt", „§ 26 samt Überschrift entfällt"), from that designation in
  *    the left column to the next of its level or higher — or the whole §;
+ *    only inside the parts its address names above it (`within`);
  *  - `rewritten`: a unit a line writes anew by address („§ 14 Abs. 5 und 6
  *    lautet:", „§ 39 lautet:", „werden Z 1 bis 3 durch folgende … ersetzt:"),
  *    likewise; between two column words a payload accounts for, with no two
@@ -1523,6 +1561,14 @@ function struckAccount(
   const markUnit = (k: number, c: keyof StruckBy) => {
     for (let e = k, end = unitEnd(k); e < end; e++) mark(left[e]!.p, c)
   }
+  /**
+   * Whether the left column's word at `k` stands inside the parts an address names above its unit (22.11.2026): the §
+   * this group's, each Absatz, Ziffer or Litera a unit the left column opens with that designation and `k` runs in. A
+   * part the column prints no designation for is not located, and nothing in it is the instruction's.
+   */
+  const within = (k: number, path: readonly AddressPart[] | undefined): boolean => (path ?? []).every((part) => (part.level === 0
+    ? part.ids.some((id) => own.has(id))
+    : left.some((_, j) => j < k && opensAt(j) && levelOf(words[j]!, read[j]!.shape ?? '.') === part.level && part.ids.includes(words[j]!) && k < unitEnd(j))))
   // Notation. What the left column prints ahead of the §'s designation, where the right column prints nothing new there:
   // a heading printed shorter or not at all, a division's heading, a line of the page above (`keptDeletion` in
   // `kons/tguOracle.ts` leaves it out alike: a heading is not struck by being printed shorter).
@@ -1593,7 +1639,7 @@ function struckAccount(
   // Repealed, and the units a line writes anew by address (rewritten).
   for (const [r, c] of [...found.flatMap((f) => f.struck?.repealed ?? []).map((x) => [x, 'repealed'] as const), ...found.flatMap((f) => f.struck?.replaced ?? []).map((x) => [x, 'rewritten'] as const)]) {
     if (r.level === 0) {
-      if (r.ids.some((id) => own.has(id))) for (let q = 0; q < diff.length; q++) mark(q, c)
+      if (r.ids.some((id) => own.has(id)) && within(0, r.path)) for (let q = 0; q < diff.length; q++) mark(q, c)
       continue
     }
     left.forEach((_, k) => {
@@ -1601,7 +1647,7 @@ function struckAccount(
       // …or a designation the word diff keeps while it strikes what follows („wenn 1. [dessen Antrag … 2. …]").
       const unaccounted = (x: number) => struck.has(x) && !cls.has(x)
       const opens = opensAt(k) || (read[k]!.shape !== undefined && ((struck.has(left[k]!.p) && !unaccounted(left[k - 1]?.p ?? -1)) || (!struck.has(left[k]!.p) && struck.has(left[k + 1]?.p ?? -1))))
-      if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(words[k]!)) markUnit(k, c)
+      if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(words[k]!) && within(k, r.path)) markUnit(k, c)
     })
   }
   // Rewritten.
@@ -1710,7 +1756,7 @@ function struckAccount(
   const allowed = positional.reduce((n, x) => n + x.count, 0)
   // A stretch counts against a line only inside the unit the line strikes in: a sentence struck in Abs. 3 is not „der letzte Satz" of Abs. 2.
   const leftAt = new Map(left.map((l, k) => [l.p, k]))
-  const inPlace = (q: number) => positional.some((x) => !x.places.length || x.places.some((u) => left.some((l, k) => opensAt(k) && levelOf(words[k]!, read[k]!.shape ?? '.') === u.level && u.ids.includes(words[k]!) && leftAt.get(q)! >= k && leftAt.get(q)! < unitEnd(k))))
+  const inPlace = (q: number) => positional.some((x) => !x.places.length || x.places.some((u) => left.some((l, k) => opensAt(k) && levelOf(words[k]!, read[k]!.shape ?? '.') === u.level && u.ids.includes(words[k]!) && leftAt.get(q)! >= k && leftAt.get(q)! < unitEnd(k) && within(k, u.path))))
   if (stretches.length && stretches.length <= allowed && stretches.every((st) => inPlace(st[0]!))) for (const st of stretches) for (const q of st) mark(q, 'byPosition')
   for (const c of cls.values()) by[c]++
   const notInDraft = stretches.flat().filter((q) => !cls.has(q)).map((q) => diff[q]!.word)
