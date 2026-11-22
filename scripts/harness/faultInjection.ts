@@ -73,7 +73,8 @@
  * striking region of a row: 674/722 (93,4 %) and 528/557 (94,8 %).
  *
  * **And the whole chain the page runs** (21.11.2026, `judgeChain`): the same
- * faults, and Satz links verloren (fault L), judged by the gate and then by
+ * faults, Satz links verloren (fault L) and, since 22.11.2026, the two
+ * foreign sentences (R-alt, R-neu), judged by the gate and then by
  * the table of `annex/annexMark.ts` — the draft check over the faulted rows,
  * the oracle again over the same result with the faulted rows in the annex.
  * Over the §§ the page showed without a mark before the fault: withheld,
@@ -104,6 +105,35 @@
  * counts in that unit 8, a repeal 5, a quoted old wording 3. Of the 58 on
  * the table path: a position 25, a payload 17, the Lesefassung 16.
  *
+ * **A sentence of another § in the right column, through the chain too**
+ * (22.11.2026): R-alt and R-neu were judged by the gate alone, which catches
+ * 66 to 83 % of them, and that was the figure `/genauigkeit` drew — for a
+ * fault the page marks nearly always, since the draft check holds the new
+ * words against the wording the draft writes for that §:
+ *
+ * | 22.11.2026 | PDF | Tabelle |
+ * |---|---:|---:|
+ * | fremder geltender Satz rechts | 986/986 (658 einbehalten, 328 markiert) | 289/289 (228, 61) |
+ * | fremder Entwurfssatz rechts   | 980/983 (793, 187)                      | 275/288 (224, 51) |
+ *
+ * Both are held to 95 %, R-neu on the PDF path only. What passes on the table
+ * path is one shape, all 13 in one draft (the Strafprozessrechts-
+ * änderungsgesetz): the donor § opens with its heading, so the „sentence"
+ * appended is a heading — „Beendigung des Ermittlungsverfahrens und Absehen
+ * von der Einleitung eines Ermittlungsverfahrens (1) ..." — and both
+ * word-for-word checks pass a heading at the foot of a §'s new text as the
+ * heading of the § that follows, which is where the table path files one
+ * (the draft check objects to the Absatz number behind it at most, and the
+ * oracle's confirmation then stands against that). With a full stop behind
+ * it the oracle contradicts; a plain foreign sentence it contradicts always
+ * (probed 22.11.2026). Two of the three PDF misses are the same shape — a
+ * division heading („ABSCHNITT II …") and a line without a closing sign
+ * behind an omission mark —, the third a donor whose words the draft writes
+ * for that § too. Neither check asks whether the heading is the following
+ * §'s: that is the limit, and `--misses` shows each such place
+ * (`faultSite`). U stays with the gate: a row alike in both columns shows no
+ * new and no struck word, so neither check of the table reads it.
+ *
  * A kept sentence struck passed wherever the draft check held before the
  * fault, while it read no old text: 216 of 955 and 148 of 683 were caught.
  * Since it holds what the column strikes against what the draft strikes,
@@ -112,7 +142,8 @@
  * column agree with the draft —, and on the PDF path a division's heading
  * the injector takes for the row's first sentence (`keptSentenceGone`).
  * Zahl, Wort and neuer Satz fehlt are held to 95 % under
- * `--mindestens` (`CHAIN_FLOORED`), on both paths. Neuer Satz fehlt stood at
+ * `--mindestens` (`CHAIN_FLOORED`), on both paths; the two foreign sentences
+ * as said above. Neuer Satz fehlt stood at
  * 206 of 233 on the PDF path while the draft check excused missing wording
  * behind an elision mark as far as the column's edge: every one of the 27
  * misses was a § that closes on such a mark. Since the mark stands only for
@@ -684,7 +715,7 @@ interface DraftResult {
  * row (another cut of the §), its confirmation stands — which can only
  * understate what is caught, and is counted (`oracleAsked`).
  */
-type ChainKey = 'zahl' | 'bezeichnung' | 'wort' | 'satzweg' | 'rweg' | 'links'
+type ChainKey = 'zahl' | 'bezeichnung' | 'wort' | 'satzweg' | 'rweg' | 'links' | 'ralt' | 'rneu'
 interface ChainTally {
   label: string
   tried: number
@@ -708,9 +739,11 @@ const chainFaults: Record<ChainKey, ChainTally> = {
   satzweg: chainTally('neuer Satz fehlt, rechts'),
   rweg: chainTally('behaltener Satz rechts gestrichen'),
   links: chainTally('Satz links verloren'),
+  ralt: chainTally('fremder geltender Satz rechts'),
+  rneu: chainTally('fremder Entwurfssatz rechts'),
 }
-/** The classes held to 95 % on both paths under `--mindestens` (withheld or marked, the rule in force). */
-const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg']
+/** The classes held to 95 % under `--mindestens` (withheld or marked, the rule in force), on both paths unless `CHAIN_NOT_FLOORED` names one. */
+const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg', 'ralt', 'rneu']
 const CHAIN_FLOOR = 95
 /**
  * Why a class is not held to the floor (22.11.2026), on one path or on both:
@@ -724,6 +757,7 @@ const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why:
   bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
   rweg: { why: 'die Prüfung gegen den Entwurf rechnet einen gestrichenen Satz dem Entwurf zu, wo eine Anordnung dieselbe oder die nächste Einheit neu fasst oder in derselben Einheit Sätze nur nach ihrer Lage streicht („der letzte Satz entfällt“); oder die Lesefassung bestätigt den Paragraphen gegen ihren Einwand; auf dem PDF-Pfad hält der Injektor auch eine Abschnittsüberschrift vor der Paragraphenbezeichnung für einen Satz' },
   links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
+  rneu: { path: 'table', why: 'beginnt der Paragraph des Spenders mit einer Überschrift, ist der Spender diese Überschrift; eine Überschrift am Ende des neuen Textes halten die Prüfung gegen den Entwurf und das Orakel für die des folgenden Paragraphen' },
 }
 const notFlooredOf = (key: ChainKey): string | undefined => {
   const not = CHAIN_NOT_FLOORED[key]
@@ -973,11 +1007,13 @@ async function inject(doc: any): Promise<DraftResult | null> {
     const oldDonor = donors.map((other) => sentence(other.standing.text)).find((s) => s !== null) ?? null
     const newDonor = donors.map((other) => sentence(other.rows.map((r) => r.proposed).join(' '))).find((s) => s !== null) ?? null
 
-    for (const [donor, into] of [[oldDonor, faults.Rold], [newDonor, faults.Rnew]] as const) {
+    for (const [donor, into, key] of [[oldDonor, faults.Rold, 'ralt'], [newDonor, faults.Rnew, 'rneu']] as const) {
       if (donor === null) continue
       const garbled = `${site.proposed} ${donor}`
       const faultR = withRow(para.rows, site, { ...site, proposed: garbled, segments: diffTokens(site.current, garbled).segments })
-      record(into, judge(faultR, para.standing, wide, bagOf(para)), baseVerdict)
+      const verdictR = judge(faultR, para.standing, wide, bagOf(para))
+      record(into, verdictR, baseVerdict)
+      chain.push({ key, para, rows: faultR, verdict: verdictR })
     }
 
     // Fault U: one more row, another §'s standing text printed in both columns.
@@ -1047,9 +1083,30 @@ function judgeChain(cite: string, rows: readonly ComparisonRow[], draft: { artic
       // What accounts for the struck words (`struckAccount`), to tell a miss's class from the harness's own line (22.11.2026).
       const by = input.strict?.struck
       const struck = by ? `; gestrichen: benannt ${by.named}, neu gefasst ${by.rewritten}, aufgehoben ${by.repealed}, nach Lage ${by.byPosition}, Notation ${by.notation}` : ''
-      tally.misses.push(`${cite} ${c.para.para}${c.para.law ? ` [${c.para.law.slice(0, 28)}]` : ''} — Entwurfsprüfung ${input.strict?.state ?? '—'}${input.strict?.state === 'holds' ? ` (${input.strict.newWords} neue Wörter)` : ''}, Orakel ${oracleAfter ? 'bestätigt' : 'nicht'}${struck}`)
+      tally.misses.push(`${cite} ${c.para.para}${c.para.law ? ` [${c.para.law.slice(0, 28)}]` : ''} — Entwurfsprüfung ${input.strict?.state ?? '—'}${input.strict?.state === 'holds' ? ` (${input.strict.newWords} neue Wörter)` : ''}, Orakel ${oracleAfter ? `bestätigt${again.some((a) => a.read) ? '' : ' (die Fehlerzeile nicht gelesen)'}` : 'nicht'}${struck} — ${faultSite(c.para.rows, c.rows)}`)
     } else tally.marked++
   }
+}
+
+/**
+ * Where a faulted § differs from the § it was built from, for `--misses`: the
+ * column and the text around the first difference, with what stood there
+ * before. A miss is read at this place — without it a line says only which
+ * check let the § pass, and the reader of a miss has to rebuild the fault.
+ */
+function faultSite(before: readonly ComparisonRow[], after: readonly ComparisonRow[]): string {
+  for (let i = 0; i < before.length; i++) {
+    const a = before[i]!
+    const b = after[i]
+    if (!b || a === b) continue
+    for (const column of ['proposed', 'current'] as const) {
+      if (a[column] === b[column]) continue
+      let at = 0
+      while (at < a[column].length && a[column][at] === b[column][at]) at++
+      return `${column === 'proposed' ? 'rechts' : 'links'} …${b[column].slice(Math.max(0, at - 50), at)}‖${b[column].slice(at, at + 110)} (vorher: ${a[column].slice(at, at + 60) || '—'})`
+    }
+  }
+  return 'keine Zeile geändert'
 }
 
 // --- Faults in the RESULT: the oracle (`kons/tguOracle.ts`) ------------------
