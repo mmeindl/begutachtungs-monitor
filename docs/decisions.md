@@ -750,6 +750,27 @@ gets an entry of its own only where it carries a reason the rule does not.
   following the Bundesrat's Einspruch, Parliament's steps say that they end
   at the first Beschluss (`OBJECTION_STEPS_NOTE_DE`); the whole-way comparison reads the
   promulgated text.
+- **The page's § comparison and its harness share one pair decision**
+  (21.11.2026, `compareStationPair` in `server/utils/diff/stationPair.ts`):
+  which texts of two stations are compared, and when a pair is refused, is
+  decided once, for the route and for `station.ts`. The harness counts a
+  refused pair (`refused`) instead of skipping it.
+- **A commencement Artikel only one side carries is shown wherever no
+  sentence covers it** (22.11.2026, `diffLawPackage` in
+  `server/utils/diff/lawDiff.ts`). An Artikel „Inkrafttreten" is named in no
+  list of bundled laws. It may go unshown only where the page says that
+  only what both texts carry is compared (`mergedLawsNote`, which stands
+  where `lawsOnlyInTo` names a law). Elsewhere it shows, inserted or
+  removed: 150/ME XXVII's „Inkrafttreten" was „neu" from draft to Vorlage
+  and stood nowhere from draft to Plenum, a silent gap. GP XXVIII: 47 such
+  units stay under the sentence; no unit of 30,359 and no badge moved.
+- **A unit whose text came from a table says so** (21.11.2026,
+  `LawDiffUnit.table`, `TABLE_AS_TEXT_DE`): the reader flattens a table to
+  text, and the page says it at the unit, in a fold once. 119 units in 6
+  drafts of GP XXVIII.
+- **`sameWording` keeps a separator between two numbers**, as `foldSpacing`
+  does (21.11.2026, `explanations/reasoningDiff.ts`): 0 of 8,766 verdicts of
+  the Bund's Begründungsvergleich moved.
 
 ### The consolidated reading (Lesefassung) and the annex
 
@@ -1195,6 +1216,78 @@ gets an entry of its own only where it carries a reason the rule does not.
   what it left of a refused § lacks a change the draft makes; each Artikel
   had locked only its own refusals. Census over 330 cached drafts: no
   outcome moved (in 126/ME, Teil II refuses the same §§ itself).
+- **The oracle's checks run past the word diff's matrix ceiling, and past
+  the linear one they contradict** (21.11.2026, `kons/tguOracle.ts`,
+  `MAX_LINEAR_CELLS` in `diff/wordDiff.ts`). Check 4 was the one check that
+  stopped at the matrix ceiling and let the § through. Past 30 million
+  token pairs the oracle says „Wortdiff zu groß für den Abgleich" rather
+  than confirm without the check.
+- **Check 5 reads the ends of a chain only, on purpose** (21.11.2026): over
+  every confirmed § of both paths and the bench, about 9,400 Absätze inside
+  chains, none was missing from the result while the standing text carried
+  it. It reads a dash range („(1) - (41) …") and a „…" glued to a chain's
+  last marker; 0 alarms on sound results.
+- **Check 6: a designation the annex prints is the result's** (21.11.2026,
+  `labelBroken`). Where the proposed column prints a labelled unit of the
+  result (Absatz, Ziffer, Litera) directly before its unique opening words,
+  the label must be the one the result carries. No statement where the unit
+  is abbreviated, unlabelled, ambiguous, doubly labelled or a citation. An
+  annex that numbers an appended Absatz „(N)" where its draft appends
+  „(N+1)" is contradicted, rightly. Until then a wrong designation in the
+  right column passed in four of ten cases (356 of 613 caught on the PDF
+  path, 285 of 452 on the table path; 597 of 602 and 435 of 442 since).
+- **Check 4 reads beside a stretch the words of every region its row
+  strikes** (22.11.2026, `keptDeletion`). Where a struck sentence shares
+  words with the new one, the word diff cuts it in two, and what stands at
+  the stretch's edge is the half another region holds: Strafvollzugsgesetz
+  § 98 was confirmed without the sentence the right column had lost.
+  Measured before it was built: 0 of 4,839 unfaulted verdicts and none of
+  the bench's moved. A kept sentence struck in the right column is seen in
+  674 of 722 confirmed §§ (PDF) and 528 of 557 (table), 670 and 521 before.
+- **A read of a law on a day stops at 20 pages of RIS records and throws
+  past them**, never ends short (21.11.2026, `konsRecordsOfNummer`,
+  `lawOfNummer`): a failed read, not cached, never „nicht im RIS". The
+  largest such read in the harness cache is 1,681 records (UGB).
+- **A § with no standing text is held against the whole draft**
+  (21.11.2026, rule 2 in `annex/verdict.ts`): a § the draft inserts, one not
+  in RIS, one of a draft that amends no law. `notInDraft` withholds it. It
+  owes no check only where rule 2 held at least `MIN_NEW_WORDS` of new text
+  (`REASON_NOTHING_TO_COMPARE`); otherwise it carries „nicht geprüft". A §
+  renumbered into its number is marked (`REASON_RENUMBERED`). The whole
+  draft, not the instructions for the §: the per-§ reference withheld 12
+  such §§, 5 of them sound.
+- **A Bund PDF annex is cut at an unread page**, as a Land's is, and a cut
+  § stays unchecked (`REASON_CUT`, 21.11.2026). No § of GP XXVIII is
+  affected.
+- **A repeal word alone beside a § only the left column opens is that §'s
+  right cell** (22.11.2026, `repealedBeside` in `annex/annexPdf.ts`). RIS
+  CF28D2C0 sets „Aufgehoben" beside the heading and each Absatz of ASVG
+  § 248c, GSVG § 143 and BSVG § 134 and prints no designation on the right.
+  The column's walk saw no boundary: the first lines ran on as the end of
+  the § above, the last went to the heading of the § below, „Aufgehoben
+  Aufgehoben" new in six §§ the draft writes otherwise. The row goes out as
+  removed, and such a word is never the heading of a § with its own
+  designation. 12 of the 16 lines of a repeal word alone in GP XXVIII's PDF
+  annexes, all in that draft.
+- **Two or three flush lines under a finished sentence are the next §'s
+  heading** (22.11.2026, `flushHeadingRun`): not centred, opening no
+  Absatz, ending no sentence, begun with a capital. E-ControlG § 25b's
+  three-line heading stood struck at the end of § 25a. Its cost, read: the
+  title of one Verordnung above an elided „§ 1. bis § 15. …" is shown
+  nowhere now (Tierarzneimittel-Anpassungsverordnung). BWG's division line
+  „XIII. …" stays at § 64 (rejected alternatives).
+- **The left column of a Bund annex is held by containment alone**
+  (21.11.2026, measured, no rule). The gate's left check and the oracle's
+  check 1 both ask whether the column's text stands in the standing §. They
+  see a word or a figure the column misreads, not text it lost: a sentence
+  dropped from the left column is seen by the oracle in 27 % (PDF) and 37 %
+  (table) of the cases, and the gate's left check passes it in 92 % and
+  99.7 %. It is withheld in 61 % and 67 % only because the word diff then
+  shows the lost standing text as new and the right column's rules see
+  that. A sentence both columns lack is invisible to both.
+- **No Textgegenüberstellung among a draft's documents is „Nicht lesbar"**,
+  never „Nicht veröffentlicht", on a draft's page and on a Vorlage's
+  (21.11.2026): a document list proves no absence, as for Erläuterungen.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
@@ -1339,6 +1432,93 @@ gets an entry of its own only where it carries a reason the rule does not.
   compares ends exactly once, shown or withheld. Kärnten's comparison
   stands in the record apart from the four Länder the draft rules are
   asked of.
+- **The BGBl bench scores the engine and the gate, not the page's glue**
+  (21.11.2026, `scripts/harness/kons.ts`): the instructions applied to the
+  stock it builds itself, the refusal lock, the guard, the oracle and the
+  witness, each held against RIS's text after the Bundesgesetzblatt. It
+  does not drive `consolidate()`: the Artikel labels, the chains and the
+  doubled laws are held by the oracle and by `tests/konsGolden.test.ts`
+  (the outcomes of two real drafts, re-recorded with
+  `scripts/ci/konsGoldenRecord.ts` in the commit that moves one), never by
+  enacted law. Its input and its truth are read by the same reader
+  (`konsTree`), so a block that reader drops is missing on both sides and
+  scores „identisch". It scores the §§ the engine took out: a repeal counts
+  as confirmed only where RIS's last Kundmachungsorgan says „aufgehoben
+  durch" that Bundesgesetzblatt (date rules called correct repeals wrong:
+  ZÄKG § 51, GSVG § 27f). It fails on a confirmed or witness-shown § whose
+  designations are not the law's. `--verordnungen` holds the engine against
+  enacted Verordnungen (BGBl. II, the newest 40: 156 of 197 unrefused §§
+  identical, none with invented words); it cannot score the gate, because
+  no exact join leads from a BGBl. II to its draft.
+- **A harness resolves a law as the page does** (21.11.2026,
+  `scripts/lib/productionSources.ts`: `annexSourcesOf` over
+  `resolveKonsLaw`, without Nitro's cache). A failed lookup counts as a
+  draft not reached, never as a law that does not exist: the harnesses' own
+  lookup had put 73 §§ wrongly under „nicht geprüft" on the PDF path and 11
+  on the table path. Every fault class is judged through one call that
+  passes what the page's gate passes, and the annex is asked through
+  `annexScope`, the page's own scoping.
+- **A fault builder builds what its name says** (21.11.2026,
+  `scripts/lib/rightColumnFaults.ts`, `faultInjection.ts`): Zahl is a figure
+  the oracle reads, not a label, a placeholder or a RIS note; a designation
+  has its own class; Satz-weg and R-weg remove a sentence of the law's text
+  and keep its marker; an edit is placed by the diff's word index, never at
+  the first occurrence of its text. „Fehlt" takes its sites from every chain
+  in the proposed column and leaves out an Absatz either column prints text
+  of. Satz-weg drops a sentence, not the tail of one after „Mio." or „z.B."
+  (22.11.2026; 3 of 369 sites were tails).
+- **A floored class that cannot occur on a path says so** (21.11.2026): the
+  floor and the record read „nicht anwendbar" instead of „nicht gehalten",
+  only while no site is found (Lücke on the table path). Under
+  `--mindestens` the gate's own classes have floors of their own: a
+  sentence of the left column lost 60 %, another §'s sentence in the right
+  column 65 % (old text) and 75 % (proposed text), the lower of the two
+  paths' measured shares, rounded down to five.
+- **`markedParas` is what the page marks, `uncheckedParas` every unchecked
+  verdict** (21.11.2026, annex records): a figure about the mark reads the
+  first.
+- **`station.ts` reads what the server reads** (21.11.2026): Parliament's
+  HTML through `decodeHtml`, in the charset the page declares (read as
+  UTF-8, 306 d.B. XXVIII, windows-1252, produced 101 false residues), and
+  so every script (`getParliamentHtml`); list 81 and the RIS Begut list
+  fetched on every run, `--liste-aus-cache` to replay them, which
+  `--baseline` needs; the record's window names the span and the fetch day.
+- **The Länder station comparison is held to the Bund's nine fault
+  classes** (21.11.2026, `landStations.ts`, record `mutations`): every
+  distinct unit of the later texts is compared against its mutated self
+  through `compareReadTexts`, and a miss fails the run. So does a sign a
+  misread font leaves (invariant „Fehlgelesenes Zeichen"). A Landesgesetz's
+  page is in the population; a pair whose documents are a draft's own runs
+  once, under the draft. `--cached-only` keeps RIS offline too. Both
+  Länder records name the list window they measured (`windows`).
+- **Oberösterreich's committee text against its Landesgesetzblatt is the
+  Länder's null comparison** (21.11.2026, `landStationsNullBaseline.json`,
+  compared for equality). A residue is the source's where the raw texts
+  differ, the reader's where both carry the words: 48 residues, 44 from the
+  sources, 4 from the reader.
+- **Kärnten's Kundmachung join by date and title is measured, not decided
+  by the text** (21.11.2026): 31 finds, no wrong join; a Landesgesetzblatt
+  holds 0.59 to 0.99 of its own Vorlage and at most 0.55 of any other
+  find's.
+- **The Land guard's floor counts a fault as missed only where it is shown
+  without the mark** (21.11.2026, `landGuard.ts`, `beforeUnmarked`), over
+  the §§ unmarked before the fault.
+- **A Land's law page has a harness, and it says why** (20. and 22.11.2026,
+  `scripts/harness/landLawChanges.ts`): every § RIS ties to a
+  Landesgesetzblatt ends exactly once, shown or withheld with a reason, or
+  the section is off with its sentence. The record splits `lawUnmatched`
+  into laws repealed whole and the rest and sorts the „lautet:" misses; a §
+  shown although its Landesgesetzblatt's own wording is missing in RIS's
+  version fails the run. From the cache alone it cannot read a § never
+  compared before: a law newly matched has no history there, and only a run
+  against RIS shows its comparisons. The renumbering fault and two false
+  withholdings were found by that run on 22.11.2026 and by no offline one.
+- **Where a Land's Begründungen land is counted** (20.11.2026,
+  `scripts/corpus/landBegruendung.ts`, offline): which law and which §§ the
+  reader gives each entry and what the Begründungsvergleich makes of each
+  change, `--against` to read every attachment that moved.
+  `aenderungsrate.ts --ziffer` fails its run on „Tor hält nicht" or a
+  verdict that changes at the same unscoped § key (21.11.2026).
 
 ### Länder
 
@@ -1478,6 +1658,113 @@ gets an entry of its own only where it carries a reason the rule does not.
   version, is withheld as `unpaired`** (20.11.2026,
   `landLawChangesService.ts`): neither side was read, and the § fell out
   of both lists.
+- **A misread font in a Land's PDF is repaired run by run** (21.11.2026,
+  `repairMisreadFonts` in `texts/read.ts`): a font whose runs carry the
+  Mac-Roman signs and no real umlaut or §. Its text is read unnormalised, so
+  that its „ﬂ" is still the ß, and normalised afterwards as pdf.js would.
+  The line-level repair (`repairMacRoman`) is a fallback that decides for
+  none of the 1,365 cached PDFs. A „ß" standing alone before a number is a
+  „§" on every page (731 cached PDFs: 4 carried one after the repair, every
+  one a „§").
+- **Address normalisation lives in the guard, not in the draft reader**
+  (21.11.2026, `readableBlocks` in `landTguGuard.ts`). A rule that rewrites
+  how the reader prints text belongs where that text is not compared with
+  another source: the station pages hold the draft PDF's text against the
+  Landesgesetzblatt, which also prints „§ 24 b".
+- **Where a § ends in a Land's Textgegenüberstellung** (21.11.2026). A line
+  that opens like a paragraph joins the sentence above only where that line
+  runs on (`RUNS_ON_RE`) and the line is a cited § or a date, never a
+  numbered list item. A heading of what follows closes the § before it: a
+  Roman numeral with a letter („VIIa. ABSCHNITT"), Oberösterreich's bare law
+  name after a sentence's end, in Kärnten a title line that opens a
+  „(Kärntner … gesetz" bracket. An Anlage the document marks (struck,
+  underlined, renamed) ends once, withheld with the annex reason, in every
+  Land reader; one printed unchanged stays out.
+- **What a draft's instructions change and the comparison does not print
+  is withheld as `unprinted`** (21.11.2026, `unprintedInstructed`), only for
+  a law the comparison holds and never for an anchor („Nach § N wird …
+  eingefügt"). A law the comparison has nothing of is not listed: it may be
+  printed under a new name. A missing Textgegenüberstellung is „Nicht im
+  Monitor" with what was searched, never „Nicht veröffentlicht" on titles
+  alone.
+- **The left column of a changed Land § is held by RIS alone, at 98 %**
+  (21.11.2026, measured, no rule). A misread number, word or citation in a
+  stretch both columns share passes in three of four one-column cases
+  (Oberösterreich, Tirol) and in one of four two-column ones.
+- **A Land's station comparison passes the word diff's ceiling**, as the
+  Bund's does (21.11.2026, `diffLandDraft`): 17 changed units of the cached
+  pairs stood unmarked; at most 70 ms per pair.
+- **Page furniture in a Land's Erläuterungen is a line at the same place of
+  three pages**, within two lines of the top or the bottom (21.11.2026).
+- **What belongs to a § entry of a Land's Erläuterungen** (21. and
+  22.11.2026, `landExplanations.ts`). „Zu Abs …" under an entry that names a
+  § is part of that entry. A „§§ a bis b" heading names every § of the
+  range; behind a heading that names its §, the bracket is a title and names
+  none. A document's bare „Zu Z n:" headings are the Ziffern of the § above
+  only where every one stands under a heading titled by § alone
+  (`ziffernOfParagraphs`, the Bund's rule, decided per document): of the 210
+  cached documents with such headings 17 write them so (358 entries), 12 mix
+  both uses, 181 head instructions so. Read as entries of their own,
+  Salzburg 32001's gave § 2 and § 3 the Begründung of § 7.
+- **A Land Vorlage's particular part ends at the Landesregierung's motion**
+  („Die Landesregierung stellt sohin den Antrag", „Die Oö. Landesregierung
+  beantragt, …"; 21.11.2026): 64 such lines, none in a draft's
+  Erläuterungen; 6 changes that were the motion alone became „unverändert".
+- **In a Land package a Begründung stands only at its own law's §**
+  (21.11.2026): an entry with no known law, or a § under no law, attaches
+  nowhere and is listed at the end under „Ohne Zuordnung zu einem Gesetz"
+  (208 attachments removed, 150 entries at the end). The
+  Begründungsvergleich keeps the § join's own guard (`ambiguousParagraphs`):
+  the same filter there removed 9 correct attachments and fixed none.
+- **A Land's Begründungsvergleich joins a § of a law enacted anew by its
+  own designation** (21.11.2026, `joinOwnParagraph`), after the § join: 168
+  of 185 changed §§ of 13 drafts gain an entry. A § heading that runs on
+  into prose behind its colon joins nothing (a Vorlage's answers to the
+  statements, 58 headings). A grouped instruction „Im § N werden folgende
+  Änderungen vorgenommen:" is joined at its head's § (22.11.2026,
+  `groupedHead`): read whole, 18 of 59 such units named another § through
+  the citations of their payloads, or none. A change on both sides whose
+  Begründung the join could not attach carries the 'unread' line, only
+  where the comparison compared any Begründung (137 lines in 23 drafts).
+- **A Land law page compares RIS's two versions of a § with their headings
+  where the headings differ** (21.11.2026): RIS keeps the heading out of
+  the text, and by text alone a heading-only change read „unverändert" (3
+  of 1,937 §§ in 90 Landesgesetzblätter).
+- **Within 60 days of its Kundmachung a Landesgesetzblatt RIS ties no
+  version to is „Im RIS noch nicht eingearbeitet"** (21.11.2026,
+  `LAND_CONSOLIDATION_DAYS`), on the § comparison as on the list, and not
+  cached; „Nicht veröffentlicht" only after.
+- **Which instructions of a Landesgesetzblatt amend which of RIS's laws**
+  (22.11.2026, `instructionLawsOf` in `landLawChanges.ts`). An Artikel
+  titled with its number alone („Artikel I") is matched by the law its
+  promulgation clause names (`lgblArticleClauses`). Then a law still
+  unmatched and an Artikel no law took are paired only where each is the
+  other's only candidate, by the Kurztitel without RIS's own abbreviation or
+  by the Stammnorm the clause cites; two candidates, or none, stay
+  `lawUnmatched`. 509 → 158 of 1,937 tied §§, and 153 of the 158 belong to
+  laws a Landesgesetzblatt repeals whole. The instructions are a guard, not
+  content: what the page shows are RIS's two versions of the §.
+- **A „lautet:" wording RIS's version lacks withholds the §** (22.11.2026,
+  `lautetMissing`, reason `wordingNotInRis`). Wien LGBl. Nr. 45/2020 lets a
+  wording expire, RIS ties the version after the expiry to it, and the page
+  showed the Landesgesetzblatt's own words as removed by it. Words, not
+  sequence; where the instruction quotes its wording, only the quoted text
+  (Wien goes on behind it: „der bisherige § 143 erhält die Absatzbezeichnung
+  „(1)"; diesem wird … angefügt"). One direction only: RIS's number, heading
+  or division lines, which the Landesgesetzblatt prints outside the §, stay
+  a count. Known cost: a § whose unquoted wording is the document's last
+  instruction is withheld for the signatures that close it (Vorarlberg
+  LGBl. Nr. 45/2018 § 93).
+- **A § a Landesgesetzblatt renumbers is withheld** (22.11.2026,
+  `lgblRenumberedParagraphs`, reason `renumbered`). RIS files a § under its
+  number, and after „Die bisherigen §§ 2a, 3 und 4 werden als §§ 3, 4 und 5
+  bezeichnet" the two versions under „§ 3" are two paragraphs. 34 §§ in six
+  of the harness's 90 Landesgesetzblätter were shown so: 22 as changed
+  against another paragraph's text, 12 as inserted where an old § had only
+  got the number. Every § such an instruction names, under the old number
+  and the new, is withheld and says why. The two phrasings are the ones the
+  cached Landesgesetzblätter use (21 of 721 documents): „… werden als §§ …
+  bezeichnet" and „… erhält die (Paragraphen)bezeichnung „§ …"".
 - **A document a Land files as the draft but that is not one is not read as
   the draft;** the page says so (§12.63). Among several candidates the
   content decides, not the title: where the first holds no law text, the
@@ -3071,6 +3358,23 @@ circular of 10.12.2015).
   reason instead (`annex/repeals.ts`).
 - **A health endpoint, a dead man's switch, a status page.** Stale data is
   labelled on the page, and a failed prewarm costs seconds (§12.7).
+- **A product check of the Ziffer and Litera sequence of a shown §.** It
+  would withdraw 3 (order rule) or 38 (gap rule) of 612 shown §§, all
+  correct, and catch none (21.11.2026). The bench fails on designations
+  that are not the law's instead.
+- **A word census of RIS's § XML against the tree as an invariant.** Over
+  4,000 documents it flags 2,991, even after skipping the § sign and RIS's
+  notes (21.11.2026).
+- **The instructions for a § as the reference for a § with no standing
+  text.** They withheld 12 such §§, 5 of them sound; the whole draft is the
+  reference (21.11.2026).
+- **A Roman-numeral division rule for the PDF annex.** It moves BWG's
+  „XIII. …" from § 64 to § 69, also wrong, and gives 6 other §§ a wrong
+  heading (22.11.2026).
+- **A heading rule for a line Parliament sets in the division class above a
+  §** (141/ME XXVII). It mends the Vorlage's side and moves the breach to
+  the Kundmachung, whose RIS XML sets the same heading as a division's, and
+  it moves one unit elsewhere (22.11.2026).
 
 ### Länder and EU
 
@@ -3108,6 +3412,28 @@ circular of 10.12.2015).
   Over 121 documents and 3,350 instructions (12.11.2026): 163 heads read
   differently, 13 documents change, one § would be shown wrong (only its
   heading) and two correct §§ withheld — for about 40 lines saved.
+- **A weekly drift alarm for the Länder.** The Bund's fetches RIS from CI;
+  for the Länder it would fetch nine sites from a runner every week: an
+  obligation to operate, and a Land's site does not reliably answer a
+  runner. In its place the Land guard with its baseline, its floor and its
+  page accounting, run with each round, and `tests/landTguGolden.test.ts`,
+  which pins the draft rules' verdicts on six real documents on every push
+  (21.11.2026).
+- **`coverOfRis` for the changed §§ of a Land.** 30 refusals, about ten of
+  them over spacing; neither the comparison's spacing rule nor `foldSpacing`
+  clears them without passing a real difference or keeping the format
+  refusals (RIS notes, tables, a lost exponent). The Bund's rule 1 with
+  RIS's text gains 12 of 85 (21.11.2026, measured twice).
+- **Character rules for „ã", „Ò", „Ð" and „É" in a Land's PDF.** They
+  repaired the damage of our own line-level repair; the repair by font run
+  does none (21.11.2026).
+- **Any short line met three times as page furniture of a Land's
+  Erläuterungen.** It dropped „Zu Abs 1:" and „werden." in 56 of 180
+  documents (21.11.2026).
+- **Pairing a renumbered § of a Land law with the history of its old
+  number.** A second history read per § and a mapping of two lists, for six
+  of 90 Landesgesetzblätter; the § is withheld with its reason instead
+  (22.11.2026).
 
 ### Operations and data
 
