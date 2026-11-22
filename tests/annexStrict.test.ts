@@ -283,9 +283,10 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „ Sie ist an Weisungen nicht gebunden.“'), lost)).toMatchObject({ state: 'holds', struckNotInDraft: [], struck: { named: 6 } })
     expect(check(blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz.'), lost)).toMatchObject({ state: 'holds', struck: { byPosition: 6 } })
     expect(check([...blocksWith('1. § 5 Abs. 1 lautet:'), abs('"(1) Die Behörde ist zuständig."')], lost)).toMatchObject({ state: 'holds', struck: { rewritten: 6 } })
-    // One sentence struck by position, a second struck with no instruction: more stretches than the draft counts.
+    // One sentence struck by position, a second struck with no instruction: more stretches than the draft counts, and the one
+    // outside the unit the line names is the one no instruction strikes (22.11.2026: each line its own count, in its own unit).
     const two = lost.replace(' Die Frist beträgt vier Wochen.', '')
-    expect(check(blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz.'), two)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
+    expect(check(blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz.'), two)).toMatchObject({ state: 'differs', struckNotInDraft: ['die', 'frist', 'beträgt', 'vier', 'wochen'] })
   })
 
   it('takes no kept sentence of another Absatz for the payload\'s, nor one a position strikes in another unit', () => {
@@ -425,6 +426,22 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     const current = '(1) Die Frist beträgt vier Wochen. (2) Die Behörde hat den Antrag zu prüfen und zu entscheiden.'
     expect(check(law, '(1) Die Frist beträgt sechs Wochen. (2) Die Behörde hat den Antrag zu prüfen und zu entscheiden.', current)).toMatchObject({ state: 'holds' })
     expect(check(law, '(1) Die Frist beträgt sechs Wochen. (2) Die Behörde hat den Antrag zu prüfen zu entscheiden.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['und'] })
+  })
+
+  it('counts a position a line strikes in its own unit, a heading in the heading, and a sentence written anew only where its wording stands (22.11.2026)', () => {
+    // The count of a line for Abs. 3 let a second stretch pass in Abs. 1.
+    const sentences = '(1) Satz A gilt. Satz B gilt auch. Satz C gilt weiter. Satz D gilt zuletzt. (2) Die Frist beträgt vier Wochen. (3) Satz E gilt. Satz F gilt zuletzt.'
+    const two = blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz.', '2. In § 5 Abs. 3 lautet der letzte Satz: „Satz G gilt neu.“')
+    expect(check(two, '(1) Satz A gilt. Satz B gilt auch. Satz C gilt weiter. (2) Die Frist beträgt vier Wochen. (3) Satz E gilt. Satz G gilt neu.', sentences)).toMatchObject({ state: 'holds' })
+    expect(check(two, '(1) Satz A gilt. Satz C gilt weiter. (2) Die Frist beträgt vier Wochen. (3) Satz E gilt. Satz G gilt neu.', sentences).state).toBe('differs')
+    // „§ 24 Abs. 2 zweiter Satz lautet:" (BSVG § 24) writes the second sentence anew; its count is no allowance for another one.
+    const rewritten = [...blocksWith('1. § 5 Abs. 1 zweiter Satz lautet:'), abs('"Die Frist beträgt sechs Wochen."')]
+    const current = '(1) Die Behörde ist zuständig. Die Frist beträgt vier Wochen. Sie ist an Weisungen nicht gebunden. (2) Die Behörde entscheidet.'
+    expect(check(rewritten, '(1) Die Behörde ist zuständig. Die Frist beträgt sechs Wochen. Sie ist an Weisungen nicht gebunden. (2) Die Behörde entscheidet.', current)).toMatchObject({ state: 'holds' })
+    expect(check(rewritten, '(1) Die Behörde ist zuständig. Die Frist beträgt sechs Wochen. (2) Die Behörde entscheidet.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    // LDG § 33: a heading line strikes nothing in the body; E-ControlG: a line quoting what it replaces strikes nothing by position.
+    expect(check([...blocksWith('1. Die Überschrift zu § 5 lautet:'), abs('"Zuständigkeit"')], '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet.', '(1) Die Behörde ist zuständig. Sie ist an Weisungen nicht gebunden. (2) Die Behörde entscheidet.').state).toBe('differs')
+    expect(check(blocksWith('1. In § 4, § 5 Abs. 2 und der Überschrift des § 6 wird der Ausdruck „Behörde“ jeweils durch den Ausdruck „Stelle“ ersetzt.'), '(1) Die Stelle ist zuständig. (2) Die Stelle entscheidet.', '(1) Die Behörde ist zuständig. Sie ist an Weisungen nicht gebunden. (2) Die Behörde entscheidet.').state).toBe('differs')
   })
 
   it('reads no struck text where the column prints nothing new ahead of the § designation', () => {
