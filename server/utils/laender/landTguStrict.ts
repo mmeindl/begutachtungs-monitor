@@ -1937,7 +1937,16 @@ function struckAccount(
     const law = !found.some((f) => f.struck?.named.includes(n))
     // The places of this § the line names („In § 1 Abs. 1, § 6, § 7 … wird der Ausdruck „Umwelt“ …"): none, or this § whole, is the whole §.
     const mine = (n.places ?? []).filter((u) => (u.level === 0 ? u.ids.some((id) => ids.has(id)) : u.path.every((x) => x.level > 0 || x.ids.some((id) => ids.has(id)))))
-    const units = law || mine.some((u) => u.level === 0) ? [] : mine
+    // „In § 31 Abs. 19 Z 1, 20 und 21": an id of the list that the column prints as no unit of the deeper level and as one of the
+    // level above is of that level — Abs. 20 and 21, not Z 20 and 21 of Abs. 19 (22.11.2026, ORF-G § 31).
+    const printed = (level: number, id: string) => left.some((_, j) => opensAt(j) && levelAt(j) === level && words[j] === id)
+    const units = (law || mine.some((u) => u.level === 0) ? [] : mine).flatMap((u) => {
+      const parent = u.path.at(-1)
+      if (!parent || parent.level !== u.level - 1 || u.ids.length < 2) return [u]
+      const up = u.ids.slice(1).filter((id) => !printed(u.level, id) && printed(parent.level, id))
+      if (!up.length) return [u]
+      return [{ ...u, ids: u.ids.filter((id) => !up.includes(id)) }, { level: parent.level, ids: up, path: u.path.slice(0, -1) }]
+    })
     // Where the column prints no unit of a level the line names around the place (the annex elides the Absatz: „(1) …"), which
     // unit it is cannot be told, and the place is not refused; it is refused where the column prints another one there.
     // A wording that opens with a designation („„(3) Das …“", printed inside Abs. 2) stands in the unit of the word before it.

@@ -651,4 +651,13 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     const z3 = blocksWith('1. In § 5 Abs. 2a Z 3 wird die Wortfolge „bei Fremden“ durch die Wortfolge „gegen Fremde“ ersetzt.')
     expect(check(z3, court.replace('3. bei Fremden', '3. gegen Fremde'), court)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
   })
+
+  it('reads an id list behind a deeper part at the level the column prints (22.11.2026)', () => {
+    // „In § 31 Abs. 19 Z 1, 20 und 21 wird die Zahl „710“ jeweils … ersetzt" (ORF-G): Abs. 20 and 21, not Z 20 and 21 of Abs. 19.
+    const fees = '(19) Das Entgelt beträgt 1. 710 Euro für Haushalte, 2. 500 Euro für Betriebe. (20) Der Zuschlag beträgt 710 Euro. (21) Die Gebühr beträgt 710 Euro. (22) Die Pauschale beträgt 710 Euro.'
+    const line = blocksWith('1. In § 5 Abs. 19 Z 1, 20 und 21 wird die Zahl „710“ jeweils durch die Zahl „780“ ersetzt.')
+    const sound = '(19) Das Entgelt beträgt 1. 780 Euro für Haushalte, 2. 500 Euro für Betriebe. (20) Der Zuschlag beträgt 780 Euro. (21) Die Gebühr beträgt 780 Euro. (22) Die Pauschale beträgt 710 Euro.'
+    expect(check(line, sound, fees)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    expect(check(line, sound.replace('Pauschale beträgt 710', 'Pauschale beträgt 780'), fees)).toMatchObject({ state: 'differs', struckNotInDraft: ['710'] })
+  })
 })
