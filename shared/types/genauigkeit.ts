@@ -35,9 +35,12 @@ export interface GenauigkeitRecord {
   /**
    * Floored fault classes tried fewer than 20 times, so the floor did not
    * hold them, written only where the builder was told to let them stand
-   * (`--erlaube-ungehalten`, 20.11.2026). No sentence reads it yet.
+   * (`--erlaube-ungehalten`, 20.11.2026). No sentence reads it yet. `path`
+   * is `pdf` or `table`, typed as a string: the record is a JSON import, and
+   * an import keeps no literal — typed narrower, the first record that
+   * carries the field fails the typecheck.
    */
-  unheld?: { path: keyof GenauigkeitPaths<unknown>; key: string; tried: number }[]
+  unheld?: { path: string; key: string; tried: number }[]
   /**
    * The commit each record of the round names, written only where they are
    * not one clean commit and the builder was told to go on
@@ -127,10 +130,11 @@ export interface GenauigkeitRecord {
      * carries a mark. `withheld` is the first of the two, and the difference
      * is not small: a wrong word in the new text is never withheld, the § is
      * shown with „nicht bestätigt" — so a sentence that says „caught" has to
-     * say which. `held` on a class the round held to the floor on that path.
+     * say which. `held` on a class the round held to the floor on that path
+     * (only ever `true`; a boolean for the same reason as `unheld`'s `path`).
      * Absent in rounds before 22.11.2026.
      */
-    chain?: GenauigkeitPaths<(GenauigkeitFault & { withheld: number; held?: true })[]>
+    chain?: GenauigkeitPaths<(GenauigkeitFault & { withheld: number; held?: boolean })[]>
   }
 
   /** The comparisons between the Bund's stations (`station.ts`). */

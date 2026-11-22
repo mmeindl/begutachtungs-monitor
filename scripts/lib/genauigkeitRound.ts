@@ -226,7 +226,7 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
   const unheld = Object.entries(faults).flatMap(([path, record]) => [
     ...(record.result ?? []).filter((f) => f.floored && f.floor !== 'nicht anwendbar' && f.tried < FLOOR_MIN_TRIES),
     ...(record.chain ?? []).filter((c) => c.floored && c.tried < FLOOR_MIN_TRIES),
-  ].map((f) => ({ path: path as 'pdf' | 'table', key: f.key, tried: f.tried })))
+  ].map((f) => ({ path, key: f.key, tried: f.tried })))
   const allowed = new Set(options.allowUnheld ?? [])
   for (const u of unheld) {
     if (!allowed.has(u.key)) refusals.push(`fi-${u.path === 'table' ? 'xml' : 'pdf'}.json: the floored class „${u.key}" was tried ${u.tried} times, fewer than ${FLOOR_MIN_TRIES}, so the floor did not hold it: pass --erlaube-ungehalten=${u.key} to write it anyway, named in the record`)
@@ -290,7 +290,7 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
     unconfirmed: annexSum((d) => d.unconfirmedParas ?? 0),
     unchecked: annexSum((d) => (d.markedParas ?? 0) + (d.markedWordParas ?? 0)),
   }
-  const chainOf = (record: FaultRecord) => (record.chain ?? []).map((c) => ({ key: c.key, tried: c.tried, caught: c.withheld + c.marked, withheld: c.withheld, ...(c.floored && c.floor === 'gehalten' ? { held: true as const } : {}) }))
+  const chainOf = (record: FaultRecord) => (record.chain ?? []).map((c) => ({ key: c.key, tried: c.tried, caught: c.withheld + c.marked, withheld: c.withheld, ...(c.floored && c.floor === 'gehalten' ? { held: true } : {}) }))
 
   /* --- The Bund's stations and the Länder ------------------------------- */
 
