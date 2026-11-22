@@ -103,10 +103,10 @@
  * closed (the payload inside the units its line names, a line that names
  * its sentence only for that sentence, a new § under an old number for
  * nothing of the old one; no chunk before the § designation and none
- * across an elision), the class builds 882 and 679 faults and is held to
- * 95 % on the PDF path. What still passes, by the growth of each class of
- * struck words over the unfaulted § of the same run (the table's rule in
- * force): on the PDF path, of 42, the Lesefassung confirming against the
+ * across an elision), the class builds 882 and 679 faults. What then still
+ * passed, by the growth of each class of struck words over the unfaulted §
+ * of the same run (the table's rule as it stood before the mark's line of
+ * 22.11.2026): on the PDF path, of 42, the Lesefassung confirming against the
  * check's objection 26; a payload 14 — of the ten reproduced one § at a
  * time, six holes (a unit the line names that the column does not print
  * where the check finds it, so the payload is not held to it, four; a line
@@ -116,9 +116,10 @@
  * twice), one not isolated; a position counted 2. On the table path, of
  * 37, the Lesefassung 27 (five of them without reading the faulted row),
  * a position counted where the column's sentences cannot be counted 9,
- * a line that writes a Ziffer's lead-in paying for the Absatz's own 1. Under the mark's line of
- * 22.11.2026 (an objection about struck text alone stands against the
- * Lesefassung) the Lesefassung cases are caught.
+ * a line that writes a Ziffer's lead-in paying for the Absatz's own 1. Under
+ * the mark's line of 22.11.2026 (an objection about struck text alone
+ * stands against the Lesefassung) the Lesefassung cases are caught, and the
+ * class is held to 95 % on both paths.
  *
  * **A sentence of another § in the right column, through the chain too**
  * (22.11.2026): R-alt and R-neu were judged by the gate alone, which catches
@@ -154,9 +155,9 @@
  * Since it holds what the column strikes against what the draft strikes,
  * what passes is struck text an instruction for the § accounts for (the
  * classes above) — in none of the misses the reviews read did the faulted
- * column agree with the draft. Zahl, Wort and neuer Satz fehlt are held to
- * 95 % under `--mindestens` (`CHAIN_FLOORED`), on both paths; behaltener
- * Satz gestrichen on the PDF path; the two foreign sentences as said above. Neuer Satz fehlt stood at
+ * column agree with the draft. Zahl, Wort, neuer Satz fehlt and behaltener
+ * Satz gestrichen are held to 95 % under `--mindestens` (`CHAIN_FLOORED`),
+ * on both paths; the two foreign sentences as said above. Neuer Satz fehlt stood at
  * 206 of 233 on the PDF path while the draft check excused missing wording
  * behind an elision mark as far as the column's edge: every one of the 27
  * misses was a § that closes on such a mark. Since the mark stands only for
@@ -768,7 +769,6 @@ const CHAIN_FLOOR = 95
  */
 const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why: string }>> = {
   bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
-  rweg: { path: 'table', why: 'die Lesefassung bestätigt den Paragraphen gegen den Einwand der Prüfung gegen den Entwurf; oder die Prüfung rechnet einen gestrichenen Satz einer Anordnung zu, die in derselben Einheit Sätze nur nach ihrer Lage streicht, wo die Spalte die Sätze der Einheit nicht abzählbar druckt (eine Liste, eine Auslassung)' },
   links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
   rneu: { path: 'table', why: 'beginnt der Paragraph des Spenders mit einer Überschrift, ist der Spender diese Überschrift; eine Überschrift am Ende des neuen Textes halten die Prüfung gegen den Entwurf und das Orakel für die des folgenden Paragraphen' },
 }
