@@ -590,4 +590,36 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(annexStrictChecks([r('§ 5.', 'Zuständigkeit', 'Zuständigkeit der Behörde'), r(null, body, body)], { ...draft, blocks: heading }).get(`${LAW}#§ 5.`)?.state).toBe('holds')
     expect(annexStrictChecks([r('§ 5.', 'Zuständigkeit', 'Zuständigkeit der Behörde'), r(null, body, 'Die Behörde ist zuständig.')], { ...draft, blocks: heading }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
   })
+
+  it('ends a unit where it ends: the closing row of a deeper list, an item run on over rows, the subject of the next clause (22.11.2026)', () => {
+    // A second review of the check: an earlier Ziffer's Litera list closing with a row of its own made the repeal of the last
+    // Ziffer take the list's Schlussteil; a repealed Ziffer printed over two rows ended with its first; „entfällt Abs. 2 und
+    // Abs. 3 erhält die Absatzbezeichnung „(2)“" repealed Abs. 3 too (GVG-B § 12).
+    const r = (gld: string | null, change: ComparisonRow['change'], current: string) => row({ law: LAW, gld, para: '§ 5.', change, current, proposed: change === 'removed' ? '' : current })
+    const closing = (z2: boolean, schluss: boolean) => [
+      r('§ 5.', 'unchanged', '(1) Die Behörde hat'),
+      r(null, 'unchanged', '1. die Identität, und zwar'),
+      r(null, 'unchanged', 'a) den Namen und'),
+      r(null, 'unchanged', 'b) das Geburtsdatum,'),
+      r(null, 'unchanged', 'jeweils urkundlich, und'),
+      r(null, z2 ? 'removed' : 'unchanged', '2. den Wohnsitz'),
+      r(null, schluss ? 'removed' : 'unchanged', 'des Antragstellers zu prüfen.'),
+      r(null, 'unchanged', '(2) Die Frist beträgt vier Wochen.'),
+    ]
+    const z2 = { ...draft, blocks: blocksWith('1. In § 5 Abs. 1 entfällt die Z 2.') }
+    expect(annexStrictChecks(closing(true, false), z2).get(`${LAW}#§ 5.`)?.state).toBe('holds')
+    expect(annexStrictChecks(closing(false, true), z2).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['des', 'antragstellers', 'zu', 'prüfen'] })
+    const dashes = [
+      r('§ 5.', 'unchanged', '(1) Die Behörde hat'),
+      r(null, 'unchanged', '1. die Identität und'),
+      r(null, 'removed', '2. den Wohnsitz, nachgewiesen durch'),
+      r(null, 'removed', '– den Meldezettel,'),
+      r(null, 'unchanged', '3. das Alter des Antragstellers zu prüfen.'),
+    ]
+    expect(annexStrictChecks(dashes, z2).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    const current = '(1) Die Behörde ist zuständig. (2) Die Hilfe umfasst die Kosten der Rückreise. (3) Der Bundesminister kann Beratungsstellen einrichten. Er bedient sich dabei der Agentur.'
+    const renumbered = blocksWith('1. In § 5 entfällt Abs. 2 und Abs. 3 erhält die Absatzbezeichnung „(2)“.')
+    expect(check(renumbered, '(1) Die Behörde ist zuständig. (2) Der Bundesminister kann Beratungsstellen einrichten. Er bedient sich dabei der Agentur.', current).state).toBe('holds')
+    expect(check(renumbered, '(1) Die Behörde ist zuständig. (2) Er bedient sich dabei der Agentur.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['der', 'bundesminister', 'kann', 'beratungsstellen', 'einrichten'] })
+  })
 })

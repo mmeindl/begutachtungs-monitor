@@ -815,6 +815,9 @@ const OWN_OBJECT_RE = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\
 const OBJECT_BEFORE_RE = /(?:^\s*(?:jeweils\s+)?|(?<!(?:Ende|nach|vor|[Ii]n|[Ii]m|zu|von|aus)\s+)(?:die|der|das|den)\s+|(?:und|sowie|,)\s+)$/u
 const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie|bis)\s*(?=(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
 
+/** An address that ends with a part of its own after „und": „Abs. 2 und Abs. 3", not „Abs. 2 und 3". */
+const JOINED_LAST_RE = /(?:und|sowie)\s*(?:die\s+|der\s+)?(?:§§?|Absatz|Abs\.?|Ziffer|Z|litera|lit\.?)\s*\S+\s*$/u
+
 /** The units a verb at `v` in `line` is said of: the addresses after it in its clause that are its objects, else the one right before it that is its subject. */
 function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): AddressUnit[] {
   const v = verbs[i]!
@@ -826,7 +829,13 @@ function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): A
   // Only where the verb opens its clause: in „§ 359 Abs. 2 entfällt und die Abs. 3 und 4 erhalten …" what follows is the next clause's subject.
   // „entfällt nach Abs. 2 der Abs. 3", „entfallen in Z 1 die Wortfolge „X“ … sowie die Z 5": a place, then the objects.
   const opensClause = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\s+)?(?:Abs\.?|Z|lit\.?)\s*\d+[a-z]*\s+)?(?:(?:die|der|das|den)\s|§|Abs|Absätze|Z\s|Ziffer|lit)/u.test(after)
-  const objects = opensClause ? [...after.matchAll(ADDRESS_RE)].filter((m) => OBJECT_BEFORE_RE.test(after.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, afterAt + m.index!))) : []
+  // „entfällt Abs. 2 und Abs. 3 erhält die Absatzbezeichnung „(2)“": the part right before the next verb is its subject (22.11.2026, GVG-B § 12).
+  const objectsOf = (m: RegExpMatchArray): AddressUnit[] => {
+    const units = addressUnits(m[0], contextAt(line, afterAt + m.index!))
+    const subject = verbs[i + 1] && verbs[i + 1]![0] !== ';' && units.length > 1 && !after.slice(m.index! + m[0].length).trim() && JOINED_LAST_RE.test(m[0])
+    return subject ? units.slice(0, -1) : units
+  }
+  const objects = opensClause ? [...after.matchAll(ADDRESS_RE)].filter((m) => OBJECT_BEFORE_RE.test(after.slice(0, m.index))).flatMap(objectsOf) : []
   if (objects.length) return objects
   // A removing verb with an object of its own — a wording („§ 42 Abs. 4 entfällt die Wendung „…“", „In Art. 11 Abs. 6 entfällt die
   // Wortfolge „…“"), a stretch it counts or describes („entfällt der letzte Satz", „der Klammerausdruck") — repeals no unit: the address before it is its place.
@@ -1780,7 +1789,13 @@ function struckAccount(
       if (!opensAt(j)) continue
       if (levelAt(j) < level) return false
       if (levelAt(j) > level) continue
-      for (let e = j + 1; e < k && !(opensAt(e) && levelAt(e) <= level); e++) if (left[e]!.row !== left[e - 1]!.row && !opensAt(e)) return true
+      // Not the row that closes the item's own deeper list (EStG § 25 shape; the second review of the check: the repeal of a
+      // last Ziffer took the list's Schlussteil because an earlier Ziffer's Litera list closed with a row of its own).
+      let deeper = false
+      for (let e = j + 1; e < k && !(opensAt(e) && levelAt(e) <= level); e++) {
+        if (opensAt(e)) deeper = true
+        else if (!deeper && left[e]!.row !== left[e - 1]!.row) return true
+      }
     }
     return false
   }
@@ -1791,6 +1806,12 @@ function struckAccount(
   // Lehre") count anew without another unit (KLRV § 22).
   const rank = (word: string): [number, string] => (/^\d/.test(word) ? [parseInt(word, 10), word.replace(/^\d+/, '')] : [word.charCodeAt(0), word.slice(1)])
   const below = (a: string, b: string) => rank(a)[0] < rank(b)[0] || (rank(a)[0] === rank(b)[0] && rank(a)[1] < rank(b)[1])
+  // A row with no designation that another item of the list follows is the item's own, run on over rows: only the last item
+  // has a Schlussteil after it (22.11.2026: a repealed Ziffer printed over two rows ended with its first).
+  const sibling = (e: number, level: number): boolean => {
+    for (let j = e; j < left.length; j++) if (opensAt(j) && levelAt(j) <= level) return levelAt(j) === level
+    return false
+  }
   const unitEnd = (k: number): number => {
     const known = ends.get(k)
     if (known !== undefined) return known
@@ -1805,7 +1826,7 @@ function struckAccount(
         last.set(levelAt(e), words[e]!)
         for (const l of last.keys()) if (l > levelAt(e)) last.delete(l)
         deeper = true
-      } else if (level >= 2 && !deeper && left[e]!.row !== left[e - 1]!.row && !runsOn(k, level)) break
+      } else if (level >= 2 && !deeper && left[e]!.row !== left[e - 1]!.row && !runsOn(k, level) && !sibling(e, level)) break
       e++
     }
     ends.set(k, e)
