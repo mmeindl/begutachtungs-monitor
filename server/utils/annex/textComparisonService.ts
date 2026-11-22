@@ -236,7 +236,9 @@ export const getTextComparison = defineCachedFunction(
       // it may stand only where Parliament carries none either. Where it is
       // there as a PDF only, the page says exactly that: it exists, we did
       // not read it — Parliament's PDF is not read, and 41 of 42 scans are
-      // the same on both sides.
+      // the same on both sides. „Nicht im Monitor" since 22.11.2026: that
+      // is the monitor's scope and no reading that failed
+      // (`parliament/vorlageTexts.ts`).
       if (!annex && atParliament) {
         return empty(
           parl.html
@@ -247,7 +249,7 @@ export const getTextComparison = defineCachedFunction(
             ? (READ_PARLIAMENT_COPY
                 ? gapDe('unreadable', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht; auslesen ließ sie sich nicht.')
                 : gapDe('outOfScope', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht. Aus dem Dokument des Parlaments lesen wir sie nicht aus: Das Parlament nimmt die Daten des Begutachtungsverfahrens von der Weiterverwendung aus, und solange das ungeklärt ist, verlinken wir sie, statt sie abzudrucken.'))
-            : gapDe('unreadable', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht, und dort nur als PDF; ein PDF des Parlaments liest der Monitor nicht aus.'),
+            : gapDe('outOfScope', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht, und dort nur als PDF; ein PDF des Parlaments liest der Monitor nicht aus.'),
           null,
           atParliament,
         )

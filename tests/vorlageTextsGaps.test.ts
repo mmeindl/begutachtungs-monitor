@@ -41,7 +41,7 @@ describe('the Vorlage’s Textgegenüberstellung where none can be read', () => 
     parliamentAnnex.mockResolvedValue({ pdf: PDF, html: null })
     const out = await getVorlageTextComparison(root('I', 101))
     expect(out.available).toBe(false)
-    expect(lead(out.unavailableReason)).toBe('unreadable')
+    expect(lead(out.unavailableReason)).toBe('outOfScope')
     expect(out.unavailableReason).toContain('nur als PDF')
     expect(out.pdf).toEqual(PDF)
   })
@@ -68,7 +68,7 @@ describe('the Vorlage’s Erläuterungen where none can be shown', () => {
   it('names a PDF-only one as not read by the monitor, and links it', async () => {
     getGegenstand.mockResolvedValue(record(['Erläuterungen', 'PDF']))
     const out = await getVorlageExplanations(root('I', 105))
-    expect(lead(out.unavailableReason)).toBe('unreadable')
+    expect(lead(out.unavailableReason)).toBe('outOfScope')
     expect(out.unavailableReason).toContain('nur als PDF')
     expect(out.document?.url).toMatch(/\.pdf$/)
   })

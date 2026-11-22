@@ -3314,7 +3314,10 @@ the reasoning in full stands in that component's header comment.
   from a gap already named („Ganze Paragraphen in der vorgeschlagenen
   Fassung zeigt der Monitor deshalb auch nicht …"). A record that lists no document
   proves no absence: a missing Erläuterungen document is „Nicht lesbar",
-  never „Nicht veröffentlicht". Kept apart on purpose: the verification
+  never „Nicht veröffentlicht". A kind of document the monitor does not
+  read at a source is its scope and no failed reading: „Nicht im Monitor: …
+  ein PDF des Parlaments liest der Monitor nicht aus" (22.11.2026, „Nicht
+  lesbar" until then). Kept apart on purpose: the verification
   check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the Lesefassung's
   per-§ reasons, and the
   list's count line, whose clauses already say „gerade nicht abrufbar".

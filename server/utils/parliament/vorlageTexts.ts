@@ -18,6 +18,12 @@
  * A document Parliament's list does not hold is one the monitor did not
  * find, never one Parliament did not publish: a list proves no absence
  * (21.11.2026; until then both sections said „nicht veröffentlicht").
+ *
+ * A DOCUMENT PARLIAMENT HOLDS AS A PDF ONLY IS „NICHT IM MONITOR", not
+ * „Nicht lesbar" (22.11.2026): no reading of this document failed. The
+ * monitor reads none of Parliament's PDFs, which is its scope, for every
+ * document of the kind (`shared/utils/gaps.ts`, `outOfScope`). Nothing in
+ * law stands against reading a Vorlage's; it is not built.
  */
 import { gapDe } from '#shared/utils/gaps'
 import type { ExplanationsResponse, TextComparisonResponse, TraceLink } from '#shared/types'
@@ -56,7 +62,7 @@ export const getVorlageTextComparison = defineCachedFunction(
       return emptyComparison(
         who,
         annex.pdf
-          ? gapDe('unreadable', `Die Textgegenüberstellung ${what} liegt beim Parlament nur als PDF vor; ein PDF des Parlaments liest der Monitor nicht aus.`)
+          ? gapDe('outOfScope', `Die Textgegenüberstellung ${what} liegt beim Parlament nur als PDF vor; ein PDF des Parlaments liest der Monitor nicht aus.`)
           : gapDe('unreadable', `Unter den Dokumenten des Parlaments ${what} fand der Monitor keine Textgegenüberstellung.`),
         null,
         annex.pdf,
@@ -129,7 +135,7 @@ export const getVorlageExplanations = defineCachedFunction(
     if (!html) {
       return emptyExplanations(
         pdf
-          ? gapDe('unreadable', 'Die Erläuterungen dieser Regierungsvorlage liegen beim Parlament nur als PDF vor; ein PDF des Parlaments liest der Monitor nicht aus.')
+          ? gapDe('outOfScope', 'Die Erläuterungen dieser Regierungsvorlage liegen beim Parlament nur als PDF vor; ein PDF des Parlaments liest der Monitor nicht aus.')
           : gapDe('unreadable', 'Unter den Dokumenten des Parlaments zu dieser Regierungsvorlage fand der Monitor keine Erläuterungen.'),
         document,
       )
