@@ -257,12 +257,21 @@ export interface Wording {
   once?: boolean
   /** A payload under a line that only adds („folgender Abs. 4 wird angefügt:"): it replaces no word the column strikes. */
   adds?: true
-  /** …or under a line that writes a unit below the § anew („§ 24 Abs. 1 lautet: § 24. „(1) …“"): printed from the §'s designation on, it still rewrites only that unit. */
+  /**
+   * …or under a line that writes a unit below the § anew, or a part of one („§ 24 Abs. 1 lautet: § 24. „(1) …“", „§ 24 Abs. 1
+   * erster Satz lautet:"): printed from the §'s designation on, it still rewrites only what its line names (`payloadUnits`).
+   */
   part?: true
   /** A payload's instruction line: what it writes anew, the line says (`struckAccount`). */
   line?: string
-  /** A quoted wording whose line also quotes the wording it replaces („„X“ durch „Y“ ersetzt"): what it strikes, the line names. */
-  replacing?: true
+  /**
+   * A quoted wording that stands for text its line replaces without quoting it („lautet der erste Satz: „…“", „wird der letzte
+   * Satz durch den Satz „…“ ersetzt"): the verb of its clause writes anew, and the line quotes no wording as old. Only such a
+   * wording accounts for struck words between its own (`struckAccount`). One a line inserts („nach dem Wort „mit“ wird die
+   * Wortfolge „1. Oktober 2027“ eingefügt") strikes nothing, and one beside a quoted old wording („„X“ durch „Y“ ersetzt")
+   * replaces what the line names.
+   */
+  bridges?: true
   /**
    * A designation the instruction gives („erhält die Absatzbezeichnung
    * „(5)""): a single token accounts only for a place printed as a
@@ -326,9 +335,14 @@ const QUOTE_RE = new RegExp(`[${OPEN}]([^${OPEN}${CLOSE}]*)[${CLOSE}]`, 'gu')
 const REMOVING = 'entfällt|entfallen|aufgehoben|gestrichen'
 const ADDING = 'eingefügt|angefügt|vorangestellt|angehängt|ergänzt'
 const VERB_RE = new RegExp(`(?<![\\p{L}])(${REMOVING}|${ADDING}|ersetzt|lautet|lauten)(?![\\p{L}])`, 'u')
-const UNIT_WORD = '(?:Wort(?:e|es|folge|folgen|laut|lautes|gruppe)?|Wörter|Wörtern|Ausdruck(?:es|s)?|Ausdrücke|Zitat(?:es|s|e)?|Verweis(?:es|ung)?|Wendung|Zeichenfolge|Wort-\\s+und\\s+Zeichenfolge|Klammerausdruck(?:es|s)?|Klammerzitat(?:es|s)?|Betrag(?:es|s)?|Zahl|Ziffer|Datum|Satzteil(?:es|s)?|Halbsatz(?:es)?|Begriff(?:es|s)?|Bezeichnung|Abkürzung|Jahreszahl|Prozentsatz(?:es)?|Text(?:es|s)?|Passage|Überschrift)'
-/** „nach dem Wort „X"", „vor der Wortfolge „X"" — and at the line's start, „Nach der Überschrift „X"" (Oö. 2026-16124): the place, not the text. */
-const ANCHOR_RE = new RegExp(`(?<![\\p{L}])(?:[Nn]ach|[Vv]or|[Hh]inter)\\s+(?:de[mnr]\\s+|die\\s+|das\\s+)?(?:\\p{L}+\\s+)?${UNIT_WORD}\\s*$`, 'u')
+const UNIT_WORD = '(?:Wort(?:e|es|folge|folgen|laut|lautes|gruppe)?|Wörter|Wörtern|Ausdruck(?:es|s)?|Ausdrücke|Zitat(?:es|s|e)?|Verweis(?:es|ung)?|Wendung|Zeichenfolge|Wort-\\s+und\\s+Zeichenfolge|Klammerausdruck(?:es|s)?|Klammerzitat(?:es|s)?|Betrag(?:es|s)?|Zahl|Ziffer|Datum|Satzteil(?:es|s)?|Halbsatz(?:es)?|Begriff(?:es|s)?|Bezeichnung|Abkürzung|Jahreszahl|Prozentsatz(?:es)?|Text(?:es|s)?|Passage|Überschrift|Nummerierung|Zahlenfolge|Wort-\\s+und\\s+Zahlenfolge)'
+/**
+ * „nach dem Wort „X"", „vor der Wortfolge „X"" — and at the line's start, „Nach der Überschrift „X"" (Oö. 2026-16124): the
+ * place, not the text. Bare too („der Strichpunkt nach „überschreiten“", „das Wort „und“ vor „Geburtsdatum“"), and whatever
+ * follows it: in „wird nach „zu tragen hat“ der Punkt durch einen Beistrich ersetzt" the full stop is replaced, and read as
+ * the old wording the quotation accounted for its own words struck (22.11.2026, a review of the grammar).
+ */
+const ANCHOR_RE = new RegExp(`(?<![\\p{L}])(?:[Nn]ach|[Vv]or|[Hh]inter)\\s+(?:(?:de[mnr]\\s+|die\\s+|das\\s+)?(?:\\p{L}+\\s+)?${UNIT_WORD}\\s*)?$`, 'u')
 const NEW_AFTER_RE = /:\s*$|(?<![\p{L}])(?:lautet|lauten|eingefügt|angefügt|vorangestellt|\p{L}*[Bb]ezeichn?ung(?:en)?|folgende[rnms]?(?:\s+\p{L}+){0,3})\s*$/u
 
 type Role = 'new' | 'old' | 'anchor' | null
@@ -392,7 +406,7 @@ const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jewei
  * Read clause by clause, since German puts the verb at either end:
  * „entfällt die Wortfolge „X"" and „wird die Wortfolge „X" gestrichen".
  */
-export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean; range: boolean }[] {
+export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean; range: boolean; rewrites: boolean }[] {
   const line = withoutResidue(raw)
   const quotes = [...line.matchAll(QUOTE_RE)]
   const bounds = [...line.matchAll(CLAUSE_RE)].map((m) => m.index)
@@ -407,10 +421,10 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     const designation = DESIGNATION_BEFORE_RE.test(before) && DESIGNATION_TEXT_RE.test(m[1]!)
     // „„X“ durch …", „„X“ wird durch …" (Oö. 2026-16120), „„und“ am Ende durch einen Punkt ersetzt" (2026-16124, Tirol 575/2026): the old wording.
     // So are „„X“ ersetzt durch „Y“" and „„X“ wird in § 7a Abs. 2 durch „Y“ ersetzt" (the Bund, 21.11.2026), and „an die Stelle der Wortfolge „X“".
-    if (/^\s*(?:(?:wird|werden)\s+)?(?:jeweils\s+)?(?:ersetzt\s+)?durch(?![\p{L}])/u.test(after) || OLD_BEFORE_DURCH_RE.test(after) || REPLACED_BY_SIGN_RE.test(after)) role = 'old'
+    if (ANCHOR_RE.test(before)) role = 'anchor'
+    else if (/^\s*(?:(?:wird|werden)\s+)?(?:jeweils\s+)?(?:ersetzt\s+)?durch(?![\p{L}])/u.test(after) || OLD_BEFORE_DURCH_RE.test(after) || REPLACED_BY_SIGN_RE.test(after)) role = 'old'
     else if (IN_PLACE_OF_RE.test(before)) role = 'old'
     else if (/(?<![\p{L}])durch\s+(?:\p{L}+[\s-]+){0,5}$/u.test(before)) role = 'new'
-    else if (ANCHOR_RE.test(before)) role = 'anchor'
     // A designation the line removes, not one it gives (`removesDesignation`).
     else if (designation && removesDesignation(line.slice(0, start), after)) role = 'old'
     else if (NEW_AFTER_RE.test(before) || /^\s*bezeichnet(?![\p{L}])/u.test(after)) role = 'new'
@@ -437,9 +451,13 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     const clauseEnd = bounds.find((b) => b >= q.end) ?? line.length
     const head = line.slice(clauseStart, q.start).replace(QUOTE_RE, ' ')
     const tail = line.slice(q.end, clauseEnd).replace(QUOTE_RE, ' ')
-    // „entfällt das Wort „X" und nach dem Wort „Y" wird die Wortfolge „Z" eingefügt": an auxiliary since the last quotation opens a clause whose verb comes after.
-    const verbLast = /(?<![\p{L}])(?:wird|werden|hat|haben)(?![\p{L}])/u.test(q.before)
-    const verb = !verbLast && /(?<![\p{L}])(?:entfällt|entfallen)(?![\p{L}])/u.test(head) ? 'entfällt' : VERB_RE.exec(tail)?.[1]
+    // „entfällt das Wort „X" und nach dem Wort „Y" wird die Wortfolge „Z" eingefügt": an auxiliary behind the last „entfällt" opens a
+    // clause whose verb comes after — wherever it stands since, not only since the last quotation („entfällt die Wendung „X“; in
+    // § 81 Abs. 1 wird überdies vor dem Wort „Y“ die Wendung „Z“ eingefügt": read as struck, the inserted wording was never held,
+    // and a column without it passed; 22.11.2026, EU-JZG § 81).
+    const removing = [...head.matchAll(/(?<![\p{L}])(?:entfällt|entfallen)(?![\p{L}])/gu)].at(-1)
+    const verbLast = removing !== undefined && /(?<![\p{L}])(?:wird|werden|hat|haben)(?![\p{L}])/u.test(head.slice(removing.index))
+    const verb = !verbLast && removing ? 'entfällt' : VERB_RE.exec(tail)?.[1]
     if (verb && new RegExp(`^(?:${REMOVING})$`).test(verb)) q.role = 'old'
     else if (verb && new RegExp(`^(?:${ADDING})$`).test(verb)) q.role = 'new'
   }
@@ -447,7 +465,17 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
   // „die Bezeichnungen „4.“ und „5.“": a list of designations.
   for (let i = 1; i < out.length; i++) if (out[i - 1]!.designation && out[i]!.role === out[i - 1]!.role && LIST_RE.test(out[i]!.before) && DESIGNATION_TEXT_RE.test(out[i]!.text)) out[i]!.designation = true
   // A designation, given (`new`) or removed or replaced (`old`): held, and struck, only where the column prints it as one.
-  return out.map(({ text, role, designation, range }) => ({ text, role: inexact && role === 'new' ? null : role, designation: (role === 'new' || role === 'old') && designation, range }))
+  // Whether the verb of a new wording's clause writes text anew („lautet", „ersetzt") — not one that inserts it: the verb right
+  // behind it („die Wortfolge „X“ eingefügt", „durch den Satz „X“ ersetzt"), else the last before it („lautet der erste Satz: „X“").
+  const rewrites = (q: (typeof out)[number]): boolean => {
+    if (q.role !== 'new') return false
+    const clauseStart = bounds.filter((b) => b < q.start).at(-1) ?? 0
+    const clauseEnd = bounds.find((b) => b >= q.end) ?? line.length
+    const behind = new RegExp(`^\\s*(?:(?!(?:und|sowie|oder)(?![\\p{L}]))[\\p{L}\\d.§-]+\\s+){0,4}?${VERB_RE.source}`, 'u').exec(line.slice(q.end, clauseEnd).replace(QUOTE_RE, ' '))?.[1]
+    const verb = behind ?? [...line.slice(clauseStart, q.start).replace(QUOTE_RE, ' ').matchAll(new RegExp(VERB_RE.source, 'gu'))].at(-1)?.[1]
+    return verb !== undefined && /^(?:lautet|lauten|ersetzt)$/u.test(verb)
+  }
+  return out.map((q) => ({ text: q.text, role: inexact && q.role === 'new' ? null : q.role, designation: (q.role === 'new' || q.role === 'old') && q.designation, range: q.range, rewrites: rewrites(q) }))
 }
 
 /** A block that opens with a § designation: „§ 2. (1) Die …", „„§ 21a", „§ 20a". */
@@ -646,6 +674,14 @@ function removesPayload(line: string): boolean {
   return last !== undefined && new RegExp(`^(?:${REMOVING})$`).test(last)
 }
 
+/**
+ * Whether a line's own words, its quotations aside, write text anew („lautet", „ersetzt", „an die Stelle") rather than only add
+ * it: what such a line prints as new stands for text it replaces (`Wording.bridges`, for a heading the caller reads off a block).
+ */
+export function writesAnew(raw: string): boolean {
+  return /(?<![\p{L}])(?:lautet|lauten|ersetzt|anstelle|Stelle)(?![\p{L}])/u.test(withoutResidue(raw).replace(QUOTE_RE, ' '))
+}
+
 /** A unit's id: „5", „5a", „1.08", a Litera „c", a Sublitera „cc" — never a word („in"). */
 const UNIT_ID = String.raw`(?:\d+(?:\.\d+)*[a-z]*|(?:aa|bb|cc|dd|ee|ff|gg|hh|ii|jj|kk|ll|mm|nn|[a-z])(?![a-z])|[IVXLC]+(?![\p{L}]))`
 const UNIT_IDS = String.raw`${UNIT_ID}(?:\s*(?:,|und|bis|sowie)\s*${UNIT_ID})*`
@@ -830,14 +866,46 @@ let walked: { line: string; at: { end: number; context: AddressPart[] }[] } | nu
 /** What a removing verb's clause opens with where its object is no unit: an article and a word that is no address part („entfällt die Wortfolge", „der letzte Satz"), not „die bisherige Z 6". */
 const OWN_OBJECT_RE = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\s+)?(?:Abs\.?|Z|lit\.?)\s*\d+[a-z]*\s+)?(?:die|der|das|den)\s+(?!(?:§|Art|Artikel|Anlagen?|Anh(?:ang|änge)|Absätze|Absatz|Abs|Ziffern|Ziffer|Z|litera|lit|sublit|bisherigen?|nunmehrigen?)(?![\p{L}]))\p{L}/u
 
-/** An address part said of the verb as its object: after an article, or first after the verb — not a place („in Abs. 1", „am Ende der Z 5"). */
-const OBJECT_BEFORE_RE = /(?:^\s*(?:jeweils\s+)?|(?<!(?:Ende|nach|vor|[Ii]n|[Ii]m|zu|von|aus)\s+)(?<![\p{L}])(?:die|der|das|den)\s+|(?:(?<![\p{L}])(?:und|sowie)|,)\s+)$/u
+/** A place ahead of a clause's objects: „entfällt nach Abs. 2 der Abs. 3", „entfallen in Z 1 die Wortfolge „X“ sowie die Z 5". */
+const CLAUSE_PLACE = String.raw`(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\s+)?(?:Abs\.?|Z|lit\.?)\s*\d+[a-z]*\s+)?`
+/**
+ * An address part said of the verb as its object: first after the verb or after a joiner, with its article — not a place
+ * („in Abs. 1", „am Ende der Z 5"), and not what a noun before it is said of: in „entfällt der letzte Satz der Z 3", „der
+ * Verweis auf die Z 3", „die Überschrift der Anlage 2" the article belongs to that noun's attribute, and read as an object's
+ * it made the line repeal the Ziffer or the Anlage whole (22.11.2026, a review of the grammar after „folgender" had been read
+ * as „der").
+ */
+const OBJECT_BEFORE_RE = new RegExp(String.raw`(?:^\s*(?:jeweils\s+)?|(?:(?<![\p{L}])(?:und|sowie)|,)\s+)${CLAUSE_PLACE}(?:(?:die|der|das|den)\s+)?$`, 'u')
+/**
+ * What may stand before an address that is its verb's subject: nothing, the line's number, a joiner, an article, „bisherige".
+ * Never a noun the address belongs to — „Der letzte Satz des § 5 Abs. 2 entfällt" repeals no Absatz, „Die Überschriften zu
+ * den §§ 20 bis 43 entfallen" no §, „Punkt 5 der Anlage 1 lautet:" writes no Anlage anew (22.11.2026: each was read so, and
+ * all the column struck in the unit was accounted for). The line's number stands at the line's start only, and a full stop
+ * opens a clause only as a sentence's end: „Punkt 5. der Anlage 1" and „Abs. 4 der Anlage 1" open none.
+ */
+const HEAD = String.raw`(?:^\s*(?:[„»"]?(?:\d+(?:\.\d+)*[a-z]?\.?|[a-z]{1,2}\)|\(\d+[a-z]?\))\s*){0,2}|[;:]\s*|\.\s+(?=[\p{Lu}§]|$)|(?<![\p{L}])(?:und|sowie|oder)\s+|,\s*)(?:(?:\([^()]{1,60}\)|\[[^[\]]{1,160}\])\s*)*`
+/**
+ * The units a line names above the address, with nothing between: „§ 14 Abs. 3 Z 2 …", „Anlage 2 Z 2 lit. b …" — only parts the
+ * reader knows. Below one it does not know („§ 14 Tarifpost 6 Abs. 3 lautet:", „Anlage 2 Teil III Z 2 lit. b lautet:") the
+ * address is not located: the column may print an „(3)" in every Tarifpost.
+ */
+const ABOVE = String.raw`(?:(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Abs\.?|Z|lit\.?)\s*[\dIVXLC]+[a-z]*\d*(?:\.\s*|\s+))*`
+const OWN_ARTICLE = String.raw`(?:(?:[Dd]ie|[Dd]er|[Dd]as|[Dd]en|[Ss]eine?|[Ii]hre?|[Dd]essen|[Dd]eren)\s+)?(?:(?:bisherigen?|nunmehrigen?|neuen?|alten?)\s+)?`
+const SUBJECT_HEAD_RE = new RegExp(String.raw`${HEAD}${OWN_ARTICLE}${ABOVE}$`, 'u')
+/** …and before the address „lautet" is said of, „In" too („In § 19 Z 3 lautet neu:"). */
+const WRITTEN_HEAD_RE = new RegExp(String.raw`${HEAD}(?:(?:[Ii]n|[Ii]m)\s+(?:de[rnm]\s+)?)?${OWN_ARTICLE}${ABOVE}$`, 'u')
+/** Between that address and its verb: nothing of its own — not „erster Satz", „1. Satz", „Tabelle 3", which name a part of the unit. */
+const WRITTEN_TAIL_RE = /^\.?\s*(?:\(neu\)\s*)?(?:in\s+der\s+Fassung\s+[^„“"]{1,80}?\s*)?,?\s*(?:jeweils\s+)?(?:samt\s+(?:der\s+|den\s+)?\p{L}*(?:[Üü]berschrift|bezeichnung)(?:en)?(?:\s+und\s+\p{L}*(?:[Üü]berschrift|bezeichnung)(?:en)?)?\s*)?,?\s*(?:jeweils\s+)?(?:die\s+\p{L}*[Bb]ezeichn?ung(?:en)?\s*(?:„“\s*)?(?:,\s*|und\s+)?)?$/u
+/** …and behind the verb: „§ 270 Abs. 1 lautet Satz 7:" writes a sentence, „§ 5 lautet samt Überschrift wie folgt:" the §. */
+const WRITTEN_AFTER_RE = /^\s*(?:\(neu\)\s*)?(?:(?:jeweils|nunmehr|künftig|neu|wie\s+folgt|folgendermaßen|samt\s+(?:der\s+|den\s+)?\p{L}*[Üü]berschrift(?:en)?)\s*)*[:.]?\s*(?:\(?\s*siehe(?:\s+\p{Lu}\p{L}*)?\s*\)?\s*)?(?:„“\s*)?[.;,]?\s*$/u
+/** Before a unit a line replaces by „durch folgende …": the clause's head or its auxiliary („werden Z 1 bis 3 durch folgende Z 1 und 2 ersetzt"). */
+const REPLACED_HEAD_RE = new RegExp(String.raw`(?:${HEAD}|(?<![\p{L}])(?:wird|werden)\s+)${OWN_ARTICLE}${ABOVE}$`, 'u')
 /** Where the clause of a removing verb ends: the next one opens with its auxiliary („entfällt § 16b und wird folgender § 23 … eingefügt"). */
 const NEXT_CLAUSE_RE = /(?:(?<![\p{L}])(?:und|sowie)|,)\s+(?:es\s+)?(?:wird|werden)(?![\p{L}])/u
 const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie|bis)\s*(?=(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
 
-/** An address that ends with a part of its own after „und": „Abs. 2 und Abs. 3", not „Abs. 2 und 3". */
-const JOINED_LAST_RE = /(?:und|sowie)\s*(?:die\s+|der\s+)?(?:§§?|Absatz|Abs\.?|Ziffer|Z|litera|lit\.?)\s*\S+\s*$/u
+/** An address that ends with a part of its own after „und" or a comma: „Abs. 2 und Abs. 3", „Abs. 2, Abs. 3", not „Abs. 2 und 3". */
+const JOINED_LAST_RE = /(?:und|sowie|,)\s*(?:die\s+|der\s+)?(?:§§?|Absatz|Abs\.?|Ziffer|Z|litera|lit\.?)\s*\S+\s*$/u
 
 /** The units a verb at `v` in `line` is said of: the addresses after it in its clause that are its objects, else the one right before it that is its subject. */
 function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): AddressUnit[] {
@@ -866,7 +934,8 @@ function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): A
   // „entfällt die Z 2, die Z 3 erhält die Bezeichnung …", „entfallen die Abs. 2 und 3 und die Abs. 4 und 5 erhalten …", „… und
   // der Z 3 wird folgender Satz angefügt": a further address right before the next verb or its auxiliary is that clause's
   // subject, not a second thing removed.
-  const behind = named.length > 1 ? clause.slice(named.at(-1)!.index! + named.at(-1)![0].length) : null
+  // …and so is a lone one where the clause has an object of its own before it („entfällt der zweite Satz, die Z 3 erhält …").
+  const behind = named.length > 1 || (named.length === 1 && OWN_OBJECT_RE.test(after)) ? clause.slice(named.at(-1)!.index! + named.at(-1)![0].length) : null
   const nextSubject = removes && behind !== null && (/^\s*(?:wird|werden)(?![\p{L}])/u.test(behind) || (!behind.trim() && verbs[i + 1] !== undefined && verbs[i + 1]![0] !== ';'))
   const objects = (nextSubject ? named.slice(0, -1) : named).flatMap(objectsOf)
   if (objects.length) return objects
@@ -874,7 +943,9 @@ function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): A
   // Wortfolge „…“"), a stretch it counts or describes („entfällt der letzte Satz", „der Klammerausdruck") — repeals no unit: the address before it is its place.
   if (removes && OWN_OBJECT_RE.test(after)) return []
   // „In § 19 Z 3 lautet neu:": what „lautet" is said of, where it has no object, is the address before it, „In" or not.
-  if (/^laute[tn]$/u.test(v[0])) return after.search(ADDRESS_RE) >= 0 ? [] : [...before.matchAll(ADDRESS_RE)].slice(-1).filter((m) => !/(?:^|\s)(?:nach|vor|zu|von)\s*$/u.test(before.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, beforeAt + m.index!)))
+  // Only an address at the head of its clause, with nothing of its own between it and the verb: „Punkt 7 Abs. 3 erster Satz der
+  // Anlage 1 lautet:" writes a sentence, not the Anlage, and „§ 92 Abs. 7 erster Satz lautet wie folgt:" not the Absatz.
+  if (/^laute[tn]$/u.test(v[0])) return after.search(ADDRESS_RE) >= 0 || !WRITTEN_AFTER_RE.test(after) ? [] : [...before.matchAll(ADDRESS_RE)].slice(-1).filter((m) => WRITTEN_HEAD_RE.test(before.slice(0, m.index)) && WRITTEN_TAIL_RE.test(before.slice(m.index + m[0].length))).flatMap((m) => addressUnits(m[0], contextAt(line, beforeAt + m.index!)))
   // „§ 5 Abs. 3 entfällt", „und die Z 6 entfällt", „§ 21 wird ersatzlos gestrichen", „§ 56 samt Überschrift entfällt".
   return subjectUnits(before, (at) => contextAt(line, beforeAt + at))
 }
@@ -900,7 +971,7 @@ function subjectUnits(before: string, context: (at: number) => AddressPart[] = (
   if (last < 0 || !filler(before.slice(parts[last]!.index! + parts[last]![0].length))) return []
   let first = last
   while (first > 0 && filler(before.slice(parts[first - 1]!.index! + parts[first - 1]![0].length, parts[first]!.index))) first--
-  if (PLACE_BEFORE_RE.test(before.slice(0, parts[first]!.index))) return []
+  if (PLACE_BEFORE_RE.test(before.slice(0, parts[first]!.index)) || !SUBJECT_HEAD_RE.test(before.slice(0, parts[first]!.index))) return []
   return addressUnits(before.slice(parts[first]!.index, parts[last]!.index! + parts[last]![0].length), context(parts[first]!.index!))
 }
 
@@ -937,7 +1008,7 @@ function replacedOf(raw: string): AddressUnit[] {
     // „… werden Z 1 bis 3 durch folgende Z 1 und 2 ersetzt": what stands before „durch".
     const from = i > 0 ? verbs[i - 1]!.index! + verbs[i - 1]![0].length : 0
     const durch = v[0] === 'ersetzt' ? /^(.*?)(?<![\p{L}])durch\s+(?:die\s+)?folgende/u.exec(line.slice(from, v.index)) : null
-    return durch ? [...durch[1]!.matchAll(ADDRESS_RE)].filter((m) => !PLACE_BEFORE_RE.test(durch[1]!.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, from + m.index!))) : []
+    return durch ? [...durch[1]!.matchAll(ADDRESS_RE)].filter((m) => !PLACE_BEFORE_RE.test(durch[1]!.slice(0, m.index)) && REPLACED_HEAD_RE.test(durch[1]!.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, from + m.index!))) : []
   }).filter((u) => u.ids.length)
 }
 
@@ -1005,12 +1076,19 @@ function positionsOf(raw: string): { count: number; sentences: number[] | null; 
   let whole = true
   const sentences: (number | null)[] = []
   // „wird der letzte Satz durch den folgenden Satz ersetzt": the new sentence, no position.
-  const place = (at: number) => /(?:^|\s)(?:[Ii]m|[Ii]n|nach|vor|von|zu|dem|durch)\s*$/u.test(line.slice(0, at))
+  const place = (at: number) => /(?:^|\s)(?:[Ii]m|[Ii]n|[Nn]ach|[Vv]or|[Vv]on|[Zz]u|dem|[Dd]urch)\s*$/u.test(line.slice(0, at))
   // Bare, the position is struck only by a verb right after it with nothing else to strike: „zweiter Satz entfällt."
   // …and „§ 51 zweiter Satz wird durch folgende Sätze ersetzt" (RAO), the position the subject „durch" replaces.
-  const struckBare = (end: number) => new RegExp(`^\\s*(?:${REMOVING}|wird\\s+aufgehoben|werden\\s+aufgehoben|lautet|lauten)(?![\\p{L}])\\s*(?:[.;:,]|und\\s|$)|^\\s*(?:wird|werden)\\s+durch(?![\\p{L}])`, 'u').test(line.slice(end))
+  // A position the line names by a quotation it strikes or replaces right behind it: the quotation accounts for it.
+  const roles = quoteRoles(raw)
+  const quotedOld = (end: number) => /^\s*„“/u.test(line.slice(end)) && roles[(line.slice(0, end).match(/„“/gu) ?? []).length]?.role === 'old'
+  const struckBare = (end: number) => new RegExp(`^\\s*(?:${REMOVING}|wird\\s+aufgehoben|werden\\s+aufgehoben|lautet|lauten)(?![\\p{L}])(?:\\s+(?:wie\\s+folgt|neu))?\\s*(?:[.;:,]|und\\s|$)|^\\s*(?:wird|werden)\\s+durch(?![\\p{L}])`, 'u').test(line.slice(end))
   for (const m of line.matchAll(BY_ORDINAL_RE)) {
-    if (place(m.index) || (!m[1] && !struckBare(m.index + m[0].length))) continue
+    // „… ohne Nummerierung, dem folgender Satz angefügt wird": the word before is no article of „folgender", and the sentence is one the line adds.
+    const article = m[1] !== undefined && !/^folgende[rs](?![\p{L}])/u.test(m[2]!)
+    if (place(m.index) || (!article && !struckBare(m.index + m[0].length))) continue
+    // „der erste Satz erhält die Absatzbezeichnung „(1)“" keeps the sentence; „der erste Klammerausdruck „X“ durch … ersetzt" names what it strikes.
+    if (/^\s*(?:erhält|erhalten)(?![\p{L}])/u.test(line.slice(m.index + m[0].length)) || quotedOld(m.index + m[0].length)) continue
     // „die beiden ersten", „die letzten beiden": two; „der dritte bis sechste": four.
     const at = [...m[2]!.matchAll(new RegExp(`((?:beiden\\s+(?:ersten|letzten)|(?:ersten|letzten)\\s+beiden)[nrsm]?|${ORDINAL})|(?<![\\p{L}])bis(?![\\p{L}])`, 'gu'))].map((o) => (o[1] ? ordinalAt(o[1]) : 'bis' as const))
     const named: (number | null)[] = []
@@ -1037,7 +1115,7 @@ function positionsOf(raw: string): { count: number; sentences: number[] | null; 
   }
   // „der Überschrift des § 38" in the list of places of a line that quotes what it replaces (E-ControlG, 22.11.2026: „In § 4, …
   // der Überschrift des § 38, … wird der Ausdruck „E-Control“ jeweils durch … ersetzt" counted twelve positions in each §): a place.
-  const quotesOld = quoteRoles(raw).some((q) => q.role === 'old')
+  const quotesOld = roles.some((q) => q.role === 'old')
   const ofAddress = (end: number) => quotesOld && /^\s*(?:des|der|zu|zum|zur)\s+(?:§|Art|Anl|\d|[IVXL]+\.|(?:\d+\.\s*)?(?:Abschnitt|Unterabschnitt|Hauptstück|Teil))/u.test(line.slice(end))
   for (const m of line.matchAll(BY_DESCRIPTION_RE)) {
     if (place(m.index) || ofAddress(m.index + m[0].length) || !(m[1] || struckBare(m.index + m[0].length))) continue
@@ -1131,7 +1209,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         const roles = run.line === null ? [] : quoteRoles(run.line)
         for (const quote of roles) {
           const tokens = quote.role === 'new' ? strictTokens(quote.text) : []
-          if (tokens.length) into.general.push({ tokens, optional: tokens.map(() => false), repeats: true, ...(quote.designation ? { designation: true } : {}), ...(roles.some((q) => q.role === 'old') ? { replacing: true as const } : {}) })
+          if (tokens.length) into.general.push({ tokens, optional: tokens.map(() => false), repeats: true, ...(quote.designation ? { designation: true } : {}), ...(quote.rewrites && !roles.some((q) => q.role === 'old') ? { bridges: true as const } : {}) })
         }
         into.general.push(...rangeDesignations(roles).map(designationWording))
       }
@@ -1164,13 +1242,13 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         if (quote.role !== 'new') continue
         const tokens = strictTokens(quote.text)
         if (!tokens.length) continue
-        for (const key of keys) at(draft.law, key).wordings.push({ tokens, optional: tokens.map(() => false), repeats: true, once: keys.length === 1, ...(quote.designation ? { designation: true } : {}), ...(roles.some((q) => q.role === 'old') ? { replacing: true as const } : {}) })
+        for (const key of keys) at(draft.law, key).wordings.push({ tokens, optional: tokens.map(() => false), repeats: true, once: keys.length === 1, ...(quote.designation ? { designation: true } : {}), ...(quote.rewrites && !roles.some((q) => q.role === 'old') ? { bridges: true as const } : {}) })
       }
       if (!run.payload.length || removesPayload(run.line ?? '')) continue
       const pieces = payloadPieces(run.payload)
       // A line that only adds — „angefügt", „eingefügt", „vorangestellt", not „anstelle des dritten Satzes … eingefügt" (ARHG § 31).
       const bare = withoutResidue(run.line ?? '').replace(QUOTE_RE, ' ')
-      const adds = new RegExp(`(?<![\\p{L}])(?:${ADDING})(?![\\p{L}])`, 'u').test(bare) && !/(?<![\p{L}])(?:lautet|lauten|ersetzt|anstelle|Stelle)(?![\p{L}])/u.test(bare) ? { adds: true as const } : replacedOf(run.line ?? '').some((u) => u.level > 0) ? { part: true as const } : {}
+      const adds = new RegExp(`(?<![\\p{L}])(?:${ADDING})(?![\\p{L}])`, 'u').test(bare) && !writesAnew(run.line ?? '') ? { adds: true as const } : payloadUnits(run.line ?? '').length ? { part: true as const } : {}
       const keyed = pieces.some((p) => p.key !== null)
       for (const piece of pieces) {
         if (piece.key !== null) {
@@ -1614,12 +1692,14 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   const aligned = align(shown.map((t, i) => ({ word: t.word, marked: t.marked && !placed[i] })), draft, wild)
   const accounted = shown.map((_, i) => placed[i]! || aligned.shown[i]!)
   const quoted = [...all.filter((x) => x.repeats), ...general].map((w) => w.tokens)
-  // Those that account for struck words between their own (`struckAccount`): not one whose line quotes what it replaces
-  // („„1. April 2026“ durch „1. Oktober 2027“ ersetzt"). Such a line names what it strikes, and between two words of its new
-  // wording stands nothing else the draft removes (a third review: a clause the draft keeps, dropped between a date's day and
-  // its year, was accounted for, GrEStG § 18; and so were „1982", „(TEN-E-VO)" and a verb that five annexes strike beside the
-  // wording their draft replaces).
-  const bridging = [...all.filter((x) => x.repeats), ...general].filter((w) => !w.replacing).map((w) => w.tokens)
+  // Those that account for struck words between their own (`struckAccount`): only a wording that stands for text its line
+  // replaces without quoting it (`Wording.bridges`). Not one whose line quotes what it replaces („„1. April 2026“ durch
+  // „1. Oktober 2027“ ersetzt"): such a line names what it strikes, and between two words of its new wording stands nothing
+  // else the draft removes (a third review: a clause the draft keeps, dropped between a date's day and its year, was accounted
+  // for, GrEStG § 18; and so were „1982", „(TEN-E-VO)" and a verb that five annexes strike beside the wording their draft
+  // replaces). Nor one a line inserts: it strikes nothing at all (a fourth review: under „nach dem Wort „mit“ die Wortfolge
+  // „1. Oktober 2027“ eingefügt" the same dropped clause still passed).
+  const bridging = [...all.filter((x) => x.repeats), ...general].filter((w) => w.bridges).map((w) => w.tokens)
   // A new stretch between two equal words can be cut one word earlier or
   // later („zu [tätigen; 3. … zu] tätigen."): where it is the draft's as one
   // stretch at either cut, it is the draft's.

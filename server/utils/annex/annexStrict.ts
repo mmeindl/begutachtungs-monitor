@@ -50,7 +50,7 @@ import { printedQuotes, segmentUnits, type TextBlock } from '../lawtext/lawUnits
 import { draftUnits } from './annexDraft'
 import { REASON_CUT, REASON_UNREADABLE_DESIGNATION, type AnnexDraft } from './verdict'
 import { refusedAddress } from '../laender/landTguGuard'
-import { STRICT_UNCHECKED, newNumbers, draftWording, strictCheck, strictTokens, type DraftWording, type StrictCheck, type Wording } from '../laender/landTguStrict'
+import { STRICT_UNCHECKED, newNumbers, draftWording, strictCheck, strictTokens, writesAnew, type DraftWording, type StrictCheck, type Wording } from '../laender/landTguStrict'
 
 /** Why a § was not held, beside `STRICT_UNCHECKED`: the draft's Gesetzestext could not be read at all. */
 export const DRAFT_UNREAD = 'der Gesetzestext des Entwurfs ließ sich nicht lesen'
@@ -220,8 +220,12 @@ export function payloadHeadings(blocks: readonly TextBlock[]): Map<string | null
     i = n - 1
     if (unit === undefined || (unitAt[n] !== unit && !opens)) continue
     const law = addressed[unit]!.law
+    // A heading its instruction writes anew stands for the one it replaces („Die Überschrift des 6. Abschnitts lautet:"), and
+    // accounts for what the column strikes between its words; one printed with a § a line inserts replaces nothing (22.11.2026).
+    const line = opens ? blocks[p]!.text : units[unit]!.blocks.find((b) => b.kind === 'novao')?.text ?? ''
+    const bridges = writesAnew(line) ? { bridges: true as const } : {}
     for (const tokens of run.length > 1 ? [...run, run.flat()] : run) {
-      if (tokens.length >= MIN_HEADING) out.set(law, [...(out.get(law) ?? []), { tokens, optional: tokens.map(() => false), repeats: true }])
+      if (tokens.length >= MIN_HEADING) out.set(law, [...(out.get(law) ?? []), { tokens, optional: tokens.map(() => false), repeats: true, ...bridges }])
     }
   }
   return out

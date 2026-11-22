@@ -758,4 +758,79 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(first, lost, school)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
     expect(check(first, lost.replace(' für Berufstätige', ''), school)).toMatchObject({ state: 'differs', struckNotInDraft: ['für', 'berufstätige'] })
   })
+  it('reads an address as struck or written anew only where the line says so: what a review of the instruction grammar found (22.11.2026)', () => {
+    const costs = '(1) Die Kosten hat der Antragsteller einmal zu tragen. Die Behörde kann sie stunden. Die Partei ist zu hören. (2) Die Frist beträgt vier Wochen.'
+    const heard = costs.replace(' Die Partei ist zu hören.', '')
+    // The address a noun before it is said of is no subject: „Der letzte Satz des § 5 Abs. 1 entfällt" repeals no Absatz…
+    const last = blocksWith('1. Der letzte Satz des § 5 Abs. 1 entfällt.')
+    expect(check(last, heard, costs)).toMatchObject({ state: 'holds', struck: { repealed: 0 } })
+    expect(check(last, heard.replace('einmal ', ''), costs)).toMatchObject({ state: 'differs', struckNotInDraft: ['einmal'] })
+    // …„Die Überschriften zu den §§ 5 bis 7 entfallen" no § (a real line read so repealed 24 §§ whole)…
+    const headings = blocksWith('1. Die Überschriften zu den §§ 5 bis 7 entfallen.')
+    expect(check(headings, `§ 5. ${costs}`, `Kosten § 5. ${costs}`).state).toBe('holds')
+    expect(check(headings, `§ 5. ${costs.replace('einmal ', '')}`, `Kosten § 5. ${costs}`)).toMatchObject({ state: 'differs', struckNotInDraft: ['einmal'] })
+    // …and no object either: „entfällt der letzte Satz der Z 3" strikes a sentence of the Ziffer, not the Ziffer.
+    const tasks = '(1) Aufgaben sind: 1. die Prüfung; 2. die Führung; 3. die Aufsicht über alle Betreiber. Sie erfolgt jährlich. Ein Bericht ist zu legen. (2) Die Frist beträgt vier Wochen.'
+    const ofItem = blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz der Z 3.')
+    expect(check(ofItem, tasks.replace(' Ein Bericht ist zu legen.', ''), tasks)).toMatchObject({ state: 'holds', struck: { repealed: 0 } })
+    expect(check(ofItem, tasks.replace(' Ein Bericht ist zu legen.', '').replace('alle ', ''), tasks)).toMatchObject({ state: 'differs', struckNotInDraft: ['alle'] })
+    // „lautet" writes the address anew only where nothing of its own stands beside it: not a sentence it counts in figures or
+    // names behind the verb („§ 5 Abs. 1 1. Satz lautet:", „In § 5 Abs. 1 lautet Satz 1:", „… erster Satz lautet wie folgt:")…
+    const sentence = abs('"Die Kosten hat der Antragsteller zu tragen."')
+    for (const line of ['1. § 5 Abs. 1 1. Satz lautet:', '1. In § 5 Abs. 1 lautet Satz 1:', '1. § 5 Abs. 1 erster Satz lautet wie folgt:']) {
+      const anew = [...blocksWith(line), sentence]
+      expect(check(anew, costs.replace('einmal ', ''), costs).state, line).toBe('holds')
+      expect(check(anew, heard.replace('einmal ', ''), costs), line).toMatchObject({ state: 'differs', struckNotInDraft: ['die', 'partei', 'ist', 'zu', 'hören'] })
+    }
+    // A payload printed from the §'s designation on, under a line that writes a part of a unit anew, still rewrites only that part.
+    const designated = [...blocksWith('1. § 5 Abs. 1 erster Satz lautet:'), abs('"§ 5. (1) Die Kosten hat der Antragsteller zu tragen."')]
+    expect(check(designated, costs.replace('einmal ', ''), costs).state).toBe('holds')
+    expect(check(designated, heard.replace('einmal ', ''), costs)).toMatchObject({ state: 'differs', struckNotInDraft: ['die', 'partei', 'ist', 'zu', 'hören'] })
+    // Below a part the reader does not know, an address is not located: „§ 5 Tarifpost 6 Abs. 2 entfällt" repeals no „(2)" of the
+    // column, which may print one in every Tarifpost. What it strikes there stays unaccounted, in the right Tarifpost too.
+    const tariff = 'Tarifpost 6 (1) Eingaben sind gebührenpflichtig. (2) Die Gebühr beträgt zehn Euro. Tarifpost 14 (1) Zeugnisse sind gebührenpflichtig. (2) Die Gebühr beträgt zwanzig Euro.'
+    const post = blocksWith('1. § 5 Tarifpost 6 Abs. 2 entfällt.')
+    expect(check(post, tariff.replace(' (2) Die Gebühr beträgt zwanzig Euro.', ''), tariff)).toMatchObject({ state: 'differs', struck: { repealed: 0 } })
+    // …nor a part the reader does not know: „Punkt 7. der Anlage 1 lautet:" writes no Anlage anew (2. Tierhaltungsverordnung:
+    // read so, three such lines accounted for all an Anlage's column struck, a word no line for it strikes among it).
+    const annex = 'Anlage 1 7. Die alte Regel gilt für alle Betriebe. 8. Die Tiere werden paarweise gehalten und täglich versorgt.'
+    const point = [...blocksWith('1. Punkt 7. der Anlage 1 lautet:'), abs('"7. Die neue Regel gilt für alle Betriebe."')]
+    const ofAnnex = (proposed: string) => annexStrictChecks([row({ law: LAW, gld: 'Anlage 1', para: 'Anlage 1', current: annex, proposed })], { ...draft, blocks: point }).get(`${LAW}#Anlage 1`)!
+    expect(ofAnnex(annex.replace('alte', 'neue')).state).toBe('holds')
+    expect(ofAnnex(annex.replace('alte', 'neue').replace(' täglich versorgt', ''))).toMatchObject({ state: 'differs', struckNotInDraft: ['täglich', 'versorgt'] })
+    // A wording a line inserts strikes nothing: between its words it accounts for no struck word (a clause dropped between a
+    // date's day and its year)…
+    const dated = '(1) Die Regelung tritt mit 1. April 2026 in Kraft, wobei sie bis zum 1. Jänner 2027 befristet ist. (2) Die Frist beträgt vier Wochen.'
+    const inserted = blocksWith('1. In § 5 Abs. 1 wird nach dem Wort „mit“ die Wortfolge „1. Oktober 2027“ eingefügt.')
+    expect(check(inserted, dated.replace('mit 1. April', 'mit 1. Oktober 2027 1. April'), dated).state).toBe('holds')
+    expect(check(inserted, '(1) Die Regelung tritt mit 1. Oktober 2027 befristet ist. (2) Die Frist beträgt vier Wochen.', dated).state).toBe('differs')
+    // A heading a line writes anew in a block of its own does stand for the one it replaces („Die Überschrift des 6. Abschnitts
+    // lautet:"); one printed with a § a line inserts replaces nothing.
+    const section = (text: string): TextBlock => ({ kind: 'section', cls: 'ueberschrift/g2', text, gld: null })
+    const weeks = '1. In § 5 Abs. 2 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.'
+    const division = `6. Abschnitt Förderung der Selbstkontrolle, von Presseclubs und von Projekten § 5. ${costs}`
+    const renamed = `6. Abschnitt Förderung von Einrichtungen und Projekten § 5. ${costs.replace('vier', 'sechs')}`
+    const anew = [...blocksWith(weeks, '2. Die Überschrift des 6. Abschnitts lautet:'), section('Förderung von Einrichtungen und Projekten')]
+    expect(check(anew, renamed, division)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    const beside = [...blocksWith(weeks, '2. Nach § 5 wird folgender § 5a samt Überschrift eingefügt:'), section('Förderung von Einrichtungen und Projekten'), abs('"§ 5a. Der Bund fördert Einrichtungen."')]
+    expect(check(beside, renamed, division).state).toBe('differs')
+    // …and a quotation that only says where is no wording the line strikes: „nach „zu tragen“ der Punkt durch einen Beistrich".
+    const sign = blocksWith('1. In § 5 Abs. 1 wird nach „zu tragen“ der Punkt durch einen Beistrich ersetzt.')
+    expect(check(sign, costs.replace('zu tragen. Die', 'zu tragen, Die'), costs).state).toBe('holds')
+    expect(check(sign, costs.replace(' zu tragen. Die', ', Die'), costs)).toMatchObject({ state: 'differs', struckNotInDraft: ['zu', 'tragen'] })
+    // A wording inserted behind an earlier „entfällt" in the line is new, and held: a column without it differs.
+    const both = blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „einmal“; in Abs. 2 wird überdies vor dem Wort „beträgt“ die Wortfolge „für Anträge“ eingefügt.')
+    expect(check(both, costs.replace('einmal ', '').replace('Frist beträgt', 'Frist für Anträge beträgt'), costs)).toMatchObject({ state: 'holds', notInDraft: [] })
+    expect(check(both, costs.replace('einmal ', ''), costs)).toMatchObject({ state: 'differs', notShown: ['für', 'anträge'] })
+    // The subject of the next clause behind a comma is not repealed with the units before it.
+    const renumbered = '(1) Die Behörde ist zuständig. (2) Sie berät. (3) Sie prüft. (4) Der Bundesminister kann Beratungsstellen im Bundesgebiet einrichten.'
+    const joined = blocksWith('1. In § 5 entfallen Abs. 2 und Abs. 3, Abs. 4 erhält die Absatzbezeichnung „(2)“.')
+    expect(check(joined, '(1) Die Behörde ist zuständig. (2) Der Bundesminister kann Beratungsstellen im Bundesgebiet einrichten.', renumbered).state).toBe('holds')
+    expect(check(joined, '(1) Die Behörde ist zuständig. (2) Der Bundesminister kann Beratungsstellen einrichten.', renumbered)).toMatchObject({ state: 'differs', struckNotInDraft: ['im', 'bundesgebiet'] })
+    // A sentence a line adds, or keeps and gives a designation, is no position it strikes.
+    const list = '(1) Gilt so. (2) Die Aufgaben sind: 1. die genaue Prüfung der Anträge; 2. die Führung des Registers. (3) Gilt auch.'
+    const added = blocksWith('1. In § 5 Abs. 2 entfällt die Z 2. Die bestehende Z 1 wird zu einem Absatz ohne Nummerierung, dem folgender Satz angefügt wird: „Die Flagge kann ersetzt werden.“')
+    expect(check(added, '(1) Gilt so. (2) Die Aufgaben sind: die genaue Prüfung der Anträge. Die Flagge kann ersetzt werden. (3) Gilt auch.', list).state).toBe('holds')
+    expect(check(added, '(1) Gilt so. (2) Die Aufgaben sind: die Prüfung der Anträge. Die Flagge kann ersetzt werden. (3) Gilt auch.', list)).toMatchObject({ state: 'differs', struckNotInDraft: ['genaue'] })
+  })
 })

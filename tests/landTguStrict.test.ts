@@ -105,6 +105,24 @@ describe('quoteRoles', () => {
     expect(read('Der bisherige Text des § 12 erhält die Absatzbezeichnung „(1)“ .')).toEqual([['new', true]])
   })
 
+  it('reads a place as a place whatever follows it, and the verb of a clause behind an earlier „entfällt“ (22.11.2026)', () => {
+    // Read as the old wording, a quotation that only says where accounted for its own words struck.
+    expect(roles('In § 42 Abs. 6 wird nach „zu tragen hat“ der Punkt durch einen Beistrich ersetzt.')).toEqual(['anchor'])
+    expect(roles('In § 9 Abs. 2 wird der Strichpunkt nach „überschreiten“ durch einen Punkt ersetzt.')).toEqual(['anchor'])
+    expect(roles('In § 114b Abs. 1 Z 2 wird das Wort „und“ vor „Geburtsdatum“ durch einen Beistrich ersetzt.').at(-1)).toBe('anchor')
+    expect(roles('In § 94 Abs. 3 entfällt das Wort „gelten“ nach der Nummerierung „93“ .')).toEqual(['old', 'anchor'])
+    expect(roles('In § 3 Abs. 1 wird nach der Wort- und Zahlenfolge „BGBl. II Nr. 216/2019“ die Wortfolge „in der jeweils geltenden Fassung“ eingefügt.')).toEqual(['anchor', 'new'])
+    // The clause's own auxiliary stands before the place, not right before the wording: the wording is inserted, not struck.
+    expect(roles('In § 59a und in § 81 Abs. 1 entfällt jeweils die Wendung „außer dem Königreich“ ; in § 81 Abs. 1 wird überdies vor dem Wort „Bewährungsmaßnahme“ die Wendung „Probezeit bestimmt oder“ eingefügt.')).toEqual(['old', 'anchor', 'new'])
+    // Which new wording stands for text its line replaces without quoting it: under „lautet" and „ersetzt", never one a line inserts.
+    const rewrites = (line: string) => quoteRoles(line).map((q) => q.rewrites)
+    expect(rewrites('In § 5 Abs. 1 lautet der erste Satz: „Die Behörde entscheidet.“')).toEqual([true])
+    expect(rewrites('In § 5 Abs. 1 wird der letzte Satz durch den Satz „Die Behörde entscheidet.“ ersetzt.')).toEqual([true])
+    expect(rewrites('In § 5 Abs. 1 wird nach dem Wort „mit“ die Wortfolge „1. Oktober 2027“ eingefügt.')).toEqual([false, false])
+    expect(rewrites('Dem § 5 Abs. 1 wird folgender Satz angefügt: „Sie gilt ab 1. Oktober 2027.“')).toEqual([false])
+    expect(rewrites('In § 5 Abs. 1 lautet der erste Satz: „Die Behörde entscheidet.“ und es wird nach dem Wort „mit“ die Wortfolge „1. Oktober 2027“ eingefügt.')).toEqual([true, false, false])
+  })
+
   it('tells the new wording from the old and from the place, with the verb at either end', () => {
     expect(roles('Im § 17 Abs. 1 wird die Zahl „19“ durch die Zahl „18“ ersetzt.')).toEqual(['old', 'new'])
     expect(roles('Im § 13 Abs. 3 wird nach dem Wortlaut „BGBl. II Nr. 281/2006,“ der Wortlaut „in der Fassung der Verordnung BGBl. II Nr. XX/XXX,“ eingefügt.')).toEqual(['anchor', 'new'])
