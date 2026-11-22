@@ -114,20 +114,23 @@ const copy = computed(() => COPY[props.kind])
             Reihenfolge im Gesetzestext {{ copy.item }}<template v-if="kind === 'entwurf'">, oder unsere eigene
               Lesung des ganzen Paragraphen nach dem Entwurf bestätigt ihn</template>.
           </li>
-          <!-- Every kind: the draft check reads the struck text of every annex it holds (22.11.2026, `struckAccount`). -->
+          <!-- Every kind: the draft check reads the struck text of every annex it holds (22.11.2026, `struckAccount`).
+               The Lesefassung's word counts only where that check could not read the deletions; against its
+               objection it does not stand (the same day, `annexMark.ts`). -->
           <li>
             Was die Gegenüberstellung als gestrichen zeigt, streicht oder ersetzt auch der Gesetzestext
-            {{ copy.item }}<template v-if="kind === 'entwurf'">, oder unsere eigene Lesung des ganzen
-              Paragraphen nach dem Entwurf bestätigt die Streichung</template>.
+            {{ copy.item }}.<template v-if="kind === 'entwurf'"> Wo sich das nicht Wort für Wort prüfen lässt,
+              muss unsere eigene Lesung des ganzen Paragraphen nach dem Entwurf die Streichung bestätigen.</template>
           </li>
           <li>Zeigt die rechte Spalte von einem Paragraphen nichts, hebt der Gesetzestext {{ copy.item }} ihn auch auf.</li>
         </ul>
         Einem neuen Paragraphen steht links nichts gegenüber; bei ihm zählen nur
         der dritte und der vierte Punkt. Ließ sich etwas davon nicht prüfen, steht beim
-        Paragraphen „nicht geprüft“. Stimmt der neue Text beim wortweisen
+        Paragraphen „nicht geprüft“. Stimmt der neue oder der gestrichene Text beim wortweisen
         Abgleich nicht mit dem Gesetzestext überein, steht „nicht bestätigt“;
         gezeigt wird der Paragraph trotzdem.<template v-if="kind === 'entwurf'"> Ohne diesen Vermerk bleibt er
-          nur, wenn ihm kein Wortlaut des Entwurfs fehlt und unsere eigene Lesung ihn bestätigt.</template>
+          nur, wenn der Abgleich allein an neuen Wörtern hängt, ihm kein Wortlaut des Entwurfs fehlt und
+          unsere eigene Lesung ihn bestätigt.</template>
       </dd>
     </div>
     <div>

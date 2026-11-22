@@ -36,11 +36,13 @@
  *      geprüft" (`MARK_DELETIONS`) where not;
  *    - the draft check holds: clean;
  *    - it objects: „nicht bestätigt". Where the oracle confirms, the § is
- *      clean only where the objection names no wording of the draft the
- *      column lacks (`StrictCheck.notShown` empty): the oracle holds the
- *      column by containment, vouching for the words it shows — struck
- *      text included (its checks 2 and 4) — and blind by design to wording
- *      it lacks (`OBJECTION_OVER_CONFIRMATION`);
+ *      clean only where the objection names new words and no wording of
+ *      the draft the column lacks (`StrictCheck.notShown` empty). The
+ *      oracle holds the column by containment: it vouches for the new
+ *      words the column shows and for what they replace, and is blind by
+ *      design to wording the column lacks. An objection about struck text
+ *      alone stands whatever the oracle says: there its word proved the
+ *      weaker of the two (`OBJECTION_OVER_CONFIRMATION`);
  *    - it could not run: clean where the oracle confirms, else „nicht
  *      geprüft" with the reason in the Länder's words.
  */
@@ -72,6 +74,23 @@ import { REASON_NOTHING_TO_COMPARE, type AnnexVerification, type ParagraphVerdic
  * name missing wording: all 8 real differences between the ministry's two
  * documents, 20 undecided (the draft's text not found in the annex), 12
  * false alarms, 8 limits of the layout, 3 our draft reader.
+ *
+ * AN OBJECTION ABOUT STRUCK TEXT ALONE STANDS (the maintainer's decision of
+ * 22.11.2026). While the confirmation stood against it, 39 of about 1,640
+ * kept sentences lost from the right column passed that way; a second
+ * review read 27 of them, and in every one the draft check named exactly
+ * the lost sentence and the oracle confirmed wrongly. The price, known and
+ * taken: on the real corpus the confirmation had kept 19 §§ unmarked, each
+ * read as a false alarm of the draft check (a parent the column prints
+ * only in an elided row, a unit named in the new numbering, layout). They
+ * carry „nicht bestätigt" until the check reads those shapes.
+ *
+ * Not where the objection names new words as well. In all 13 such §§ of the
+ * corpus the struck words and the new ones are one replacement at one place
+ * — a word the PDF prints run together on the left and parted on the right
+ * („bestimmtenräumen" / „bestimmten Räumen"), a figure a renumbering moves
+ * by one — and the oracle's word for the new side covers the old one.
+ * Letting every struck-text objection stand marked those 13 for nothing.
  */
 export type ObjectionRule = 'clean' | 'unconfirmed' | 'missing'
 export const OBJECTION_OVER_CONFIRMATION: ObjectionRule = 'missing'
@@ -122,7 +141,7 @@ export function markReasonOf(reason: string | null): string {
 }
 
 /** Whether the oracle's confirmation stands against the draft check's objection, by the one cell's value (`OBJECTION_OVER_CONFIRMATION`). */
-const overrules = (confirmed: boolean, strict: StrictCheck, objection: ObjectionRule): boolean => confirmed && (objection === 'clean' || (objection === 'missing' && strict.notShown.length === 0))
+const overrules = (confirmed: boolean, strict: StrictCheck, objection: ObjectionRule): boolean => confirmed && (objection === 'clean' || (objection === 'missing' && strict.notShown.length === 0 && (strict.notInDraft.length > 0 || !strict.struckNotInDraft?.length)))
 
 /** The table, for one §. `objection` is the one cell's value; the harness asks all three. */
 export function markOf(input: MarkInput, objection: ObjectionRule = OBJECTION_OVER_CONFIRMATION): AnnexMark {

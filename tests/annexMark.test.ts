@@ -92,12 +92,22 @@ describe('markOf: the table, one line at a time', () => {
     expect(markOf(removed(strict('holds', { newWords: 0, struck: struck({ repealed: 3, byPosition: 6 }) })))).toEqual({ kind: 'unchecked', reason: MARK_DELETIONS })
     expect(markOf(removed(strict('holds', { newWords: 0, struck: struck({ notation: 2 }) })))).toEqual({ kind: 'unchecked', reason: MARK_DELETIONS })
     expect(markOf({ ...removed(strict('holds', { newWords: 0, struck: struck({ byPosition: 6 }) })), oracleConfirmed: true })).toEqual({ kind: 'gate' })
-    // Struck text the draft keeps: „nicht bestätigt", unless the oracle confirms — it sees struck text (its checks 2 and 4).
+    // Struck text the draft keeps: „nicht bestätigt", whatever the oracle says (22.11.2026: of 27 kept sentences lost from
+    // the column that it confirmed against the check, the check was right in every one).
     const kept = removed(strict('differs', { newWords: 0, struckNotInDraft: ['sie', 'ist', 'zuständig'], struck: struck({}) }))
     expect(markOf(kept)).toEqual({ kind: 'unconfirmed' })
     expect(markOf({ ...kept, oracleConfirmed: null })).toEqual({ kind: 'unconfirmed' })
-    expect(markOf({ ...kept, oracleConfirmed: true })).toEqual({ kind: 'gate' })
+    expect(markOf({ ...kept, oracleConfirmed: true })).toEqual({ kind: 'unconfirmed' })
     expect(markOf({ ...kept, oracleConfirmed: true }, 'unconfirmed')).toEqual({ kind: 'unconfirmed' })
+    // The older value of the cell, kept measurable: every confirmation stands.
+    expect(markOf({ ...kept, oracleConfirmed: true }, 'clean')).toEqual({ kind: 'gate' })
+    // The same at a § that shows new text, where the objection is about struck text alone.
+    const alone = verified({ strict: strict('differs', { struckNotInDraft: ['sie', 'ist', 'zuständig'] }), oracleConfirmed: true })
+    expect(markOf(alone)).toEqual({ kind: 'unconfirmed' })
+    // Struck words beside new ones the oracle vouches for are one replacement („bestimmtenräumen" / „bestimmten Räumen"): its word covers both.
+    const replaced = verified({ strict: strict('differs', { notInDraft: ['bestimmten', 'räumen'], struckNotInDraft: ['bestimmtenräumen'] }), oracleConfirmed: true })
+    expect(markOf(replaced)).toEqual({ kind: 'gate' })
+    expect(markOf({ ...replaced, oracleConfirmed: false })).toEqual({ kind: 'unconfirmed' })
     // An objection to wording the column lacks, at a § that only strikes: judged as at any § — not „nicht geprüft" for
     // its deletions, nor clean on the oracle's word where the rule in force says wording is missing.
     const lacks = removed(strict('differs', { newWords: 0, notShown: ['frist'], struckNotInDraft: ['x'] }))

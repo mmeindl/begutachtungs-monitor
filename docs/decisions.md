@@ -1450,11 +1450,22 @@ gets an entry of its own only where it carries a reason the rule does not.
   position the draft only counts, or nothing the check could read: unmarked
   where the Lesefassung confirms the §, else „nicht geprüft"
   (`MARK_DELETIONS`). 98 of the 100 §§ this first cleared are still
-  unmarked. An objection about struck text alone names no wording the
-  column lacks, so the Lesefassung's confirmation stands against it (the
-  cell's rule above): 19 §§ of the corpus, each read as a limit of the
-  check or as layout, and 23 and 16 of the injected kept sentences pass
-  that way.
+  unmarked.
+- **An objection about struck text alone stands whatever the Lesefassung
+  says** (the maintainer's decision of 22.11.2026, `overrules` in
+  `annexMark.ts`). The cell's rule had let the confirmation stand, since
+  such an objection names no wording the column lacks, and 39 of about
+  1,640 injected kept sentences passed that way. A second review read 27
+  of them: in every one the draft check named exactly the lost sentence
+  and the oracle confirmed wrongly. The price: 19 §§ of the corpus the
+  confirmation had kept unmarked, each read as a false alarm of the draft
+  check (a parent printed only in an elided row, a unit named in the new
+  numbering, layout), carry „nicht bestätigt" until the check reads those
+  shapes. Where the objection names new words too, the confirmation still
+  stands: in all 13 such §§ the struck and the new words are one
+  replacement at one place (a word the PDF runs together on the left, a
+  figure renumbered), and letting every struck-text objection stand marked
+  them for nothing.
 - **The annex section asks the Lesefassung of the same draft**
   (21.11.2026, `readAndCheck` in `textComparisonService.ts`): the mark
   needs the oracle's word, so the section waits for it. A Lesefassung run
