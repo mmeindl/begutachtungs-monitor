@@ -825,7 +825,9 @@ let walked: { line: string; at: { end: number; context: AddressPart[] }[] } | nu
 const OWN_OBJECT_RE = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\s+)?(?:Abs\.?|Z|lit\.?)\s*\d+[a-z]*\s+)?(?:die|der|das|den)\s+(?!(?:§|Art|Artikel|Anlagen?|Anh(?:ang|änge)|Absätze|Absatz|Abs|Ziffern|Ziffer|Z|litera|lit|sublit|bisherigen?|nunmehrigen?)(?![\p{L}]))\p{L}/u
 
 /** An address part said of the verb as its object: after an article, or first after the verb — not a place („in Abs. 1", „am Ende der Z 5"). */
-const OBJECT_BEFORE_RE = /(?:^\s*(?:jeweils\s+)?|(?<!(?:Ende|nach|vor|[Ii]n|[Ii]m|zu|von|aus)\s+)(?:die|der|das|den)\s+|(?:und|sowie|,)\s+)$/u
+const OBJECT_BEFORE_RE = /(?:^\s*(?:jeweils\s+)?|(?<!(?:Ende|nach|vor|[Ii]n|[Ii]m|zu|von|aus)\s+)(?<![\p{L}])(?:die|der|das|den)\s+|(?:(?<![\p{L}])(?:und|sowie)|,)\s+)$/u
+/** Where the clause of a removing verb ends: the next one opens with its auxiliary („entfällt § 16b und wird folgender § 23 … eingefügt"). */
+const NEXT_CLAUSE_RE = /(?:(?<![\p{L}])(?:und|sowie)|,)\s+(?:es\s+)?(?:wird|werden)(?![\p{L}])/u
 const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie|bis)\s*(?=(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
 
 /** An address that ends with a part of its own after „und": „Abs. 2 und Abs. 3", not „Abs. 2 und 3". */
@@ -835,7 +837,13 @@ const JOINED_LAST_RE = /(?:und|sowie)\s*(?:die\s+|der\s+)?(?:§§?|Absatz|Abs\.?
 function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): AddressUnit[] {
   const v = verbs[i]!
   const afterAt = v.index! + v[0].length
-  const after = line.slice(afterAt, verbs[i + 1]?.index ?? line.length)
+  const clause = line.slice(afterAt, verbs[i + 1]?.index ?? line.length)
+  const removes = new RegExp(`^(?:${REMOVING})$`).test(v[0])
+  // What a removing verb strikes stands in its own clause (22.11.2026): in „entfällt § 16b und wird folgender § 23 samt
+  // Überschrift eingefügt" the § 23 is what the next clause inserts, and in „entfällt die Z 3 und wird der Z 4 folgender Satz
+  // angefügt" the Z 4 is where it adds. Read as objects, they were repealed units, and all the column struck of an old § 23
+  // that no line removes was accounted for (Integrationsgesetz § 23, 197 words).
+  const after = removes ? clause.slice(0, NEXT_CLAUSE_RE.exec(clause)?.index ?? clause.length) : clause
   const beforeAt = i > 0 ? verbs[i - 1]!.index! + verbs[i - 1]![0].length : 0
   const before = line.slice(beforeAt, v.index)
   // „entfallen die Abs. 2 und 3 sowie 14 bis 16", „entfallen der Klammerausdruck „X“ in Abs. 1 und der Abs. 4" — not „entfällt der letzte Satz", „entfällt im Abs. 2 der …".
@@ -845,14 +853,20 @@ function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): A
   // „entfällt Abs. 2 und Abs. 3 erhält die Absatzbezeichnung „(2)“": the part right before the next verb is its subject (22.11.2026, GVG-B § 12).
   const objectsOf = (m: RegExpMatchArray): AddressUnit[] => {
     const units = addressUnits(m[0], contextAt(line, afterAt + m.index!))
-    const subject = verbs[i + 1] && verbs[i + 1]![0] !== ';' && units.length > 1 && !after.slice(m.index! + m[0].length).trim() && JOINED_LAST_RE.test(m[0])
+    const subject = verbs[i + 1] && verbs[i + 1]![0] !== ';' && units.length > 1 && !clause.slice(m.index! + m[0].length).trim() && JOINED_LAST_RE.test(m[0])
     return subject ? units.slice(0, -1) : units
   }
-  const objects = opensClause ? [...after.matchAll(ADDRESS_RE)].filter((m) => OBJECT_BEFORE_RE.test(after.slice(0, m.index))).flatMap(objectsOf) : []
+  const named = opensClause ? [...after.matchAll(ADDRESS_RE)].filter((m) => OBJECT_BEFORE_RE.test(after.slice(0, m.index))) : []
+  // „entfällt die Z 2, die Z 3 erhält die Bezeichnung …", „entfallen die Abs. 2 und 3 und die Abs. 4 und 5 erhalten …", „… und
+  // der Z 3 wird folgender Satz angefügt": a further address right before the next verb or its auxiliary is that clause's
+  // subject, not a second thing removed.
+  const behind = named.length > 1 ? clause.slice(named.at(-1)!.index! + named.at(-1)![0].length) : null
+  const nextSubject = removes && behind !== null && (/^\s*(?:wird|werden)(?![\p{L}])/u.test(behind) || (!behind.trim() && verbs[i + 1] !== undefined && verbs[i + 1]![0] !== ';'))
+  const objects = (nextSubject ? named.slice(0, -1) : named).flatMap(objectsOf)
   if (objects.length) return objects
   // A removing verb with an object of its own — a wording („§ 42 Abs. 4 entfällt die Wendung „…“", „In Art. 11 Abs. 6 entfällt die
   // Wortfolge „…“"), a stretch it counts or describes („entfällt der letzte Satz", „der Klammerausdruck") — repeals no unit: the address before it is its place.
-  if (new RegExp(`^(?:${REMOVING})$`).test(v[0]) && OWN_OBJECT_RE.test(after)) return []
+  if (removes && OWN_OBJECT_RE.test(after)) return []
   // „In § 19 Z 3 lautet neu:": what „lautet" is said of, where it has no object, is the address before it, „In" or not.
   if (/^laute[tn]$/u.test(v[0])) return after.search(ADDRESS_RE) >= 0 ? [] : [...before.matchAll(ADDRESS_RE)].slice(-1).filter((m) => !/(?:^|\s)(?:nach|vor|zu|von)\s*$/u.test(before.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, beforeAt + m.index!)))
   // „§ 5 Abs. 3 entfällt", „und die Z 6 entfällt", „§ 21 wird ersatzlos gestrichen", „§ 56 samt Überschrift entfällt".

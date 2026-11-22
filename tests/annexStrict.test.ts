@@ -660,4 +660,27 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(line, sound, fees)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
     expect(check(line, sound.replace('Pauschale beträgt 710', 'Pauschale beträgt 780'), fees)).toMatchObject({ state: 'differs', struckNotInDraft: ['710'] })
   })
+
+  it('reads what a removing verb strikes in its own clause, not what the next clause inserts, renumbers or adds to (22.11.2026)', () => {
+    // Read on drafts the check was never measured on: „entfällt § 16b und wird folgender § 23 samt Überschrift eingefügt" repealed
+    // § 23 too („folgender" ends like an article), and an old § 23 the column struck with no instruction behind it was accounted for
+    // (Integrationsgesetz § 23).
+    const penal = '§ 5. (1) Wer die Meldung unterlässt, begeht eine Verwaltungsübertretung. (2) Strafbehörde ist die Bezirksverwaltungsbehörde.'
+    const inserted = [...blocksWith('1. Nach der Überschrift zum 3. Hauptstück entfällt § 4b und wird folgender § 5 samt Überschrift eingefügt:'), abs('"Kursangebot'), abs('§ 5. Der Fonds stellt Kurse bereit."')]
+    expect(check(inserted, 'Kursangebot § 5. Der Fonds stellt Kurse bereit.', penal)).toMatchObject({ state: 'differs', struck: { repealed: 0 } })
+    // „entfällt die Z 2, die Z 3 erhält die Bezeichnung „2.“": the Z 3 is renumbered and kept, and what the column strikes in it no line strikes.
+    const tasks = '(1) Die Behörde hat 1. die Anträge zu prüfen, 2. das Register der Anlagen zu führen, 3. die Betreiber der Anlagen im Bundesgebiet zu beaufsichtigen. (2) Die Behörde ist unabhängig.'
+    const kept = '(1) Die Behörde hat 1. die Anträge zu prüfen, 2. die Betreiber der Anlagen im Bundesgebiet zu beaufsichtigen. (2) Die Behörde ist unabhängig.'
+    for (const line of ['1. In § 5 Abs. 1 entfällt die Z 2, die Z 3 erhält die Bezeichnung „2.“.', '1. In § 5 Abs. 1 entfällt die Z 2 und die Z 3 erhält die Bezeichnung „2.“.']) {
+      expect(check(blocksWith(line), kept, tasks)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+      expect(check(blocksWith(line), kept.replace(' im Bundesgebiet', ''), tasks)).toMatchObject({ state: 'differs', struckNotInDraft: ['im', 'bundesgebiet'] })
+    }
+    // „entfällt die Z 2 und wird der Z 3 folgender Halbsatz angefügt": the Z 3 is where the next clause adds.
+    const added = [...blocksWith('1. In § 5 Abs. 1 entfällt die Z 2 und wird der Z 3 folgender Halbsatz angefügt:'), abs('"; dies gilt auch für Anlagen im Ausland"')]
+    const longer = '(1) Die Behörde hat 1. die Anträge zu prüfen, 3. die Betreiber der Anlagen im Bundesgebiet zu beaufsichtigen; dies gilt auch für Anlagen im Ausland. (2) Die Behörde ist unabhängig.'
+    expect(check(added, longer, tasks)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    const struck = check(added, longer.replace('der Anlagen im Bundesgebiet zu', 'zu'), tasks)
+    expect(struck.state).toBe('differs')
+    expect(struck.struckNotInDraft).toContain('bundesgebiet')
+  })
 })
