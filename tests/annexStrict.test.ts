@@ -459,6 +459,15 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(quote, '(1) Die Behörde ist zuständig. (2) Die Behörde ist zuständig. (3) Die Frist beträgt vier Wochen.', '(1) Die Behörde ist zuständig. (2) Die Behörde ist an Weisungen nicht gebunden. Sie entscheidet zuständig. (3) Die Frist beträgt vier Wochen.').state).toBe('differs')
   })
 
+  it('reads a lone struck designation as notation only where a line gives or removes designations (22.11.2026)', () => {
+    // „die Bezeichnung „Bundesminister für Inneres““ names a Ressort, and switched the exception on for a struck „3" of „Z 1 bis 3.".
+    const current = '(1) Der Bundesminister für Inneres ist zuständig. (2) Dies gilt für die Fälle des § 4 Abs. 1 Z 1 bis 3. (3) Die Frist beträgt vier Wochen.'
+    const ressort = blocksWith('1. In § 5 Abs. 1 wird die Bezeichnung „Bundesminister für Inneres“ durch die Bezeichnung „Bundesministerin für Inneres“ ersetzt.')
+    expect(check(ressort, '(1) Der Bundesministerin für Inneres ist zuständig. (2) Dies gilt für die Fälle des § 4 Abs. 1 Z 1 bis. (3) Die Frist beträgt vier Wochen.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['3'] })
+    const quoted = blocksWith('1. In § 5 Abs. 1 wird die Wortfolge „in Abs. 2 bezeichneten“ durch die Wortfolge „in Abs. 2 genannten“ ersetzt.')
+    expect(check(quoted, '(1) Die in Abs. 2 genannten Stellen sind zu hören. (2) Dies gilt für die Fälle des § 4 Abs. 1 Z 1 bis. (3) X.', '(1) Die in Abs. 2 bezeichneten Stellen sind zu hören. (2) Dies gilt für die Fälle des § 4 Abs. 1 Z 1 bis 3. (3) X.')).toMatchObject({ state: 'differs', struckNotInDraft: ['3'] })
+  })
+
   it('reads no struck text where the column prints nothing new ahead of the § designation', () => {
     // SPG § 57: the heading printed shorter on the right is no heading struck; a heading replaced is.
     const blocks = blocksWith('1. In § 5 Abs. 3 wird das Wort „vier“ durch das Wort „sechs“ ersetzt.')

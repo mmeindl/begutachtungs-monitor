@@ -650,6 +650,13 @@ function unitIds(list: string): string[] {
   return out
 }
 
+/**
+ * A line that gives or removes designations without quoting one („die Absatzbezeichnung entfällt", „ohne Nummerierung"; with a
+ * quoted designation `quoteRoles` says so) — not „die Bezeichnung „Bundesminister für Inneres““ or „in Abs. 2 bezeichneten"
+ * (22.11.2026: 135 of the 328 lines that set the flag were not about designations).
+ */
+const RENUMBERS_RE = /nummerierung|(?:Absatz|Ziffern?|Paragraphen|Litera|Gliederungs|Unterabsatz)bezeichnung/iu
+
 /** „(der bisherige) § 4 erhält die Paragraphenbezeichnung", „die §§ 81 und 82 erhalten die Paragraphenbezeichnungen", „Der bisherige § 14 wird zu § 22": the §§ a line renumbers. */
 const MOVES_RE = /((?:§§?)\s*[\d\sa-z,]+?(?:\s+(?:und|bis)\s+[\da-z]+)?)\s+(?:samt\s+Überschriften?\s+)?(?:erhält|erhalten)\s+die\s+(?:Paragraphen)?[Bb]ezeichnung|bisherigen?\s+(§\s*\d+[a-z]*)\s+wird\s+(?:zu|in)\s+§/gu
 
@@ -915,7 +922,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const replaces = ((run.payload.length > 0 && !removesPayload(line)) || quoteRoles(line).some((q) => q.role === 'new')) && /(?<![\p{L}])(?:lautet|lauten|ersetzt)(?![\p{L}])/u.test(own) && !new RegExp(`(?<![\\p{L}])(?:${REMOVING})(?![\\p{L}])`, 'u').test(own)
       const heading = /(?<![\p{L}])(?:Abschnitts)?[Üü]berschrift(?![\p{L}])/u.test(own) && !/(?<![\p{L}])(?:Satz|Sätze)(?![\p{L}])/u.test(own)
       const moves = [...own.matchAll(MOVES_RE)].flatMap((m) => addressUnits((m[1] ?? m[2])!).filter((u) => u.level === 0).flatMap((u) => u.ids))
-      return { ...(moves.length ? { moves } : {}), named: quoted.filter((n) => n.tokens.length).map((n) => ({ ...n, places: named })), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line, ...(replaces ? { replaces: true as const } : {}), ...(heading ? { heading: true as const } : {}) }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: /bezeichn?(?:ung|et)|nummerierung/iu.test(line) }
+      return { ...(moves.length ? { moves } : {}), named: quoted.filter((n) => n.tokens.length).map((n) => ({ ...n, places: named })), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line, ...(replaces ? { replaces: true as const } : {}), ...(heading ? { heading: true as const } : {}) }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: quoteRoles(line).some((q) => q.designation) || RENUMBERS_RE.test(own) }
     }
     if (!keys.length) {
       const into = lawOf(draft.law)
