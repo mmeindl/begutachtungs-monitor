@@ -578,4 +578,16 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     // A line that writes this § anew rewrites it whole.
     expect(annexStrictChecks(rows(true), replaced('1. Die bisherigen §§ 5 bis 9 werden durch folgende §§ 7 bis 9 ersetzt:')).get(`${LAW}#§ 9.`)?.state).toBe('holds')
   })
+
+  it('lets a heading line strike only in the heading, in a § without Absätze too (22.11.2026)', () => {
+    // A second review of the check: with no Absatz printed, „Die Überschrift zu § 52 lautet:" paid for a sentence of the body
+    // (SchifffahrtsVO § 52; AVG § 53b on the table path, its heading a row of its own).
+    const heading = [...blocksWith('1. Die Überschrift zu § 5 lautet:'), abs('"Zuständigkeit der Behörde"')]
+    const body = 'Die Behörde ist zuständig. Sie ist an Weisungen nicht gebunden.'
+    expect(check(heading, `Zuständigkeit der Behörde § 5. ${body}`, `Zuständigkeit § 5. ${body}`).state).toBe('holds')
+    expect(check(heading, 'Zuständigkeit der Behörde § 5. Die Behörde ist zuständig.', `Zuständigkeit § 5. ${body}`)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    const r = (gld: string | null, current: string, proposed: string) => row({ law: LAW, gld, para: '§ 5.', current, proposed, change: current === proposed ? 'unchanged' : 'changed' })
+    expect(annexStrictChecks([r('§ 5.', 'Zuständigkeit', 'Zuständigkeit der Behörde'), r(null, body, body)], { ...draft, blocks: heading }).get(`${LAW}#§ 5.`)?.state).toBe('holds')
+    expect(annexStrictChecks([r('§ 5.', 'Zuständigkeit', 'Zuständigkeit der Behörde'), r(null, body, 'Die Behörde ist zuständig.')], { ...draft, blocks: heading }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+  })
 })

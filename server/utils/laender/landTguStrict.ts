@@ -2198,16 +2198,22 @@ function struckAccount(
   // The sentences a payload writes anew: those of the words it accounts for.
   const rewrittenIn = new Set(left.flatMap((l, k) => (cover.get(l.p) === 'rewritten' ? [sentence[k]!] : [])))
   const firstUnit = left.findIndex((_, k) => opensAt(k))
+  // A heading ends where the § designation stands, else the first unit (22.11.2026: in a § without Absätze a heading line paid
+  // for its body, SchifffahrtsVO § 52, AVG § 53b); where the column prints neither, with the first row's first sentence end:
+  // the table path sets a heading in a row of its own, and a heading ends no sentence.
+  const designatedFirst = left.findIndex((_, k) => designatedAt(k))
+  let headingEnd = designatedFirst >= 0 ? designatedFirst : firstUnit
+  if (headingEnd < 0) for (headingEnd = 0; headingEnd < left.length && left[headingEnd]!.row === left[0]!.row && !read[headingEnd - 1]?.stop;) headingEnd++
   /**
    * Whether a stretch is one a line strikes by position (22.11.2026): inside the unit it names; a heading only in the heading,
-   * ahead of the column's first designation; and where the line writes the stretch anew („lautet der zweite Satz: „…“"),
+   * ahead of the § designation, the column's first unit or the first row's first sentence end; and where the line writes the stretch anew („lautet der zweite Satz: „…“"),
    * only in the sentences its wording replaces — those its payload accounts for and as many beside them as it counts.
    * Its count stays free for no other sentence the draft keeps (BSVG § 24, IFG § 150 under fault injection).
    */
   const fits = (x: (typeof positional)[number], st: readonly number[]) => {
     const k = leftAt.get(st[0]!)!
     if (!inPlace(x, st[0]!)) return false
-    if (x.heading && firstUnit >= 0 && k >= firstUnit) return false
+    if (x.heading && k >= headingEnd) return false
     if (x.replaces && !x.heading) return st.every((q) => [...rewrittenIn].some((s) => Math.abs(s - sentence[leftAt.get(q)!]!) < x.count))
     return true
   }
