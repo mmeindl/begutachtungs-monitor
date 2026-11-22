@@ -11,6 +11,12 @@
  *
  * Per dataset, never across the board. How each reading came about, so the
  * wording is not levelled again:
+ *   - RIS (22.11.2026): the entry names the Land law in force and the
+ *     Landesgesetzblätter too. The pages of a Land's laws and the Länder's
+ *     comparisons read both from the same open data (`LrKons`, `LgblAuth`;
+ *     the dataset „RIS Daten" licenses all its distributions CC BY 4.0,
+ *     docs/api-exploration.md), and until then the entry said „geltendes
+ *     Bundesrecht und das Bundesgesetzblatt" alone.
  *   - Parliament. The dataset pages were read line by line (23.09.2026,
  *     corrected 30.09.2026): result lists and Geschichtsseiten of the
  *     stations after the Begutachtung are CC BY 4.0, the documents are
@@ -82,8 +88,8 @@ const LAENDER_WITHOUT_LICENCE: { name: string; label: string; href: string }[] =
           <dd>
             <ExternalLink :href="CC_BY" class="link-inline">CC BY 4.0</ExternalLink>.
             Entwurfstexte und Erläuterungen der Ministerien,
-            Textgegenüberstellungen, geltendes Bundesrecht und das
-            Bundesgesetzblatt.
+            Textgegenüberstellungen, geltendes Bundes- und Landesrecht, das
+            Bundesgesetzblatt und die Landesgesetzblätter.
           </dd>
         </div>
         <div id="parlament-stationen">
