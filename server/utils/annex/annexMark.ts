@@ -27,12 +27,13 @@
  *    - shows no change: not asked;
  *    - shows only deletions, or the draft check held it with no new word:
  *      since 22.11.2026 the draft check reads struck text too
- *      (`struckAccount`). Clean where every struck word is the draft's by a
- *      quotation, a repeal or a unit written anew, and there is one at least;
- *      „nicht bestätigt" where it objects to struck text alone, unless the
- *      oracle confirms; else — struck by a position the draft only counts,
- *      nothing the check could read, or its own objection to wording — clean
- *      where the oracle confirms, „nicht geprüft" (`MARK_DELETIONS`) where not;
+ *      (`struckAccount`). Where it objects — to struck text the draft keeps,
+ *      or to wording of the draft the column lacks — the § is judged as any
+ *      § it objects to (below). Clean where every struck word is the draft's
+ *      by a quotation, a repeal or a unit written anew, and there is one at
+ *      least; else — struck by a position the draft only counts, or nothing
+ *      the check could read — clean where the oracle confirms, „nicht
+ *      geprüft" (`MARK_DELETIONS`) where not;
  *    - the draft check holds: clean;
  *    - it objects: „nicht bestätigt". Where the oracle confirms, the § is
  *      clean only where the objection names no wording of the draft the
@@ -87,9 +88,9 @@ export const MARK_DRAFT_UNREAD = DRAFT_CHECK_REASON_DE.draftUnread
 /**
  * A § that shows no new wording, whose struck text the draft check cannot
  * confirm: the draft strikes it only by a position it counts („der letzte
- * Satz entfällt"), the check read nothing of it, or objects to wording, not
- * to the struck text. True of a § that only strikes, and of one whose new
- * tokens are notation alone.
+ * Satz entfällt"), or the check read nothing of it. True of a § that only
+ * strikes, and of one whose new tokens are notation alone. Not of a § the
+ * check objects to: that one is „nicht bestätigt" (`markOf`).
  */
 export const MARK_DELETIONS = 'die Gegenüberstellung zeigt hier keinen neuen Wortlaut, und was sie streicht, nennt der Gesetzestext des Entwurfs nicht so, dass es sich Wort für Wort bestätigen lässt'
 
@@ -131,8 +132,10 @@ export function markOf(input: MarkInput, objection: ObjectionRule = OBJECTION_OV
   const confirmed = input.oracleConfirmed === true
   const strict = input.strict
   if (!input.showsNewText || (strict?.state === 'holds' && strict.newWords === 0)) {
-    // An objection to struck text alone (22.11.2026): the column strikes what the draft keeps.
-    if (strict?.state === 'differs' && strict.struckNotInDraft?.length && !strict.notInDraft.length && !strict.notShown.length) return overrules(confirmed, strict, objection) ? GATE : UNCONFIRMED
+    // The draft check objects (22.11.2026) — the column strikes what the draft keeps, or lacks wording the draft writes for
+    // the §: as at any § it objects to. Until then only an objection to struck text alone was read here, and one to
+    // missing wording stood as „nicht geprüft" for its deletions, or clean on the oracle's word against the rule below.
+    if (strict?.state === 'differs') return overrules(confirmed, strict, objection) ? GATE : UNCONFIRMED
     if (confirmed) return GATE
     // Every struck word the draft's by a quotation, a repeal or a unit written anew — not merely by a position it counts.
     const by = strict?.state === 'holds' ? strict.struck : undefined

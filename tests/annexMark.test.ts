@@ -98,8 +98,12 @@ describe('markOf: the table, one line at a time', () => {
     expect(markOf({ ...kept, oracleConfirmed: null })).toEqual({ kind: 'unconfirmed' })
     expect(markOf({ ...kept, oracleConfirmed: true })).toEqual({ kind: 'gate' })
     expect(markOf({ ...kept, oracleConfirmed: true }, 'unconfirmed')).toEqual({ kind: 'unconfirmed' })
-    // An objection to wording the column lacks is no objection to struck text: as before.
-    expect(markOf(removed(strict('differs', { newWords: 0, notShown: ['frist'], struckNotInDraft: ['x'] })))).toEqual({ kind: 'unchecked', reason: MARK_DELETIONS })
+    // An objection to wording the column lacks, at a § that only strikes: judged as at any § — not „nicht geprüft" for
+    // its deletions, nor clean on the oracle's word where the rule in force says wording is missing.
+    const lacks = removed(strict('differs', { newWords: 0, notShown: ['frist'], struckNotInDraft: ['x'] }))
+    expect(markOf(lacks)).toEqual({ kind: 'unconfirmed' })
+    expect(markOf({ ...lacks, oracleConfirmed: true })).toEqual({ kind: 'unconfirmed' })
+    expect(markOf({ ...lacks, oracleConfirmed: true }, 'clean')).toEqual({ kind: 'gate' })
   })
 })
 
