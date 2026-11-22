@@ -136,6 +136,16 @@ describe('draftWording', () => {
     // The anchor of the insertion gets none of it.
     expect(law.byKey.get('§ 21')!.wordings).toEqual([])
   })
+
+  it('reads a payload under a line whose last verb removes as the old wording, not as wording to show', () => {
+    // BWG § 70 Abs. 1b (22.11.2026): „entfällt der folgende Satz:" quotes what the Absatz no longer says.
+    const novao = (text: string) => ({ kind: 'novao' as const, cls: 'absatz/novao1', text, gld: null })
+    const other = (text: string) => ({ kind: 'other' as const, cls: 'absatz/abs', text, gld: null })
+    const wording = (line: string) => [...draftWording([novao(line), other('„Die Behörde hat den Grundsatz der Verhältnismäßigkeit zu beachten.“')]).values()][0]!.byKey.get('§ 70')!
+    expect(wording('1. In § 70 Abs. 1b entfällt der folgende Satz:')).toMatchObject({ wordings: [], written: [[]] })
+    // A line that removes and then adds („… entfällt der dritte Satz und wird folgender Satz angefügt:") writes its payload.
+    expect(wording('1. In § 70 Abs. 1b entfällt der dritte Satz und wird folgender Satz angefügt:').wordings.map((w) => w.tokens.join(' '))).toEqual(['die behörde hat den grundsatz der verhältnismäfligkeit zu beachten'])
+  })
 })
 
 describe('the strict check (20.11.2026)', () => {

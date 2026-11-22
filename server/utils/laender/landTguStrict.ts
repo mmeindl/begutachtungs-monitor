@@ -502,6 +502,23 @@ function runsOf(unit: LawUnit): Run[] {
   return runs
 }
 
+/**
+ * Whether the payload under a line is the old wording (22.11.2026): the
+ * line's last verb before its colon removes — „In Anlage 1 werden folgende
+ * Aufzählungen gestrichen:", „In § 70 Abs. 1b entfällt der folgende Satz:",
+ * „In der Anlage entfällt nachstehender Eintrag:". Such a payload is what
+ * the § no longer says, as a quotation the line reads as old. Over the 243
+ * cached Bund drafts with an annex, 63 instruction lines end on a colon with
+ * a removing verb in them; in these 5 it is the last verb, in the others an
+ * adding or restating one follows („… entfällt; die Z 3 lautet:").
+ */
+function removesPayload(line: string): boolean {
+  const own = withoutResidue(line).replace(QUOTE_RE, ' ')
+  if (!/:\s*$/.test(own)) return false
+  const last = [...own.matchAll(new RegExp(VERB_RE.source, 'gu'))].at(-1)?.[1]
+  return last !== undefined && new RegExp(`^(?:${REMOVING})$`).test(last)
+}
+
 /** What every § of a draft is written as, per law key. */
 export function draftWording(blocks: readonly TextBlock[], installed: (unit: DraftUnit) => string[] = () => []): Map<string | null, LawWording> {
   const out = new Map<string | null, LawWording>()
@@ -539,7 +556,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         })
         written.push(...[...own.matchAll(WRITTEN_RE)].flatMap((m) => strictTokens(m[1]!)))
       }
-      for (const block of run.payload) {
+      for (const block of run.line !== null && removesPayload(run.line) ? [] : run.payload) {
         const tokens = strictTokens(`${block.gld ?? ''} ${block.text}`.replace(FOOTER_RE, ' '))
         standing.push(...tokens)
         written.push(...tokens)
@@ -575,7 +592,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         if (!tokens.length) continue
         for (const key of keys) at(draft.law, key).wordings.push({ tokens, optional: tokens.map(() => false), repeats: true, once: keys.length === 1, ...(quote.designation ? { designation: true } : {}) })
       }
-      if (!run.payload.length) continue
+      if (!run.payload.length || removesPayload(run.line ?? '')) continue
       const pieces = payloadPieces(run.payload)
       const keyed = pieces.some((p) => p.key !== null)
       for (const piece of pieces) {
