@@ -1392,6 +1392,69 @@ gets an entry of its own only where it carries a reason the rule does not.
   die" where the draft writes „Die oder der"), one as a named false alarm
   (a § repealed whose number the draft gives to the next one, which it
   writes anew).
+- **The draft check reads what the right column strikes, on the Bund**
+  (22.11.2026, `struckAccount` in `laender/landTguStrict.ts`, asked by
+  `annexStrictChecks` alone). A sentence the draft keeps that the column
+  loses shows on the page as a deletion the draft does not make. While the
+  check read new words only, the chain caught that fault in 216 of 955 §§
+  (PDF) and 148 of 683 (table): the oracle alone saw 93 %, but a held draft
+  check stands against it. Now every struck word has to be the draft's: in
+  wording an instruction quotes as replaced or struck, in a unit a payload
+  writes anew, in a unit an instruction repeals by its designation, in a
+  stretch an instruction strikes by a position it counts or describes, or
+  notation (the §'s own designation, a designation where an instruction
+  gives or removes designations, the caller's elision marks, what stands
+  ahead of the § designation in the group's first row). What is left makes
+  the § differ (`struckNotInDraft`). The fault is caught in 860 of 951 and
+  627 of 686 §§.
+- **Each instruction accounts only where and for what it strikes**
+  (22.11.2026). The first form of the rule accounted more widely than the
+  draft supports, which an independent review showed by probes, and it
+  cleared two §§ wrongly (AWG 2002 § 28c: a citation of the § in its own
+  text was taken for its designation; BohrarbV § 19: „§ 18 entfällt" was
+  read as a repeal of the § the draft renumbers to 18). Since then: an
+  address is a path, and a unit counts only inside the parents it names
+  („In § 5 Abs. 2 entfällt die Z 3" is no other Absatz's Ziffer 3); a
+  removing verb with an object of its own repeals no unit („entfällt die
+  Wendung „…“"); under a renumbered §'s new number only a line that names
+  the number as new speaks of it; on the table path a Ziffer or Litera ends
+  with its row where an undesignated row follows (a Schlussteil); a quoted
+  old wording accounts in the places its line names; each line that strikes
+  by position pays for as many stretches as it counts, in its own unit, a
+  heading line only in the heading, a line that writes a sentence anew only
+  in the sentences its wording replaces; a payload under a line that only
+  adds accounts for nothing, and one printed from the § designation rewrites
+  the whole § only under a line that names no unit below it; only a line
+  about designations lets a lone struck designation pass as notation.
+  Twelve §§ became „nicht bestätigt" by it, every one read: four are the
+  ministry's two documents differing (those two, and MuSchG § 27 and InvFG
+  2011 § 10, where the annex strikes a second sentence the draft keeps),
+  seven limits of the check, one undecided.
+- **What the struck-text check does not do, measured** (22.11.2026). It
+  does not map a unit named in the new numbering back („Abs. 7 (neu)"). It
+  does not locate a parent the column prints only in an elided row
+  („(1) …"), the largest class of false objections left. It counts a quoted
+  wording at every place of its unit (once without „jeweils" would have
+  marked 5 sound §§) and a piece of a §'s own quote wherever it stands (its
+  place: 11). A last list item on the PDF path runs to the next designation
+  (the first sentence end: 9 moves, 5 sound §§ marked). The zone ahead of
+  the § designation is notation (read as text: 7 §§, all layout). It does
+  not ask the other direction, old wording the draft replaces that still
+  stands in the column (51 candidates, most of them places the check cannot
+  read), and it compares no signs („<" against „≤"). The Länder do not ask
+  for struck text: there a § that differs is withheld, and 21 shown §§
+  would newly differ.
+- **A § that shows only deletions is unmarked where the draft names what it
+  strikes** (22.11.2026, `markOf`): every struck word accounted for by a
+  quotation, a repeal or a unit written anew, and one at least. Struck by a
+  position the draft only counts, or nothing the check could read: unmarked
+  where the Lesefassung confirms the §, else „nicht geprüft"
+  (`MARK_DELETIONS`). 98 of the 100 §§ this first cleared are still
+  unmarked. An objection about struck text alone names no wording the
+  column lacks, so the Lesefassung's confirmation stands against it (the
+  cell's rule above): 19 §§ of the corpus, each read as a limit of the
+  check or as layout, and 23 and 16 of the injected kept sentences pass
+  that way.
 - **The annex section asks the Lesefassung of the same draft**
   (21.11.2026, `readAndCheck` in `textComparisonService.ts`): the mark
   needs the oracle's word, so the section waits for it. A Lesefassung run
@@ -1511,6 +1574,26 @@ gets an entry of its own only where it carries a reason the rule does not.
   missing file, an unbalanced funnel, station breaches and Länder hits, and
   stamped the commit checked out while it wrote: the record of 20.11.2026
   names one commit for parts measured across three.
+- **The record says what the page shows of the ministry's annex, and what
+  catching did with a §** (22.11.2026). Since the mark stands on the gate,
+  the gate's verdicts are not what a reader sees: `annex.marks` counts the
+  §§ shown without a Vermerk, with „nicht bestätigt" and with „nicht
+  geprüft", and `annex.chain` carries each fault class through the whole
+  chain with `withheld` beside `caught`. The builder refuses annex records
+  written before the mark, records whose shown §§ are not the gate's
+  verified and unchecked ones, a fault record without the chain, and a
+  floored chain class that fell. A wrong word, figure or label in the new
+  text never withholds the § — it is shown with „nicht bestätigt" — so each
+  bar of the chain says under it how many caught faults leave the § on the
+  page (`faultNoteDe`), and the page's opening says „wird nicht gezeigt oder
+  trägt einen Vermerk". A floored class the harness says cannot occur on a
+  path („nicht anwendbar") is not an unheld one: asking for
+  `--erlaube-ungehalten` there named a gap in the record that is none.
+- **The pill at a § is a „Vermerk" in reader copy** (22.11.2026), in the
+  method note and on `/genauigkeit` alike. „Markierung" is the colour that
+  shows a change, in every section's credit line and in the gap sentence
+  „ohne Markierung"; a § „ohne Markierung" would be one without highlighted
+  changes.
 - **The harness cache never answers the Begut list** (20.11.2026,
   `isBegutSearch` in `scripts/lib/harnessCache.ts`). The list is one
   constant URL per page. Served from disk for ever, it froze every annex
@@ -1571,9 +1654,27 @@ gets an entry of its own only where it carries a reason the rule does not.
   §§ the page showed without a mark before the fault, and under each value
   of the cell's rule over its own such §§ (`chain[].byRule`). A class is
   held to 95 % only where the chain can reach it (`CHAIN_FLOORED`: a figure,
-  a word, the last new sentence, on both paths); a class not held carries
+  a word, the last new sentence, on both paths; a sentence of another § in
+  the right column, old text on both paths and proposed text on the PDF
+  path); a class not held carries
   its reason in the record (`CHAIN_NOT_FLOORED` → `notFloored`), so a floor
   never fails by construction and never passes by silence.
+- **A sentence of another § in the right column is judged through the
+  chain, not by the gate alone** (22.11.2026). The gate catches 66 to 83 %
+  of R-alt and R-neu, and that was the figure `/genauigkeit` drew, for a
+  fault the page marks nearly always: the draft check holds the new words
+  against the wording the draft writes for that §. Through the chain 986 of
+  986 and 980 of 983 on the PDF path, 289 of 289 and 275 of 288 on the table
+  path. What passes is a heading: where the donor § opens with one, the
+  „sentence" appended is that heading, and both word-for-word checks pass a
+  heading at the foot of a §'s new text as the heading of the § that
+  follows — the oracle by its shape alone (`isNextHeading`: it does not
+  know the neighbour), the draft check objecting to the Absatz number
+  behind it at most. All thirteen table misses are that, in one draft.
+  Fault U stays with the gate: a row alike in both columns shows no new and
+  no struck word, so neither check of the table reads it. A line of
+  `--misses` names the place of the fault and what stood there
+  (`faultSite`), and whether the oracle read the faulted row.
 - **A harness resolves a law as the page does** (21.11.2026,
   `scripts/lib/productionSources.ts`: `annexSourcesOf` over
   `resolveKonsLaw`, without Nitro's cache). A failed lookup counts as a
@@ -3519,6 +3620,11 @@ circular of 10.12.2015).
   §** (141/ME XXVII). It mends the Vorlage's side and moves the breach to
   the Kundmachung, whose RIS XML sets the same heading as a division's, and
   it moves one unit elsewhere (22.11.2026).
+- **Marking a § whose deletions the Lesefassung does not confirm** („struck
+  text needs the oracle", 21.11.2026). The oracle alone sees 93 % of a kept
+  sentence struck, but only where a Lesefassung exists and confirms: the
+  rule would have marked up to 907 more §§, 39 % of the shown ones instead
+  of 23 %. The draft check reads struck text instead.
 
 ### Länder and EU
 
