@@ -154,7 +154,7 @@ export function rangeDe(faults: readonly GenauigkeitFault[]): string {
 }
 
 /** The classes of both paths with these keys. */
-function classes(paths: GenauigkeitPaths<GenauigkeitFault[]>, keys: readonly string[]): GenauigkeitFault[] {
+function classes<F extends GenauigkeitFault>(paths: GenauigkeitPaths<F[]>, keys: readonly string[]): F[] {
   return [...paths.pdf, ...paths.table].filter((f) => keys.includes(f.key))
 }
 
@@ -194,6 +194,22 @@ export const ANNEX_LOST = ['L'] as const
 /** …another §'s sentence in both columns alike, read as unchanged: by construction outside the gate. */
 export const ANNEX_BLIND = ['U'] as const
 
+/**
+ * The same annex, a fault judged through everything the page does with a §
+ * (`faultInjection.ts`, `chain`; 22.11.2026): the gate, the word-for-word
+ * check against the draft, our own result, and the mark they set. The new
+ * text misread — a figure, a word, its last sentence gone;
+ */
+export const CHAIN_WORDING = ['zahl', 'wort', 'satzweg'] as const
+/** …the label of an Absatz, a Ziffer or a Litera moved by one; */
+export const CHAIN_LABEL = ['bezeichnung'] as const
+/** …a sentence the draft keeps lost from the right column, so the page shows it struck; */
+export const CHAIN_STRUCK = ['rweg'] as const
+/** …the gate's fault L, a sentence of the left column lost; */
+export const CHAIN_LOST = ['links'] as const
+/** …and its faults R-alt and R-neu, a sentence of another § in the right column. */
+export const CHAIN_MISFILED = ['ralt', 'rneu'] as const
+
 /** A Land's right column: a sentence of another § of the same draft, of another Land's draft. */
 export const LAND_OWN_DRAFT = ['R-neu'] as const
 export const LAND_OTHER_DRAFT = ['R-fremd'] as const
@@ -218,6 +234,12 @@ export interface FaultBar {
   label: string
   tried: number
   caught: number
+  /**
+   * Of `caught`, the faults after which the § is not shown any more; the
+   * rest are shown with a mark. Only where the check has both answers (the
+   * ministry's annex since 22.11.2026): everywhere else caught is withheld.
+   */
+  withheld?: number
   /** A blind spot by construction: the page sets it apart under „Was die Prüfung nicht fängt". */
   blind?: boolean
 }
@@ -270,10 +292,120 @@ function bar(label: string, faults: readonly GenauigkeitFault[], blind = false):
   return { label, ...total(faults), ...(blind ? { blind } : {}) }
 }
 
+type ChainFault = NonNullable<GenauigkeitRecord['annex']['chain']>['pdf'][number]
+
+/** A group of the chain's classes as one bar, with what catching did with the §. */
+function chainBar(label: string, faults: readonly ChainFault[]): FaultBar {
+  return { label, ...total(faults), withheld: faults.reduce((sum, f) => sum + f.withheld, 0) }
+}
+
+/**
+ * The line under a bar: „1.063 von 1.339 eingebauten Fehlern gefangen", and
+ * where a caught fault leaves the § on the page, how many do — „: 880 nicht
+ * mehr gezeigt, 183 mit Marke gezeigt". Without it „gefangen" reads as „not
+ * shown", which a wrong word in the ministry's annex never is (22.11.2026):
+ * the § stays, marked „nicht bestätigt".
+ */
+export function faultNoteDe(fault: FaultBar): string {
+  const caught = `${n(fault.caught)} von ${n(fault.tried)} eingebauten Fehlern gefangen`
+  if (fault.withheld === undefined || fault.caught === 0) return caught
+  const marked = fault.caught - fault.withheld
+  if (fault.withheld === 0) return `${caught}: alle mit Marke gezeigt`
+  if (marked === 0) return `${caught}: alle nicht mehr gezeigt`
+  return `${caught}: ${n(fault.withheld)} nicht mehr gezeigt, ${n(marked)} mit Marke gezeigt`
+}
+
 /** „Oberösterreich, Salzburg, Tirol und Wien". */
 export function landList(codes: readonly string[]): string {
   const names = codes.map((c) => LAND_NAME[c as LandCode] ?? c)
   return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} und ${names.at(-1)}`
+}
+
+/**
+ * The ministry's Textgegenüberstellung.
+ *
+ * WHAT A READER SEES OF A § IS THE MARK (22.11.2026). Since the word-for-word
+ * check and our own result stand on top of the gate (`annex/annexMark.ts`), a
+ * § is shown without a mark, with „nicht bestätigt" or with „nicht geprüft",
+ * and a fault is caught where the § is then withheld OR marked. A round says
+ * both (`marks`, `chain`) and the sentences are built on them: the gate's own
+ * verdicts (`confirmed`, `unchecked`) no longer say what stands on the page,
+ * and its figures for a fault understate what the page does with it.
+ *
+ * The sentences for a record without the two (the round of 20.11.2026) stay
+ * until the first round that carries them is committed, and go with it.
+ */
+function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
+  const a = r.annex
+  const annexBlind = classes(a.faults, ANNEX_BLIND)
+  const blindBar = bar('Ein Satz von anderswo steht links und rechts gleich', annexBlind, true)
+  const blindSentence = `Ein fremder Satz, der in beiden Spalten gleich steht: ${rangeDe(annexBlind)} zurückgehalten. Er ist nicht als Änderung markiert, steht aber beim falschen Paragraphen. Was beide Spalten gleich zeigen, gilt als unverändert und wird nicht geprüft.`
+  // Whose deviation it is was never measured per case (20.11.2026): the sister check found most such §§ to be the monitor's own reading.
+  const standingSentence = `Bei ${ofParagraphs(a.withheldStanding)} der nicht gezeigten steht die geltende Fassung der Gegenüberstellung so nicht im RIS. Ob die Beilage abweicht oder der Monitor sie falsch liest, entscheidet die Prüfung nicht; gezeigt wird der Paragraph in beiden Fällen nicht.`
+  const frame = {
+    id: 'gegenueberstellung',
+    heading: 'Die Textgegenüberstellung des Ministeriums',
+    pageName: 'Was ändert der Entwurf?',
+    against: 'Geprüft am geltenden Recht im RIS und am Gesetzestext des Entwurfs.',
+    consequence: 'So ein Satz sieht aus wie unveränderter Text, steht aber beim falschen Paragraphen. Unveränderten Text prüft der Monitor nicht.',
+  }
+  const { marks, chain } = a
+  if (!marks || !chain) {
+    return {
+      ...frame,
+      result: [
+        `Die Textgegenüberstellungen enthalten ${n(a.confirmed + a.unchecked + a.withheld)} Paragraphen. ${n(a.confirmed)} hat die Prüfung bestätigt, ${n(a.unchecked)} zeigt der Monitor mit der Marke „nicht geprüft“, ${n(a.withheld)} zeigt er nicht.`,
+        // Whose error the bars below are (20.11.2026): „übernimmt Wort für Wort" beside „ein Satz verloren" read as a contradiction.
+        'Der Monitor übernimmt den Text Wort für Wort, muss ihn aber aus einem PDF oder einer Tabelle herauslesen. Dabei kann ein Satz verloren gehen oder beim falschen Paragraphen landen.',
+      ],
+      faults: [
+        bar('Ein Satz von anderswo steht in der rechten Spalte (neuer Text)', classes(a.faults, ANNEX_MISFILED)),
+        bar('Ein Satz fehlt in der linken Spalte (alter Text)', classes(a.faults, ANNEX_LOST)),
+        blindBar,
+      ],
+      rule:
+        'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Die linke Spalte muss dem RIS am Stichtag entsprechen; was rechts als neu markiert ist, darf nicht schon im Gesetz stehen und muss im Gesetzestext des Entwurfs stehen.',
+      measured: [
+        `In ${n(a.drafts)} Entwürfen der ${r.gp}. Gesetzgebungsperiode: ${n(a.confirmed)} Paragraphen bestätigt, ${n(a.withheld)} nicht gezeigt, und ${n(a.unchecked)} gezeigt, ohne dass die Prüfung sie bestätigen konnte – etwa weil sie nur neuen Text enthalten, dem nichts Geltendes gegenübersteht.`,
+        standingSentence,
+      ],
+      missed: [blindSentence],
+    }
+  }
+  return {
+    ...frame,
+    result: [
+      `Die Textgegenüberstellungen enthalten ${n(marks.shown + a.withheld)} Paragraphen. ${n(marks.clean)} zeigt der Monitor ohne Marke, ${n(marks.unconfirmed)} mit der Marke „nicht bestätigt“, ${n(marks.unchecked)} mit der Marke „nicht geprüft“, ${n(a.withheld)} zeigt er nicht.`,
+      // Whose error the bars below are (20.11.2026): „übernimmt Wort für Wort" beside „ein Satz verloren" read as a contradiction.
+      'Der Monitor übernimmt den Text Wort für Wort, muss ihn aber aus einem PDF oder einer Tabelle herauslesen. Dabei kann er ein Wort falsch lesen, und ein Satz kann verloren gehen oder beim falschen Paragraphen landen.',
+      // What „gefangen" does with the § (22.11.2026): the page's opening says a caught fault is not shown, and here most are — marked.
+      'Fällt der Prüfung im neuen Text etwas auf, zeigt der Monitor den Paragraphen trotzdem und setzt die Marke „nicht bestätigt“. Unter jedem Balken steht, wie oft der Paragraph danach nicht mehr gezeigt wird und wie oft er mit einer Marke stehen bleibt.',
+    ],
+    faults: [
+      chainBar('Ein Wort oder eine Zahl im neuen Text falsch, ein neuer Satz fehlt', classes(chain, CHAIN_WORDING)),
+      chainBar('Eine Absatz- oder Ziffernbezeichnung im neuen Text falsch', classes(chain, CHAIN_LABEL)),
+      chainBar('Ein Satz, der bleibt, ist als gestrichen gezeigt', classes(chain, CHAIN_STRUCK)),
+      chainBar('Ein Satz von anderswo steht in der rechten Spalte (neuer Text)', classes(chain, CHAIN_MISFILED)),
+      chainBar('Ein Satz fehlt in der linken Spalte (alter Text)', classes(chain, CHAIN_LOST)),
+      blindBar,
+    ],
+    rule:
+      'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Die linke Spalte muss dem RIS am Stichtag entsprechen; was rechts als neu markiert ist, darf nicht schon im Gesetz stehen und muss im Gesetzestext des Entwurfs stehen. Sonst zeigt der Monitor den Paragraphen nicht. Danach hält er den neuen und den gestrichenen Text Wort für Wort gegen den Gesetzestext des Entwurfs. Geht das auf, bleibt der Paragraph ohne Marke. Geht es nicht auf, bleibt er nur dann ohne Marke, wenn der ganze Paragraph, den der Monitor selbst zusammensetzt, die Gegenüberstellung bestätigt und in ihr kein Wortlaut fehlt, den der Entwurf nennt; sonst steht „nicht bestätigt“. Lässt sich weder das eine noch das andere prüfen, steht „nicht geprüft“.',
+    measured: [
+      `In ${n(a.drafts)} Entwürfen der ${r.gp}. Gesetzgebungsperiode: ${n(marks.clean)} Paragraphen ohne Marke gezeigt, ${n(marks.unconfirmed)} mit „nicht bestätigt“, ${n(marks.unchecked)} mit „nicht geprüft“, ${n(a.withheld)} nicht gezeigt.`,
+      standingSentence,
+      'Die Fehler sind in Paragraphen eingebaut, die der Monitor vorher ohne Marke gezeigt hat.',
+    ],
+    missed: [
+      blindSentence,
+      'Eine falsche Absatz- oder Ziffernbezeichnung fällt nicht auf, wenn der Entwurf dieselbe Bezeichnung an einer anderen Stelle des Paragraphen nennt.',
+      'Ein Satz, der bleibt und als gestrichen gezeigt ist, fällt nicht auf, wenn der Entwurf an dieser Stelle selbst streicht, ohne den Wortlaut zu nennen („der letzte Satz entfällt“), oder den Absatz neu fasst.',
+      'Fehlt ein Satz in der linken Spalte, steht er rechts als neu. Schreibt der Entwurf diesen Satz selbst, etwa weil er den Absatz neu fasst, geht der Abgleich mit dem Gesetzestext trotzdem auf.',
+      // The one shape of a foreign sentence that passes (22.11.2026): both word-for-word checks take a heading at the foot of a § for the next §'s.
+      'Steht am Ende des neuen Textes eine Überschrift von anderswo, fällt das nicht auf: Die Prüfung hält sie für die Überschrift des folgenden Paragraphen.',
+      'Wie oft eine Marke zu Unrecht steht, zeigt dieser Test nicht: Er baut Fehler ein und zählt, wie viele auffallen.',
+    ],
+  }
 }
 
 export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): GenauigkeitArt[] {
@@ -281,7 +413,6 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
   const witnessed = r.lesefassung.funnel.witnessed ?? 0
   const notLaw = bench.shown - bench.identical
   const blind = total(classes(r.lesefassung.faults, RESULT_BLIND))
-  const annexBlind = classes(r.annex.faults, ANNEX_BLIND)
   const breaches = (count: number) => (count === 0 ? 'kein Regelverstoß' : count === 1 ? 'ein Regelverstoß' : `${n(count)} Regelverstöße`)
   const st = r.stations
   const stFaults = st.faults?.length ? total(st.faults) : null
@@ -329,33 +460,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         'Liest der Monitor den neuen Text an genau der Stelle falsch, an der auch die Textgegenüberstellung vom Gesetzestext abweicht, bestätigt sie den Fehler.',
       ],
     },
-    {
-      id: 'gegenueberstellung',
-      heading: 'Die Textgegenüberstellung des Ministeriums',
-      pageName: 'Was ändert der Entwurf?',
-      against: 'Geprüft am geltenden Recht im RIS und am Gesetzestext des Entwurfs.',
-      result: [
-        `Die Textgegenüberstellungen enthalten ${n(r.annex.confirmed + r.annex.unchecked + r.annex.withheld)} Paragraphen. ${n(r.annex.confirmed)} hat die Prüfung bestätigt, ${n(r.annex.unchecked)} zeigt der Monitor mit der Marke „nicht geprüft“, ${n(r.annex.withheld)} zeigt er nicht.`,
-        // Whose error the bars below are (20.11.2026): „übernimmt Wort für Wort" beside „ein Satz verloren" read as a contradiction.
-        'Der Monitor übernimmt den Text Wort für Wort, muss ihn aber aus einem PDF oder einer Tabelle herauslesen. Dabei kann ein Satz verloren gehen oder beim falschen Paragraphen landen.',
-      ],
-      faults: [
-        bar('Ein Satz von anderswo steht in der rechten Spalte (neuer Text)', classes(r.annex.faults, ANNEX_MISFILED)),
-        bar('Ein Satz fehlt in der linken Spalte (alter Text)', classes(r.annex.faults, ANNEX_LOST)),
-        bar('Ein Satz von anderswo steht links und rechts gleich', annexBlind, true),
-      ],
-      consequence: 'So ein Satz sieht aus wie unveränderter Text, steht aber beim falschen Paragraphen. Unveränderten Text prüft der Monitor nicht.',
-      rule:
-        'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Die linke Spalte muss dem RIS am Stichtag entsprechen; was rechts als neu markiert ist, darf nicht schon im Gesetz stehen und muss im Gesetzestext des Entwurfs stehen.',
-      measured: [
-        `In ${n(r.annex.drafts)} Entwürfen der ${r.gp}. Gesetzgebungsperiode: ${n(r.annex.confirmed)} Paragraphen bestätigt, ${n(r.annex.withheld)} nicht gezeigt, und ${n(r.annex.unchecked)} gezeigt, ohne dass die Prüfung sie bestätigen konnte – etwa weil sie nur neuen Text enthalten, dem nichts Geltendes gegenübersteht.`,
-        // Whose deviation it is was never measured per case (20.11.2026): the sister check found most such §§ to be the monitor's own reading.
-        `Bei ${ofParagraphs(r.annex.withheldStanding)} der nicht gezeigten steht die geltende Fassung der Gegenüberstellung so nicht im RIS. Ob die Beilage abweicht oder der Monitor sie falsch liest, entscheidet die Prüfung nicht; gezeigt wird der Paragraph in beiden Fällen nicht.`,
-      ],
-      missed: [
-        `Ein fremder Satz, der in beiden Spalten gleich steht: ${rangeDe(annexBlind)} zurückgehalten. Er ist nicht als Änderung markiert, steht aber beim falschen Paragraphen. Was beide Spalten gleich zeigen, gilt als unverändert und wird nicht geprüft.`,
-      ],
-    },
+    annexArt(r),
     {
       id: 'stationen',
       heading: 'Vom Entwurf zum Gesetz: Vergleich der Fassungen',
@@ -474,7 +579,10 @@ export function genauigkeitKurz(r: GenauigkeitRecord = GENAUIGKEIT): { shows: st
       `Der Monitor vergleicht auch, wie sich ein Bundesgesetz vom Entwurf bis zum Beschluss ändert. ${nullSentence(st)}`,
     ],
     check: [
-      'Ein Paragraph mit der Marke „nicht geprüft“ ist gezeigt, aber nicht bestätigt.',
+      // Two marks since 22.11.2026, and „nicht geprüft … aber nicht bestätigt" would read as the other one's name.
+      r.annex.marks
+        ? 'Ein Paragraph mit der Marke „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.'
+        : 'Ein Paragraph mit der Marke „nicht geprüft“ ist gezeigt, aber nicht bestätigt.',
       `Bei Entwürfen der Bundesländer ist der neue Text bei ${n(tgu.strict.held)} von ${n(tgu.shown)} gezeigten Paragraphen Wort für Wort am Entwurf geprüft, bei den übrigen nicht. Vor dem Zitieren im Dokument des Bundeslandes nachsehen.`,
       'Der Monitor ist kein amtliches Angebot. Zitiert wird aus dem verlinkten Original.',
     ],

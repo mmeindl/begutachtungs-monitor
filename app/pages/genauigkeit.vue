@@ -31,6 +31,7 @@ import {
   GENAUIGKEIT,
   GENAUIGKEIT_GRENZEN,
   GENAUIGKEIT_ROW_DE,
+  faultNoteDe,
   genauigkeitArten,
   genauigkeitKurz,
   measuredLineDe,
@@ -163,7 +164,8 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         absichtlich eingebauten Fehlern: Wir ändern ein Wort, eine Zahl
         oder einen Absatz und zählen, wie viele dieser Fehler die Prüfung
         bemerkt. Das zeigen die Balken. Sie sagen nicht, wie oft der Monitor
-        falsch liegt: Was die Prüfung bemerkt, wird nicht gezeigt.
+        falsch liegt: Was die Prüfung bemerkt, wird nicht
+        gezeigt<template v-if="annex.marks"> oder trägt eine Marke</template>.
       </p>
       <div class="mt-6 space-y-10">
         <section
@@ -190,7 +192,7 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
                 :figure="`${shareDe(fault.caught, fault.tried)}\u00a0%`"
                 :part="fault.caught"
                 :whole="fault.tried"
-                :note="`${formatNumberDe(fault.caught)} von ${formatNumberDe(fault.tried)} eingebauten Fehlern gefangen`"
+                :note="faultNoteDe(fault)"
               />
             </li>
           </ul>
@@ -204,7 +206,7 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
                 :figure="`${shareDe(fault.caught, fault.tried)}\u00a0%`"
                 :part="fault.caught"
                 :whole="fault.tried"
-                :note="`${formatNumberDe(fault.caught)} von ${formatNumberDe(fault.tried)} eingebauten Fehlern gefangen`"
+                :note="faultNoteDe(fault)"
               />
             </li>
           </ul>
