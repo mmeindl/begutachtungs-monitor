@@ -268,7 +268,7 @@ export interface DraftWording {
  * Satz:", „entfällt der Schlussteil"), as many stretches as they name.
  */
 export interface Struck {
-  named: { tokens: string[]; line: string }[]
+  named: { tokens: string[]; line: string; designation?: true }[]
   repealed: { level: number; ids: string[]; line: string }[]
   byPosition: { count: number; places: { level: number; ids: string[] }[]; line: string }[]
   /** The units the instructions write anew by address („§ 14 Abs. 5 und 6 lautet:"; level 0 the § itself): their old words are rewritten. */
@@ -290,6 +290,34 @@ const ANCHOR_RE = new RegExp(`(?<![\\p{L}])(?:[Nn]ach|[Vv]or|[Hh]inter)\\s+(?:de
 const NEW_AFTER_RE = /:\s*$|(?<![\p{L}])(?:lautet|lauten|eingefügt|angefügt|vorangestellt|\p{L}*[Bb]ezeichn?ung(?:en)?|folgende[rnms]?(?:\s+\p{L}+){0,3})\s*$/u
 
 type Role = 'new' | 'old' | 'anchor' | null
+
+/** „entfällt", „entfallen", „erhält", „erhalten": the verbs a designation is taken or given by. */
+const DESIGNATION_VERB_RE = /(?<![\p{L}])(entfällt|entfallen|erhält|erhalten)(?![\p{L}])/gu
+/** The verbs of an instruction line, „erhält" and „bezeichnet" among them: which comes first after a quoted designation. */
+const NEXT_VERB_RE = /(?<![\p{L}])(entfällt|entfallen|aufgehoben|gestrichen|eingefügt|angefügt|vorangestellt|angehängt|ergänzt|ersetzt|lautet|lauten|erhält|erhalten|bezeichnet)(?![\p{L}])/u
+
+/**
+ * Whether a line removes the designation it quotes (22.11.2026): „In § 98
+ * entfällt die Absatzbezeichnung „(1)“", „entfallen Abs. 1 und 2 sowie die
+ * Absatzbezeichnung „(3)“", „werden die Absatzbezeichnung „(1)“ und die
+ * Abs. 2, 3 und 4 aufgehoben". The last of „entfällt" and „erhält" before the
+ * quotation governs it, with no clause opened in between („Abs. 1 entfällt;
+ * die Abs. 2 bis 4 erhalten die Absatzbezeichnungen „(1)“ bis „(3)“" gives
+ * them). Where neither stands before it: the verb right behind it („Die
+ * Absatzbezeichnung „(1)“ entfällt"), or the passive whose verb comes later
+ * („wird die Absatzbezeichnung „(1)“ … aufgehoben"). Read as a designation
+ * the line gives, the check looked for a new „(1)" in a column that rightly
+ * prints none, and the § differed by wording nobody wrote.
+ */
+function removesDesignation(head: string, after: string): boolean {
+  const bare = head.replace(QUOTE_RE, ' ')
+  const last = [...bare.matchAll(DESIGNATION_VERB_RE)].at(-1)
+  if (last) return last[1]!.startsWith('entf') && !/;|(?<![\p{L}])(?:wird|werden|tritt|treten|lautet|lauten)(?![\p{L}])/u.test(bare.slice(last.index + last[0].length))
+  if (/^\s*(?:ersatzlos\s+)?(?:entfällt|entfallen)(?![\p{L}])/u.test(after)) return true
+  if (!/(?<![\p{L}])(?:wird|werden)\s+(?:die|der)\s+(?:bisherigen?\s+)?\p{L}*[Bb]ezeichn?ung(?:en)?\s*$/u.test(bare)) return false
+  const next = NEXT_VERB_RE.exec(after.replace(QUOTE_RE, ' '))?.[1]
+  return next !== undefined && new RegExp(`^(?:${REMOVING})$`).test(next)
+}
 
 /** Where a line's next clause opens: „… entfällt die Wortfolge „X" und wird das Wort „Y" durch …". */
 const CLAUSE_RE = /(?:(?<![\p{L}])(?:und|sowie)|[,;])\s+(?:es\s+|im\s+§[^„]*?\s)?(?=(?:wird|werden|entfällt|entfallen|erhält|erhalten|tritt|treten|hat|haben)(?![\p{L}]))/gu
@@ -334,14 +362,17 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     const before = line.slice(i > 0 ? quotes[i - 1]!.index + quotes[i - 1]![0].length : 0, start)
     const after = line.slice(end, quotes[i + 1]?.index ?? line.length)
     let role: Role = null
+    const designation = DESIGNATION_BEFORE_RE.test(before) && DESIGNATION_TEXT_RE.test(m[1]!)
     // „„X“ durch …", „„X“ wird durch …" (Oö. 2026-16120), „„und“ am Ende durch einen Punkt ersetzt" (2026-16124, Tirol 575/2026): the old wording.
     // So are „„X“ ersetzt durch „Y“" and „„X“ wird in § 7a Abs. 2 durch „Y“ ersetzt" (the Bund, 21.11.2026), and „an die Stelle der Wortfolge „X“".
     if (/^\s*(?:(?:wird|werden)\s+)?(?:jeweils\s+)?(?:ersetzt\s+)?durch(?![\p{L}])/u.test(after) || OLD_BEFORE_DURCH_RE.test(after) || REPLACED_BY_SIGN_RE.test(after)) role = 'old'
     else if (IN_PLACE_OF_RE.test(before)) role = 'old'
     else if (/(?<![\p{L}])durch\s+(?:\p{L}+[\s-]+){0,5}$/u.test(before)) role = 'new'
     else if (ANCHOR_RE.test(before)) role = 'anchor'
+    // A designation the line removes, not one it gives (`removesDesignation`).
+    else if (designation && removesDesignation(line.slice(0, start), after)) role = 'old'
     else if (NEW_AFTER_RE.test(before) || /^\s*bezeichnet(?![\p{L}])/u.test(after)) role = 'new'
-    return { text: m[1]!, role, before, after, start, end, designation: DESIGNATION_BEFORE_RE.test(before) && DESIGNATION_TEXT_RE.test(m[1]!), range: false }
+    return { text: m[1]!, role, before, after, start, end, designation, range: false }
   })
   // A list of quotations shares the role its last or its first member has.
   const lists = () => {
@@ -373,7 +404,8 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
   lists()
   // „die Bezeichnungen „4.“ und „5.“": a list of designations.
   for (let i = 1; i < out.length; i++) if (out[i - 1]!.designation && out[i]!.role === out[i - 1]!.role && LIST_RE.test(out[i]!.before) && DESIGNATION_TEXT_RE.test(out[i]!.text)) out[i]!.designation = true
-  return out.map(({ text, role, designation, range }) => ({ text, role: inexact && role === 'new' ? null : role, designation: role === 'new' && designation, range }))
+  // A designation, given (`new`) or removed or replaced (`old`): held, and struck, only where the column prints it as one.
+  return out.map(({ text, role, designation, range }) => ({ text, role: inexact && role === 'new' ? null : role, designation: (role === 'new' || role === 'old') && designation, range }))
 }
 
 /** A block that opens with a § designation: „§ 2. (1) Die …", „„§ 21a", „§ 20a". */
@@ -782,7 +814,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
     // What each run's line strikes (`Struck`): the wording it quotes as old, and the payload under a line whose last verb removes.
     const struckOf = (run: Run): Struck => {
       const line = run.line ?? ''
-      const named = quoteRoles(line).filter((q) => q.role === 'old').map((q) => ({ tokens: strictTokens(q.text), line }))
+      const named: Struck['named'] = quoteRoles(line).filter((q) => q.role === 'old').map((q) => ({ tokens: strictTokens(q.text), line, ...(q.designation ? { designation: true as const } : {}) }))
       if (run.line !== null && removesPayload(run.line)) named.push(...run.payload.map((b) => ({ tokens: strictTokens(`${b.gld ?? ''} ${b.text}`.replace(FOOTER_RE, ' ')), line })))
       const count = byPositionOf(line)
       // Where it strikes by position: the units the line names („In § 5 Abs. 2 entfällt der letzte Satz"), none for the § itself.
@@ -1517,6 +1549,14 @@ function struckAccount(
   const pairs = new Set(words.slice(1).map((w, k) => `${words[k]} ${w}`))
   const named: string[][] = []
   for (const n of [...found.flatMap((f) => f.struck?.named ?? []), ...general]) {
+    // A designation an instruction removes or replaces („entfällt die Absatzbezeichnung „(1)“") accounts for that
+    // designation where the column prints it as one — never for the same figure in the text, nor for a stretch that holds it.
+    if (n.designation) {
+      if (n.tokens.length === 1) left.forEach((l, k) => {
+        if (words[k] === n.tokens[0] && read[k]!.shape !== undefined) mark(l.p, 'named')
+      })
+      continue
+    }
     const tokens = [...n.tokens]
     for (let i = 0; i + 1 < tokens.length; i++) {
       for (const width of [3, 2]) {

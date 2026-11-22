@@ -89,6 +89,22 @@ describe('quoteRoles', () => {
     expect(designations('Im § 17 Abs. 1 wird die Zahl „19“ durch die Zahl „18“ ersetzt.')).toEqual([false, false])
   })
 
+  it('reads a designation the line removes as old, and one it gives behind an „entfällt“ as new (22.11.2026)', () => {
+    const read = (line: string) => quoteRoles(line).map((q) => [q.role, q.designation])
+    // The Bund: „entfällt die Absatzbezeichnung“, alone, with other objects, in a second clause.
+    expect(read('In § 98 entfällt die Absatzbezeichnung „(1)“ und es entfallen die Abs. 1a und 2.')).toEqual([['old', true]])
+    expect(read('In § 6 entfallen die Absatzbezeichnung „(1)“ sowie Abs. 2.')).toEqual([['old', true]])
+    expect(read('§ 19 Abs. 1 entfällt und entfällt in Abs. 2 die Absatzbezeichnung „(2)“ .')).toEqual([['old', true]])
+    // Oberösterreich and Tirol: the designation last among the objects, and the passive with its verb behind.
+    expect(read('Im § 12 entfallen Abs. 1 und 2 sowie die Absatzbezeichnung „(3)“ und wird am Ende der Z 4 der Punkt durch einen Beistrich ersetzt.')).toEqual([['old', true]])
+    expect(read('Im § 7 werden die Absatzbezeichnung „(1)“ und die Abs. 2, 3 und 4 aufgehoben.')).toEqual([['old', true]])
+    expect(read('Im § 7 wird die Absatzbezeichnung „(1)“ und der Abs. 2 wird aufgehoben.')).toEqual([['old', true]])
+    // Given, not removed: the „entfällt“ before it is another clause's.
+    expect(read('§ 25 Abs. 1 entfällt; die Abs. 2 bis 4 erhalten die Absatzbezeichnungen „(1)“ bis „(3)“ .')).toEqual([['new', true], ['new', true]])
+    expect(read('Im § 9 entfällt der Abs 2 und erhält der bisherige Abs 3 die Absatzbezeichnung „(2)“.')).toEqual([['new', true]])
+    expect(read('Der bisherige Text des § 12 erhält die Absatzbezeichnung „(1)“ .')).toEqual([['new', true]])
+  })
+
   it('tells the new wording from the old and from the place, with the verb at either end', () => {
     expect(roles('Im § 17 Abs. 1 wird die Zahl „19“ durch die Zahl „18“ ersetzt.')).toEqual(['old', 'new'])
     expect(roles('Im § 13 Abs. 3 wird nach dem Wortlaut „BGBl. II Nr. 281/2006,“ der Wortlaut „in der Fassung der Verordnung BGBl. II Nr. XX/XXX,“ eingefügt.')).toEqual(['anchor', 'new'])

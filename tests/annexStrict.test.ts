@@ -312,6 +312,14 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(of(blocksWith('1. In § 5 entfällt Abs. 3.'), 'Ab 1.9.2025:')).toMatchObject({ state: 'holds', struck: { repealed: 0 } })
   })
 
+  it('holds a § whose „(1)“ the draft removes: the designation struck is the one it names, and no new „(1)“ is asked of the column (BAO § 98, 22.11.2026)', () => {
+    const blocks = blocksWith('1. In § 5 entfallen die Absatzbezeichnung „(1)“ sowie Abs. 2.')
+    // Until then the quoted „(1)“ was read as a designation the draft gives: the § differed, „1“ missing from the column.
+    expect(check(blocks, 'Die Behörde ist zuständig.', '(1) Die Behörde ist zuständig. (2) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'holds', notShown: [], struckNotInDraft: [], struck: { named: 1, repealed: 6 } })
+    // The same figure struck in the text is not that designation.
+    expect(check(blocksWith('1. In § 5 entfällt die Absatzbezeichnung „(1)“.'), 'Die Behörde ist in Bezirken zuständig.', '(1) Die Behörde ist in 1 Bezirken zuständig.')).toMatchObject({ state: 'differs', notShown: [], struckNotInDraft: ['1'] })
+  })
+
   it('reads a struck stretch whose twin stands kept inside a repealed unit as the twin the draft strikes', () => {
     // Fremdenpolizeigesetz § 94 (22.11.2026): the word diff keeps the first „Die Behörde" and strikes the second, which the draft keeps.
     const blocks = blocksWith('1. In § 5 entfällt Abs. 1; Abs. 2 erhält die Absatzbezeichnung „(1)“.')
