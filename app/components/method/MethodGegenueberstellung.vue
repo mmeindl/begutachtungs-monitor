@@ -109,28 +109,26 @@ const copy = computed(() => COPY[props.kind])
           </li>
           <li>Was rechts als neu markiert ist, steht nicht schon im Gesetz.</li>
           <li>Was rechts als neu markiert ist, steht auch im Gesetzestext {{ copy.item }}.</li>
-          <li>
-            Was rechts als neu markiert ist, steht Wort für Wort und in derselben
-            Reihenfolge im Gesetzestext {{ copy.item }}<template v-if="kind === 'entwurf'">, oder unsere eigene
-              Lesung des ganzen Paragraphen nach dem Entwurf bestätigt ihn</template>.
-          </li>
-          <!-- Every kind: the draft check reads the struck text of every annex it holds (22.11.2026, `struckAccount`).
-               The Lesefassung's word counts only where that check could not read the deletions; against its
-               objection it does not stand (the same day, `annexMark.ts`). -->
-          <li>
-            Was die Gegenüberstellung als gestrichen zeigt, streicht oder ersetzt auch der Gesetzestext
-            {{ copy.item }}.<template v-if="kind === 'entwurf'"> Wo sich das nicht Wort für Wort prüfen lässt,
-              muss unsere eigene Lesung des ganzen Paragraphen nach dem Entwurf die Streichung bestätigen.</template>
-          </li>
+          <!-- The two word-for-word checks, one plain sentence each (22.11.2026: a list item that also carried
+               the second check, „oder unsere eigene Lesung … bestätigt die Streichung", was hard to read). Every
+               kind: the draft check reads the struck text of every annex it holds (`struckAccount`). -->
+          <li>Der neue Text steht Wort für Wort und in derselben Reihenfolge im Gesetzestext {{ copy.item }}.</li>
+          <li>Was links als gestrichen markiert ist, streicht oder ersetzt auch der Gesetzestext {{ copy.item }}.</li>
           <li>Zeigt die rechte Spalte von einem Paragraphen nichts, hebt der Gesetzestext {{ copy.item }} ihn auch auf.</li>
         </ul>
         Einem neuen Paragraphen steht links nichts gegenüber; bei ihm zählen nur
         der dritte und der vierte Punkt. Ließ sich etwas davon nicht prüfen, steht beim
-        Paragraphen „nicht geprüft“. Stimmt der neue oder der gestrichene Text beim wortweisen
-        Abgleich nicht mit dem Gesetzestext überein, steht „nicht bestätigt“;
-        gezeigt wird der Paragraph trotzdem.<template v-if="kind === 'entwurf'"> Ohne diesen Vermerk bleibt er
-          nur, wenn der Abgleich allein an neuen Wörtern hängt, ihm kein Wortlaut des Entwurfs fehlt und
-          unsere eigene Lesung ihn bestätigt.</template>
+        Paragraphen „nicht geprüft“. Geht der vierte oder der fünfte Punkt nicht auf, steht
+        „nicht bestätigt“; gezeigt wird der Paragraph trotzdem.
+        <!-- A draft only: the Lesefassung's word, and the two cases in which it does not lift the Vermerk
+             (`overrules` in `annexMark.ts`: wording the draft names is missing, or the objection is about struck
+             text alone). A Vorlage's annex has no Lesefassung; there the draft check stands alone. -->
+        <template v-if="kind === 'entwurf'">
+          Für diese beiden Punkte gibt es eine zweite Prüfung: Wir setzen den ganzen Paragraphen selbst
+          zusammen, aus dem geltenden Recht und den Anweisungen des Entwurfs. Kommt dabei der Text der rechten
+          Spalte heraus, bleibt der Paragraph ohne Vermerk. Zwei Ausnahmen: Der Gegenüberstellung fehlt
+          Wortlaut, den der Entwurf nennt, oder der Abgleich scheitert allein an gestrichenem Text.
+        </template>
       </dd>
     </div>
     <div>
