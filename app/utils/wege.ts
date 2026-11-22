@@ -1404,10 +1404,33 @@ export interface WegePage {
   title: string
   lede: string
   description: string
+  /** An official explainer under the lede; null where the page has none. */
+  explainer: WegeExplainer | null
   /** The matrices and seams, in the page's order. */
   blocks: readonly WegeBlock[]
   /** The list „Nicht im Monitor". */
   instruments: readonly WegInstrument[]
+}
+
+/**
+ * An official explainer of the page's process, linked and never embedded: an
+ * embedded player would be a third-party resource at runtime, and the video
+ * is the publisher's work (© Parlamentsdirektion/Newsroom).
+ *
+ * `note` says what the explainer no longer covers. The Parliament's video of
+ * January 2020 was checked against the B-VG and the GOG-NR on 22.11.2026 and
+ * still holds, but it places public comment at the Ministerialentwurf alone;
+ * § 23b GOG-NR (BGBl. I 63/2021) added the parliamentary procedure on
+ * 01.08.2021, the very window this monitor shows.
+ */
+export interface WegeExplainer {
+  lead: string
+  label: string
+  href: string
+  /** Between the two links: length, year and the word leading to the second. */
+  detail: string
+  signLanguage: { label: string; href: string }
+  note: string
 }
 
 /**
@@ -1419,18 +1442,30 @@ export interface WegePage {
  * the rail's last station, and a Citizens' Initiative is no text that comes
  * to apply — it ends with the Commission's answer.
  */
-export const WEGE_PAGE_COPY: Record<WegeJurisdiction, Pick<WegePage, 'title' | 'lede' | 'description'>> = {
+export const WEGE_PAGE_COPY: Record<WegeJurisdiction, Pick<WegePage, 'title' | 'lede' | 'description' | 'explainer'>> = {
   [WEGE_STATE]: {
     title: `${WEGE_COPY.title} in ${EU_MEMBER_STATE_NAME_DE}`,
     lede: WEGE_COPY.lede,
     description:
       `Alle Wege, die ein Text in ${EU_MEMBER_STATE_NAME_DE} zum Gesetz oder zur Verordnung nehmen kann – beim Bund und in den Ländern –, und die Wege eines Anliegens an das Parlament: Station für Station, und wo eine Stellungnahme oder eine Unterstützung möglich ist.`,
+    explainer: {
+      lead: 'Kurz erklärt vom Parlament:',
+      label: '„Wie entsteht ein Gesetz?“',
+      href: 'https://www.parlament.gv.at/aktuelles/mediathek/videos/parlament-erklaert-folge-5',
+      detail: '(Video, 3 Min., 2020), auch',
+      signLanguage: {
+        label: 'in Gebärdensprache',
+        href: 'https://www.parlament.gv.at/services/barrierefreiheit/gebaerdensprache',
+      },
+      note: 'Seit August 2021 sind Stellungnahmen auch noch während der Behandlung im Parlament möglich.',
+    },
   },
   eu: {
     title: EU_WEGE_TITLE,
     lede: 'Welche Stationen ein Rechtsakt der EU bis zur Geltung oder Umsetzung durchläuft und eine Europäische Bürgerinitiative bis zur Antwort der Kommission – und wo Sie sich beteiligen können.',
     description:
       'Die Wege eines Rechtsakts der Europäischen Union und einer Europäischen Bürgerinitiative, Station für Station, und wo eine Rückmeldung oder eine Unterstützung möglich ist.',
+    explainer: null,
   },
 }
 

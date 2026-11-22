@@ -57,6 +57,13 @@ const selected = computed(() => wegSelected(page.value, route.query.weg))
       <p class="mt-2 text-ink-secondary">
         {{ page.lede }}
       </p>
+      <p v-if="page.explainer" class="mt-3 text-sm text-ink-secondary">
+        <span class="font-medium text-ink">{{ page.explainer.lead }}</span>
+        {{ ' ' }}<ExternalLink :href="page.explainer.href" class="link-inline">{{ page.explainer.label }}</ExternalLink>
+        {{ ' ' }}{{ page.explainer.detail }}
+        {{ ' ' }}<ExternalLink :href="page.explainer.signLanguage.href" class="link-inline">{{ page.explainer.signLanguage.label }}</ExternalLink>.
+        {{ ' ' }}{{ page.explainer.note }}
+      </p>
     </header>
 
     <!-- One sheet at every width (`ListBox`, the lists' card): the legend in
