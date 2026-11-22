@@ -637,4 +637,18 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(of('1. § 18 entfällt mitsamt Überschrift; im Inhaltsverzeichnis werden die Einträge zu den neuen §§ 18a und 18b eingefügt.', '2. Der bisherige § 19 erhält die Paragraphenbezeichnung „§ 18.“.')).toMatchObject({ state: 'differs', struckNotInDraft: ['2', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
     expect(of('1. § 18 entfällt mitsamt Überschrift.', '2. Der bisherige § 19 erhält die Paragraphenbezeichnung „§ 18.“.', '3. In § 18 (neu) entfällt Abs. 2.')).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
   })
+
+  it('charges a line that strikes a sentence per sentence, and opens a Ziffer after a citation in brackets (22.11.2026)', () => {
+    // A second review of the check: where the sentences of the unit cannot be counted (an elision in it), one sentence struck by
+    // position that the word diff cuts at a kept run spent the count with its first piece (TDBG § 43); „(§ 9 AsylG 2005), oder 3."
+    // was not read as Ziffer 3, and a wording quoted for Z 3 was refused there (BFA-VG § 21).
+    const ruled = '(1) ... (2) Die Behörde ist zuständig. ... Die nähere Regelung wird einer Verordnung im Einvernehmen mit dem Bundesminister für Justiz vorbehalten. (3) Die Frist beträgt vier Wochen.'
+    const cut = [...blocksWith('1. In § 5 Abs. 2 entfällt der letzte Satz.', '2. Dem § 5 Abs. 2 wird folgender Satz angefügt:'), abs('"Das Einvernehmen mit dem Bundesminister für Justiz ist herzustellen."')]
+    const shown = '(1) ... (2) Die Behörde ist zuständig. ... Das Einvernehmen mit dem Bundesminister für Justiz ist herzustellen. (3) Die Frist beträgt vier Wochen.'
+    expect(check(cut, shown, ruled)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    expect(check(cut, shown.replace(' (3) Die Frist beträgt vier Wochen.', ''), ruled).state).toBe('differs')
+    const court = '(2a) Das Gericht erkennt über Beschwerden gegen Entscheidungen, mit denen 1. der Status aberkannt wurde (§ 7 AsylG 2005), 2. der Schutz aberkannt wurde (§ 9 AsylG 2005), oder 3. bei Fremden, deren Aufenthalt geduldet war, die Zulässigkeit festgestellt wurde. (3) Weiteres gilt.'
+    const z3 = blocksWith('1. In § 5 Abs. 2a Z 3 wird die Wortfolge „bei Fremden“ durch die Wortfolge „gegen Fremde“ ersetzt.')
+    expect(check(z3, court.replace('3. bei Fremden', '3. gegen Fremde'), court)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+  })
 })
