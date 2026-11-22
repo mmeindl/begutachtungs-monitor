@@ -68,6 +68,9 @@
  * | Satz-weg           | 11/335  | 0/172 |  257/259 (99,2 %)  | 153/157 (97,5 %) |
  * | R-weg              | 10/1162 | 2/845 |  670/722 (92,8 %)  | 521/557 (93,5 %) |
  *
+ * R-weg since 22.11.2026, when check 4 began to read the words of every
+ * striking region of a row: 674/722 (93,4 %) and 528/557 (94,8 %).
+ *
  * **And the whole chain the page runs** (21.11.2026, `judgeChain`): the same
  * faults, and Satz links verloren (fault L), judged by the gate and then by
  * the table of `annex/annexMark.ts` — the draft check over the faulted rows,
@@ -80,22 +83,23 @@
  *
  * | 22.11.2026 | PDF | Tabelle |
  * |---|---:|---:|
- * | Zahl im Text       | 1075/1083 (99,3 %; 98,8; 99,5) | 609/612 (99,5 %; 98,7; 99,5) |
- * | Bezeichnung        |  443/489 (90,6 %; 89,9; 90,5)  | 266/287 (92,7 %; 89,3; 92,7) |
- * | Wort getauscht     | 1362/1380 (98,7 %; 98,5; 99,3) | 872/880 (99,1 %; 99,0; 99,8) |
- * | neuer Satz fehlt   |  206/233 (88,4 %; 87,3; 88,1)  | 124/125 (99,2 %; 93,8; 99,2) |
- * | behaltener Satz gestrichen | 220/951 (23,1 %; 23,5; 22,5) | 153/680 (22,5 %; 23,6; 21,6) |
- * | Satz links verloren | 804/1032 (77,9 %; 76,4; 81,2) | 241/305 (79,0 %; 79,6; 79,1) |
+ * | Zahl im Text       | 1081/1088 (99,4 %; 98,9; 99,6) | 612/615 (99,5 %; 98,7; 99,5) |
+ * | Bezeichnung        |  450/495 (90,9 %; 90,0; 90,8)  | 267/288 (92,7 %; 89,3; 92,7) |
+ * | Wort getauscht     | 1372/1390 (98,7 %; 98,5; 99,3) | 875/883 (99,1 %; 99,0; 99,8) |
+ * | neuer Satz fehlt   |  226/234 (96,6 %; 95,4; 96,5)  | 125/126 (99,2 %; 93,9; 99,2) |
+ * | behaltener Satz gestrichen | 216/955 (22,6 %; 22,8; 22,5) | 148/683 (21,7 %; 22,8; 21,1) |
+ * | Satz links verloren | 808/1037 (77,9 %; 76,4; 81,3) | 242/306 (79,1 %; 79,7; 79,3) |
  *
  * A kept sentence struck passes wherever the draft check held before the
  * fault: it reads no old text, and under every rule its holding keeps the §
  * clean. Zahl, Wort and neuer Satz fehlt are held to 95 % under
- * `--mindestens` (`CHAIN_FLOORED`), neuer Satz fehlt on the table path only:
- * on the PDF path every one of its 27 misses is a § whose dropped words the
- * draft check excuses behind an elision mark of the column (the window runs
- * to the column's edge where no word of the draft's wording follows), and
- * the floor would fail by construction until that window is closed. Each
- * class not held says why, in the record (`CHAIN_NOT_FLOORED`).
+ * `--mindestens` (`CHAIN_FLOORED`), on both paths. Neuer Satz fehlt stood at
+ * 206 of 233 on the PDF path while the draft check excused missing wording
+ * behind an elision mark as far as the column's edge: every one of the 27
+ * misses was a § that closes on such a mark. Since the mark stands only for
+ * what follows the last word the column prints (`behindElision` in
+ * `laender/landTguStrict.ts`), 8 of 234 pass. Each class not held says why,
+ * in the record (`CHAIN_NOT_FLOORED`).
  *
  * Until these builders said what they build, the oracle stood at 89,3 and
  * 87,8 % for Zahl, 95,9 and 96,0 % for Satz-weg and 73,2 and 98,1 % for
@@ -699,7 +703,6 @@ const CHAIN_FLOOR = 95
  * construction, not because the chain fell. In the record as `notFloored`.
  */
 const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why: string }>> = {
-  satzweg: { path: 'pdf', why: 'die Prüfung gegen den Entwurf entschuldigt fehlenden Wortlaut hinter einem Auslassungszeichen der Spalte bis zu ihrem Rand: fehlt der letzte neue Satz vor „(3) bis (6) …“, bemerkt sie es nicht' },
   bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
   rweg: { why: 'die Prüfung gegen den Entwurf liest keinen gestrichenen Text' },
   links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
