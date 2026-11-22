@@ -126,6 +126,8 @@ interface Marked {
   at?: number
   /** A sentence ends after the word: „." before no small letter and no figure, and not after an abbreviation („Abs.", „BGBl."). */
   stop?: true
+  /** A figure printed like a designation inside a citation or a date, where no unit opens: „(2. AußWV 2019)", „31.12.", „vom 29. 3. 1999". */
+  inline?: true
 }
 
 /** How a designation is printed: „(5)", „5." or „e)". */
@@ -207,7 +209,9 @@ function markedTokens(text: string): Marked[] {
       const like = designation || (/^(?:\d+[a-z]*|[a-z]{1,2})$/.test(word) && /[.)]/.test(flat[m.index + m[0].length] ?? ''))
       // A word is no designation for this though `designationForm` takes it for one („… Werkzeug und Berufskleidung). Ausgaben …").
       const stop = !(designation && DESIGNATION_WORD_RE.test(word)) && !ABBREVIATIONS.has(word) && cased.length === flat.length && STOP_RE.test(cased.slice(m.index + m[0].length, m.index + m[0].length + 8)) && !(/^\d{1,3}$/.test(word) && (MONTH_AFTER_RE.test(cased.slice(m.index + m[0].length, m.index + m[0].length + 14)) || (/^\p{L}+$/u.test(out.at(-1)?.word ?? '') && !ADDRESS_WORDS.has(out.at(-1)!.word) && !/^(?:und|oder|sowie|bis|bzw)$/.test(out.at(-1)!.word) && /[\p{L}]\s*$/u.test(flat.slice(0, m.index)))))
-      if (word) out.push({ word, marked: on, designation, ...(like ? { shape: shapeOf(flat, m.index, m[0].length) } : {}), ...(stop ? { stop: true as const } : {}) })
+      const [before, after] = [flat.slice(Math.max(0, m.index - 4), m.index), flat.slice(m.index + m[0].length, m.index + m[0].length + 7)]
+      const inline = /^\d+$/.test(word) && after.startsWith('.') && (/\(\s*$/u.test(before) || /\d\.$/.test(before) || (/\d\.\s+$/u.test(before) && /^\.\s*\d{4}(?!\d)/u.test(after)))
+      if (word) out.push({ word, marked: on, designation, ...(like ? { shape: shapeOf(flat, m.index, m[0].length) } : {}), ...(stop ? { stop: true as const } : {}), ...(inline ? { inline: true as const } : {}) })
     }
   }
   return out
@@ -753,9 +757,19 @@ function addressUnits(text: string, context: readonly AddressPart[] = []): Addre
   const out: AddressUnit[] = []
   let parents = [...context]
   let last = -1
+  let end = -1
   for (const m of text.matchAll(new RegExp(UNIT_PART, 'gu'))) {
     const word = m[1]!.replace(/\.$/, '').toLowerCase()
     const level = UNIT_LEVEL[word]!
+    // „Abs. 3 bis Abs. 5": one range, its unit word repeated (22.11.2026).
+    const from = out.at(-1)?.ids.at(-1)
+    const to = /^\d+$/.test(m[2]!) ? Number(m[2]) : NaN
+    const ranged = level === last && /^\s*bis\s*$/u.test(text.slice(end, m.index)) && from !== undefined && /^\d+$/.test(from) && to > Number(from) && to - Number(from) <= MAX_RANGE
+    end = m.index! + m[0].length
+    if (ranged) {
+      for (let n = Number(from) + 1; n <= to; n++) out.at(-1)!.ids.push(String(n))
+      continue
+    }
     // An Anlage is keyed as the annex keys its group (`designationKey`): „Anl 7"; an Artikel „Art 11" (a Verfassungsgesetz is keyed by them).
     const ids = unitIds(m[2]!).map((id) => (word.startsWith('anl') || word.startsWith('anh') ? `anl ${id}` : word.startsWith('art') ? `art ${id}` : id))
     // „Abs. 7 (neu)": a number of the new count, which the left column does not print.
@@ -796,7 +810,7 @@ const OWN_OBJECT_RE = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\
 
 /** An address part said of the verb as its object: after an article, or first after the verb — not a place („in Abs. 1", „am Ende der Z 5"). */
 const OBJECT_BEFORE_RE = /(?:^\s*(?:jeweils\s+)?|(?<!(?:Ende|nach|vor|[Ii]n|[Ii]m|zu|von|aus)\s+)(?:die|der|das|den)\s+|(?:und|sowie|,)\s+)$/u
-const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie)\s*(?=(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
+const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie|bis)\s*(?=(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
 
 /** The units a verb at `v` in `line` is said of: the addresses after it in its clause that are its objects, else the one right before it that is its subject. */
 function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): AddressUnit[] {
@@ -880,6 +894,18 @@ function replacedOf(raw: string): AddressUnit[] {
     const durch = v[0] === 'ersetzt' ? /^(.*?)(?<![\p{L}])durch\s+(?:die\s+)?folgende/u.exec(line.slice(from, v.index)) : null
     return durch ? [...durch[1]!.matchAll(ADDRESS_RE)].filter((m) => !PLACE_BEFORE_RE.test(durch[1]!.slice(0, m.index))).flatMap((m) => addressUnits(m[0], contextAt(line, from + m.index!))) : []
   }).filter((u) => u.ids.length)
+}
+
+/**
+ * The units below the § a payload's line writes anew or names (22.11.2026): those it writes by address („§ 17 Abs. 1 Z 1
+ * lautet:", „werden Z 1 bis 3 durch folgende Z 1 und 2 ersetzt"), else every unit its addresses name („§ 5 Abs. 2 erster
+ * Satz lautet:"). None where it names the § only.
+ */
+function payloadUnits(line: string): AddressUnit[] {
+  const replaced = replacedOf(line).filter((u) => u.level > 0)
+  if (replaced.length) return replaced
+  const bare = withoutResidue(line).replace(QUOTE_RE, ' „“ ')
+  return [...bare.matchAll(ADDRESS_RE)].flatMap((m) => addressUnits(m[0], contextAt(bare, m.index))).filter((u) => u.level > 0)
 }
 
 const ORDINAL = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte|letzte|vorletzte|drittletzte|nachfolgende|(?:darauf\\s+)?folgende|beiden\\s+ersten|beiden\\s+letzten|(?:ersten|letzten)\\s+beiden)[nrsm]?'
@@ -1734,7 +1760,8 @@ function struckAccount(
   /** Whether a unit opens at `k`: a designation, or a figure printed as one right after the layout's notation („1. bis 14. … 15. jede …"). */
   // Only a figure or one or two letters open a unit: „BGBl." after a comma is printed like a designation (SpielzeugV Anlage 2, 22.11.2026);
   // and in brackets only a figure, an Absatz.
-  const opensAt = (k: number): boolean => DESIGNATION_WORD_RE.test(words[k]!) && (read[k]!.shape !== '()' || /^\d/.test(words[k]!)) && (read[k]!.designation === true || (read[k]!.shape !== undefined && (notText?.[k - 1] === true || left[k - 1]?.row !== left[k]!.row)))
+  // Nor a figure inside a citation or a date (`Marked.inline`; 22.11.2026: „am 31.12. des Vorjahres" ended a Ziffer, GütbefG § 20).
+  const opensAt = (k: number): boolean => DESIGNATION_WORD_RE.test(words[k]!) && (read[k]!.shape !== '()' || /^\d/.test(words[k]!)) && (read[k]!.designation === true || (read[k]!.shape !== undefined && (notText?.[k - 1] === true || left[k - 1]?.row !== left[k]!.row))) && !read[k]!.inline
   /**
    * The left column's unit a designation at `k` opens: up to the next designation of its level or higher. A Ziffer's or a
    * Litera's ends with its row where the next row opens with no deeper designation (22.11.2026): the table path sets one row
@@ -1755,15 +1782,27 @@ function struckAccount(
     return false
   }
   const ends = new Map<number, number>()
+  // A row that opens a list item of a lower number than the list's last („… 4. …" then a row „2. …") stands in another unit, whose
+  // designation the column prints only in an elided row the check does not see (22.11.2026: Abs. 2 Z 2 read as Abs. 1's, StVG
+  // § 17). Not the same number again (GKV § 10a prints „1." twice), and not inside a row: a table's figures („1.4 Kosten der
+  // Lehre") count anew without another unit (KLRV § 22).
+  const rank = (word: string): [number, string] => (/^\d/.test(word) ? [parseInt(word, 10), word.replace(/^\d+/, '')] : [word.charCodeAt(0), word.slice(1)])
+  const below = (a: string, b: string) => rank(a)[0] < rank(b)[0] || (rank(a)[0] === rank(b)[0] && rank(a)[1] < rank(b)[1])
   const unitEnd = (k: number): number => {
     const known = ends.get(k)
     if (known !== undefined) return known
     const level = levelAt(k)
     let e = k + 1
     let deeper = false
+    const last = new Map<number, string>()
     while (e < left.length && !(opensAt(e) && levelAt(e) <= level)) {
-      if (opensAt(e)) deeper = true
-      else if (level >= 2 && !deeper && left[e]!.row !== left[e - 1]!.row && !runsOn(k, level)) break
+      if (opensAt(e)) {
+        const previous = last.get(levelAt(e))
+        if (previous !== undefined && below(words[e]!, previous) && left[e]!.row !== left[e - 1]!.row) break
+        last.set(levelAt(e), words[e]!)
+        for (const l of last.keys()) if (l > levelAt(e)) last.delete(l)
+        deeper = true
+      } else if (level >= 2 && !deeper && left[e]!.row !== left[e - 1]!.row && !runsOn(k, level)) break
       e++
     }
     ends.set(k, e)
@@ -1968,6 +2007,34 @@ function struckAccount(
     sentenceWords.set(x, result)
     return result
   }
+  // Where a payload's line reaches (`payloadUnits`; 22.11.2026): inside the units it names, each located with its parents as
+  // `within` locates them and running to the next designation of its level or higher — not into another Absatz, a sibling
+  // Ziffer or the lead-in of the unit above a Ziffer it names. A § heading too where the line writes it („samt Überschrift").
+  // Where a unit it names is not located (an elided parent row, a number of the new count), the payload is not held to it:
+  // held there, it left 72 PDF and 33 table §§ of GP XXVIII without the payload's words, most of them sound. Nor where an
+  // instruction for the § gives designations: its address may count by the new numbers („erhält die bisherige lit. b die
+  // Bezeichnung „a)“, die neue lit. a lautet:", FinStrG § 127).
+  const reachOf = new Map<string, Set<number> | null>()
+  // „Abs. 1 bis 9 lautet" names the Abs. 2a between them too.
+  const namedId = (ids: readonly string[], word: string) => ids.includes(word) || (/^\d+[a-z]+$/.test(word) && ids.includes(word.replace(/[a-z]+$/, '')) && ids.includes(String(Number(word.replace(/[a-z]+$/, '')) + 1)))
+  const reaches = (line: string): Set<number> | null => {
+    if (reachOf.has(line)) return reachOf.get(line)!
+    const units = renumbers ? [] : payloadUnits(line)
+    const ids = ownFor(line)
+    let out: Set<number> | null = units.length ? new Set<number>() : null
+    for (const u of units) {
+      const at = u.fresh ? [] : left.flatMap((_, j) => (opensAt(j) && levelAt(j) === u.level && namedId(u.ids, words[j]!) && within(j, u.path, ids) ? [j] : []))
+      if (!at.length || at.length < u.ids.length) out = null
+      for (const k of at) {
+        let e = k + 1
+        while (e < left.length && !(opensAt(e) && levelAt(e) <= u.level)) e++
+        for (let x = k; x < e; x++) out?.add(x)
+      }
+    }
+    if (out && /samt\s+(?:der\s+)?Überschrift/u.test(line)) for (let x = 0; x < left.length && !opensAt(x); x++) out.add(x)
+    reachOf.set(line, out)
+    return out
+  }
   // Rewritten.
   // Not a payload whose line only adds (22.11.2026: a new § 81 inserted under the number the old § 81 leaves rewrites nothing of
   // it, ApoKG); and one printed from the §'s designation on rewrites the § whole only under a line that names no unit below it
@@ -1983,9 +2050,8 @@ function struckAccount(
     // lautet:", LFG; and a payload opening with „(4)" under „§ 16 Abs. 4 erster Satz lautet:" took the whole Absatz).
     const named = found.flatMap((f) => f.struck?.byPosition ?? []).filter((x) => piece.line !== undefined && x.line === piece.line).map(namedSentences).filter((x) => x !== null)
     const only = named.length ? new Set(named.flatMap((x) => [...x])) : null
-    const rewrite = (q: number) => {
-      if (!only || only.has(leftOf.get(q) ?? -1)) mark(q, 'rewritten')
-    }
+    // …and only where its line reaches (`reaches`): „§ 17 Abs. 1 Z 1 lautet:" wrote the lead-in of Abs. 1 before the Ziffer,
+    // „§ 25 Abs. 2 und Abs. 3 lauten:" Abs. 1, and „§ 3b Abs. 2 Z 2 lautet:" Z 3 (StVG, KGRG, AußWV).
     const places: number[] = []
     let opens: Marked | null = null
     for (let j = piece.from; j < piece.to; j++) {
@@ -1995,6 +2061,24 @@ function struckAccount(
       if (opens === null && !draft.optional[j]) opens = t
     }
     if (!places.length) continue
+    let reach = piece.line === undefined ? null : reaches(piece.line)
+    // A payload that opens with the designation of the unit above the one its line names prints that unit's lead-in too
+    // („§ 14 Abs. 4 Z 1 lautet: „(4) Periodische Meldungen … zu enthalten: 1. …“", AußWV): it reaches from that designation on.
+    // Not where that designation is the named unit's own figure too: „§ 5 Abs. 1 Z 1 lautet: „1. …“" aligned with the „(1)".
+    if (reach && opens?.shape !== undefined) {
+      const level = levelOf(opens.word, opens.shape)
+      const units = payloadUnits(piece.line!)
+      const parent = units.some((u) => u.level > level && u.path.some((x) => x.level === level && x.ids.includes(opens!.word))) && !units.some((u) => u.ids.includes(opens!.word))
+      const at = parent ? left.findIndex((_, j) => opensAt(j) && levelAt(j) === level && words[j] === opens!.word) : -1
+      if (at >= 0) {
+        reach = new Set(reach)
+        for (let x = at; x < left.length && !(x > at && opensAt(x) && levelAt(x) <= level + 1); x++) reach.add(x)
+      }
+    }
+    const rewrite = (q: number) => {
+      const k = leftOf.get(q) ?? -1
+      if ((!only || only.has(k)) && (!reach || reach.has(k))) mark(q, 'rewritten')
+    }
     const [lo, hi] = [Math.min(...places), Math.max(...places)]
     // Between its words: a struck word with, on either hand, nothing but struck and new words before the next of its words.
     // A kept word the payload does not account for in between is text of another unit the alignment reached past

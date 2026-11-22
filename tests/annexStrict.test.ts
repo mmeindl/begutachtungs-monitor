@@ -531,4 +531,35 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(cut, shown, ruled)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
     expect(check(cut, shown.replace(' (2) Die Frist beträgt vier Wochen.', ''), ruled).state).toBe('differs')
   })
+
+  it('lets a payload account only inside the units its line names (22.11.2026)', () => {
+    // A second review of the check: „§ 5a Abs. 1 Z 1 lautet:" paid for the lead-in of Abs. 1 (BlutspenderV, StVG § 17), and
+    // „§ 3b Abs. 2 Z 2 lautet:" for Z 3 (AußWV).
+    const ziff = (text: string): TextBlock => ({ kind: 'ziff', cls: 'listelem/', text, gld: null })
+    const persons = '§ 5. (1) Folgende Personen sind von der Spende auszuschließen: 1. Personen mit Herzerkrankung, 2. Personen mit Fieber.'
+    const z1 = [...blocksWith('1. § 5 Abs. 1 Z 1 lautet:'), ziff('"1. Personen, die an einer schweren Herzerkrankung leiden,"')]
+    const sound = persons.replace('Personen mit Herzerkrankung', 'Personen, die an einer schweren Herzerkrankung leiden')
+    expect(check(z1, sound, persons).state).toBe('holds')
+    expect(check(z1, sound.replace(' Folgende Personen sind von der Spende auszuschließen:', ''), persons)).toMatchObject({ state: 'differs', struckNotInDraft: ['folgende', 'personen', 'sind', 'von', 'der', 'spende', 'auszuschlieflen'] })
+    const fibres = '§ 5. (1) Für Messungen gilt der 5. Abschnitt. (2) Die Fasern sind zu zählen: 1. mit dem Lichtmikroskop oder 2. mit dem Rasterelektronenmikroskop oder 3. mit einem Gerät der Klasse B. (3) Die Behörde prüft.'
+    const shown = '§ 5. (1) Für Messungen gilt der 5. Abschnitt. (2) Die Fasern sind zu zählen: 1. durch Elektronenmikroskopie oder 2. mit einem anderen Verfahren. (3) Die Behörde prüft.'
+    const payload = [ziff('"1. durch Elektronenmikroskopie oder'), ziff('2. mit einem anderen Verfahren."')]
+    expect(check([...blocksWith('1. In § 5 Abs. 2 werden Z 1 bis 3 durch folgende Z 1 und 2 ersetzt:'), ...payload], shown, fibres).state).toBe('holds')
+    expect(check([...blocksWith('1. In § 5 Abs. 2 werden Z 1 und 2 durch folgende Z 1 und 2 ersetzt:'), ...payload], shown, fibres)).toMatchObject({ state: 'differs', struckNotInDraft: ['3', 'mit', 'gerät', 'der', 'klasse', 'b'] })
+    // A figure inside a citation („§ 1.22.") opens no Ziffer that would end the one the payload writes.
+    const board = '§ 5. 1. An Bord muss sich ein Abdruck der Verordnung befinden. Im Donauraum betrifft dies auch die Anordnungen gemäß § 1.22. 2. Im Donauraum muss das Handbuch mitgeführt werden.'
+    const aboard = [...blocksWith('1. § 5 Z 1 lautet:'), ziff('"1. An Bord muss sich ein aktueller Abdruck der Verordnung befinden."')]
+    expect(check(aboard, '§ 5. 1. An Bord muss sich ein aktueller Abdruck der Verordnung befinden. 2. Im Donauraum muss das Handbuch mitgeführt werden.', board)).toMatchObject({ state: 'holds', struckNotInDraft: [] })
+    // The table path drops an elided row: a row that opens a lower Ziffer than the list's last stands in an Absatz the column
+    // does not print (StVG § 17: Abs. 2 Z 2 read as Abs. 1's), and the wording the line quotes for it stands in its place.
+    const r = (gld: string | null, change: ComparisonRow['change'], current: string, proposed = current) => row({ law: LAW, gld, para: '§ 5.', change, current, proposed })
+    const rows = [
+      r('§ 5.', 'unchanged', '(1) Für Entscheidungen gelten die folgenden Bestimmungen:'),
+      r(null, 'unchanged', '1. Das Gericht hat eine Äußerung einzuholen.'),
+      r(null, 'unchanged', '3. Die Beschwerde hat aufschiebende Wirkung.'),
+      r(null, 'unchanged', '(2) …', '(2) …'),
+      r(null, 'changed', '2. im Verfahren die §§ 1 bis 8, 51 Abs. 7, 52 und 55 VStG,', '2. im Verfahren die §§ 1 bis 8, 52 und 55 VStG,'),
+    ]
+    expect(annexStrictChecks(rows, { ...draft, blocks: blocksWith('1. In § 5 Abs. 2 Z 2 entfällt die Wortfolge „51 Abs. 7,“.') }).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'holds', struck: { named: 3 } })
+  })
 })
