@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bumpedDesignation, donorSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../scripts/lib/rightColumnFaults'
+import { bumpedDesignation, donorSentence, keptSentenceGone, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../scripts/lib/rightColumnFaults'
 
 // The reader's faults both harnesses inject into a right column's new text
 // (landGuard.ts for the Länder, faultInjection.ts for the Bund's annex gate,
@@ -79,5 +79,18 @@ describe('right-column faults', () => {
   it('takes the first sentence of eight words as the donor', () => {
     expect(donorSentence(site, split, words)).toBe('Die Behörde hat den Antrag binnen vier Wochen zu prüfen und das Ergebnis mitzuteilen.')
     expect(donorSentence('Kurz. Auch kurz.', split, words)).toBeNull()
+  })
+})
+
+describe('keptSentenceGone: a sentence the right column keeps, lost from it (R-weg, 22.11.2026)', () => {
+  const SPLIT = /(?<=[.;:!?])\s+(?=[A-ZÄÖÜ(„"])/
+  const words = (t: string) => t.split(/\s+/).filter(Boolean)
+  it('takes the first sentence of the law\'s text that both columns carry, not the heading stack or a marker', () => {
+    const current = 'Zuständigkeit § 5. (1) Die Behörde ist für alle Anträge nach diesem Gesetz zuständig. Sie entscheidet binnen vier Wochen.'
+    const proposed = 'Zuständigkeit § 5. (1) Die Behörde ist für alle Anträge nach diesem Gesetz zuständig. Sie entscheidet binnen sechs Wochen.'
+    expect(keptSentenceGone(current, proposed, SPLIT, words)).toBe('Zuständigkeit § 5. (1) Sie entscheidet binnen sechs Wochen.')
+  })
+  it('gives null where no sentence of the right column stands in the left one', () => {
+    expect(keptSentenceGone('(1) Die Frist beträgt vier Wochen.', '(1) Die Frist beträgt sechs Wochen.', SPLIT, words)).toBeNull()
   })
 })

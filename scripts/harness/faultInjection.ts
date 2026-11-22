@@ -54,9 +54,10 @@
  * swapped), **Satz-weg** (its last sentence gone), and **R-weg**, a sentence
  * the draft keeps lost from the right column, which the page then shows
  * struck. Both right-column rules read new words against bags, from floors
- * up (`MIN_NEW_WORDS`, `MIN_MISSING_WORDS`), and no rule reads struck text:
+ * up (`MIN_NEW_WORDS`, `MIN_MISSING_WORDS`), and neither reads struck text:
  * these were the Länder's blind spot until 20.11.2026, and the run says what
- * they are for the Bund. The same faulted rows are held by the oracle
+ * they are for the Bund's gate (the draft check of the table reads struck
+ * text since 22.11.2026, `struckAccount`). The same faulted rows are held by the oracle
  * against the unchanged result too („Lesefehler in der rechten Spalte",
  * record field `column`), since 21.11.2026: there they are the annex's
  * column the page would show, and the question is whether it is marked.
@@ -78,27 +79,34 @@
  * Over the §§ the page showed without a mark before the fault: withheld,
  * marked (either pill), shown without a mark; under each value of
  * `OBJECTION_OVER_CONFIRMATION`, each over the §§ it shows without a mark.
- * GP XXVIII, 22.11.2026, the rule in force ('missing'; under 'clean' and
- * 'unconfirmed' in brackets):
+ * GP XXVIII, 22.11.2026, since the draft check reads struck text, the rule
+ * in force ('missing'; under 'clean' and 'unconfirmed' in brackets):
  *
  * | 22.11.2026 | PDF | Tabelle |
  * |---|---:|---:|
- * | Zahl im Text       | 1081/1088 (99,4 %; 98,9; 99,6) | 612/615 (99,5 %; 98,7; 99,5) |
- * | Bezeichnung        |  450/495 (90,9 %; 90,0; 90,8)  | 267/288 (92,7 %; 89,3; 92,7) |
- * | Wort getauscht     | 1372/1390 (98,7 %; 98,5; 99,3) | 875/883 (99,1 %; 99,0; 99,8) |
- * | neuer Satz fehlt   |  226/234 (96,6 %; 95,4; 96,5)  | 125/126 (99,2 %; 93,9; 99,2) |
- * | behaltener Satz gestrichen | 216/955 (22,6 %; 22,8; 22,5) | 148/683 (21,7 %; 22,8; 21,1) |
- * | Satz links verloren | 808/1037 (77,9 %; 76,4; 81,3) | 242/306 (79,1 %; 79,7; 79,3) |
+ * | Zahl im Text       | 1073/1080 (99,4 %; 98,9; 99,6) | 610/612 (99,7 %; 98,9; 99,7) |
+ * | Bezeichnung        |  445/488 (91,2 %; 90,3; 91,0)  | 263/283 (92,9 %; 89,5; 92,9) |
+ * | Wort getauscht     | 1360/1378 (98,7 %; 98,5; 99,3) | 871/879 (99,1 %; 99,0; 99,8) |
+ * | neuer Satz fehlt   |  223/230 (97,0 %; 95,7; 96,9)  | 124/125 (99,2 %; 93,8; 99,2) |
+ * | behaltener Satz gestrichen | 792/954 (83,0 %; 83,0; 84,5) | 579/685 (84,5 %; 84,1; 85,4) |
+ * | Satz links verloren | 819/1031 (79,4 %; 77,9; 83,0) | 242/306 (79,1 %; 79,7; 79,3) |
  *
- * A kept sentence struck passes wherever the draft check held before the
- * fault: it reads no old text, and under every rule its holding keeps the §
- * clean. Zahl, Wort and neuer Satz fehlt are held to 95 % under
+ * A kept sentence struck passed wherever the draft check held before the
+ * fault, while it read no old text: 216 of 955 and 148 of 683 were caught.
+ * Since it holds what the column strikes against what the draft strikes,
+ * what passes is struck text the draft's instructions for the § account
+ * for as a whole: stretches no more than they strike by a position they
+ * only count („der letzte Satz entfällt"), text inside a unit a payload
+ * writes anew — often the draft's own text lacks the sentence there, so the
+ * faulted column agrees with it —, and on the PDF path a division's heading
+ * the injector takes for the row's first sentence (`keptSentenceGone`).
+ * Zahl, Wort and neuer Satz fehlt are held to 95 % under
  * `--mindestens` (`CHAIN_FLOORED`), on both paths. Neuer Satz fehlt stood at
  * 206 of 233 on the PDF path while the draft check excused missing wording
  * behind an elision mark as far as the column's edge: every one of the 27
  * misses was a § that closes on such a mark. Since the mark stands only for
  * what follows the last word the column prints (`behindElision` in
- * `laender/landTguStrict.ts`), 8 of 234 pass. Each class not held says why,
+ * `laender/landTguStrict.ts`), 7 of 230 pass. Each class not held says why,
  * in the record (`CHAIN_NOT_FLOORED`).
  *
  * Until these builders said what they build, the oracle stood at 89,3 and
@@ -415,7 +423,7 @@ import { argAssigned, argFlag } from '../lib/args'
 import { corpusReach, floorOf, harnessStamp, type FloorStatus } from '../lib/harnessRecord'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
-import { bumpedDesignation, donorSentence, isSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
+import { bumpedDesignation, donorSentence, keptSentenceGone, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
 import { chainedAbsaetze } from '../lib/faultSites'
 import { annexSources, resolveKonsLaw } from '../lib/productionSources'
 import { annexStrictChecks } from '../../server/utils/annex/annexStrict'
@@ -444,7 +452,6 @@ const risJson = (params: Record<string, string>): Promise<any> => risQuery(param
 const SENTENCE_SPLIT = /(?<![\s(](?:Abs|Nr|Z|Art|lit|sublit|BGBl|bzw|usw|vgl|idF|iVm|Dr|Mag|Ing|ca|Jg|Hrsg|Anm|gem|zB|bspw|inkl|exkl|Bd|Aufl|Kap|Pkt|Rz|RGBl|dRGBl|StGBl|ABl|EG|EU|EWR|GmbH|Co|AG|OG|KG|St|Hl|Nov|Dez|Jän|Feb|Mär|Apr|Jun|Jul|Aug|Sep|Okt|Vorst|Univ|Prof|Präs|Min|Sekt|Abt|Gr|Erg|Fn|Ziff|S|sog)\.)(?<=[.;:!?])\s+(?=[A-ZÄÖÜ(„"])/
 
 const toks = (text: string): string[] => comparableTokens(normalizeText(text))
-const sentencesOf = (text: string): string[] => text.split(SENTENCE_SPLIT)
 
 /**
  * What one fault did to one §, under both references rule 2 can have.
@@ -619,9 +626,11 @@ function withNewTextEdited(rows: readonly ComparisonRow[], edit: (text: string, 
  * The § with a sentence it keeps lost from the right column — R-weg
  * (21.11.2026): the first sentence of a row that stands alike in both
  * columns, long enough to be a sentence (`MIN_STANDING_STRETCH`), gone from
- * the proposed one, and the row re-diffed. The page then shows the draft
- * striking a sentence it leaves alone. No rule reads struck text, so the
- * gate is blind to it by construction; the run states it as a figure.
+ * the proposed one, and the row re-diffed (`keptSentenceGone`, shared with
+ * the Länder harness). The page then shows the draft striking a sentence it
+ * leaves alone. Neither of the gate's rules reads struck text, so the gate is
+ * blind to it by construction; the table's draft check reads it since
+ * 22.11.2026 (the chain, `judgeChain`).
  *
  * **A sentence of the law's text (21.11.2026)**: on the PDF path a row's
  * first „sentence" by the splitter is the heading stack with the § opening
@@ -631,12 +640,10 @@ function withNewTextEdited(rows: readonly ComparisonRow[], edit: (text: string, 
  * sentence (`isSentence`).
  */
 function withKeptSentenceLost(rows: readonly ComparisonRow[]): ComparisonRow[] | null {
-  const lawSentence = (s: string): string => s.replace(/^.*§+\.?\s*\d+[a-z]*\.(?:\s+|$)/su, '').replace(/^(?:(?:\(\d+[a-z]?\)|\d+[a-z]?\.|[a-z]{1,2}\)|…|\.\.\.)\s*)+/, '')
   for (const row of rows) {
     if (row.kind !== 'pair' || row.elided || (row.change !== 'changed' && row.change !== 'unchanged')) continue
-    const kept = sentencesOf(row.proposed).map(lawSentence).find((s) => isSentence(s) && toks(s).length >= MIN_STANDING_STRETCH && row.current.includes(s))
-    if (!kept) continue
-    const proposed = row.proposed.replace(kept, '').replace(/\s{2,}/g, ' ').trim()
+    const proposed = keptSentenceGone(row.current, row.proposed, SENTENCE_SPLIT, toks)
+    if (proposed === null) continue
     return withRow(rows, row, { ...row, proposed, change: 'changed', segments: diffTokens(row.current, proposed).segments })
   }
   return null
@@ -704,7 +711,7 @@ const CHAIN_FLOOR = 95
  */
 const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why: string }>> = {
   bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
-  rweg: { why: 'die Prüfung gegen den Entwurf liest keinen gestrichenen Text' },
+  rweg: { why: 'die Prüfung gegen den Entwurf rechnet einen gestrichenen Satz dem Entwurf zu, wo dessen Anordnungen an dieser Stelle Sätze nur nach ihrer Lage streichen („der letzte Satz entfällt“) oder die Einheit neu fassen' },
   links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
 }
 const notFlooredOf = (key: ChainKey): string | undefined => {

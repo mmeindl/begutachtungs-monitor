@@ -132,7 +132,7 @@ import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { MIN_NEW_WORDS, draftBags, draftWordBag } from '../../server/utils/annex/rightColumn'
 import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { diffTokens } from '../../server/utils/diff/wordDiff'
-import { donorSentence, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
+import { donorSentence, keptSentenceGone, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
 
 const LANDS: LandCode[] = ['ooe', 'sbg', 't', 'w']
 /* Kärnten's answers are dumped too (`tgu.jsonl`): the RIS check is the same
@@ -261,6 +261,14 @@ interface DraftRecord {
   guardMs: number | null
 }
 const units: UnitRecord[] = []
+/**
+ * Struck text (22.11.2026, `struckAccount` in `landTguStrict.ts`): the §§
+ * shown and held word for word whose column strikes what no instruction for
+ * them strikes — they would differ, and be withheld, if the Länder asked for
+ * struck text as the Bund does. The Länder do not, until the maintainer
+ * decides; this is the measurement (`struck.jsonl`), no field above moves.
+ */
+const struckWouldDiffer: { land: LandCode; draft: string; layout: Layout; law: string | null; id: string; words: string[]; segments: string }[] = []
 const drafts: DraftRecord[] = []
 /**
  * Every answer of `compareTgu` whole — the §§ shown, unchanged ones too, and
@@ -460,6 +468,10 @@ for (const item of items) {
         draftLaw: guard.lawKeys.has(u.article) ? (guard.lawKeys.get(u.article) ?? null) : null,
       }
       units.push(record)
+      if (record.shown && strict?.state === 'holds' && strict.struckNotInDraft?.length) {
+        const segments = (u.segments ?? []).map((x) => (x.type === 'removed' ? `[-${x.text}-]` : x.type === 'inserted' ? `{+${x.text}+}` : x.text)).join('').slice(0, 3000)
+        struckWouldDiffer.push({ land: item.land, draft: item.id, layout, law: u.article, id: u.id, words: strict.struckNotInDraft, segments })
+      }
       // Every § the product shows, with a draft read: the bag rule's faults are counted over those it can judge (`judged`), the strict rule's over all.
       if (record.shown && blocks) sites.push({ record, unit: u, blocks, all: compared })
     }
@@ -483,6 +495,16 @@ type Fault = 'R-neu' | 'R-fremd' | 'Zahl' | 'Wort' | 'Satz weg'
 /** `caught`: the product withholds the § with the fault in it. `bag`: the rule „nicht im Entwurf“ alone does — the product until 20.11.2026. `judged`/`strict`: what the two rules made of the § without the fault. `markedBefore`: the § carried „nicht geprüft" without the fault; `outcome`: where the fault ended (`MarkOutcome`). */
 interface FaultRecord { fault: Fault; land: LandCode; layout: Layout; draft: string; id: string; caught: boolean; bag: boolean; judged: boolean; strict: UnitRecord['strict']; markedBefore: boolean; outcome: MarkOutcome; applied: boolean; newWords: number; missingWords: number; donor: string; lacks: string }
 const faults: FaultRecord[] = []
+/**
+ * R-weg on the Länder (22.11.2026), the Bund's class by the same edit
+ * (`keptSentenceGone`): a sentence both columns carry, lost from the right
+ * one, so the page shows a deletion the draft does not make. Where it ends
+ * on the page as it stands (`outcome`), and whether the struck reading the
+ * Länder do not ask for would see it (`struck`: the § would differ and be
+ * withheld). Apart from `faults.jsonl` and the floor: no rule of the page
+ * reads it yet (`kept-faults.jsonl`, `summary.json` `struck`).
+ */
+const keptFaults: { land: LandCode; layout: Layout; draft: string; id: string; markedBefore: boolean; outcome: MarkOutcome; struck: boolean; lacks: string }[] = []
 
 /** The unit with `extra` shown as new at its end, as the word diff would show an appended sentence. */
 function appended(u: LawDiffUnit, extra: string): LawDiffUnit {
@@ -536,6 +558,15 @@ for (const [n, site] of sites.entries()) {
   push('Wort', rewritten(unit, swappedWord), '')
   // Satz weg: the inserted text's last sentence gone (the rule reads only what is shown as new: outside its reach).
   push('Satz weg', rewritten(unit, (s) => lastSentenceGone(s, SENTENCE_SPLIT)), '')
+  // R-weg: a sentence both columns carry, gone from the right one, the § re-diffed.
+  const lostTo = unit.change === 'changed' ? keptSentenceGone(unit.fromText ?? '', unit.toText ?? '', SENTENCE_SPLIT, toks) : null
+  const lostSegments = lostTo === null ? null : diffTokens(unit.fromText ?? '', lostTo).segments
+  if (lostTo !== null && lostSegments) {
+    const guard = ask({ ...unit, toText: lostTo, segments: lostSegments })
+    const st = guard.strict.get(at)
+    const withheld = undrafted(guard).has(at)
+    keptFaults.push({ land: record.land, layout: record.layout, draft: record.draft, id: record.id, markedBefore: record.marked, outcome: withheld ? 'withheld' : notHeld(guard).has(at) ? 'marked' : 'unmarked', struck: (st?.struckNotInDraft?.length ?? 0) > 0, lacks: `${st?.state ?? ''} | gestrichen, vom Entwurf nicht gestrichen: ${(st?.struckNotInDraft ?? []).slice(0, 12).join(' ')}` })
+  }
 }
 
 // --- Fault: both columns cut (the left column's check) --------------------
@@ -755,6 +786,8 @@ writeFileSync(join(outDir, 'units.jsonl'), units.map((u) => JSON.stringify(u)).j
 writeFileSync(join(outDir, 'left-faults.jsonl'), leftFaults.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'bund-faults.jsonl'), bundFaults.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'faults.jsonl'), faults.map((f) => JSON.stringify(f)).join('\n') + '\n')
+writeFileSync(join(outDir, 'kept-faults.jsonl'), keptFaults.map((f) => JSON.stringify(f)).join('\n') + '\n')
+writeFileSync(join(outDir, 'struck.jsonl'), struckWouldDiffer.map((f) => JSON.stringify(f)).join('\n') + '\n')
 writeFileSync(join(outDir, 'corpus.jsonl'), corpus.map((c) => JSON.stringify(c)).join('\n') + '\n')
 writeFileSync(join(outDir, 'drafts.jsonl'), drafts.map((d) => JSON.stringify(d)).join('\n') + '\n')
 writeFileSync(join(outDir, 'tgu.jsonl'), answers.map((a) => JSON.stringify(a)).join('\n') + '\n')
@@ -866,6 +899,17 @@ for (const [columns, table] of [['alle', leftTable], ['eine', leftByColumns.eine
 }
 lines.push('')
 lines.push('L: der zweite Satz der linken Spalte fehlt. R-alt: ein Satz aus dem Text in Kraft eines anderen § desselben Gesetzes rechts angehängt. U: derselbe Satz in beiden Spalten (die Klassen des Bundes, `lib/rightColumnFaults.ts`).')
+lines.push('')
+/* Struck text (22.11.2026): what the Länder would gain, and what they would withhold, if they asked as the Bund does. */
+const keptUnmarked = keptFaults.filter((f) => !f.markedBefore)
+const caughtNow = keptUnmarked.filter((f) => f.outcome !== 'unmarked').length
+const caughtStruck = keptUnmarked.filter((f) => f.outcome !== 'unmarked' || f.struck).length
+const struckTotals = { wouldDiffer: struckWouldDiffer.length, keptSentenceStruck: { tried: keptFaults.length, beforeUnmarked: keptUnmarked.length, caught: caughtNow, caughtWithStruck: caughtStruck } }
+lines.push('## Gestrichener Text (Prüfung gegen den Entwurf; die Länder fragen ihn nicht ab)')
+lines.push('')
+lines.push(`Gezeigt und Wort für Wort gehalten, aber die Spalte streicht, was keine Anordnung streicht: ${struckWouldDiffer.length} §§ — sie würden abweichen und zurückgehalten (\`struck.jsonl\`).`)
+lines.push('')
+lines.push(`Behaltener Satz rechts gestrichen (R-weg, \`kept-faults.jsonl\`): angewandt ${keptFaults.length}, ohne Marke vorher ${keptUnmarked.length}; nicht ohne Marke gezeigt heute ${caughtNow} (${pct(caughtNow, keptUnmarked.length)}), mit gestrichenem Text ${caughtStruck} (${pct(caughtStruck, keptUnmarked.length)}).`)
 lines.push('')
 lines.push('## Beide Spalten gekürzt (linke Spalte gegen RIS)')
 lines.push('')
@@ -1031,6 +1075,8 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   leftColumn: { population: leftPopulation, faults: leftTable, byColumns: leftByColumns },
   // The Bund's classes L, R-alt and U (21.11.2026) at the same sites, shaped as `leftColumn.faults` and `.byColumns`.
   bundClasses: { faults: bundTable, byColumns: bundByColumns },
+  // Struck text (22.11.2026), measured, not asked by the page: §§ that would newly differ, and R-weg today and with it.
+  struck: struckTotals,
   // `--mindestens`: null when the run had no floor. A class under `minTries` tries is „nicht gehalten". The five right-column
   // classes since 20.11.2026 over the §§ without a mark, caught = not shown without it (`mark.faults[].beforeUnmarked`).
   floor: floorTable === null ? null : { pct: floor, minTries: MIN_TRIES, classes: floorTable },

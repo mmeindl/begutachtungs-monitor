@@ -146,6 +146,22 @@ export function lastSentenceGone(text: string, split: RegExp): string | null {
   return [...parts.slice(0, last), ...(marks ? [marks] : []), ...parts.slice(last + 1)].join(' ')
 }
 
+/**
+ * R-weg: a sentence the right column keeps lost from it — the page then
+ * shows the draft striking a sentence it leaves alone (21.11.2026; shared
+ * with the Länder since 22.11.2026). The first sentence of `proposed` that
+ * stands in `current` too and is a sentence of the law's text: what stands
+ * before the § designation and the markers after it are cut off (on the
+ * Bund's PDF path a row's first „sentence" is the heading stack with the §
+ * opening), what is left must be a sentence (`isSentence`) of
+ * `MIN_STANDING_STRETCH` words. The right column without it, or null.
+ */
+export function keptSentenceGone(current: string, proposed: string, split: RegExp, words: (s: string) => readonly string[]): string | null {
+  const lawSentence = (s: string): string => s.replace(/^.*§+\.?\s*\d+[a-z]*\.(?:\s+|$)/su, '').replace(/^(?:(?:\(\d+[a-z]?\)|\d+[a-z]?\.|[a-z]{1,2}\)|…|\.\.\.)\s*)+/, '')
+  const kept = proposed.split(split).map(lawSentence).find((s) => isSentence(s) && words(s).length >= MIN_STANDING_STRETCH && current.includes(s))
+  return kept ? proposed.replace(kept, '').replace(/\s{2,}/g, ' ').trim() : null
+}
+
 /*
  * The Bund's own classes, asked of the Länder too (21.11.2026): L, R-alt and
  * U (`harness/faultInjection.ts`, 2026-09-10). The edits and their

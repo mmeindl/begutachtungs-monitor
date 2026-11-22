@@ -270,7 +270,7 @@ export interface DraftWording {
 export interface Struck {
   named: { tokens: string[]; line: string }[]
   repealed: { level: number; ids: string[]; line: string }[]
-  byPosition: { count: number; line: string }[]
+  byPosition: { count: number; places: { level: number; ids: string[] }[]; line: string }[]
   /** The units the instructions write anew by address („§ 14 Abs. 5 und 6 lautet:"; level 0 the § itself): their old words are rewritten. */
   replaced?: { level: number; ids: string[]; line: string }[]
   /** An instruction for the § speaks of designations („erhält die Absatzbezeichnung", „entfällt die bisherige Absatzbezeichnung (1)", „ohne Nummerierung"): a designation struck alone is notation. */
@@ -580,8 +580,8 @@ const UNIT_PART = String.raw`(§§?|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs
 const UNIT_LEVEL: Record<string, number> = { '§': 0, '§§': 0, anlage: 0, anlagen: 0, anhang: 0, anhänge: 0, abs: 1, absatz: 1, absätze: 1, z: 2, ziffer: 2, ziffern: 2, lit: 3, litera: 3, sublit: 4 }
 /** The verbs that open or close a clause of an instruction line. */
 const ANY_VERB_RE = new RegExp(`(?<![\\p{L}])(?:${REMOVING}|${ADDING}|ersetzt|lautet|lauten|erhält|erhalten|tritt|treten)(?![\\p{L}])|;`, 'gu')
-/** A place, not what is repealed: „In § 4 Abs. 1 entfallen …", „am Ende der Z 5", „die bisherigen Abs. 2 bis 4". */
-const PLACE_BEFORE_RE = /(?:^|\s)(?:[Ii]n|[Ii]m|nach|vor|von|zu|Ende\s+der|bisherigen?|nunmehrigen?)\s*$/u
+/** A place, not what is repealed: „In § 4 Abs. 1 entfallen …", „In der Anlage 2 entfallen die Zeilen …", „am Ende der Z 5", „der nunmehrige Abs. 1" (renumbered). „die bisherige Z 6 entfällt" is the subject. */
+const PLACE_BEFORE_RE = /(?:^|\s)(?:[Ii]n(?:\s+de[rnm])?|[Ii]m|nach|vor|von|zu|Ende\s+der|nunmehrigen?)\s*$/u
 
 /** The ids of an address part, a range between two figures or two letters spelt out. */
 function unitIds(list: string): string[] {
@@ -630,11 +630,12 @@ function unitsOf(line: string, verbs: readonly RegExpMatchArray[], i: number): {
   const before = line.slice(i > 0 ? verbs[i - 1]!.index! + verbs[i - 1]![0].length : 0, v.index)
   // „entfallen die Abs. 2 und 3 sowie 14 bis 16", „entfallen der Klammerausdruck „X“ in Abs. 1 und der Abs. 4" — not „entfällt der letzte Satz", „entfällt im Abs. 2 der …".
   // Only where the verb opens its clause: in „§ 359 Abs. 2 entfällt und die Abs. 3 und 4 erhalten …" what follows is the next clause's subject.
-  const opensClause = /^\s*(?:jeweils\s+)?(?:(?:die|der|das|den)\s|§|Abs|Absätze|Z\s|Ziffer|lit)/u.test(after)
+  // „entfällt nach Abs. 2 der Abs. 3", „entfallen in Z 1 die Wortfolge „X“ … sowie die Z 5": a place, then the objects.
+  const opensClause = /^\s*(?:jeweils\s+)?(?:(?:nach|vor|in|im)\s+(?:dem\s+|der\s+)?(?:Abs\.?|Z|lit\.?)\s*\d+[a-z]*\s+)?(?:(?:die|der|das|den)\s|§|Abs|Absätze|Z\s|Ziffer|lit)/u.test(after)
   const objects = opensClause ? [...after.matchAll(ADDRESS_RE)].filter((m) => OBJECT_BEFORE_RE.test(after.slice(0, m.index))).flatMap((m) => addressUnits(m[0])) : []
   if (objects.length) return objects
   // „In § 19 Z 3 lautet neu:": what „lautet" is said of, where it has no object, is the address before it, „In" or not.
-  if (/^laute[tn]$/u.test(v[0])) return after.search(ADDRESS_RE) >= 0 ? [] : [...before.matchAll(ADDRESS_RE)].slice(-1).flatMap((m) => addressUnits(m[0]))
+  if (/^laute[tn]$/u.test(v[0])) return after.search(ADDRESS_RE) >= 0 ? [] : [...before.matchAll(ADDRESS_RE)].slice(-1).filter((m) => !/(?:^|\s)(?:nach|vor|zu|von)\s*$/u.test(before.slice(0, m.index))).flatMap((m) => addressUnits(m[0]))
   // „§ 5 Abs. 3 entfällt", „und die Z 6 entfällt", „§ 21 wird ersatzlos gestrichen", „§ 56 samt Überschrift entfällt".
   return subjectUnits(before)
 }
@@ -695,34 +696,43 @@ function replacedOf(raw: string): { level: number; ids: string[] }[] {
   }).filter((u) => u.ids.length)
 }
 
-const ORDINAL = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte|letzte|vorletzte|drittletzte|nachfolgende|(?:darauf\\s+)?folgende|beiden\\s+ersten|beiden\\s+letzten)[nrsm]?'
+const ORDINAL = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte|letzte|vorletzte|drittletzte|nachfolgende|(?:darauf\\s+)?folgende|beiden\\s+ersten|beiden\\s+letzten|(?:ersten|letzten)\\s+beiden)[nrsm]?'
 const POSITION_UNIT = '(?:Satz|Sätze|Halbsatz|Teilsatz|Satzteil|Absatz|Unterabsatz|Spiegelstrich|Teilstrich|Strich|Zeile|Zeilen|Spalte|Aufzählungspunkt|Klammerausdruck|Eintrag)'
 /** „der vorletzte und der letzte Satz", „der zweite, der dritte und der vierte Satz", „letzter Satz": ordinals and the unit they count. */
-const BY_ORDINAL_RE = new RegExp(`(?<![\\p{L}])(?:(?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\\s+)?(${ORDINAL}(?:\\s*(?:,|und|sowie)\\s*(?:(?:de[rnms]|die|das)\\s+)?${ORDINAL})*)\\s+${POSITION_UNIT}(?![\\p{L}])`, 'gu')
+const BY_ORDINAL_RE = new RegExp(`(?<![\\p{L}])((?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\\s+)?(${ORDINAL}(?:\\s*(?:,|und|sowie)\\s*(?:(?:de[rnms]|die|das)\\s+)?${ORDINAL})*)\\s+${POSITION_UNIT}(?![\\p{L}])`, 'gu')
 /** „die Sätze sechs und sieben", „die Sätze drei bis fünf": sentences counted in words after the noun. */
 const CARDINALS = ['zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn']
 const BY_CARDINAL_RE = new RegExp(`(?<![\\p{L}])(?:die\\s+)?(?:Sätze|Halbsätze)\\s+(${CARDINALS.join('|')})(?:\\s+(und|bis)\\s+(${CARDINALS.join('|')}))?(?![\\p{L}])`, 'gu')
 /** „der Schlussteil", „der Klammerausdruck", „die Zeilen betreffend …" — a unit described, not quoted. */
-const BY_DESCRIPTION_RE = /(?<![\p{L}])(?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\s+(?:gesamte\s+)?(?:Klammerausdruck|Klammerzitat|Schlussteil|Schlusssatz|Einleitungsteil|Einleitungssatz|Satzteil|Halbsatz|Teilsatz|Zeilen?|Eintrag|Einträge|Eintragung|Überschrift|Paragraphenbezeichnung|Anmerkung)(?![\p{L}])(?!\s*[„»])/gu
+const BY_DESCRIPTION_RE = /(?<![\p{L}])((?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\s+(?:gesamte\s+)?|(?<=\d[a-z]?\.?\s))(?:Klammerausdruck|Klammerzitat|Schlussteil|Schlusssatz|Einleitung|Einleitungsteil|Einleitungssatz|Satzteil|Halbsatz|Teilsatz|Zeilen?|Eintrag|Einträge|Eintragung|Überschrift|Abschnittsüberschrift|Paragraphenbezeichnung|Anmerkung)(?![\p{L}])(?!\s*[„»])/gu
 
 /**
  * How many stretches an instruction line strikes or replaces by a position
  * it only counts or describes (`Struck.byPosition`): „der letzte Satz
  * entfällt" one, „entfallen der vorletzte und der letzte Satz" two,
- * „lautet der zweite Satz:" one, „entfällt der Schlussteil" one. Not a
- * position the line names as a place („im ersten Satz wird … eingefügt",
- * „nach dem Klammerausdruck „X“").
+ * „lautet der zweite Satz:" one, „entfällt der Schlussteil" one, „§ 70 Abs. 3
+ * zweiter Satz entfällt." one. The position must be what the verb strikes or
+ * replaces: its object, with its article, or bare right before a verb that
+ * strikes nothing else — not a place the line names („im ersten Satz wird …
+ * eingefügt", „In § 32 Abs. 1 erster Satz wird die Wortfolge „X“ …
+ * ersetzt", „In § 39 Abs. 1 dritter Satz entfällt die Wortfolge „X“", „nach
+ * dem Klammerausdruck „X“"), nor a sentence it adds („wird folgender Satz
+ * angefügt").
  */
 function byPositionOf(raw: string): number {
   const line = withoutResidue(raw).replace(QUOTE_RE, ' „“ ')
   if (!new RegExp(`(?<![\\p{L}])(?:${REMOVING}|ersetzt|lautet|lauten|Stelle)(?![\\p{L}])`, 'u').test(line)) return 0
   let count = 0
+  const place = (at: number) => /(?:^|\s)(?:[Ii]m|[Ii]n|nach|vor|von|zu|dem)\s*$/u.test(line.slice(0, at))
+  // Bare, the position is struck only by a verb right after it with nothing else to strike: „zweiter Satz entfällt."
+  const struckBare = (end: number) => new RegExp(`^\\s*(?:${REMOVING}|wird\\s+aufgehoben|werden\\s+aufgehoben|lautet|lauten)(?![\\p{L}])\\s*(?:[.;:,]|und\\s|$)`, 'u').test(line.slice(end))
   for (const m of line.matchAll(BY_ORDINAL_RE)) {
-    if (/(?:^|\s)(?:[Ii]m|[Ii]n|nach|vor|von|zu|dem)\s*$/u.test(line.slice(0, m.index))) continue
-    count += [...m[1]!.matchAll(new RegExp(ORDINAL, 'gu'))].reduce((n, o) => n + (/beiden/u.test(o[0]) ? 2 : 1), 0)
+    if (place(m.index) || (!m[1] && !struckBare(m.index + m[0].length))) continue
+    // „die beiden ersten", „die letzten beiden": two.
+    count += [...m[2]!.matchAll(new RegExp(ORDINAL, 'gu'))].length + (m[2]!.match(/beiden/gu)?.length ?? 0)
   }
   for (const m of line.matchAll(BY_CARDINAL_RE)) count += !m[2] ? 1 : m[2] === 'und' ? 2 : CARDINALS.indexOf(m[3]!) - CARDINALS.indexOf(m[1]!) + 1
-  for (const m of line.matchAll(BY_DESCRIPTION_RE)) if (!/(?:^|\s)(?:[Ii]m|[Ii]n|nach|vor|von|zu)\s*$/u.test(line.slice(0, m.index))) count++
+  for (const m of line.matchAll(BY_DESCRIPTION_RE)) if (!place(m.index) && (m[1] || struckBare(m.index + m[0].length))) count++
   return count
 }
 
@@ -775,7 +785,11 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const named = quoteRoles(line).filter((q) => q.role === 'old').map((q) => ({ tokens: strictTokens(q.text), line }))
       if (run.line !== null && removesPayload(run.line)) named.push(...run.payload.map((b) => ({ tokens: strictTokens(`${b.gld ?? ''} ${b.text}`.replace(FOOTER_RE, ' ')), line })))
       const count = byPositionOf(line)
-      return { named: named.filter((n) => n.tokens.length), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count, line }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: /bezeichn?(?:ung|et)|nummerierung/iu.test(line) }
+      // Where it strikes by position: the units the line names („In § 5 Abs. 2 entfällt der letzte Satz"), none for the § itself.
+      const places = [...withoutResidue(line).replace(QUOTE_RE, ' „“ ').matchAll(ADDRESS_RE)].flatMap((m) => addressUnits(m[0])).filter((u) => u.level > 0)
+      // „In § 35 Abs. 1c und 1d entfällt jeweils der letzte Satz": once in each unit it names.
+      const each = /(?<![\p{L}])jeweils(?![\p{L}])/u.test(line) ? Math.max(1, places.reduce((n, u) => n + u.ids.length, 0)) : 1
+      return { named: named.filter((n) => n.tokens.length), repealed: repealedOf(line).map((r) => ({ ...r, line })), byPosition: count ? [{ count: count * each, places, line }] : [], replaced: replacedOf(line).map((r) => ({ ...r, line })), renumbers: /bezeichn?(?:ung|et)|nummerierung/iu.test(line) }
     }
     if (!keys.length) {
       const into = lawOf(draft.law)
@@ -1407,10 +1421,11 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
  *    the left column to the next of its level or higher — or the whole §;
  *  - `rewritten`: a unit a line writes anew by address („§ 14 Abs. 5 und 6
  *    lautet:", „§ 39 lautet:", „werden Z 1 bis 3 durch folgende … ersetzt:"),
- *    likewise; between the first and the last column word a payload accounts
- *    for, and at its edges up to the first word both columns keep; the
- *    left column's unit of the designation the payload opens with; and what
- *    a wording quoted as new crosses where it stands whole in the column;
+ *    likewise; between two column words a payload accounts for, with no two
+ *    kept words of another unit in between; the left column's unit of the
+ *    designation the payload opens with, and inside that unit what stands at
+ *    the payload's edges up to the first word both columns keep; and what a
+ *    wording quoted as new crosses where it stands whole in the column;
  *  - a twin: a struck stretch whose words stand kept, as one stretch, inside
  *    one of the above — the word diff keeps the first equal words it meets,
  *    and the other copy is the one the draft struck (`check 4` of the oracle
@@ -1418,14 +1433,20 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
  *  - `byPosition`: what is left, where it is no more stretches than the
  *    instructions strike or replace by a position they only count or
  *    describe („der letzte Satz entfällt", „lautet der zweite Satz:",
- *    „entfällt der Schlussteil"): which stretch they mean is not read, so the
- *    weakest reading that still sees a struck sentence they do not name. A
+ *    „entfällt der Schlussteil"), each inside the unit the instruction names
+ *    as its place: which stretch they mean is not read, so the weakest
+ *    reading that still sees a struck sentence they do not name. A
  *    stretch runs across new words and across a single kept word, as the word
  *    diff cuts one struck sentence at a word it shares with kept text.
  * What none accounts for is `notInDraft`: struck in the column, kept by the
- * draft. Measured on GP XXVIII (22.11.2026, both Bund paths): of 3,286 §§
- * showing a struck word, 110 keep some unaccounted, every one read; of the 36
- * that differ only by it, 18 are the two documents differing.
+ * draft. Measured on GP XXVIII (22.11.2026, both Bund paths): of 3,282 §§
+ * showing a struck word, 149 keep some unaccounted, every one read; of the 51
+ * shown that differ newly by it, 22 are the two documents differing, 13 how
+ * the annex is set, 11 limits of this check, 5 undecided. Of a kept sentence
+ * lost from the right column (fault injection, through the page's whole
+ * chain) it catches 83 % (PDF) and 85 % (table path); what passes is struck
+ * text an instruction accounts for as a whole — a position it only counts,
+ * a unit a payload writes anew.
  */
 function struckAccount(
   unit: LawDiffUnit,
@@ -1537,7 +1558,9 @@ function struckAccount(
     }
     left.forEach((_, k) => {
       // „the struck stretch is that unit, opening with its designation as the column prints it": a designation, or the first word of a struck stretch printed as one.
-      const opens = opensAt(k) || (read[k]!.shape !== undefined && struck.has(left[k]!.p) && !struck.has(left[k - 1]?.p ?? -1))
+      // …or a designation the word diff keeps while it strikes what follows („wenn 1. [dessen Antrag … 2. …]").
+      const unaccounted = (x: number) => struck.has(x) && !cls.has(x)
+      const opens = opensAt(k) || (read[k]!.shape !== undefined && ((struck.has(left[k]!.p) && !unaccounted(left[k - 1]?.p ?? -1)) || (!struck.has(left[k]!.p) && struck.has(left[k + 1]?.p ?? -1))))
       if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(words[k]!)) markUnit(k, c)
     })
   }
@@ -1557,19 +1580,36 @@ function struckAccount(
     }
     if (!places.length) continue
     const [lo, hi] = [Math.min(...places), Math.max(...places)]
-    for (let q = lo; q <= hi; q++) mark(q, 'rewritten')
-    // …and at its edges, up to the first word both columns keep: „[Soweit durch Verordnung zugelassen,] {Die Abgabenbehörde} kann …".
-    for (let q = lo - 1; q >= 0 && diff[q]!.kind !== 'equal' && diff[q]!.row === diff[lo]!.row; q--) mark(q, 'rewritten')
-    for (let q = hi + 1; q < diff.length && diff[q]!.kind !== 'equal' && diff[q]!.row === diff[hi]!.row; q++) mark(q, 'rewritten')
-    // The unit it replaces: the left column's of the designation it opens with, the nearest one.
-    if (opens?.designation && opens.at !== undefined) {
+    // Between its words: a struck word with, on either hand, nothing but struck and new words before the next of its words.
+    // A kept word the payload does not account for in between is text of another unit the alignment reached past
+    // (fault injection, 22.11.2026: 145 kept sentences lost from the column passed so).
+    const at = new Set(places)
+    // A single kept word between is the word diff pairing a „die" across rewritten text, as the oracle's check 4 reads
+    // it (`ANCHOR`); two in a row are kept text.
+    const enclosed = (q: number): boolean => [-1, 1].every((step) => {
+      let x = q + step
+      while (x > lo && x < hi && !at.has(x) && (diff[x]!.kind !== 'equal' || (diff[x + step]?.kind !== 'equal' && diff[x - step]?.kind !== 'equal') || at.has(x + step))) x += step
+      return at.has(x)
+    })
+    for (let q = lo; q <= hi; q++) if (at.has(q) || enclosed(q)) mark(q, 'rewritten')
+    // The unit it replaces: the left column's of the designation it opens with, the nearest one — printed as a designation,
+    // whether or not it stands where a unit begins („… und der Handbücher 1. An Bord …", the payload's own „1.")…
+    let unit: [number, number] | null = null
+    if (opens?.shape !== undefined && opens.at !== undefined) {
       const level = levelOf(opens.word, opens.shape ?? '.')
       let best = -1
       left.forEach((l, k) => {
-        if (opensAt(k) && words[k] === opens!.word && levelOf(words[k]!, read[k]!.shape ?? '.') === level && (best < 0 || Math.abs(l.p - opens!.at!) < Math.abs(left[best]!.p - opens!.at!))) best = k
+        if (read[k]!.shape !== undefined && words[k] === opens!.word && levelOf(words[k]!, read[k]!.shape ?? '.') === level && (best < 0 || Math.abs(l.p - opens!.at!) < Math.abs(left[best]!.p - opens!.at!))) best = k
       })
-      if (best >= 0) markUnit(best, 'rewritten')
+      if (best >= 0) {
+        markUnit(best, 'rewritten')
+        unit = [left[best]!.p, left[unitEnd(best)]?.p ?? diff.length]
+      }
     }
+    // …and, inside that unit, at its edges up to the first word both columns keep: „[Soweit durch Verordnung zugelassen,] {Die Abgabenbehörde} kann …".
+    const inUnit = (q: number) => unit !== null && q >= unit[0] && q < unit[1]
+    for (let q = lo - 1; q >= 0 && inUnit(q) && diff[q]!.kind !== 'equal'; q--) mark(q, 'rewritten')
+    for (let q = hi + 1; q < diff.length && inUnit(q) && diff[q]!.kind !== 'equal'; q++) mark(q, 'rewritten')
   }
   // A designation struck alone — beside it nothing struck that is not accounted for — where an instruction speaks of designations.
   const unaccountedAt = (k: number) => k >= 0 && k < left.length && struck.has(left[k]!.p) && !cls.has(left[k]!.p)
@@ -1626,8 +1666,12 @@ function struckAccount(
     else stretches.push([q])
     open = true
   })
-  const allowed = found.flatMap((f) => f.struck?.byPosition ?? []).reduce((n, x) => n + x.count, 0)
-  if (stretches.length && stretches.length <= allowed) for (const st of stretches) for (const q of st) mark(q, 'byPosition')
+  const positional = found.flatMap((f) => f.struck?.byPosition ?? [])
+  const allowed = positional.reduce((n, x) => n + x.count, 0)
+  // A stretch counts against a line only inside the unit the line strikes in: a sentence struck in Abs. 3 is not „der letzte Satz" of Abs. 2.
+  const leftAt = new Map(left.map((l, k) => [l.p, k]))
+  const inPlace = (q: number) => positional.some((x) => !x.places.length || x.places.some((u) => left.some((l, k) => opensAt(k) && levelOf(words[k]!, read[k]!.shape ?? '.') === u.level && u.ids.includes(words[k]!) && leftAt.get(q)! >= k && leftAt.get(q)! < unitEnd(k))))
+  if (stretches.length && stretches.length <= allowed && stretches.every((st) => inPlace(st[0]!))) for (const st of stretches) for (const q of st) mark(q, 'byPosition')
   for (const c of cls.values()) by[c]++
   const notInDraft = stretches.flat().filter((q) => !cls.has(q)).map((q) => diff[q]!.word)
   return { notInDraft, by }

@@ -321,6 +321,19 @@ describe('what an instruction strikes (22.11.2026)', () => {
     expect([...draftWording(blocks).values()][0]!.byKey.get('§ 5')!.struck!.named.map((n) => n.tokens.join(' '))).toEqual(['die frist beträgt vier wochen'])
   })
 
+  it('counts a position only where the verb strikes it, once in each unit „jeweils" names, and reads „In der Anlage" as a place', () => {
+    const count = (line: string) => struckOf(line)?.byPosition.map((b) => b.count)
+    expect(count('1. In § 5 Abs. 1 erster Satz wird die Wortfolge „X“ durch die Wortfolge „Y“ ersetzt.')).toEqual([])
+    expect(count('1. In § 5 Abs. 1 dritter Satz entfällt die Wortfolge „X“.')).toEqual([])
+    expect(count('1. Dem § 5 Abs. 1 wird folgender Satz angefügt: „Y.“')).toEqual([])
+    expect(count('1. § 5 Abs. 3 zweiter Satz entfällt.')).toEqual([1])
+    expect(count('1. In § 5 Abs. 3 entfallen die letzten beiden Sätze.')).toEqual([2])
+    expect(count('1. In § 5 Abs. 1c und 1d entfällt jeweils der letzte Satz.')).toEqual([2])
+    expect(units('1. In § 5 entfällt nach Abs. 2 der Abs. 3.')).toEqual(['1:3'])
+    expect(units('1. In § 5 erhält die bisherige Z 5 die Bezeichnung „7“ und die bisherige Z 6 entfällt.')).toEqual(['2:6'])
+    expect(struckOf('1. In der Anlage 2 zu § 5 entfallen die Zeilen betreffend den Lehrberuf X.')?.repealed ?? []).toEqual([])
+  })
+
   it('reads a long line of addresses in time', () => {
     const line = `1. ${Array.from({ length: 80 }, (_, i) => `§ 5 Abs. ${i} Z ${i} lit. a und b sowie`).join(' ')} xyz entfällt.`
     const t0 = performance.now()

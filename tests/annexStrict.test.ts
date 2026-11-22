@@ -287,6 +287,14 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(blocksWith('1. In § 5 Abs. 1 entfällt der letzte Satz.'), two)).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
   })
 
+  it('takes no kept sentence of another Absatz for the payload\'s, nor one a position strikes in another unit', () => {
+    // Fault injection (22.11.2026): a payload's alignment reached past its Absatz, and a „letzter Satz" of Abs. 2 swallowed one of Abs. 1.
+    const lost = STANDING.replace(' Sie ist an Weisungen nicht gebunden.', '')
+    const payload = [...blocksWith('1. § 5 Abs. 2 lautet:'), abs('"(2) Die Behörde hat binnen 14 Tagen über den Antrag zu entscheiden."')]
+    expect(check(payload, lost.replace('hat über', 'hat binnen 14 Tagen über'))).toMatchObject({ state: 'differs', struckNotInDraft: ['sie', 'ist', 'an', 'weisungen', 'nicht', 'gebunden'] })
+    expect(check(blocksWith('1. In § 5 Abs. 2 entfällt der letzte Satz.'), lost).state).toBe('differs')
+  })
+
   it('holds a unit the draft repeals by its designation, shown struck in a row of its own', () => {
     const rows = (struck: string) => [
       row({ law: LAW, gld: '§ 5.', para: '§ 5.', change: 'unchanged', current: '(1) Die Behörde ist zuständig.', proposed: '(1) Die Behörde ist zuständig.' }),
