@@ -740,8 +740,18 @@ const MOVED_KEPT_RUN = 6
 /** A word that can open a unit of the text: a figure of up to three digits, a letter, a letter doubled („5", „5a", „c", „cc") — not „1897)" or „Nr." of a citation. */
 const DESIGNATION_WORD_RE = /^(?:\d{1,3}[a-z]{0,2}|[a-z]|([a-z])\1)$/
 
-/** A line that names a § by the number a renumbering gives it: „Im nunmehrigen § 18", „§ 18 (neu)". */
-export const NEW_NUMBER_RE = /(?:nunmehrigen?|neuen)\s+§|§\s*\d+[a-z]*\s*\(neu\)/u
+/**
+ * The § numbers a line names by the number a renumbering gives them: „Im nunmehrigen § 18", „§ 18 (neu)" — and only those:
+ * „… die Einträge zu den neuen §§ 18a und 18b eingefügt" names 18a and 18b as new, not every § of the line (22.11.2026, the
+ * second review of the check: a repeal of the old § 18 in that line was read for the § renumbered to 18).
+ */
+export function newNumbers(raw: string): string[] {
+  const line = withoutResidue(raw).replace(QUOTE_RE, ' „“ ')
+  const out: string[] = []
+  for (const m of line.matchAll(/(?:nunmehrigen?|neuen)\s+(§§?\s*\d+[a-z]*(?:\s*(?:,|und|bis)\s*\d+[a-z]*)*)/gu)) out.push(...addressUnits(m[1]!).flatMap((u) => u.ids))
+  for (const m of line.matchAll(/§\s*(\d+[a-z]*)\s*\(neu\)/gu)) out.push(m[1]!.toLowerCase())
+  return out
+}
 
 /** One part of an address: its level (0 the § or the Anlage, 1 the Absatz, 2 the Ziffer, 3 the Litera, 4 the Sublitera) and its ids. */
 interface AddressPart { level: number; ids: string[]; fresh?: true }
@@ -930,8 +940,12 @@ const ordinalAt = (word: string): number[] | null => (/beiden\s+ersten|ersten\s+
 /** „die Sätze sechs und sieben", „die Sätze drei bis fünf": sentences counted in words after the noun. */
 const CARDINALS = ['zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn']
 const BY_CARDINAL_RE = new RegExp(`(?<![\\p{L}])(?:die\\s+)?(?:Sätze|Halbsätze)\\s+(${CARDINALS.join('|')})(?:\\s+(und|bis)\\s+(${CARDINALS.join('|')}))?(?![\\p{L}])`, 'gu')
-/** „der Schlussteil", „der Klammerausdruck", „die Zeilen betreffend …" — a unit described, not quoted. */
-const BY_DESCRIPTION_RE = /(?<![\p{L}])((?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\s+(?:gesamte\s+)?|(?<=\d[a-z]?\.?\s))(?:Klammerausdruck|Klammerzitat|Schlussteil|Schlusssatz|Einleitung|Einleitungsteil|Einleitungssatz|Satzteil|Halbsatz|Teilsatz|Zeilen?|Eintrag|Einträge|Eintragung|Überschrift|Abschnittsüberschrift|Paragraphenbezeichnung|Anmerkung)(?![\p{L}])(?!\s*[„»])/gu
+/**
+ * „der Schlussteil", „der Klammerausdruck", „die Zeilen betreffend …" — a unit described, not quoted: not „die Zeile mit der
+ * Wortfolge „…“", which names what it strikes by a quotation (22.11.2026: counted as a position, it let any one struck line
+ * pass, BäderhygV Anlage 9).
+ */
+const BY_DESCRIPTION_RE = /(?<![\p{L}])((?:[Dd]e[rnms]|[Dd]ie|[Dd]as)\s+(?:gesamte\s+)?|(?<=\d[a-z]?\.?\s))(?:Klammerausdruck|Klammerzitat|Schlussteil|Schlusssatz|Einleitung|Einleitungsteil|Einleitungssatz|Satzteil|Halbsatz|Teilsatz|Zeilen?|Eintrag|Einträge|Eintragung|Überschrift|Abschnittsüberschrift|Paragraphenbezeichnung|Anmerkung)(?![\p{L}])(?!\s*(?:(?:mit|samt)\s+(?:de[rnm]|die|das)\s+\p{L}+\s*|betreffend\s*)?[„»])/gu
 
 /**
  * How many stretches an instruction line strikes or replaces by a position
@@ -1839,7 +1853,10 @@ function struckAccount(
   // names the number as new („Im nunmehrigen § 18", „§ 18 (neu)"), the one the annex renumbers it to (`LawDiffUnit.fromId`).
   // „§ 18 entfällt" beside „der bisherige § 19 erhält die Bezeichnung „§ 18.“" is another §, and repeals nothing of this one.
   const numbered = (id: string) => new Set([id.replace(/^§\s*/, '').toLowerCase()])
-  const ownFor = (line: string): ReadonlySet<string> => (NEW_NUMBER_RE.test(line) ? numbered(unit.fromId ?? unit.id) : numbered(unit.id))
+  const ownFor = (line: string): ReadonlySet<string> => {
+    const renumbered = numbered(unit.fromId ?? unit.id)
+    return newNumbers(line).some((id) => renumbered.has(id)) ? renumbered : numbered(unit.id)
+  }
   /**
    * Whether the left column's word at `k` stands inside the parts an address names above its unit (22.11.2026): the §
    * this group's, each Absatz, Ziffer or Litera a unit the left column opens with that designation and `k` runs in. A

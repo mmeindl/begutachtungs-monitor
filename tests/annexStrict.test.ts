@@ -622,4 +622,19 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(renumbered, '(1) Die Behörde ist zuständig. (2) Der Bundesminister kann Beratungsstellen einrichten. Er bedient sich dabei der Agentur.', current).state).toBe('holds')
     expect(check(renumbered, '(1) Die Behörde ist zuständig. (2) Er bedient sich dabei der Agentur.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['der', 'bundesminister', 'kann', 'beratungsstellen', 'einrichten'] })
   })
+
+  it('strikes nothing by position where a line quotes what it removes, and reads a number as new only where the line says so (22.11.2026)', () => {
+    // A second review of the check: „entfällt die Zeile mit der Wortfolge „Verwendete Badezusätze““ let any one struck line pass
+    // (BäderhygV Anlage 9); „… die Einträge zu den neuen §§ 18a und 18b eingefügt" made the line's repeal of the old § 18 the
+    // renumbered § 19's.
+    const r = (gld: string | null, change: ComparisonRow['change'], current: string) => row({ law: LAW, gld, para: '§ 5.', change, current, proposed: change === 'removed' ? '' : current })
+    const form = (wanne: boolean) => [r('§ 5.', 'unchanged', 'Name des Bades:'), r(null, wanne ? 'removed' : 'unchanged', 'Standort der Wanne:'), r(null, 'removed', 'Verwendete Badezusätze:'), r(null, 'unchanged', 'Datum:')]
+    const line = { ...draft, blocks: blocksWith('1. In § 5 entfällt die Zeile mit der Wortfolge „Verwendete Badezusätze“.') }
+    expect(annexStrictChecks(form(false), line).get(`${LAW}#§ 5.`)?.state).toBe('holds')
+    expect(annexStrictChecks(form(true), line).get(`${LAW}#§ 5.`)).toMatchObject({ state: 'differs', struckNotInDraft: ['standort', 'der', 'wanne'] })
+    const rows = [row({ law: LAW, gld: '§ 19.', para: '§ 19.', paraAfter: '§ 18.', current: '§ 19. (1) Die Behörde ist zuständig. (2) Die Frist beträgt vier Wochen.', proposed: '§ 18. (1) Die Behörde ist zuständig.' })]
+    const of = (...lines: string[]) => annexStrictChecks(rows, { ...draft, blocks: blocksWith(...lines) }).get(`${LAW}#§ 19.`)!
+    expect(of('1. § 18 entfällt mitsamt Überschrift; im Inhaltsverzeichnis werden die Einträge zu den neuen §§ 18a und 18b eingefügt.', '2. Der bisherige § 19 erhält die Paragraphenbezeichnung „§ 18.“.')).toMatchObject({ state: 'differs', struckNotInDraft: ['2', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
+    expect(of('1. § 18 entfällt mitsamt Überschrift.', '2. Der bisherige § 19 erhält die Paragraphenbezeichnung „§ 18.“.', '3. In § 18 (neu) entfällt Abs. 2.')).toMatchObject({ state: 'holds', struck: { repealed: 6 } })
+  })
 })
