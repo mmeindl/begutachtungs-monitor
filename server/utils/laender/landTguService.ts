@@ -15,11 +15,15 @@
  * measurement's or the Land's own. Since 12.11.2026 that side is held
  * against the draft's own Gesetzestext too (`withoutUndrafted`).
  *
- * Two formats. Oberösterreich's is its own (one column, underline and
- * strike, `landTgu.ts`); Wien's is the Bund's two-column template at the end
- * of the draft's PDF, read by the Bund's reader (`annex/annexPdf.ts`) and
- * checked stretch by stretch between its elisions (`standsInRis`).
- * Salzburg publishes none in a form measured here.
+ * Five Länder, each as it sets the document (`READ_TGU`). Oberösterreich's
+ * own form, one column with underline and strike, and its two-column one
+ * (`landTgu.ts`); Salzburg's two columns and Wien's, the Bund's template at
+ * the end of the draft's PDF, both read by the Bund's reader
+ * (`annex/annexPdf.ts`) and checked stretch by stretch between its elisions
+ * (`standsInRis`); Kärnten's and Tirol's own forms, each read by its module
+ * (`landTguKaernten.ts`, `landTguTirol.ts`). The other four Länder are not
+ * read. (Until 22.11.2026 this comment still said „two formats" and that
+ * Salzburg publishes none measured here.)
  *
  * A READ THAT FAILED IS NO VERDICT (25.10.2026). Every RIS read was caught
  * into „not found", and the comparison held for a day: one timeout made a

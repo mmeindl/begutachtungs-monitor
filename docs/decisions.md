@@ -1288,6 +1288,119 @@ gets an entry of its own only where it carries a reason the rule does not.
 - **No Textgegenüberstellung among a draft's documents is „Nicht lesbar"**,
   never „Nicht veröffentlicht", on a draft's page and on a Vorlage's
   (21.11.2026): a document list proves no absence, as for Erläuterungen.
+- **The right column of a Bund annex is held word for word against the
+  draft's own law text** (21.11.2026, `annexStrictChecks` in
+  `annex/annexStrict.ts` over `strictCheck` in `laender/landTguStrict.ts`,
+  the Länder's check). Until then the gate held the column by word bags
+  with floors, and a single misread figure or word, or a last new sentence
+  lost, was caught by nothing unless the Lesefassung's oracle saw it: under
+  fault injection the gate caught none of 1,408 figures, 1,657 words and 564
+  dropped sentences on the PDF path because of the fault (840, 1,085 and
+  325 on the table path). Now every word the column shows as new must
+  stand, in order, in wording the draft's instructions for the § quote or
+  print, and wording of the draft the column lacks is named too
+  (`notShown`) — unless the column says it leaves text out there: an
+  elision mark, which at the column's edge stands only for what follows
+  the last word the column prints (22.11.2026; before, a last new sentence
+  dropped ahead of „(3) bis (6) …" passed in 38 of 54 such §§, now in 2).
+  What cannot be held is said, not passed: a § no instruction names, a law
+  the draft does not name, an instruction whose quotations have no readable
+  role, a § too long for the alignment.
+- **A designation is no figure, and a figure no designation** (21.11.2026).
+  A designation an instruction gives — quoted, between the ends of a quoted
+  range, a renumbering's intermediates — accounts only for a token the
+  column prints as a designation („(5)", „5.", „e)" where a unit can
+  begin), never for the same figure in the text; a lone new figure in the
+  text is the draft's only where the alignment places it, never because the
+  payload prints it somewhere. A designation an instruction REMOVES
+  („entfällt die Absatzbezeichnung „(1)"") is old wording (22.11.2026,
+  `removesDesignation`): read as one the draft gives, it made the check look
+  for a new „(1)" in a column that rightly prints none — four Bund §§
+  marked and one Tirol § withheld for wording nobody wrote. Measured limit:
+  a lone designation may still come from the payload (about 10 of 1,207
+  designation faults pass).
+- **Only typography is normalised by the draft check, in both directions**
+  (21.11.2026): a word one side runs together is parted where the other
+  side prints exactly those two words side by side; a designation is never
+  joined to a neighbouring word. Headings RIS sets as heading blocks inside
+  a payload — a new §'s heading, a division's, a title — are wording of the
+  law from three words on, held where the column shows them whole.
+- **The instruction grammar the draft check reads grows from the drafts**:
+  „ersetzt durch", „wird in § … durch", „an die Stelle (von / des …)" and a
+  quoted range of designations (21.11.2026); a payload under a line whose
+  last verb removes („… werden folgende Aufzählungen gestrichen:",
+  „entfällt der folgende Satz:") is the old wording, not wording to show
+  (22.11.2026). Still refused, the § then unchecked: ranges of wording,
+  „geändert in/auf".
+- **A new word the left column carries at that place is read as kept where
+  the rest is the draft's** (22.11.2026, `keptElsewhere`). A row's word diff
+  keeps the longest common run and may show a word of the left column as
+  new at another place; the check then looked for it in the draft and
+  objected, the largest class of false objections on the Bund. Read the
+  other way the stretch is kept, and every kept word the pairing crosses is
+  new and must be the draft's. The § holds only where that reading holds
+  throughout: never for a word the left column lacks, never across more
+  than a trivial kept run (without that guard 12 more §§ moved, twins
+  across longer kept text), never an old designation printed beside the
+  new one. 29 §§ of the Bund's annexes went from „differs" to „holds",
+  every one read, and one of the Länder (Oö. 2026-16124 § 29).
+- **For new wording the draft check reads no address below the §**
+  (21.11.2026): a quoted wording accounts at every place it stands. No held
+  § of GP XXVIII depends on it (0 of 3,789).
+- **The oracle's check 2 does not stand against a held draft check**
+  (22.11.2026): of 60 §§ read where the draft check holds and check 2
+  contradicts, 39 were limits of the engine or the oracle, 15 real
+  differences (3 that matter), 6 layout.
+- **A Bund annex § is shown without reservation only where its new text is
+  confirmed** (21.11.2026, `markOf` in `annex/annexMark.ts`; the
+  maintainer's decisions of 21.11.2026). The table stands on top of the
+  gate and never withholds: a § the gate withholds stays withheld, and a §
+  the gate marks „nicht geprüft" keeps that mark and its reason, also where
+  the Lesefassung confirms it (62 and 63 §§ on the two paths). For the
+  rest:
+  the draft check holds the § with at least one new word — no mark; the
+  draft check objects — „nicht bestätigt", a second pill and a state of its
+  own (`check: 'unconfirmed'`, never derived from a reason string), the §
+  shown all the same as the annex prints it; the draft check could not run
+  — no mark where the Lesefassung confirms the §, else „nicht geprüft" with
+  the reason in the Länder's words (`shared/utils/draftCheckReasons.ts`,
+  one wording for Bund and Länder). Whose error an objection is, the page
+  never says: the definition of „nicht bestätigt" names both, the two
+  documents differing and the monitor's check erring.
+- **Where the Lesefassung confirms a § the draft check objects to, the § is
+  unmarked only where the objection names no wording of the draft the
+  column lacks** (the maintainer's decision of 21.11.2026,
+  `OBJECTION_OVER_CONFIRMATION = 'missing'`). The oracle holds the column
+  by containment: it vouches for the words the column shows and cannot see
+  wording it lacks. All 103 §§ of that cell were read before the decision:
+  the 52 that object only to words the column shows beyond the draft held
+  no real difference (40 false alarms of the check, 11 limits of how the
+  annex is set, 1 our reader); the 51 that name missing wording held all 8
+  real differences between the ministry's two documents. On 22.11.2026 the
+  rule marks 41 §§ the older variant left unmarked, each read: in 16 the
+  annex elides what the draft rewrites, 10 are layout, 7 false alarms, 5
+  real differences, 3 our reader. The two other values of the cell
+  („the confirmation always stands", „the objection always stands") stay
+  measurable in the records (`unconfirmedParasBy`, `chain[].byRule`).
+- **At a § that shows no new text, an objection of the draft check is
+  judged as at any other §** (22.11.2026). Until then such a § stood on a
+  line of its own, and an objection to wording the column lacks came out
+  as „nicht geprüft" with a reason about its deletions, or unmarked on the
+  Lesefassung's word against the rule above. Four §§ moved to „nicht
+  bestätigt", three rightly (the column elides the Absatz the draft changes
+  a word in; ends before the wording the draft replaces; prints „Der oder
+  die" where the draft writes „Die oder der"), one as a named false alarm
+  (a § repealed whose number the draft gives to the next one, which it
+  writes anew).
+- **The annex section asks the Lesefassung of the same draft**
+  (21.11.2026, `readAndCheck` in `textComparisonService.ts`): the mark
+  needs the oracle's word, so the section waits for it. A Lesefassung run
+  that throws, throws through the section (nothing cached, „Gerade nicht
+  abrufbar"); where there is none (a Vorlage, Parliament's copy, a run not
+  made) the draft check stands alone. The join of an annex § to the
+  Lesefassung's outcome lives once (`shared/utils/annexOutcomes.ts`), for
+  the page's placement and for the server's mark, and a § counts as
+  confirmed only where every printed row of it is.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
@@ -1450,6 +1563,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   enacted Verordnungen (BGBl. II, the newest 40: 156 of 197 unrefused §§
   identical, none with invented words); it cannot score the gate, because
   no exact join leads from a BGBl. II to its draft.
+- **The fault harness judges an annex fault through the whole chain the
+  page runs** (21.11.2026, `judgeChain` in `faultInjection.ts`): the gate,
+  the draft check over the faulted rows, the oracle again over the same
+  result with the faulted rows in the annex, then the mark's table. A fault
+  counts as caught where the § is withheld or carries either pill, over the
+  §§ the page showed without a mark before the fault, and under each value
+  of the cell's rule over its own such §§ (`chain[].byRule`). A class is
+  held to 95 % only where the chain can reach it (`CHAIN_FLOORED`: a figure,
+  a word, the last new sentence, on both paths); a class not held carries
+  its reason in the record (`CHAIN_NOT_FLOORED` → `notFloored`), so a floor
+  never fails by construction and never passes by silence.
 - **A harness resolves a law as the page does** (21.11.2026,
   `scripts/lib/productionSources.ts`: `annexSourcesOf` over
   `resolveKonsLaw`, without Nitro's cache). A failed lookup counts as a
@@ -1691,6 +1815,26 @@ gets an entry of its own only where it carries a reason the rule does not.
   (21.11.2026, measured, no rule). A misread number, word or citation in a
   stretch both columns share passes in three of four one-column cases
   (Oberösterreich, Tirol) and in one of four two-column ones.
+- **A Land's § whose new text the draft check did not hold carries „nicht
+  geprüft" at the §** (21.11.2026, `notHeld` in `landTguGuard.ts`), decided
+  on the server, the reason said once per law. An unread draft marks every
+  changed § and keeps the answer out of the cache. A § the check objects to
+  is withheld there (`draftDiffers`), not marked: the second pill is the
+  Bund's.
+- **What the draft check takes for the draft's on the Länder** (21.11.2026):
+  a single new word only where an instruction quotes or prints it, never
+  from its address; a part of a quoted wording only where the whole stands;
+  a block after a line that runs on (`RUNS_ON_RE`) opens no § in a payload;
+  and where the draft's wording for the § is missing, the § differs, even
+  if the rest is written elsewhere. Named blind spots (7 of 324 dropped
+  sentences): a seam word shared with old text, a one-word quotation that
+  stands again inside a payload, a payload word the alignment finds again
+  further down; of the RIS check, a heading lost in both columns (37 of
+  1,128 first-line cuts).
+- **„Entfallen" in Oberösterreich's one-column form and in Tirol's is not
+  held against the draft** (21.11.2026, measured): all 42 removed §§ are
+  real repeals, 14 of them in forms `draftDeletes` cannot read (a division,
+  a range, a renumbering).
 - **A Land's station comparison passes the word diff's ceiling**, as the
   Bund's does (21.11.2026, `diffLandDraft`): 17 changed units of the cached
   pairs stood unmarked; at most 70 ms per pair.
