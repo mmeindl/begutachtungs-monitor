@@ -192,6 +192,28 @@ describe('compareLandLawChanges — a wording the version RIS ties does not carr
   })
 })
 
+describe('compareLandLawChanges — a number the Landesgesetzblatt gives to another § (22.11.2026)', () => {
+  it('withholds the §, never sets the paragraph that had the number against the one that has it now (Vorarlberg LGBl. Nr. 45/2018 § 3)', async () => {
+    XML['vbg45.xml'] = '<risdok><nutzdaten><absatz typ="novao1">4. Die bisherigen §§ 2a, 3 und 4 werden als §§ 3, 4 und 5 bezeichnet.</absatz></nutzdaten></risdok>'
+    // Under „§ 3" RIS holds the old § 3 before and the old § 2a after.
+    XML['3-old.xml'] = '<risdok><nutzdaten><ueberschrift typ="para" ct="text">Aufbau</ueberschrift><absatz typ="abs" ct="text">(1) Die Volksschule umfasst die Grundschule und die Oberstufe.</absatz></nutzdaten></risdok>'
+    XML['3-new.xml'] = '<risdok><nutzdaten><ueberschrift typ="para" ct="text">Personenbezogene Begriffe</ueberschrift><absatz typ="abs" ct="text">Soweit in diesem Gesetz personenbezogene Begriffe verwendet werden, kommt ihnen keine geschlechtsspezifische Bedeutung zu.</absatz></nutzdaten></risdok>'
+    const version = (xml: string, from: string, to: string | null, organ: string) => {
+      const r = ref('§ 3', xml, from)
+      Object.assign(r.Data.Metadaten.Landesrecht.LrKons, { Kundmachungsorgan: organ, StammnormBgblnummer: '17/1984', Ausserkrafttretensdatum: to })
+      return r
+    }
+    const neu = version('3-new.xml', '2019-01-01', null, 'LGBl. Nr. 17/1984 zuletzt geändert durch LGBl. Nr. 45/2018')
+    const old = version('3-old.xml', '2012-09-01', '2018-12-31', 'LGBl. Nr. 17/1984 zuletzt geändert durch LGBl. Nr. 30/2012')
+    konsRefsOfLgbl.mockResolvedValue({ refs: [neu], complete: true })
+    konsParagraphHistory.mockResolvedValue([old, neu])
+    const { value } = await compareLandLawChanges('vbg', 'LGBl. Nr. 45/2018', 'vbg45.xml', null, '2018-08-07')
+    expect(value.units).toEqual([])
+    // § 3, which RIS ties, and the numbers of the renumbering RIS ties nothing to: all named as what they are.
+    expect(value.withheld).toEqual(['§3', '§2a', '§4', '§5'].map((id) => ({ law: LAW, id, reason: 'renumbered' })))
+  })
+})
+
 describe('compareLandLawChanges — a § the Landesgesetzblatt repeals (20.11.2026)', () => {
   beforeEach(() => {
     XML['novelle.xml'] = '<risdok><nutzdaten><absatz typ="novao1">1. § 2 entfällt.</absatz></nutzdaten></risdok>'

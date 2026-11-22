@@ -461,9 +461,13 @@ export interface LandLawDiffResponse {
  *    (19.11.2026);
  *  - `wordingNotInRis`: an instruction writes its wording („§ 14 Abs. 6
  *    lautet: …"), and the version RIS ties to the Landesgesetzblatt does
- *    not carry all its words (`lautetMissing`, 22.11.2026).
+ *    not carry all its words (`lautetMissing`, 22.11.2026);
+ *  - `renumbered`: an instruction gives the § another number, or gives its
+ *    number to another § („Die bisherigen §§ 2a, 3 und 4 werden als §§ 3,
+ *    4 und 5 bezeichnet"): what RIS holds under the number before and after
+ *    are two paragraphs (`lgblRenumberedParagraphs`, 22.11.2026).
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'wordingNotInRis' | 'notInDraft' | 'draftDiffers' | 'unprinted' | 'announced'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'lawUnmatched' | 'enactedUnread' | 'wordingNotInRis' | 'renumbered' | 'notInDraft' | 'draftDiffers' | 'unprinted' | 'announced'
 
 /**
  * Why a § shown was not held word for word against the draft

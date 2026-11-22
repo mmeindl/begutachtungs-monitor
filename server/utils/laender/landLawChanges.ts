@@ -252,6 +252,78 @@ export function isNamed(named: ReadonlySet<string> | undefined, key: string): bo
   })
 }
 
+/** A new designation an instruction gives in quotes: „§ 19“, „ § 7. “, „ 17c “. */
+const QUOTED_DESIGNATION_RE = /[„"“]\s*(§\s*)?(\d+[a-z]*)\.?\s*[“”"]/gu
+/** The designations a renumbering gives, as `renumberingText` marks them (U+E003 around each; U+E002 where another quoted wording stood), one by one, listed or as a range. */
+const NEW_DESIGNATIONS_RE = /^([^:;\uE002\uE003]*?)\bdie\s+(Paragraphen|Paragrafen-?)?[Bb]ezeichnung(?:en)?\s*((?:\uE003[^\uE003]*\uE003)(?:\s*(?:,|und|sowie|bis)\s*\uE003[^\uE003]*\uE003)*)/u
+
+/** An instruction's text with every quoted wording out, the quoted new designations kept as marks; a quote never closed ends the reading (`subInstructionHeads`). */
+function renumberingText(text: string): string {
+  return text
+    .replace(QUOTED_DESIGNATION_RE, (_, sign: string | undefined, n: string) => `\uE003${sign ? '§' : ''}${n}\uE003`)
+    .replace(/„[^“”]*[“”]|"[^"]*"/g, '\uE002')
+    .split(/[„"]/)[0]!
+}
+
+/** The clause a word ends: back to the last colon, semicolon or quoted wording. */
+const clauseBefore = (text: string, at: number) => text.slice(0, at).split(/[:;\uE002\uE003]/).at(-1)!
+
+/**
+ * The §§ an instruction gives another number, under the old number and
+ * under the new one, as keys (22.11.2026): „Die bisherigen §§ 2a, 3 und 4
+ * werden als §§ 3, 4 und 5 bezeichnet." (Vorarlberg), „Der bisherige § 21
+ * erhält die Bezeichnung „§ 19“." (Oberösterreich, Tirol), „… erhalten die
+ * bisherigen §§ 15a und 15b die Paragraphenbezeichnungen „§ 15b“ und
+ * „§ 15c“" (Salzburg), a range on either side („§§ 113, 114, 116, 116a und
+ * 117 bis 127 … „§ 143“ bis „§ 157“").
+ *
+ * RIS files a § under its number. After such an instruction the number
+ * holds another paragraph than before, or none: the two versions RIS has
+ * under „§ 3" are the old § 3 and the old § 2a, and set against each other
+ * they read as a change the Landesgesetzblatt did not make.
+ *
+ * The phrasings are the ones the cached Landesgesetzblätter use: 21 of 721
+ * documents, 42 lines, these two verbs. Not a renumbering: an Absatz or a
+ * Ziffer given another designation („wird der bisherige Text als Abs. 1
+ * bezeichnet", „erhalten die Z 3 und 4 die Bezeichnungen „2.“ und „3.“" —
+ * told by „Paragraphenbezeichnung" or a § inside the quotes), a citation
+ * replaced („wird die Paragraphenbezeichnung „§ 4“ durch … ersetzt"), §§
+ * inserted „als §§ 27a bis 27f".
+ */
+export function lgblRenumberedParagraphs(instruction: string): string[] {
+  const text = renumberingText(instruction)
+  const out = new Set<string>()
+  const named = (s: string) => lgblNamedParagraphs(s.replace(/\uE003/g, ' ')).filter((k) => k.startsWith('§'))
+  for (const m of text.matchAll(/\bbezeichnet\b/gu)) {
+    const clause = /(§§?\s*\d.*?)\b(?:wird|werden)\s+als\s+(§§?\s*\d[^.]*?)\s*$/u.exec(clauseBefore(text, m.index))
+    if (clause) for (const k of [...named(clause[1]!), ...named(clause[2]!)]) out.add(k)
+  }
+  for (const m of text.matchAll(/\berh[aä]lt(?:en)?\b/gu)) {
+    const given = NEW_DESIGNATIONS_RE.exec(text.slice(m.index + m[0].length))
+    if (!given) continue
+    const marks = [...given[3]!.matchAll(/\uE003(§?)(\d+)([a-z]*)\uE003(?:\s*(,|und|sowie|bis)\s*)?/gu)]
+    // An Absatz, a Ziffer or a litera gets a designation the same way: a § only where the instruction says so.
+    if (!given[2] && !marks.some((x) => x[1] === '§')) continue
+    for (const k of named(`${clauseBefore(text, m.index)} ${given[1]!}`)) out.add(k)
+    marks.forEach((x, i) => {
+      out.add(`§${x[2]}${x[3]}`)
+      if (x[4] === 'bis' && marks[i + 1]) out.add(`§${x[2]}-${marks[i + 1]![2]}`)
+    })
+  }
+  return [...out]
+}
+
+/** The §§ the Landesgesetzblatt's instructions renumber, per law as `lgblInstructedParagraphs` keys it. */
+export function lgblRenumbered(units: readonly LawUnit[]): Map<string | null, Set<string>> {
+  const out = new Map<string | null, Set<string>>()
+  for (const u of units) {
+    if (!/^Z/.test(u.id)) continue
+    const keys = lgblRenumberedParagraphs(`${u.heading ?? ''} ${u.text}`)
+    if (keys.length) out.set(u.article, new Set([...(out.get(u.article) ?? []), ...keys]))
+  }
+  return out
+}
+
 /**
  * The §§ the Landesgesetzblatt's instructions name, per law — the law as
  * its Artikel names it („Änderung des Salzburger …"), null where the

@@ -1,7 +1,7 @@
 /** What a Landesgesetz changed, § by § (`landLawChanges.ts`): every doubt is a § not compared. */
 import { describe, expect, it } from 'vitest'
 import { diffLandDraft, lgblUnits } from '../server/utils/laender/landLawDiff'
-import { instructionLawFor, instructionLawsOf, lautetMissing, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
+import { instructionLawFor, instructionLawsOf, lautetMissing, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, lgblRenumberedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
 
 const v = (over: Partial<LandKonsVersion>): LandKonsVersion => ({ gesetzesnummer: '20001217', law: 'Salzburger Kinderbildungs- und -betreuungsgesetz 2019', key: '§5', from: null, to: null, organ: '', xmlUrl: 'x', stammnorm: '57/2019', abbreviation: null, ...over })
 
@@ -121,6 +121,43 @@ describe('instructionLawsOf — a law under another name (22.11.2026)', () => {
       { law: 'Landesbedienstetengesetz 1988', stammnorm: '1/1988' },
       { law: 'Landesbedienstetengesetz 2000', stammnorm: '44/2013' },
     ])).toEqual({ 'Landesbedienstetengesetz 1988': undefined, 'Landesbedienstetengesetz 2000': undefined })
+  })
+})
+
+describe('lgblRenumberedParagraphs (22.11.2026)', () => {
+  const keys = (line: string) => new Set(lgblRenumberedParagraphs(line))
+  it('reads the old numbers and the new ones of „werden als §§ … bezeichnet“ (Vorarlberg LGBl. Nr. 45/2018)', () => {
+    expect(keys('Die bisherigen §§ 2a, 3 und 4 werden als §§ 3, 4 und 5 bezeichnet.')).toEqual(new Set(['§2a', '§3', '§4', '§5']))
+    expect(keys('Der bisherige § 19 wird als § 20 bezeichnet.')).toEqual(new Set(['§19', '§20']))
+    // A range on both sides: every § inside it, „§ 24“ as much as „§ 21“.
+    const range = keys('Die bisherigen §§ 20 bis 22 werden als §§ 23 bis 25 bezeichnet.')
+    expect(isNamed(range, '§21')).toBe(true)
+    expect(isNamed(range, '§24')).toBe(true)
+    expect(isNamed(range, '§26')).toBe(false)
+  })
+  it('reads „erhält die Bezeichnung „§ …““ with its quoted new numbers (Oberösterreich LGBl. Nr. 62/2026, Tirol LGBl. Nr. 128/2018)', () => {
+    expect(keys('Der bisherige § 21 erhält die Bezeichnung "§ 19" .')).toEqual(new Set(['§21', '§19']))
+    expect(keys('Die bisherigen §§ 112a und 112b erhalten die Bezeichnungen "§ 113" und "§ 114" .')).toEqual(new Set(['§112a', '§112b', '§113', '§114']))
+    const range = keys('Die bisherigen §§ 113, 114, 116, 116a und 117 bis 127 erhalten die Bezeichnungen "§ 143" bis "§ 157" .')
+    for (const k of ['§113', '§116a', '§120', '§143', '§150', '§157']) expect(isNamed(range, k)).toBe(true)
+    expect(isNamed(range, '§115')).toBe(false)
+    expect(isNamed(range, '§128')).toBe(false)
+  })
+  it('takes the § the clause renumbers, not the one an insertion stands after', () => {
+    expect(keys('Nach § 49 wird folgende Bestimmung als neuer § 49a eingefügt; der bisherige § 49a erhält die Bezeichnung "§ 49b" : § 49a Entgeltausgleich bei Altersteilzeit (1) Dem Vertragsbediensteten gebührt ein Ausgleich.')).toEqual(new Set(['§49a', '§49b']))
+  })
+  it('reads „Paragraphenbezeichnung“ with the subject behind the verb, a bare number and a full stop inside the quotes', () => {
+    expect(keys('Die bisherige Abschnittsbezeichnung „IIIa“ erhält die Abschnittsbezeichnung „IIIb“ und erhalten die bisherigen §§ 15a und 15b die Paragraphenbezeichnungen „§ 15b“ und „§ 15c“.')).toEqual(new Set(['§15a', '§15b', '§15c']))
+    expect(keys('Der bisherige § 17b erhält die Paragraphenbezeichnung „ 17c “ und lautet:')).toEqual(new Set(['§17b', '§17c']))
+    expect(keys('Der bisherige § 14 erhält die Paragraphenbezeichnung „§ 33.“')).toEqual(new Set(['§14', '§33']))
+  })
+  it('is no renumbering of a §: an Absatz or a Ziffer renamed, a citation replaced, §§ inserted', () => {
+    expect(lgblRenumberedParagraphs('Im § 12 wird der bisherige Text als Abs. 1 bezeichnet und folgender Abs. 2 angefügt:')).toEqual([])
+    expect(lgblRenumberedParagraphs('Im § 25 Abs 1 erhalten die Z 3 und 4 die Bezeichnungen „2.“ und „3.“')).toEqual([])
+    expect(lgblRenumberedParagraphs('Im § 37 Abs 2 erhalten die bisherigen lit i bis n die Bezeichnungen „j“ bis „o“.')).toEqual([])
+    expect(lgblRenumberedParagraphs('Im § 9 wird im Abs 2 die Paragraphenbezeichnung „§ 4“ durch die Paragraphenbezeichnung „§ 4a“ ersetzt.')).toEqual([])
+    expect(lgblRenumberedParagraphs('Nach § 27 werden folgende Bestimmungen als §§ 27a bis 27f eingefügt: § 27a Unterscheidende Bezeichnung der Wählergruppen')).toEqual([])
+    expect(lgblRenumberedParagraphs('Im nunmehrigen § 12 Abs. 3 wird der Ausdruck "§§ 3, 6, 8b und 12" durch den Ausdruck "§§ 4, 6, 9 und 14" ersetzt.')).toEqual([])
   })
 })
 

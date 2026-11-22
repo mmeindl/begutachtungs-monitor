@@ -28,6 +28,7 @@ import { comparedText, lgblUnits } from './landLawDiff'
 import {
   instructionLawsOf,
   lgblInstructedParagraphs,
+  lgblRenumbered,
   isNamed,
   konsUnit,
   lautetMissing,
@@ -96,6 +97,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   const lgbl = lgblUnits(lgblXml)
   const instructions = lgblInstructedParagraphs(lgbl)
   const lawKeys = instructionLawsOf(versions, lgbl, lgblXml)
+  const renumbered = lgblRenumbered(lgbl)
   const withheld: LandLawDiffResponse['withheld'] = []
   let complete = searchComplete
   // Each § as RIS pairs its two versions: the earlier wording (none for a new §) and the later one (none for a repeal).
@@ -124,6 +126,9 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
     // No instruction's law matched to this one (or none read at all): whether an instruction names the § is
     // not known. Named „unpaired" until 20.11.2026, whose sentence says an instruction names it.
     if (lawKey === undefined) return void withheld.push({ law: v.law, id: v.key, reason: 'lawUnmatched' })
+    // A number the Landesgesetzblatt gives to another paragraph, or takes from this one (`lgblRenumberedParagraphs`,
+    // 22.11.2026): RIS's versions under it are two paragraphs, and compared they read as a change nobody made.
+    if (isNamed(renumbered.get(lawKey), v.key)) return void withheld.push({ law: v.law, id: v.key, reason: 'renumbered' })
     const named = isNamed(instructions.get(lawKey), v.key)
     if (!named) return void withheld.push({ law: v.law, id: v.key, reason: 'uninstructed' })
     if (vs.length !== 1) return void withheld.push({ law: v.law, id: v.key, reason: 'unpaired' })
@@ -155,7 +160,8 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
     for (const key of keys) {
       // A range names what RIS has in it; nothing to count of its own.
       if (/-/.test(key)) continue
-      if (![...byKey.values()].some((vs) => vs[0]!.key === key && (law === null || vs[0]!.law === law))) withheld.push({ law, id: key, reason: 'unpaired' })
+      // One of a renumbering is named so here too: under the old number RIS ties nothing to this Landesgesetzblatt.
+      if (![...byKey.values()].some((vs) => vs[0]!.key === key && (law === null || vs[0]!.law === law))) withheld.push({ law, id: key, reason: isNamed(renumbered.get(lawKey), key) ? 'renumbered' : 'unpaired' })
     }
   }
 
@@ -201,5 +207,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-12', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-13', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
 )

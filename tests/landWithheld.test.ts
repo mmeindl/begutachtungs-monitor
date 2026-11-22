@@ -130,6 +130,14 @@ describe('withheldNotes — a wording RIS’s version does not carry (22.11.2026
   })
 })
 
+describe('withheldNotes — a number the Landesgesetzblatt gives anew (22.11.2026)', () => {
+  it('says that the number is part of a renumbering, and that nothing is set against it', () => {
+    const [one] = withheldNotes([{ law: 'X', id: '§3', reason: 'renumbered' }])
+    expect(one!.text).toBe('Das Landesgesetzblatt gibt Paragraphen neue Nummern, und seine Nummer ist davon betroffen; was davor und danach unter ihr steht, stellt der Monitor einander deshalb nicht gegenüber')
+    expect(withheldNotes([{ law: 'X', id: '§3', reason: 'renumbered' }, { law: 'X', id: '§4', reason: 'renumbered' }])[0]!.text).toMatch(/und ihre Nummern sind davon betroffen; was davor und danach unter ihnen steht, /)
+  })
+})
+
 describe('withheldNotes — a law title (26.10.2026)', () => {
   it('names a changed title after everything else, as what RIS cannot check, and refers to it as „ihn"', () => {
     const notes = withheldNotes([{ law: 'O', id: 'Titel', reason: 'title' }, { law: 'O', id: 'Anlage 1', reason: 'annex' }])
@@ -205,7 +213,7 @@ describe('the announced text a station pair did not read (19.11.2026)', () => {
 
 describe('the leads of a Landesgesetz’s withheld §§ (21.11.2026)', () => {
   it('open with the withheld list’s own lead, as every other cause does', () => {
-    for (const reason of ['uninstructed', 'unpaired', 'lawUnmatched', 'enactedUnread', 'wordingNotInRis'] as const) {
+    for (const reason of ['uninstructed', 'unpaired', 'lawUnmatched', 'enactedUnread', 'wordingNotInRis', 'renumbered'] as const) {
       expect(withheldNotes([{ law: 'L', id: '§1', reason }])[0]!.lead).toBe('Nicht gezeigt:')
     }
   })
