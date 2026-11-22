@@ -57,12 +57,14 @@ const selected = computed(() => wegSelected(page.value, route.query.weg))
       <p class="mt-2 text-ink-secondary">
         {{ page.lede }}
       </p>
-      <p v-if="page.explainer" class="mt-3 text-sm text-ink-secondary">
-        <span class="font-medium text-ink">{{ page.explainer.lead }}</span>
-        {{ ' ' }}<ExternalLink :href="page.explainer.href" class="link-inline">{{ page.explainer.label }}</ExternalLink>
-        {{ ' ' }}{{ page.explainer.detail }}
-        {{ ' ' }}<ExternalLink :href="page.explainer.signLanguage.href" class="link-inline">{{ page.explainer.signLanguage.label }}</ExternalLink>.
-        {{ ' ' }}{{ page.explainer.note }}
+      <!-- The second line of a page's head, as on /eu-recht: a short lead-in
+           and the link, at the lede's size and colour. -->
+      <p v-if="page.explainer" class="mt-2 text-ink-secondary">
+        {{ page.explainer.lead }}
+        <ExternalLink :href="page.explainer.href" class="link-inline">{{ page.explainer.label }}</ExternalLink>
+        {{ page.explainer.detail }}
+        <ExternalLink :href="page.explainer.signLanguage.href" class="link-inline">{{ page.explainer.signLanguage.label }}</ExternalLink>.
+        {{ page.explainer.note }}
       </p>
     </header>
 

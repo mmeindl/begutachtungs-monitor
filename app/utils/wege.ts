@@ -1449,10 +1449,10 @@ export const WEGE_PAGE_COPY: Record<WegeJurisdiction, Pick<WegePage, 'title' | '
     description:
       `Alle Wege, die ein Text in ${EU_MEMBER_STATE_NAME_DE} zum Gesetz oder zur Verordnung nehmen kann – beim Bund und in den Ländern –, und die Wege eines Anliegens an das Parlament: Station für Station, und wo eine Stellungnahme oder eine Unterstützung möglich ist.`,
     explainer: {
-      lead: 'Kurz erklärt vom Parlament:',
-      label: '„Wie entsteht ein Gesetz?“',
+      lead: 'So entsteht ein Bundesgesetz:',
+      label: 'Video des Parlaments',
       href: 'https://www.parlament.gv.at/aktuelles/mediathek/videos/parlament-erklaert-folge-5',
-      detail: '(Video, 3 Min., 2020), auch',
+      detail: '(3 Min., 2020), auch',
       signLanguage: {
         label: 'in Gebärdensprache',
         href: 'https://www.parlament.gv.at/services/barrierefreiheit/gebaerdensprache',
