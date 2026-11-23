@@ -2025,12 +2025,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   path and 112 of 969 on the table path. It now passes only where the annex's
   next block prints it, where the next block's § carries it in RIS or in the
   result, or where the left column prints it at its own foot, so that it is
-  no new text: 1,521 of 1,529 and 953 of 968 are caught. What still passes is
-  a heading that really is the next §'s (nothing tells it from the real one),
-  one appended to a row that is itself a heading, and a group's bare number
-  where the next block prints its title and opens with no group of its own:
-  a row of its own between two §§ and a bare number have no wording to
-  compare. Both foreign-sentence classes are held to 95 % on both paths. Every
+  no new text: 1,521 of 1,529 and 953 of 968 are caught. What the next block
+  prints as a heading is what stands over its § symbol; a first cell with no
+  § symbol counts only as a group's heading or with no sentence's end and no
+  designation at its start (`headingOverNextBlock`). On the table path the §
+  designation is often the row's own field and that cell is the next §'s first
+  Absatz, whose first words otherwise passed as its heading behind any § (a
+  reader's attack on StPO § 22). What still passes is a heading that really is
+  the next §'s (nothing tells it from the real one), one appended to a row that
+  is itself a heading, and a group's bare number where the next block prints a
+  title and opens with no group of its own: a row of its own between two §§ and
+  a bare number have no wording to compare. Both foreign-sentence classes are held to 95 % on both paths. Every
   § that moved was read, on the list of 23.11.2026 (3,161 and 2,017 verdicts).
   Three lose the oracle's confirmation. Gesundheitstelematikgesetz § 1 is a
   real difference the shape had hidden: the draft appends „sowie" to a Ziffer

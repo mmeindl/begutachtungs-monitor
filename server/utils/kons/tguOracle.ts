@@ -936,8 +936,8 @@ function isGroupHeadingOnly(stretch: string): boolean {
 
 /**
  * What stands right after a § (23.11.2026): the words the annex's next block
- * prints ahead of its § symbol, and the headings the § of that block carries
- * in RIS and in the result (`followingUnit`).
+ * prints as a heading (`headingOverNextBlock`), and the headings the § of that
+ * block carries in RIS and in the result (`followingUnit`).
  */
 export interface FollowingUnit {
   printed: readonly string[]
@@ -946,6 +946,21 @@ export interface FollowingUnit {
 
 /** Nothing known of what follows: no heading at the foot is taken for the next §'s. */
 export const NOTHING_FOLLOWS: FollowingUnit = { printed: [], headings: [] }
+
+/**
+ * What a next block's first cell prints as a heading: what stands ahead of its
+ * § symbol. A cell with none is a heading only as a group's heading or with no
+ * sentence's end and no designation at its start (23.11.2026). On the table
+ * path the § designation is often the row's alone, and the cell is the §'s
+ * first Absatz: read as a heading, the first words of the next §'s law text
+ * passed as „the following §'s heading" behind any § (StPO § 22).
+ */
+export function headingOverNextBlock(cell: string): string {
+  const symbol = PARAGRAPH_SYMBOL_RE.exec(cell)
+  if (symbol) return cell.slice(0, symbol.index)
+  if (isGroupHeadingOnly(cell)) return cell
+  return /[.;:!?](?:\s|$)/u.test(cell.trim()) || /^\s*(?:\(\s*\d|\d+[a-z]*\.)/u.test(cell) ? '' : cell
+}
 
 /**
  * What follows the § `id` in the annex. `nodesOf` gives the trees the caller
@@ -967,8 +982,7 @@ export function followingUnit(byParagraph: ReadonlyMap<string, ComparisonRow[]>,
   }
   if (!next) return NOTHING_FOLLOWS
   const first = next.rows.find((r) => r.kind === 'pair')
-  const aheadOfSymbol = (cell: string): string => cell.slice(0, PARAGRAPH_SYMBOL_RE.exec(cell)?.index ?? cell.length)
-  const printed = first ? [first.current, first.proposed].map(aheadOfSymbol).filter(Boolean) : []
+  const printed = first ? [first.current, first.proposed].map(headingOverNextBlock).filter(Boolean) : []
   const nextId = next.key.slice(next.key.lastIndexOf('#') + 1)
   const headings = nodesOf(nextId).flatMap((node) => (node ? [[...node.context, node.heading ?? ''].filter(Boolean).join(' ')] : [])).filter(Boolean)
   return { printed, headings }

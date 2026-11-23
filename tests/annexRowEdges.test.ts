@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, unaccountedStretch, containmentKey, type FollowingUnit } from '../server/utils/kons/tguOracle'
+import { headingOverNextBlock, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, unaccountedStretch, containmentKey, type FollowingUnit } from '../server/utils/kons/tguOracle'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { printedStretches } from '../server/utils/annex/elision'
 import { comparableTokens } from '../server/utils/annex/annexText'
@@ -102,6 +102,14 @@ describe('a heading at the foot of a §\'s new text', () => {
 
   it('passes where the annex\'s next block opens with it', () => {
     expect(verdict('Eintragung von Daten', { printed: ['Eintragung von Daten '], headings: [] })).toBe('bestätigt')
+  })
+
+  it('reads as heading of the next block what stands over its § sign, and a sign-less cell only if it is no text of the law', () => {
+    expect(headingOverNextBlock('Eintragung von Daten § 4. (1) Die Behörde')).toBe('Eintragung von Daten ')
+    expect(headingOverNextBlock('Eintragung von Daten')).toBe('Eintragung von Daten')
+    expect(headingOverNextBlock('5. Abschnitt')).toBe('5. Abschnitt')
+    // StPO § 22: the next block's first Absatz, its § designation in the row's own field.
+    for (const body of ['(1) Die Generalprokuratur kann von Amts wegen', '(1) bis (4) …', 'Die Behörde entscheidet. Sie ist zuständig.', '2. der Antrag fehlt']) expect(headingOverNextBlock(body)).toBe('')
   })
 
   it('does not pass another group\'s number, or a heading of some other §', () => {
