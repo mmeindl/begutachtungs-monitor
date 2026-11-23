@@ -112,7 +112,8 @@ import { RUNS_ON_RE } from './landTgu'
 const JOINERS = 'und|oder|bzw|sowie|beziehungsweise'
 /** A word broken at a line's end („Verord- nung", „Infrastruktur- Dienstleistung"), never an Ergänzungsstrich („Land- und Forstwirtschaft"). The marks of `markedText` between the halves stay. */
 const BROKEN_WORD_RE = new RegExp(`(?<=[\\p{L}\\p{N}])-([\\s\\uE000\\uE001]+)(?!(?:${JOINERS})(?![\\p{L}\\p{N}]))(?=\\p{L})`, 'gu')
-const TOKEN_RE = /[\uE000\uE001]|§|[\p{L}\p{N}-]+/gu
+/** A decimal figure is one token: cut at its comma, „2,5“ and „25“ were one number to `respace`. */
+const TOKEN_RE = /[\uE000\uE001]|§|(?<![\p{L}\p{N}-])\d+,\d+(?![\p{L}\p{N}])|[\p{L}\p{N}-]+/gu
 
 /** A token with whether it stands inside a stretch marked `\uE000…\uE001` — two private-use characters no text carries and no normalisation touches. */
 interface Marked {
@@ -1720,7 +1721,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     // A designation alone is no part of a wording: „(5)" is not the „5" of „5. Unterabschnitt Urkundenarchiv".
     const designation = stretch.length === 1 && shown[i]!.designation === true
     const partOfQuote = !designation && quoted.some((q) => q.length > stretch.length && contains(q, stretch))
-    const figure = stretch.length === 1 && /^\d+$/.test(stretch[0]!) && !designation
+    const figure = stretch.length === 1 && /^\d+(?:,\d+)?$/.test(stretch[0]!) && !designation
     if (!accounted.slice(i, j).every(Boolean) && !partOfQuote && !figure && (stretch.length > 1 ? own : found.flatMap((f) => f.written)).some((t) => contains(t, stretch))) for (let k = i; k < j; k++) accounted[k] = true
     if (!accounted.slice(i, j).every(Boolean)) {
       for (let shift = -(j - i); shift <= j - i; shift++) {

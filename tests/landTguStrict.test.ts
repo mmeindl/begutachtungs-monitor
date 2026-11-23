@@ -50,6 +50,23 @@ const ask = (...units: LawDiffUnit[]) => {
   return { strict: guard.strict.get(0)!, bag: guard.checks.get(0)!, off: undrafted(guard).get(0) }
 }
 
+describe('a decimal figure (23.11.2026)', () => {
+  const draftOf = (payload: string) => lawBlocksFromPdfPages([[
+    'Gesetz vom ……, mit dem das Fischereigesetz 2002 geändert wird',
+    'Der Salzburger Landtag hat beschlossen:',
+    'Das Fischereigesetz 2002, LGBl Nr 81/2002, wird geändert wie folgt:',
+    '1. § 5 Abs 2 lautet:',
+    `„${payload}“`,
+  ].join('\n')])!
+  const state = (payload: string, marked: string) => guardTguUnits([changed('§5', marked)], draftOf(payload)).strict.get(0)!.state
+
+  it('keeps a decimal comma: „2,5“ is not „25“, in either direction', () => {
+    expect(state('(2) Der Satz beträgt 2,5 % des Betrags.', '(2) Der Satz beträgt {3} [25] % des Betrags.')).toBe('differs')
+    expect(state('(2) Der Satz beträgt 25 % des Betrags.', '(2) Der Satz beträgt {3} [2,5] % des Betrags.')).toBe('differs')
+    expect(state('(2) Der Satz beträgt 2,5 % des Betrags.', '(2) Der Satz beträgt {3} [2,5] % des Betrags.')).toBe('holds')
+  })
+})
+
 describe('strictTokens', () => {
   it('keeps every number, which the bag rule\'s reading drops', () => {
     expect(strictTokens('(2) binnen 14 Tagen, § 5 Abs. 1 Z 3')).toEqual(['2', 'binnen', '14', 'tagen', '§', '5', 'abs', '1', 'z', '3'])
@@ -59,6 +76,7 @@ describe('strictTokens', () => {
     expect(strictTokens('„Verord- nung“ – Land- und Forstwirtschaft')).toEqual(strictTokens('Verordnung - Land- und Forstwirtschaft'))
     expect(strictTokens('Natura 2000- Schutzgüter')).toEqual(strictTokens('Natura 2000-Schutzgüter'))
     expect(strictTokens('Fach-Sozialbetreuung')).toEqual(['fachsozialbetreuung'])
+    expect(strictTokens('2,5 % und 7,75%, Z 1, 2')).toEqual(['2,5', 'und', '7,75', 'z', '1', '2'])
   })
 
   it('reads what a misread font left in a line as the sign it stands for', () => {
