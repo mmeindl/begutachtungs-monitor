@@ -46,7 +46,8 @@ step() {
   note "$name $(tail -1 "$OUT/$name.txt")"
 }
 
-vn scripts/harness/serveBuilt.ts > "$OUT/server.log" 2>&1 &
+# exec, so that $! is the server itself: a function in the background is a subshell, and killing it left the server running.
+(exec node_modules/.bin/vite-node -c vitest.config.ts scripts/harness/serveBuilt.ts > "$OUT/server.log" 2>&1) &
 SERVER=$!
 trap 'kill "$SERVER" 2>/dev/null' EXIT
 
