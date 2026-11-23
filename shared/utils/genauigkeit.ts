@@ -416,7 +416,8 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
 
 export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): GenauigkeitArt[] {
   const bench = r.lesefassung.bench
-  const witnessed = r.lesefassung.funnel.witnessed ?? 0
+  // Of every draft the page shows a Lesefassung for, with a Gegenstand at Parliament or RIS's alone (23.11.2026: only the first were counted).
+  const witnessed = (r.lesefassung.funnel.witnessed ?? 0) + (r.lesefassung.risOnly.witnessed ?? 0)
   const notLaw = bench.shown - bench.identical
   const blind = total(classes(r.lesefassung.faults, RESULT_BLIND))
   const blindComma = classes(r.lesefassung.faults, RESULT_BLIND_COMMA)
@@ -559,7 +560,7 @@ function nullSentence(st: GenauigkeitRecord['stations']): string {
   const editorial = st.nullResidues - st.nullSubstantive
   if (st.nullResidues === 0) return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen keinen Unterschied.`
   const substantive = st.nullSubstantive === 0 ? 'keiner' : st.nullSubstantive === 1 ? 'einer' : n(st.nullSubstantive)
-  return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen ${n(st.nullResidues)} Unterschiede: ${n(st.nullPlaceholders)} sind die im Entwurf noch offene Nummer des Bundesgesetzblatts, ${n(editorial - st.nullPlaceholders)} nur Schreibweise oder Satzzeichen, alle als „redaktionell“ markiert, ${substantive} als Änderung.`
+  return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen ${n(st.nullResidues)} Unterschiede: ${n(st.nullPlaceholders)} sind die im Entwurf noch offene Nummer des Bundesgesetzblatts, ${n(editorial - st.nullPlaceholders)} nur Schreibweise oder Satzzeichen, beides als „redaktionell“ markiert, ${substantive} als Änderung.`
 }
 
 /** „Einem fehlt ein Teil.", „2 fehlt ein Teil, einer ist nur halb angewendet." */

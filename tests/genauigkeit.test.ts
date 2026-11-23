@@ -211,7 +211,7 @@ describe('genauigkeitArten', () => {
 
   it('sets a comma lost in text the draft leaves unchanged apart as a blind spot, and counts one at a changed place with the words (21.11.2026)', () => {
     const art = genauigkeitArten(withComma())[0]!
-    expect(art.faults.at(-1)).toEqual({ label: 'Ein Komma fehlt in Text, den der Entwurf unverändert lässt', tried: 200, caught: 2, blind: true })
+    expect(art.faults.find((f) => f.label.startsWith('Ein Komma'))).toEqual({ label: 'Ein Komma fehlt in Text, den der Entwurf unverändert lässt', tried: 200, caught: 2, blind: true })
     expect(art.missed).toContain('Fehlt unserem Ergebnis ein Komma in Text, den der Entwurf unverändert lässt, fällt das kaum auf: 2 von 200 Versuchen gefangen. Dort vergleicht die Prüfung die Wörter, nicht die Satzzeichen.')
     expect(art.consequence).toBe('Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen. In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen, am Rand einer gedruckten Passage auch ein Wort.')
     // The comma at a changed place is one of the words: without it their bar is 200 tries and 198 catches shorter.
@@ -253,10 +253,10 @@ describe('genauigkeitArten', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
     r.stations = { ...r.stations, nullUnits: 9542, nullResidues: 458, nullSubstantive: 4, nullPlaceholders: 450 }
     const result = genauigkeitArten(r)[2]!.result.join(' ')
-    expect(result).toContain('in 9.542 Textteilen 458 Unterschiede: 450 sind die im Entwurf noch offene Nummer des Bundesgesetzblatts, 4 nur Schreibweise oder Satzzeichen, alle als „redaktionell“ markiert, 4 als Änderung.')
+    expect(result).toContain('in 9.542 Textteilen 458 Unterschiede: 450 sind die im Entwurf noch offene Nummer des Bundesgesetzblatts, 4 nur Schreibweise oder Satzzeichen, beides als „redaktionell“ markiert, 4 als Änderung.')
     expect(result).not.toContain('fälschlich')
     r.stations.nullSubstantive = 0
-    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('8 nur Schreibweise oder Satzzeichen, alle als „redaktionell“ markiert, keiner als Änderung.')
+    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('8 nur Schreibweise oder Satzzeichen, beides als „redaktionell“ markiert, keiner als Änderung.')
   })
 
   it('says of the ministry\'s annex what a reader sees of a §: no mark, either mark, not shown — the four adding up to the whole (22.11.2026)', () => {
@@ -372,10 +372,10 @@ describe('in short', () => {
     for (const r of [GENAUIGKEIT, withMarks(), withComma()]) {
       for (const art of genauigkeitArten(r)) {
         const blind = art.faults.filter((f) => f.blind)
-        // The ministry's annex has a class no check can see, the Lesefassung two.
+        // The ministry's annex has a class no check can see, the Lesefassung three.
         // A Land's Textgegenüberstellung has none since 20.11.2026: its blind spot is the §§ not held word for word, a count in the sentence.
         // Nor has a comparison of stations: what it cannot see — one word misread alike in both texts — no fault can be injected for.
-        expect(blind).toHaveLength(art.id === 'lesefassung' ? 2 : art.id === 'gegenueberstellung' ? 1 : 0)
+        expect(blind).toHaveLength(art.id === 'lesefassung' ? 3 : art.id === 'gegenueberstellung' ? 1 : 0)
         if (blind.length || art.id === 'land-gegenueberstellung') expect(art.consequence).toMatch(/\.$/)
         else expect(art.consequence).toBeNull()
         // What the page prints under „Was die Prüfung übersieht": the consequence, or the first thing the check misses.

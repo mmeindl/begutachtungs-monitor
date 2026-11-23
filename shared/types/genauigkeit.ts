@@ -99,7 +99,7 @@ export interface GenauigkeitRecord {
      * a law enacted anew); `composing`: the drafts with at least one § that
      * can be composed. Both absent in rounds before 21.11.2026.
      */
-    risOnly: { drafts: number; changed: number; shown: number; outside?: number; composing?: number }
+    risOnly: { drafts: number; changed: number; shown: number; outside?: number; composing?: number; witnessed?: number }
   }
 
   /** „Was ändert der Entwurf?": the ministry's Textgegenüberstellung, checked against RIS and the draft. */

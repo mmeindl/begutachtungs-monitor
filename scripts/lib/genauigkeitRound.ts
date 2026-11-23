@@ -328,7 +328,7 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
       },
       faults: { pdf: classes(faults.pdf.result), table: classes(faults.table.result) },
       funnel: { drafts: accounted.drafts, changed: accounted.changed, shown: accounted.shown, causes: accounted.causes, witnessed: accounted.witnessed },
-      risOnly: { drafts: risOnly.drafts, changed: risOnly.changed, shown: risOnly.shown, outside: risOnly.outside, composing: risOnly.composing },
+      risOnly: { drafts: risOnly.drafts, changed: risOnly.changed, shown: risOnly.shown, outside: risOnly.outside, composing: risOnly.composing, witnessed: risOnly.witnessed },
     },
     annex: {
       drafts: gated.length,

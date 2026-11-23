@@ -328,7 +328,7 @@ describe('what the figures count', () => {
     ]
     records['acc-ris.json'].requested = 3
     records['acc-ris.json'].reached = 3
-    expect(build(records).lesefassung.risOnly).toEqual({ drafts: 3, changed: 8, shown: 2, outside: 5, composing: 1 })
+    expect(build(records).lesefassung.risOnly).toEqual({ drafts: 3, changed: 8, shown: 2, outside: 5, composing: 1, witnessed: 0 })
   })
 
   it('carries the changes injected into the station comparison, caught where the page shows a change', () => {
