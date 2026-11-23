@@ -3402,6 +3402,10 @@ the reasoning in full stands in that component's header comment.
   fine ones, because 44 px on desktop made controls taller than the rows they
   sit under. `/ueber` names the exception.
 - **Every link that leaves the site opens a new window and says so.**
+- **A marked change is also spoken** (23.11.2026). Most screen readers skip
+  `<del>` and `<ins>`, so old and new wording ran together. `DiffText` names
+  the start and end of each run through CSS generated content, not a hidden
+  span, which would land in copied law text and the page search.
 - **A sheet holds rows or one object with a job of its own, never prose.**
 - **Every multi-colour categorical palette passes the palette validator;**
   text never carries the data colour.

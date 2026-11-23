@@ -14,8 +14,18 @@
  * The trailing `{{ ' ' }}` is an interpolation rather than template
  * whitespace: the runs carry no spaces of their own, and template whitespace
  * around them is condensed away.
+ *
+ * Most screen readers do not announce `<del>` and `<ins>`, so old and new
+ * wording would be heard as one sentence. `diff-announced` speaks where each
+ * run starts and ends. The words come from CSS generated content on purpose:
+ * unlike a hidden span they stay out of copied law text and the page search.
  */
 import type { LawDiffSegment } from '#shared/types'
+
+const ANNOUNCE = {
+  removed: { start: 'gestrichen:', end: 'Ende gestrichen.' },
+  inserted: { start: 'eingefügt:', end: 'Ende eingefügt.' },
+} as const
 
 const props = withDefaults(
   defineProps<{
@@ -42,8 +52,8 @@ const shown = computed<LawDiffSegment[]>(() => {
 
 <template>
   <template v-for="(s, i) in shown" :key="i">
-    <del v-if="s.type === 'removed'" :class="['rounded bg-status-critical/10 px-0.5', removedNormalWeight ? 'font-normal' : '', 'text-ink line-through decoration-status-critical/70']">{{ s.text }}</del>
-    <ins v-else-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
+    <del v-if="s.type === 'removed'" :data-diff-start="ANNOUNCE.removed.start" :data-diff-end="ANNOUNCE.removed.end" :class="['diff-announced rounded bg-status-critical/10 px-0.5', removedNormalWeight ? 'font-normal' : '', 'text-ink line-through decoration-status-critical/70']">{{ s.text }}</del>
+    <ins v-else-if="s.type === 'inserted'" :data-diff-start="ANNOUNCE.inserted.start" :data-diff-end="ANNOUNCE.inserted.end" class="diff-announced rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
     <span v-else>{{ s.text }}</span>
     {{ ' ' }}
   </template>

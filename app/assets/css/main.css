@@ -707,6 +707,29 @@
 }
 
 /*
+ * Says to a screen reader where a struck or inserted run starts and ends;
+ * nothing shows on screen. Generated content, so the words are neither copied
+ * with the law text nor found by the page search (`DiffText`).
+ */
+@utility diff-announced {
+  &::before,
+  &::after {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  &::before {
+    content: attr(data-diff-start) " ";
+  }
+  &::after {
+    content: " " attr(data-diff-end) " ";
+  }
+}
+
+/*
  * Its bar: 2 px along the sheet's top edge, a segment sliding across while
  * the answer is on the way. Ink, not blue — blue says „you can do something
  * here", and there is nothing to do but wait. Under reduced motion it stands
