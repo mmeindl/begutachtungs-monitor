@@ -1556,6 +1556,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   fallback: when „§ 5 Abs. 1 erster Satz lautet:" stopped counting as the
   Absatz written anew, its payload, printed from the § designation on,
   would have counted as the whole §. The fallback is checked with the fix.
+- **The fifth round broke eight of nine rules** (23.11.2026). Nine rules let
+  the draft check account for more, and all 17 real §§ they cleared read sound
+  against draft and annex. Two readers told to break them still got a column
+  the draft does not order to pass clean under eight: six opened a new hole,
+  two carried an old one to a new spelling. Every one was closed by a narrower
+  condition, and 0 of 6,532 real §§ moved. A corpus that moves correctly says
+  nothing about a rule that loosens the check.
 - **What a third review found the second fix had opened, and how each was
   closed** (22.11.2026). A figure ends no sentence only before a month's
   name or right behind an article or a preposition fused with one („des
@@ -1753,7 +1760,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   (23.11.2026, `unitRenumberingsOf`): „X erhält die Bezeichnung „Y“" with X an
   address and as many numbers on both sides, each of X's level; the noun may be
   Tirol's „Buchstabenbezeichnung" too. Of the 9,088
-  distinct lines of GP XXVIII it reads 119 with 298 pairs. The 78 it cannot read
+  distinct lines of GP XXVIII's drafts with a readable annex it reads 119 with 298 pairs. The 78 it cannot read
   (a subject in words, „der letzte Absatz", numbers unquoted) give no number,
   and in their § a unit no line renumbers no longer counts as keeping its number
   under „(neu)". Two §§ that already differ name more struck words for it
@@ -2121,6 +2128,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   change, `--against` to read every attachment that moved.
   `aenderungsrate.ts --ziffer` fails its run on „Tor hält nicht" or a
   verdict that changes at the same unscoped § key (21.11.2026).
+- **A document in two formats is read through both readers** (23.11.2026).
+  A Regierungsvorlage that Parliament publishes as HTML and as PDF is a free
+  control of either reader. On 28 of them it found a list lost from the PDF
+  reading (630 d.B.) that reading ten §§ by eye had missed, and the HTML reader
+  hanging the next §'s heading on the § before it.
+- **A census of the instruction lines reads them as the check does**
+  (23.11.2026): through `printedQuotes`. Run on the plain text of the blocks,
+  over 70,753 lines of 4,000 RIS records, it reported that no line changed its
+  reading. With the printed quotation marks 26 did, each the shape its rule
+  was built for. A „nothing moved" from an instrument that never saw a
+  quotation is no result.
 
 ### Länder
 
@@ -4123,6 +4141,104 @@ circular of 10.12.2015).
   as the place. The nouns a place is named by are listed, and a bare „nach
   „X“" is one.
 
+### The draft check's known limits (22./23.11.2026)
+
+Measured and not built. Each either has no real case, or a rule for it would
+mark sound §§ or risk a wrong clearance.
+
+- **A line with several clauses and a place list per clause** (E-ControlG
+  § 25: „…; im Einleitungsteil der Z 2 werden der Ausdruck …") loses the place
+  of the second clause. It would stay marked anyway: the annex prints „§ 25 bis
+  § 27", the draft „§ 25 bis 27".
+- **Sentences an instruction moves to another §** (GrEStG § 4: „Der bisherige
+  dritte … Satz … werden dem § 6 nach Abs. 3 angefügt") read as struck text the
+  draft does not strike. One §, and the moved text cannot be verified in the
+  target §.
+- **Row pairings of the ministry's table.** Where the annex sets a new §
+  opposite the first rows of the next one, that §'s heading reads as struck
+  (StRegG § 2 against the new § 1a, Biomasse-VO § 13). The mark is right: the
+  page does show a deletion the draft does not make.
+- **Measured and not built, each would mark sound §§:** a quoted wording
+  counted once without „jeweils" (+5 false alarms), the place of a piece of a
+  §'s own quote (+11), the end of a last list item on the PDF path (9 moves),
+  the heading zone read as struck text (7 moves, all layout). Cases stand in
+  the bodies of the commits „A wording a draft quotes as old …", „A repealed
+  list item ends …", „The head zone is read only off …".
+- **The other direction is not checked:** an old wording the draft replaces
+  that still stands in the right column. 51 candidates were listed; real ones
+  StVG § 182 (known), Energiekrisenbeitrag-Strom § 4, HIKrG § 30, VKrG § 28,
+  AEV Oberflächenbehandlung § 1 (these four differ for other reasons already),
+  possibly RefWVG § 8. A rule would mark well over ten sound §§; needs a
+  narrower idea.
+- **Columns the check would pass although the draft does not order them; none
+  found in a real §.** A sentence that really ends on an article and a figure
+  („… beginnt im 3.") is read on into the next (about 330 such places in the
+  corpus, all ordinals or dates). The id list read a level up passes a column
+  that leaves a Ziffer of the list out without a mark and changes the wording
+  in the Absatz of that number. A § without Absätze that cites a § of its own
+  number in its first sentence ends its heading zone there. A renumbering line
+  that runs on into „und § 2 wird folgender Abs. 2 angefügt" reads the § as
+  moved (Abgabenänderungsgesetz 2025, line 3). A wording a line inserts is
+  asked of the column only where the line names one § (EU-JZG § 81: a column
+  without the inserted „Probezeit bestimmt oder" would hold). A payload under
+  a line whose address is not read, or whose unit the column does not print
+  where the check looks, accounts between its own words wherever they align:
+  the largest hole class left (MVW § 4, NachhVO § 4, BVergG § 94, FPG § 46a;
+  the rest of 2. Tierhaltungsverordnung Anlage 1). Two units of the same number
+  below a part the reader does not know (GebG § 14: an „(3)" in Tarifpost 6 and
+  one in Tarifpost 14). A single kept word between two struck stretches joins
+  them.
+- **Other holes.** Injected „nicht" still passes where the payloads leave one
+  free (59 on the PDF path, 28 on the table). A payload stretch printed twice
+  passes. „1-5" against „15" passes (no case in the corpus). A renumbering in
+  an unread phrasing is still compared by number; a net on text likeness would
+  cost two sound §§ (NÖ 18/2019). 688 (PDF) and 361 (table) clean §§ without
+  the oracle's confirmation were not read. The 60 Gazettes of the Lesefassung's
+  bench are its tuning corpus; the 140 before them were 304 of 308 identical.
+- **A Vermerk too many: sound §§ the check marks, one-offs.** A rule per § is
+  not worth the risk of a wrong clearance; counting a lifted § heading as shown
+  was tried and cleared KommAustria-G § 2 wrongly. Finalitätsgesetz § 3
+  („entfällt der Schlussteil" is a part and pays per stretch). HSG-WirtschaftsVO
+  § 18 and HSG § 24 (lines name a renumbered § by its new number without
+  „(neu)"). GrEStG § 18 (the word diff's cut at a date).
+  Standortabsicherungsgesetz § 5 (a date at a PDF line's start read as a list
+  item). A repealed Ziffer printed over two rows; the last list item over two
+  rows before a Schlussteil; an interrupted list with running numbers. KDG § 19
+  („§ 19 Abs. 3 erster Satz:" without a verb) and AIFMG § 4 (sentences that
+  cannot be counted). A division heading of the next part run into the § before
+  it (IntG § 3, SeeschiffVO § 2, where the draft repeals the division by name).
+  „werden die bisherigen lit. a bis j zu Z 1 bis Z 10" (KryptoMG §§ 5 and 18). A
+  payload for a whole § whose unchanged Ziffern the annex elides on both sides
+  (LWA-G § 6, SH-GG § 4, IntG § 27). A § heading the reader lifts into the row's
+  heading and then does not count as shown (BBG §§ 6 and 10, Privatschulgesetz
+  § 1; 8 §§ on the table path of the list of 22.11.). A § heading set as a group
+  heading in an Artikel that enacts a new law (the SLAPP Artikel, §§ 1 and 2).
+  „§ 34a. samt Überschrift entfällt." with a full stop behind the designation
+  (BBG § 34a). „§ 4 Abs. 1 letzter Satz und § 4 Abs. 3 entfallen." loses its
+  position (SchDigiG § 4). A quoted stem inside a longer word (GGBG § 8:
+  „Landespolizeidirektor" in „Landespolizeidirektoren"). A new designation
+  given unquoted („die bisherigen Abs. 3 und 4 die Absatzbezeichnungen Abs. 2
+  und 3", BewG § 21). An elision range printed without its full stop, which
+  hides the next Ziffer (UVP-G § 6). An unchanged word the word diff strikes and
+  adds again (AMG § 81a). The struck designation of an elided Absatz (EAG § 35).
+- **Lines the reader leaves unread, so the § stays „nicht geprüft":** „lautet
+  der erste Satz „X“" without a colon (no line in the corpus), „Punkt 5. der
+  Anlage 1 lautet:".
+- **Withheld on the Land pages.** Salzburg 32075 § 24b would need a placeholder
+  rule („(xx)" in the draft, „(14)" in the annex). The five Lehrberufslisten
+  (Back-, Elektro-, Prozesstechnik, Hochbau, Reisebüroassistent) print an Anlage
+  1 that none of their drafts names; the rename is in `BEGUT_025785D3`, so they
+  would need a join to that draft.
+- **„(entfällt)" over an elided row** passes in 330 of 399 injected faults on
+  the table path: 226 on the oracle's word, 104 because a repeal word stands
+  elsewhere in the §'s lines. None of the 6 „(entfällt)" rows of the corpus
+  stands opposite an elided left column.
+- **An invented group number at a §'s foot** passes 41.7 % of the time on the
+  PDF path and 9.6 % on the table; the first words of the next § 3.8 % and
+  7.8 %. `/genauigkeit` says so in words, because no round records these rates.
+- **`normalizeText` turns an en dash into a hyphen** on every path, so a column
+  shows „-" where the document prints „–". It is one sign and no word.
+
 ### Länder and EU
 
 - **An index over all Regierungsvorlage PDFs.** A standing obligation, not a
@@ -4338,6 +4454,11 @@ circular of 10.12.2015).
 
 ## 4. Open questions
 
+- **Struck text on the Länder** (23.11.2026). The Bund's check of struck text
+  is not applied to a Land, where a § that differs is withheld, not marked. It
+  would catch 819 of 859 injected faults instead of 108, and 28 shown §§ would
+  newly differ: 11 real differences of the documents, 16 limits of the check,
+  1 our reading. It stays off for now, since it would withhold the 16 sound §§.
 - **Licence.** Whether Parliament's „die Dokumente selbst sind freie Werke"
   holds for a Ministerialentwurf's documents too, and what covers the
   metadata of the Begutachtung lists. Until answered, the source order of the
