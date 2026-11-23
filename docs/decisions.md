@@ -1714,10 +1714,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   twin struck elsewhere (a reader's attack on KFG § 114b, 23.11.2026). A plain
   „wird das Wort „und“ durch …" names no place and still counts at every one of
   its unit.
-- **A quoted wording is also found with a word the column prints apart**
-  (23.11.2026), where the same column prints that word joined at another
-  place: „§§ 4a" and „§§ 4 a" in one Absatz (Fremdenpolizeigesetz § 61). A
-  matter of spacing, the way `respace` reads it for new text.
+- **A quoted wording is also found with a number the column prints apart**
+  (23.11.2026), where the same column prints it joined at another place: „§§ 4a"
+  and „§§ 4 a" in one Absatz (Fremdenpolizeigesetz § 61). A matter of spacing,
+  the way `respace` reads it for new text. Only between a figure and a letter:
+  a word the column prints whole is not parted, since „indem" accounted for a
+  struck „in dem" (a reader's attack on ORF-G § 31).
 - **A number of the new count stands for the unit a line at or before it
   renumbered to it** (23.11.2026, `renumberingsOf`, `numberedAs`). „Abs. 7 (neu)"
   and a line that counts by the new numbers without saying so („§ 5 Abs. 2 und 3

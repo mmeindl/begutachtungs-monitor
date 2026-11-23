@@ -2337,12 +2337,16 @@ function struckAccount(
         }
       }
     }
-    // …and where the column spells the word both ways („§§ 4a" at one place, „§§ 4 a" at another), the parted form too: the
-    // quoted wording stands at the place that prints it apart (Fremdenpolizeigesetz § 61, 23.11.2026).
+    // …and where the column spells a number both ways („§§ 4a" at one place, „§§ 4 a" at another), the parted form too: the
+    // quoted wording stands at the place that prints it apart (Fremdenpolizeigesetz § 61, 23.11.2026). Only between a figure and
+    // a letter: a word the column prints whole is no spacing matter, and „indem" is not „in dem" (ORF-G § 31).
     const parted = [...tokens]
     for (const list of [tokens, parted]) for (let i = 0; i < list.length; i++) {
-      if (list === tokens && vocabulary.has(list[i]!)) continue
-      for (let k = 1; k < list[i]!.length; k++) {
+      const whole = vocabulary.has(list[i]!)
+      if (whole && list === tokens) continue
+      const figure = /^\d+(?=[a-z]+$)/.exec(list[i]!)?.[0].length
+      if (whole && figure === undefined) continue
+      for (let k = whole ? figure! : 1; k < (whole ? figure! + 1 : list[i]!.length); k++) {
         if (!pairs.has(`${list[i]!.slice(0, k)} ${list[i]!.slice(k)}`)) continue
         list.splice(i, 1, list[i]!.slice(0, k), list[i]!.slice(k))
         break

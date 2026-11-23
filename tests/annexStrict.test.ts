@@ -442,6 +442,13 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
       expect(check(blocksWith(lines[0]!, '2. In § 5 Abs. 2 (neu) entfallen die Z 1 und die Ziffernbezeichnung „2.“.'), renumbered, CURRENT).state).toBe('differs')
     })
 
+    it('finds a quoted number the column prints apart, and no word it prints whole (FPG § 61, ORF-G § 31)', () => {
+      const figure = '(1) Nach §§ 4a gilt dies, nach §§ 4 a nicht.'
+      expect(check(blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „nach §§ 4a“.'), '(1) Nach §§ 4a gilt dies, nicht.', figure).state).toBe('holds')
+      const word = '(1) Die Frist endet, indem der Bescheid ergeht, in dem sie steht.'
+      expect(check(blocksWith('1. In § 5 Abs. 1 entfällt das Wort „indem“.'), '(1) Die Frist endet, indem der Bescheid ergeht, sie steht.', word).state).toBe('differs')
+    })
+
     it('takes a word the line places by the words beside it at that occurrence only, and lets its kept twin cover nothing (KFG § 114b)', () => {
       const line = '1. In § 5 Abs. 1 wird das Wort „und“ vor „Geburtsdatum“ durch einen Beistrich ersetzt.'
       const current = '(1) Daten der Lehrer und Schüler sowie Name und Geburtsdatum der Person.'
