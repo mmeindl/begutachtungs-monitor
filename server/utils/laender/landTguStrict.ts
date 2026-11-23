@@ -415,10 +415,12 @@ const IN_PLACE_OF_RE = new RegExp(`(?<![\\p{L}])[Aa]n\\s+die\\s+Stelle\\s+(?:von
 /** …and what follows it, the new: „… jeweils das Wort „Y“", „… tritt „Y“". */
 const IN_PLACE_NEW_RE = new RegExp(`^\\s*(?:(?:tritt|treten)\\s+)?(?:jeweils\\s+)?(?:(?:der|die|das|den|dem|des)\\s+)?(?:${UNIT_WORD}(?:\\s+und\\s+(?:der|die|das|den|dem|des)\\s+${UNIT_WORD})?\\s*)?$`, 'u')
 /**
- * „lautet die Überschrift „X“": the quotation is what the part named right before it now says. „Im Inhaltsverzeichnis lautet die
- * Eintragung zu § 3 „X“" says it of the table of contents: no wording of the §, so it accounts for none of the column's.
+ * „lautet die Überschrift „X“": the quotation is what the part named right before it now says. „Die Eintragung zu § 3 lautet „X“"
+ * says it of the table of contents, however the draft calls it („Inhaltsverzeichnis", „Inhaltsübersicht") or if it does not:
+ * an entry is a place, no wording of the §, and accounts for none of the column's (`ENTRY_BEFORE_RE`).
  */
 const WRITES_PART_RE = /(?<![\p{L}])(?:lautet|lauten)\s+(?:die|der|das)\s+(?:Überschrift|Eintragung|Eintrag)(?:\s+zu\s+§\s*\d+[a-z]*)?\s*$/u
+const ENTRY_BEFORE_RE = /(?<![\p{L}])(?:Eintragung|Eintrag)(?:\s+zu\s+§\s*\d+[a-z]*)?\s*$/u
 const DESIGNATION_TEXT_RE = /^\s*(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.?|[a-z]{1,2}\)?)\s*$/u
 /** A replacement the instruction leaves to the reader's grammar: the wording is not quoted as it will stand. */
 const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jeweiligen|jeweils\s+richtigen/u
@@ -449,7 +451,7 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     if (ANCHOR_RE.test(before)) role = 'anchor'
     else if (/^\s*(?:(?:wird|werden)\s+)?(?:jeweils\s+)?(?:ersetzt\s+)?durch(?![\p{L}])/u.test(after) || OLD_BEFORE_DURCH_RE.test(after) || REPLACED_BY_SIGN_RE.test(after)) role = 'old'
     else if (IN_PLACE_OF_RE.test(before)) role = 'old'
-    else if (WRITES_PART_RE.test(before)) role = /Inhaltsverzeichnis/u.test(line.slice(0, start)) ? 'anchor' : 'new'
+    else if (WRITES_PART_RE.test(before)) role = ENTRY_BEFORE_RE.test(before) || /Inhalts(?:verzeichnis|übersicht|angabe)/u.test(line.slice(0, start)) ? 'anchor' : 'new'
     else if (/(?<![\p{L}])durch\s+(?:\p{L}+[\s-]+){0,5}$/u.test(before)) role = 'new'
     // A designation the line removes, not one it gives (`removesDesignation`).
     else if (designation && removesDesignation(line.slice(0, start), after)) role = 'old'

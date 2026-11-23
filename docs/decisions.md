@@ -1700,9 +1700,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   vierte Satz lautet:" counts a sentence its first half makes
   (Strafvollzugsgesetz § 17, which an empty reach marked for nothing). No § moves.
 - **A quotation right behind „lautet die Überschrift" is the new heading**
-  (23.11.2026, `WRITES_PART_RE`), and one behind „Im Inhaltsverzeichnis lautet
-  die Eintragung zu § 3" says what the table of contents prints: no wording of
-  the §, which it does not account for. Both shapes had no role, so the § stayed
+  (23.11.2026, `WRITES_PART_RE`), and one behind „lautet die Eintragung zu § 3"
+  says what the table of contents prints, whether the draft calls it
+  „Inhaltsverzeichnis", „Inhaltsübersicht" or nothing: an entry is a place, no
+  wording of the §, and accounts for none of the column's. Both shapes had no role, so the § stayed
   „nicht geprüft" (Landarbeitsgesetz 2021 § 3, now held and read).
 - **The old wording may stand in front of the place that says where it is**
   (23.11.2026, `PLACE_BEHIND_RE`): „wird das Zitat „X“ nach der Wortfolge „Y“

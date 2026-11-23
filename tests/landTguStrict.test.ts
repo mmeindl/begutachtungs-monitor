@@ -199,6 +199,9 @@ describe('a quotation right behind the part a line writes anew (23.11.2026)', ()
     expect(quoteRoles('2. In § 3 lautet die Überschrift „Freie Dienstnehmer“, der erste Satz erhält die Absatzbezeichnung „(1)“ und es werden folgende Abs. 2 und 3 angefügt:').map((q) => q.role)).toEqual(['new', 'new'])
     expect(quoteRoles('1. Im Inhaltsverzeichnis lautet die Eintragung zu § 3 „Freie Dienstnehmer“.')[0]!.role).toBe('anchor')
     expect(quoteRoles('1. Im Inhaltsverzeichnis lautet der Eintrag zu § 48 „Zugang zu Informationen“.')[0]!.role).toBe('anchor')
+    // An entry is a place, whatever the draft calls the table of contents, and whether it names it at all.
+    for (const line of ['1. In der Inhaltsübersicht lautet die Eintragung zu § 3 „Freie Dienstnehmer“.', '1. In der Inhaltsangabe lautet der Eintrag zu § 3 „Freie Dienstnehmer“.', '1. Es lautet die Eintragung zu § 3 „Freie Dienstnehmer“.']) expect(quoteRoles(line)[0]!.role).toBe('anchor')
+    expect(quoteRoles('1. In § 3 lautet die Überschrift „Freie Dienstnehmer“.')[0]!.role).toBe('new')
   })
 
   it('reads the old wording in front of a place that stands before its „durch“, and only with nothing else between', () => {
