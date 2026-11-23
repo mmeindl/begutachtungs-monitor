@@ -474,6 +474,7 @@ const ministryLinks = computed(() => {
                 wird beim Parlament.</template><template v-else> Eingebracht wird beim Parlament.</template>
             </p>
             <SourceQuote :text="STATEMENT_QUOTE_BEGUTACHTUNG" :source="STATEMENT_QUOTE_SOURCE" />
+            <StatementExpectation round="begutachtung" />
             <!-- Two doors, one per Parliament form, each landing in its form
                opened (`StatementFormDoors`, 15.11.2026). -->
             <template #primary>
@@ -501,6 +502,7 @@ const ministryLinks = computed(() => {
               – {{ SECOND_ROUND_CLAUSE }}.
             </p>
             <SourceQuote :text="STATEMENT_QUOTE_PARLAMENT" :source="STATEMENT_QUOTE_SOURCE" />
+            <StatementExpectation round="parlament" />
             <template #actions>
               <StatementFormDoors :item-url="data.enactment.rvUrl" />
             </template>

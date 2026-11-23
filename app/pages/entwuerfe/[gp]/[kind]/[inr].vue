@@ -328,6 +328,7 @@ useSeoMeta({
             <!-- What a Stellungnahme brings, in Parliament's words; only for
                  the kinds whose form was read (`statementQuoteFor`). -->
             <SourceQuote v-if="doorQuote" :text="doorQuote" :source="STATEMENT_QUOTE_SOURCE" />
+            <StatementExpectation v-if="doorQuote" round="parlament" />
             <template #actions>
               <StatementFormDoors :item-url="data.parliamentUrl" />
             </template>

@@ -11,6 +11,7 @@ import type { EuTimelineContext } from '~/utils/euRecht'
 import { fristFact, fristStateDe } from '~/utils/deadlines'
 import type { StationId } from '~/utils/spine'
 import { allRoutesLink, landStations, landStatusDe } from '~/utils/spine'
+import { landStatementRound } from '~/utils/statementQuote'
 
 /**
  * A Land's draft (22.10.2026), behind `/entwuerfe/<land>/<number>`.
@@ -268,6 +269,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           <p v-if="publicationNote" class="mt-2 text-sm text-ink-secondary">
             {{ publicationNote }}
           </p>
+          <StatementExpectation :round="landStatementRound(land, detail.draft.kind)" />
           <template #filing>Formular des Landes öffnen</template>
           <!-- Both ways to the address: the link in the sentence opens the
                mail program, the button copies it for wherever one writes. -->

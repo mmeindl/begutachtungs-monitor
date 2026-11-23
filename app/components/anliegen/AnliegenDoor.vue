@@ -37,6 +37,9 @@ const groups = computed(() => [
     <p class="mt-2 text-sm text-ink-secondary">{{ door.windowNote }}</p>
     <div v-for="(group, i) in groups" :key="group.key" :class="i > 0 ? 'mt-5' : ''">
       <SourceQuote v-if="group.quote" :text="group.quote.text" :source="group.quote.source" />
+      <!-- The Stellungnahme's only, and only where its form was read: a
+           Petition an den Bundesrat has no quote and no checked procedure. -->
+      <StatementExpectation v-if="group.key === 'statement' && group.quote" round="anliegen" />
       <div class="mt-3 flex flex-wrap items-center gap-3">
         <DoorButton
           v-for="action in group.actions"

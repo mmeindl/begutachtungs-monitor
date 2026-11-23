@@ -184,6 +184,27 @@ gets an entry of its own only where it carries a reason the rule does not.
   lasts through the parliamentary procedure (§ 23b GOG-NR): for a law the
   Bundesrat does not object to, until its Beschluss. Whether it opens again
   after an Einspruch is not documented (14.11.2026).
+- **What a reader can expect from a Stellungnahme** stands on the door card,
+  closed under Parliament's quote (23.11.2026, `StatementExpectation`): it
+  is no vote, who decides what is taken up, no answer is due, and a change
+  can rarely be traced to one Stellungnahme. Procedure only, from
+  Parliament's Fachinfo: no promise of an effect and no denial of one.
+  Closed, because open beside the buttons „keine Antwort" reads as „filing
+  is pointless". On every Austrian door whose procedure was read: a draft,
+  a Regierungsvorlage, an Antrag, an Ausschussantrag, an Anliegen in the
+  Nationalrat, a RIS draft (the ministry alone decides) and the nine Länder
+  (constitutions, Landtag rules and Burgenland's Begutachtung law read in
+  RIS on 23.11.2026: none requires an answer to a submitter; Vorarlberg's
+  government lists the proposals it did not take up for the Landtag, § 10
+  of its rules). Not on the EU's doors: the Commission's own quote says what
+  follows, and on a consultation promises a report, so „keine Antwort"
+  beside it would read as a contradiction. Not on a Petition an den
+  Bundesrat or a Gesetzesantrag des Bundesrates: neither had an open form to
+  read on 23.11.2026, and the forms differ on who receives a Stellungnahme,
+  so the wording is not inferred. Read it when one opens. A Staatsvertrag
+  has no form: all 28 in the monitor carry Parliament's status „Keine
+  Begutachtung bei dem Doktyp "RVS" möglich". Why:
+  `docs/research/nebenwirkungen.md`.
 - **Statements open newest first** (23.11.2026, maintainer's decision). A
   first row ranked by Zustimmungen puts the best-mobilised on top and reads
   as a vote. „Meiste Zustimmungen" stays one click away.

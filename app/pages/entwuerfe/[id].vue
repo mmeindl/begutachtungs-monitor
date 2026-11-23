@@ -355,6 +355,7 @@ const doorHref = computed(() => {
               Stellungnahmen gehen hier direkt an das Ministerium.
             </template>
           </p>
+          <StatementExpectation round="ministerium" />
           <!-- Linked, never read out. Measured 2026-09-17 over 40 records:
              34 of 40 Begleitschreiben are scanned images with no text
              layer at all, so an extracted address would be absent exactly
