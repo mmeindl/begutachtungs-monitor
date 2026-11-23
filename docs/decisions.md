@@ -341,6 +341,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   page says so). Read like the committee check: same round, same budget, an
   unreadable document is a check that did not run and the law is left out.
   It errs towards silence: 607/A mentions another law's Begutachtung.
+- **A Vorlage's Erläuterungen held as a PDF only are read from it, and
+  refused whole where the reading cannot be vouched for** (23.11.2026,
+  `explanations/explanationsPdf.ts`). The PDF's runs become the blocks the
+  HTML gives and one walk reads both, so a heading means the same in either.
+  Refused, as „Nicht lesbar" with the PDF linked: no text, a page of words
+  that are no German (a font with no map to its letters), a page without
+  text between others. A reasoning under the wrong §, or with a page missing,
+  is worse than the gap. A table's rows are left out and the section says so
+  (`dropped`); a footnote stands behind the paragraph that points to it. Only
+  a Vorlage: an Antrag's Begründung and a Ministerialentwurf's documents at
+  Parliament stay unread, and the credit is „freies Werk".
 - **Salzburg, the one Land with a statement, in this order of evidence:** a
   draft of the register joined to the law (the Land's record or the title
   search) — consulted; the Regierungsvorlage's Erläuterungen carry
@@ -3795,11 +3806,11 @@ the reasoning in full stands in that component's header comment.
   never „Nicht veröffentlicht". A kind of document the monitor does not
   read at a source is its scope and no failed reading: „Nicht im Monitor: …
   liest der Monitor nicht aus", and so every sentence about a Bund text
-  held as a PDF only that is not read (a Gesetzestext, the Erläuterungen, a
+  held as a PDF only that is not read (a Gesetzestext, a draft's Erläuterungen, a
   draft's or an Antrag's Textgegenüberstellung; 22.11.2026, „Nicht lesbar"
   until then). A Regierungsvorlage's Textgegenüberstellung is read from
-  Parliament's PDF since 23.11.2026; one that yields nothing is „Nicht
-  lesbar", because there a reading failed. A scan without a text layer stays „Nicht lesbar": that is one
+  Parliament's PDF since 23.11.2026, and its Erläuterungen too; one that
+  yields nothing is „Nicht lesbar", because there a reading failed. A scan without a text layer stays „Nicht lesbar": that is one
   document's property. Kept apart on purpose: the verification
   check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the Lesefassung's
   per-§ reasons, and the
@@ -4070,6 +4081,10 @@ circular of 10.12.2015).
 | The Vorlagen read from Parliament's PDF: §§ shown / withheld | XXVIII 333 / 11, XXVII 215 / 34. Of those shown, without a mark 160 and 51, „nicht bestätigt" 141 and 36, „nicht geprüft" 32 and 128; 118 of the 128 stand in two Sammelgesetze (2310 and 2432 d.B.) whose law boundaries the reader refuses. Not part of the figures on /genauigkeit, which are measured on drafts | 25 documents, 465 pages, none refused · 23.11.2026 |
 | The same with Parliament's margin stamps left on | 18 of the 465 pages refused, §§ shown 484, withheld 94, the stamps' words inside the columns | same |
 | Heap for the largest of them (2310 d.B., 2.0 MB, 125 pages) | 65 MB on top of the process while pdf.js and the parse run; all 25 read in a row on a built server under `--max-old-space-size=320` | same |
+| Vorlagen whose Erläuterungen are a PDF only, read from it | XXVIII 12 of 155, XXVII 21 of 365, XXVI 8 of 117; all 41 shown. 28 with reasoning at the § (1,674 entries). 13 without: 11 Bundesfinanzgesetze explained by Artikel, 593 d.B. XXVI with no Besonderer Teil, 313 d.B. XXVIII whose Roman Artikel the join does not match. Table lines left out in two (408 d.B. 16, 1929 d.B. 7, XXVII) | built endpoint, five read by eye against the PDF · 23.11.2026 |
+| The PDF reader against the production HTML reader | 200 of the 592 Vorlagen with both formats, evenly over the three periods: 195 read, 5 refused (2 scans, 1 font with no map to its letters, 2 with a textless page). 99.98 % of the prose words in order, both ways. Of 5,556 §§: 5,441 the same words, 112 at least 97 % or at most 3 words apart, 3 differ, all in 462 d.B. XXVII, where the HTML sets „Zu Z 22 (§ 11):" at the end of the paragraph before and the PDF reading is the right one | 23.11.2026 |
+| The same comparison with each passage given the next one's text | 16 of 2,430 §§ still pass (60 documents): the comparison sees a reasoning at the wrong § | 23.11.2026 |
+| Heap for the largest of the 41 (69 d.B. XXVIII, 0.9 MB, 60 pages) | 39 MB on top of the process while pdf.js and the reader run; all 41 read in a row on a built server under `--max-old-space-size=320` | 23.11.2026 |
 | Salzburg „ohne Begutachtung" | 41 of 452 laws, all Initiativanträge | GP XXV–XXVIII · 10.11.2026 |
 | Salzburg Vorlagen joined by title that carry the heading | 264 of 264 | laws since 2016 · 10.11.2026 |
 | Land laws with ≥ 1 law at its geltende Fassung in RIS | 98.0 % of amending laws (2,720 of 2,776), 97.5 % of all | all nine Länder since 2016 · 10.11.2026 |

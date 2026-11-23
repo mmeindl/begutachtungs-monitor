@@ -42,7 +42,7 @@ import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { explanationsByParagraph } from '../explanations/explanationsJoin'
 import { explanationsDocumentOfHtml, parseExplanationBlocks, parseExplanationsHtml, type HtmlExplanations } from '../explanations/explanationsHtml'
-import { explanationBlocks, explanationPagesOf, isWholeReading } from '../explanations/explanationsPdf'
+import { explanationBlocks, explanationPagesOf, isSoundExplanationsRead } from '../explanations/explanationsPdf'
 import { getRootDraftArticles } from '../lawtext/draftArticlesService'
 import type { DraftIdentity } from '../ris/draftIdentity'
 import { upstreamBytes, UpstreamTooLargeError, type UpstreamPolicy } from '../upstream/fetch'
@@ -179,7 +179,7 @@ async function readExplanationsPdf(url: string): Promise<ExplanationsRead | stri
   const pages = await explanationPagesOf(bytes).catch(() => null)
   if (!pages) return gapDe('unreadable', 'Das PDF der Erläuterungen zu dieser Regierungsvorlage ließ sich nicht öffnen.')
   const read = explanationBlocks(pages)
-  if (!isWholeReading(read)) return gapDe('unreadable', 'Die Erläuterungen dieser Regierungsvorlage ließen sich aus dem PDF des Parlaments nicht vollständig auslesen.')
+  if (!isSoundExplanationsRead(read)) return gapDe('unreadable', 'Die Erläuterungen dieser Regierungsvorlage ließen sich aus dem PDF des Parlaments nicht vollständig auslesen.')
   const labelled = read.blocks.some((b) => /Allgemeiner\s+Teil/i.test(b.text))
   return { parsed: parseExplanationBlocks(read.blocks, { generalAsHeaded: true }), labelled, dropped: read.tableLines + read.unplacedNotes }
 }

@@ -18,7 +18,7 @@
  * running lines are no text. A footnote stands behind the paragraph that
  * points to it, so under that paragraph's §; Parliament's HTML puts them all
  * at the document's end, under its last §. A document the reader cannot
- * vouch for is refused whole (`isWholeReading`): a reasoning shown under the
+ * vouch for is refused whole (`isSoundExplanationsRead`): a reasoning shown under the
  * wrong §, or with a page missing, is worse than the gap.
  */
 import type { TextBlock } from '../lawtext/lawUnits'
@@ -401,7 +401,7 @@ export interface ExplanationBlocks {
  * letters reads „GHU" for „der", 1947 d.B. XXVII), or where a page between
  * others holds no text: a scanned page may be the middle of a §'s reasoning.
  */
-export function isWholeReading(read: ExplanationBlocks): boolean {
+export function isSoundExplanationsRead(read: ExplanationBlocks): boolean {
   return read.blocks.length > 0 && read.garbledPages === 0 && read.textlessPages === 0
 }
 
