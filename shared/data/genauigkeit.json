@@ -1,6 +1,6 @@
 {
   "date": "2026-11-23",
-  "commit": "7deff363",
+  "commit": "57135db7",
   "gp": "XXVIII",
   "lesefassung": {
     "bench": {
@@ -295,17 +295,5 @@
   },
   "unheld": [
     { "path": "pdf", "key": "Lücke", "tried": 14 }
-  ],
-  "mixed": {
-    "kons.json": "7deff363+dirty",
-    "fi-pdf.json": "7deff363+dirty",
-    "fi-xml.json": "7deff363+dirty",
-    "acc.json": "7deff363+dirty",
-    "acc-ris.json": "7deff363+dirty",
-    "annex-pdf.json": "7deff363+dirty",
-    "annex-xml.json": "7deff363+dirty",
-    "station.json": "7deff363+dirty",
-    "land-guard/summary.json": "7deff363+dirty",
-    "land-st/summary.json": "7deff363+dirty"
-  }
+  ]
 }
