@@ -18,6 +18,7 @@ import {
   LAND_OWN_DRAFT,
   RESULT_BLIND,
   RESULT_BLIND_COMMA,
+  RESULT_BLIND_EDGE,
   RESULT_STRUCTURE,
   RESULT_WITNESS,
   RESULT_WORDS,
@@ -103,7 +104,7 @@ describe('rangeDe', () => {
 
 describe('the fault classes', () => {
   it('places every class the record carries in exactly one group, so a new one needs a decision', () => {
-    const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND, ...RESULT_BLIND_COMMA, ...RESULT_WITNESS] as string[]
+    const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND, ...RESULT_BLIND_COMMA, ...RESULT_BLIND_EDGE, ...RESULT_WITNESS] as string[]
     const annex = [...ANNEX_BLIND, ...ANNEX_GATE_ALONE] as string[]
     const land = [...LAND_OWN_DRAFT, ...LAND_OTHER_DRAFT, ...LAND_WORDING] as string[]
     const chain = [...CHAIN_WORDING, ...CHAIN_LABEL, ...CHAIN_STRUCK, ...CHAIN_LOST, ...CHAIN_MISFILED] as string[]
@@ -212,7 +213,7 @@ describe('genauigkeitArten', () => {
     const art = genauigkeitArten(withComma())[0]!
     expect(art.faults.at(-1)).toEqual({ label: 'Ein Komma fehlt in Text, den der Entwurf unverändert lässt', tried: 200, caught: 2, blind: true })
     expect(art.missed).toContain('Fehlt unserem Ergebnis ein Komma in Text, den der Entwurf unverändert lässt, fällt das kaum auf: 2 von 200 Versuchen gefangen. Dort vergleicht die Prüfung die Wörter, nicht die Satzzeichen.')
-    expect(art.consequence).toBe('Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen. In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen.')
+    expect(art.consequence).toBe('Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen. In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen, am Rand einer gedruckten Passage auch ein Wort.')
     // The comma at a changed place is one of the words: without it their bar is 200 tries and 198 catches shorter.
     const before = withComma()
     for (const path of ['pdf', 'table'] as const) before.lesefassung.faults[path] = before.lesefassung.faults[path].filter((f) => f.key !== 'Komma')
@@ -226,7 +227,11 @@ describe('genauigkeitArten', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
     r.stations.faults = [{ key: 'ziffer', tried: 40, caught: 40 }, { key: 'minus', tried: 30, caught: 28 }]
     const art = genauigkeitArten(r)[2]!
-    expect(art.faults).toEqual([{ label: expect.stringContaining('in einem der beiden Texte geändert'), tried: 70, caught: 68 }])
+    expect(art.faults).toEqual([{ label: expect.stringContaining('in einem der beiden Texte geändert'), tried: 70, caught: 68, shownAsChange: true }])
+    // Caught there means shown as a change, the opposite of what the page's other bars count (23.11.2026).
+    expect(faultNoteDe(art.faults[0]!)).toBe('68 von 70 eingebauten Änderungen als Änderung gezeigt')
+    expect(art.faultsHeading).toBe('Test mit eingebauten Änderungen: Das zeigt der Vergleich')
+    expect(art.missed.join(' ')).toContain('Wie oft das vorkommt, misst dieser Test nicht.')
     expect(art.measured.join(' ')).toContain('70 eingebaute Änderungen')
     expect(art.measured.join(' ')).toContain('Der Vergleich zeigt 68 als Änderung.')
     expect(art.rule).toContain('Dazu ändern wir in echten Texten je eine Stelle')
@@ -234,14 +239,24 @@ describe('genauigkeitArten', () => {
     expect(genauigkeitArten(r)[2]!.measured.join(' ')).toContain('Der Vergleich zeigt jede als Änderung.')
   })
 
+  it('sets a word lost at the edge of a printed stretch apart, once a round carries the class (23.11.2026)', () => {
+    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+    for (const path of ['pdf', 'table'] as const) {
+      r.lesefassung.faults[path] = [...r.lesefassung.faults[path].filter((f) => !(RESULT_BLIND_EDGE as readonly string[]).includes(f.key)), { key: 'Rand-weg', tried: 60, caught: 40 }, { key: 'Mehrfach-weg', tried: 40, caught: 36 }]
+    }
+    const art = genauigkeitArten(r)[0]!
+    expect(art.faults).toContainEqual({ label: 'Ein Wort fehlt am Rand einer gedruckten Passage oder in einer Wortfolge, die mehrfach steht', tried: 200, caught: 152, blind: true })
+    expect(art.missed.join(' ')).toContain('fällt das seltener auf: 152 von 200 Versuchen gefangen.')
+  })
+
   it('says the null comparison whole: every difference found, and how many of them read as a change', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
-    r.stations = { ...r.stations, nullUnits: 9542, nullResidues: 458, nullSubstantive: 4 }
+    r.stations = { ...r.stations, nullUnits: 9542, nullResidues: 458, nullSubstantive: 4, nullPlaceholders: 450 }
     const result = genauigkeitArten(r)[2]!.result.join(' ')
-    expect(result).toContain('in 9.542 Textteilen 458 Unterschiede: 454 nur in Schreibweise oder Satzzeichen, als „redaktionell“ markiert, 4 als Änderung.')
+    expect(result).toContain('in 9.542 Textteilen 458 Unterschiede: 450 sind die im Entwurf noch offene Nummer des Bundesgesetzblatts, 4 nur Schreibweise oder Satzzeichen, alle als „redaktionell“ markiert, 4 als Änderung.')
     expect(result).not.toContain('fälschlich')
     r.stations.nullSubstantive = 0
-    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('458 nur in Schreibweise oder Satzzeichen, als „redaktionell“ markiert, keiner als Änderung.')
+    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('8 nur Schreibweise oder Satzzeichen, alle als „redaktionell“ markiert, keiner als Änderung.')
   })
 
   it('says of the ministry\'s annex what a reader sees of a §: no mark, either mark, not shown — the four adding up to the whole (22.11.2026)', () => {
@@ -344,8 +359,9 @@ describe('in short', () => {
 
   it('says of the Länder how many shown §§ were held word for word, from the record', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
-    r.laender.tgu = { ...r.laender.tgu, shown: 20, strict: { held: 17, differs: 2, unchecked: 3 } }
-    expect(genauigkeitKurz(r).check[1]).toContain('bei 17 von 20 gezeigten Paragraphen Wort für Wort')
+    r.laender.tgu = { ...r.laender.tgu, shown: 20, strict: { held: 17, differs: 2, unchecked: 3, onlyStruck: 2 } }
+    // Held with no new word is nothing held word for word (23.11.2026).
+    expect(genauigkeitKurz(r).check[1]).toContain('bei 15 von 20 gezeigten Paragraphen Wort für Wort am Entwurf geprüft, bei den übrigen nicht: 2 streichen nur')
   })
 
   it('names both marks: either one is shown and not vouched for', () => {

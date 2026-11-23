@@ -1640,6 +1640,28 @@ function commaDropped(ground: WordGround, printedSite: boolean): (WordFault & { 
 }
 
 /**
+ * **Rand-weg** and **Mehrfach-weg** (23.11.2026) — one word of the result
+ * dropped where the word classes above do not go: at the edge of a printed
+ * stretch, or in a seven-word window that stands twice in the result. A fifth
+ * of a result's words are such sites, and an independent review caught a
+ * dropped word there far less often (check 3 accepts it where a short window
+ * around it stands in a changed row). Not floored: the figure says what the
+ * checks reach.
+ */
+function uncertainWordDropped(ground: WordGround, repeated: boolean): WordFault | null {
+  const { tokens } = ground
+  const sites = tokens.map((_, i) => i).filter((i) => {
+    if (!isWord(tokens[i]!) || i < SITE_HALF || i + SITE_HALF >= tokens.length) return false
+    if (ground.printed(i) || ground.unprinted(i) !== null) return false
+    const key = containmentKey(tokens.slice(i - SITE_HALF, i + SITE_HALF + 1).join(' '))
+    return (key !== '' && ground.gotKey.indexOf(key) !== ground.gotKey.lastIndexOf(key)) === repeated
+  })
+  const at = middle(sites)
+  if (at === undefined) return null
+  return { got: edit(tokens, at, null), at, shows: excerpt(tokens, at, `[${tokens[at]}→]`) }
+}
+
+/**
  * **Überschrift** — one word of the § heading replaced by another word of
  * the §, where the annex prints the heading in a changed row: a heading the
  * draft rewrites and the engine got wrong.
@@ -2068,6 +2090,10 @@ async function injectIntoResults(
         const comma = commaDropped(ground, printedSite)
         if (comma) judgeWord(into, comma.got, node, comma.shows, printedSite ? ground.stretchAt(comma.at) : null, comma.kind)
       }
+      for (const [repeated, into] of [[false, oracleFaults.RandWeg], [true, oracleFaults.MehrfachWeg]] as const) {
+        const fault = uncertainWordDropped(ground, repeated)
+        if (fault) judgeWord(into, fault.got, node, fault.shows, null)
+      }
       if (argAssigned('zeige') === id) {
         for (const [label, faulted] of [['Überschrift', reheaded ? plainText(reheaded.node) : null], ['Ziffer-Reihe', swapped ? plainText(swapped.node) : null], ...Object.entries(printedFaults).map(([k, f]) => [k, f.got] as const), ...Object.entries(unprintedFaults).map(([k, f]) => [`ungedruckt-${k}`, f.got] as const)] as const) {
           if (!faulted) continue
@@ -2295,6 +2321,8 @@ const oracleFaults = {
   Bezeichnung: oracleTally('Bezeichnung Ziffer/Litera umbenannt'),
   Komma: oracleTally('Komma gedrucktes Komma fehlt'),
   UngedrucktKomma: oracleTally('Ungedruckt-Komma Komma fehlt'),
+  RandWeg: oracleTally('Rand-weg Wort am Rand einer Passage fehlt'),
+  MehrfachWeg: oracleTally('Mehrfach-weg Wort einer doppelten Wortfolge fehlt'),
   Payload: oracleTally('Payload neuer Text falsch gelesen'),
   BeilageZahl: oracleTally('Beilage-Zahl Zahl in der Beilage'),
   SpalteZahl: oracleTally('Spalte-Zahl erste Zahl des Textes +7'),
@@ -2306,7 +2334,7 @@ const oracleFaults = {
 /** The reader's faults in the annex's right column, held by the oracle against the unchanged result. */
 const columnClasses = [oracleFaults.SpalteZahl, oracleFaults.SpalteBezeichnung, oracleFaults.SpalteWort, oracleFaults.SpalteSatzWeg, oracleFaults.SpalteRweg]
 /** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
-const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich, oracleFaults.Bezeichnung, oracleFaults.Komma, oracleFaults.UngedrucktKomma]
+const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.ZurueckGleich, oracleFaults.Bezeichnung, oracleFaults.Komma, oracleFaults.UngedrucktKomma, oracleFaults.RandWeg, oracleFaults.MehrfachWeg]
 /** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
 const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl, oracleFaults.Zurueck, oracleFaults.Bezeichnung]
 /**

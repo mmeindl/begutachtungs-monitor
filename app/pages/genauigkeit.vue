@@ -165,7 +165,8 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         oder einen Absatz und zählen, wie viele dieser Fehler die Prüfung
         bemerkt. Das zeigen die Balken. Sie sagen nicht, wie oft der Monitor
         falsch liegt: Was die Prüfung bemerkt, wird nicht
-        gezeigt oder trägt einen Vermerk.
+        gezeigt oder trägt einen Vermerk. Nur beim Vergleich der Fassungen ist
+        es umgekehrt: Dort soll jede eingebaute Änderung als Änderung erscheinen.
       </p>
       <div class="mt-6 space-y-10">
         <section
@@ -180,11 +181,11 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
             <template v-if="art.pageName">Auf der Seite eines Entwurfs: „{{ art.pageName }}“. </template>{{ art.against }}
           </p>
           <p v-for="line in art.result" :key="line" class="mt-3 leading-relaxed text-ink-secondary">{{ line }}</p>
-          <h4 v-if="art.faults.length" class="mt-6 text-sm font-medium text-ink">Test mit eingebauten Fehlern: Das bemerkt die Prüfung</h4>
+          <h4 v-if="art.faults.length" class="mt-6 text-sm font-medium text-ink">{{ art.faultsHeading ?? 'Test mit eingebauten Fehlern: Das bemerkt die Prüfung' }}</h4>
           <ul
             v-if="art.faults.length"
             class="mt-2 list-none space-y-3 pl-0"
-            :aria-label="`Eingebaute Fehler und wie viele die Prüfung gefangen hat: ${art.heading}`"
+            :aria-label="`${art.faultsHeading ?? 'Eingebaute Fehler und wie viele die Prüfung gefangen hat'}: ${art.heading}`"
           >
             <li v-for="fault in art.faults.filter((f) => !f.blind)" :key="fault.label">
               <GenauigkeitMeter

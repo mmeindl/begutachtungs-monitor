@@ -105,17 +105,20 @@ interface StationRecord extends Stamped {
   drafts: number
   pairs: number
   breaches: unknown[]
-  residues: { residue: { editorial: boolean } }[]
+  residues: { residue: { editorial: boolean; pieces?: string[] } }[]
   nullUnits?: Record<string, number>
   /** `station.ts --mutationen`: per class how often one changed token was tried, and how the page shows it (`änderung` is the catch). */
   mutations?: { units: number; classes: Record<string, { tried: number; änderung: number }> }
 }
 
-type LandGuardRecord = Stamped & { lands: string[]; documents: number; compared: number; shown: number; judged: number; found: number; faults: GenauigkeitFault[]; strict: { held: number; differs: number; unchecked: number } }
+type LandGuardRecord = Stamped & { lands: string[]; documents: number; compared: number; shown: number; judged: number; found: number; faults: GenauigkeitFault[]; strict: { held: number; differs: number; unchecked: number; onlyStruck: number } }
 type LandStationsRecord = Stamped & GenauigkeitRecord['laender']['stations'] & { stale: number }
 
 /** The records a round reads, and the ones that read a corpus and must say how much of it they reached. */
 const CORPUS_RECORDS = ['kons.json', 'fi-pdf.json', 'fi-xml.json', 'station.json', 'acc.json', 'acc-ris.json'] as const
+
+/** A residue whose struck side is a BGBl number the draft left open: „xxx/2026“, „yyy/202Y“, „XXX“, „…/2026“. */
+const OPEN_BGBL_RE = /⟦-[^⟧]*(?:(?<!\p{L})[xXyY]{2,}|(?:…|_{2,})\s*\/)/u
 
 const vienna = (at: string): string => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Vienna' }).format(new Date(at))
 
@@ -344,10 +347,11 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
       nullUnits: Object.values(station.nullUnits!).reduce((n, v) => n + v, 0),
       nullResidues: station.residues.length,
       nullSubstantive: station.residues.filter((r) => !r.residue.editorial).length,
+      nullPlaceholders: station.residues.filter((r) => r.residue.editorial && OPEN_BGBL_RE.test((r.residue.pieces ?? []).join(' '))).length,
       faults: Object.entries(station.mutations!.classes).map(([key, c]) => ({ key, tried: c.tried, caught: c.änderung })),
     },
     laender: {
-      tgu: { lands: landGuard.lands, documents: landGuard.documents, compared: landGuard.compared, shown: landGuard.shown, strict: { held: landGuard.strict.held, differs: landGuard.strict.differs, unchecked: landGuard.strict.unchecked }, judged: landGuard.judged, found: landGuard.found, faults: landGuard.faults },
+      tgu: { lands: landGuard.lands, documents: landGuard.documents, compared: landGuard.compared, shown: landGuard.shown, strict: { held: landGuard.strict.held, differs: landGuard.strict.differs, unchecked: landGuard.strict.unchecked, onlyStruck: landGuard.strict.onlyStruck }, judged: landGuard.judged, found: landGuard.found, faults: landGuard.faults },
       stations: {
         pairs: landStations.pairs,
         compared: landStations.compared,

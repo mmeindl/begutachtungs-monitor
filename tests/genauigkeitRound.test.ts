@@ -51,7 +51,7 @@ function round(): Record<string, any> {
       ...stamp, ...reach(91), drafts: 91, pairs: 453, breaches: [], residues: [], nullUnits: { 'parlament-bgbl': 10, 'html-xml': 5 },
       mutations: { units: 50, classes: { ziffer: { tried: 40, änderung: 40, redaktionell: 0, unverändert: 0, unsichtbar: 0, ungepaart: 0 }, minus: { tried: 30, änderung: 28, redaktionell: 1, unverändert: 1, unsichtbar: 0, ungepaart: 0 } } },
     },
-    'land-guard/summary.json': { ...stamp, lands: ['Wien'], documents: 1, compared: 2, shown: 2, judged: 1, found: 1, faults: [], strict: { held: 2, differs: 0, unchecked: 0 } },
+    'land-guard/summary.json': { ...stamp, lands: ['Wien'], documents: 1, compared: 2, shown: 2, judged: 1, found: 1, faults: [], strict: { held: 2, differs: 0, unchecked: 0, onlyStruck: 1 } },
     'land-st/summary.json': { ...stamp, pairs: 1, compared: 1, hits: 0, accepted: 0, withheld: 0, withheldPairs: 0, unread: 0, unreadPairs: 0, stale: 0 },
   }
 }
@@ -83,6 +83,19 @@ describe('a sound round', () => {
 })
 
 describe('the accounting', () => {
+  it('counts the residues that are a BGBl number the draft left open, and no other (23.11.2026)', () => {
+    const editorial = (pieces: string[]) => ({ residue: { editorial: true, pieces } })
+    const records = round()
+    records['station.json'].residues = [
+      editorial(['…BGBl. I Nr. ⟦-xxx/xxxx⟧ …', '… ⟦+60/2025⟧ tritt …']),
+      editorial(['… ⟦-yyy/202Y,"⟧ …', '… ⟦+28/2026,"⟧ …']),
+      editorial(['… Nr. ⟦-XXX⟧ …', '… ⟦+29/2026⟧ …']),
+      editorial(['… Satz⟦-.⟧ …']),
+      editorial(['… ⟦-Exxon⟧ …']),
+    ]
+    expect(build(records).stations.nullPlaceholders).toBe(3)
+  })
+
   it('refuses a record with invariant failures, naming the record and the first failures', () => {
     const r = round()
     r['acc.json'].reports[0].failures = ['stumm: § 4 zeigt eine Änderung und sagt nichts zur Lesefassung']

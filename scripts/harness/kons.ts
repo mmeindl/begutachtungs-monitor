@@ -927,6 +927,10 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       .sort((a, b) => rank[a.verdict] - rank[b.verdict])[0]!
     let verdict = best.verdict
     const expected = best.text
+    // RIS prints a space before a punctuation mark now and then („eine Hausordnung , die …", Grundversorgungsgesetz – Bund 2005 § 5):
+    // the same words, and no part missing (23.11.2026).
+    const spaced = (t: string) => t.replace(/\s+([,.;:!?)])/g, '$1').replace(/\s+/g, ' ').trim()
+    if ((verdict === 'unvollständig' || verdict === 'abweichend' || verdict === 'halbangewendet') && spaced(got) === spaced(expected)) verdict = 'identisch'
     const matched = best.ref
     // A word diff too large for the DP grid is neither confirmed nor refuted.
     const comparable = beforeText === null || verdict !== 'abweichend' || extraTokens(beforeText, got, expected).comparable

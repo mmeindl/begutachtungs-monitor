@@ -168,6 +168,7 @@
     "nullUnits": 10115,
     "nullResidues": 459,
     "nullSubstantive": 5,
+    "nullPlaceholders": 449,
     "faults": [
       { "key": "ziffer", "tried": 7673, "caught": 7673 },
       { "key": "minus", "tried": 7664, "caught": 7664 },
@@ -194,7 +195,8 @@
       "strict": {
         "held": 1089,
         "differs": 44,
-        "unchecked": 33
+        "unchecked": 33,
+        "onlyStruck": 52
       },
       "judged": 555,
       "found": 555,

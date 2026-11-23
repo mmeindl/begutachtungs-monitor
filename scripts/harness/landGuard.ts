@@ -1055,6 +1055,7 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   }),
   strict: {
     held: units.filter((u) => u.strict === 'holds').length,
+    onlyStruck: units.filter((u) => u.strict === 'holds' && !/[\p{L}\p{N}]/u.test(u.inserted ?? '')).length,
     differs: units.filter((u) => u.strict === 'differs').length,
     unchecked: units.filter((u) => u.strict === 'unchecked').length,
     faultsWhereHeld: FAULTS.map((fault) => {

@@ -148,6 +148,8 @@ export interface GenauigkeitRecord {
     nullResidues: number
     /** Of those, the ones not marked „redaktionell": they would read as a change. */
     nullSubstantive: number
+    /** Of the editorial ones, a BGBl number the draft left open („xxx/2026“) and the law filled in. */
+    nullPlaceholders: number
     /**
      * One token changed in a unit of a real text (`station.ts --mutationen`,
      * 20.11.2026): a digit, a sign, „nicht", „und" for „oder". Caught where
@@ -172,7 +174,8 @@ export interface GenauigkeitRecord {
        * shown, `differs` withheld, `unchecked` shown on the older rule
        * alone (the new words occur in the draft).
        */
-      strict: { held: number; differs: number; unchecked: number }
+      /** `onlyStruck`: of `held`, §§ that add no word: nothing new to hold, and the Länder's check does not read what they strike. */
+      strict: { held: number; differs: number; unchecked: number; onlyStruck: number }
       /** §§ with enough new words for the older rule to judge. */
       judged: number
       /** Of those, whose new text the draft carries. */

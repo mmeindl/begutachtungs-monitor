@@ -197,6 +197,13 @@ export const RESULT_BLIND = ['Lücke-beide'] as const
  * would learn where a comma is not held.
  */
 export const RESULT_BLIND_COMMA = ['Ungedruckt-Komma'] as const
+/**
+ * A word dropped where the word classes above do not go (`faultInjection.ts`,
+ * 23.11.2026): at the edge of a printed stretch, or in a wording the § holds
+ * twice. About a fifth of a result's words stand there, and the bar of the
+ * word classes says nothing about them.
+ */
+export const RESULT_BLIND_EDGE = ['Rand-weg', 'Mehrfach-weg'] as const
 /** …a § shown on the draft's own text (`draftWitness`): its new text misread by our reader — a word lost, a figure, two words swapped, cut at a line's end (20.11.2026). */
 export const RESULT_WITNESS = ['Payload'] as const
 
@@ -261,6 +268,8 @@ export interface FaultBar {
   withheld?: number
   /** A blind spot by construction: the page sets it apart under „Was die Prüfung nicht fängt". */
   blind?: boolean
+  /** Caught means shown as a change (`station.ts --mutationen`), not withheld or marked: the note says so. */
+  shownAsChange?: boolean
 }
 
 /**
@@ -287,6 +296,8 @@ export interface GenauigkeitArt {
   result: string[]
   /** The injected faults, the blind spot last; empty where nothing can be injected. */
   faults: FaultBar[]
+  /** The heading above the bars where they do not count what a check noticed (the station comparison shows a change, 23.11.2026). */
+  faultsHeading?: string
   /**
    * What the blind spot means for someone who reads or quotes the comparison,
    * in one sentence under its bar (20.11.2026). A first-time reader took the
@@ -326,6 +337,7 @@ function chainBar(label: string, faults: readonly ChainFault[]): FaultBar {
  * the § stays, marked „nicht bestätigt".
  */
 export function faultNoteDe(fault: FaultBar): string {
+  if (fault.shownAsChange) return `${n(fault.caught)} von ${n(fault.tried)} eingebauten Änderungen als Änderung gezeigt`
   const caught = `${n(fault.caught)} von ${n(fault.tried)} eingebauten Fehlern gefangen`
   if (fault.withheld === undefined || fault.caught === 0) return caught
   const marked = fault.caught - fault.withheld
@@ -384,11 +396,11 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
       blindBar,
     ],
     rule:
-      'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Die linke Spalte muss dem RIS am Stichtag entsprechen; was rechts als neu markiert ist, darf nicht schon im Gesetz stehen und muss im Gesetzestext des Entwurfs stehen. Sonst zeigt der Monitor den Paragraphen nicht. Danach hält er den neuen und den gestrichenen Text Wort für Wort gegen den Gesetzestext des Entwurfs. Geht das auf, bleibt der Paragraph ohne Vermerk. Geht es nicht auf, bleibt er nur dann ohne Vermerk, wenn der ganze Paragraph, den der Monitor selbst zusammensetzt, den Text der rechten Spalte ergibt, in der Gegenüberstellung kein Wortlaut fehlt, den der Entwurf nennt, und der Abgleich nicht allein an gestrichenem Text scheitert; sonst steht „nicht bestätigt“. Lässt sich weder das eine noch das andere prüfen, steht „nicht geprüft“.',
+      'Beide Spalten der Textgegenüberstellung übernimmt der Monitor Wort für Wort; die Markierung ist von uns. Mindestens 95 % der Wörter der linken Spalte müssen im geltenden Paragraphen am Stichtag stehen. Was rechts als neu markiert ist, darf nicht schon im Gesetz stehen. Sind es mindestens zehn neue Wörter und fehlen davon acht und mehr als ein Zehntel im Gesetzestext des Entwurfs, zeigt der Monitor den Paragraphen nicht. Danach hält er den neuen und den gestrichenen Text Wort für Wort gegen den Gesetzestext des Entwurfs. Geht das auf, bleibt der Paragraph ohne Vermerk. Geht es nicht auf, bleibt er nur dann ohne Vermerk, wenn der ganze Paragraph, den der Monitor selbst zusammensetzt, den Text der rechten Spalte ergibt, in der Gegenüberstellung kein Wortlaut fehlt, den der Entwurf nennt, und der Abgleich nicht allein an gestrichenem Text scheitert; sonst steht „nicht bestätigt“. Lässt sich weder das eine noch das andere prüfen, steht „nicht geprüft“.',
     measured: [
       `In ${n(a.drafts)} Entwürfen der ${r.gp}. Gesetzgebungsperiode: ${n(marks.clean)} Paragraphen ohne Vermerk gezeigt, ${n(marks.unconfirmed)} mit „nicht bestätigt“, ${n(marks.unchecked)} mit „nicht geprüft“, ${n(a.withheld)} nicht gezeigt.`,
       standingSentence,
-      'Die Fehler sind in Paragraphen eingebaut, die der Monitor vorher ohne Vermerk gezeigt hat.',
+      'Die Fehler der oberen Balken sind in Paragraphen eingebaut, die der Monitor vorher ohne Vermerk gezeigt hat.',
     ],
     missed: [
       blindSentence,
@@ -409,6 +421,8 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
   const blind = total(classes(r.lesefassung.faults, RESULT_BLIND))
   const blindComma = classes(r.lesefassung.faults, RESULT_BLIND_COMMA)
   const comma = total(blindComma)
+  const blindEdge = classes(r.lesefassung.faults, RESULT_BLIND_EDGE)
+  const edge = total(blindEdge)
   const breaches = (count: number) => (count === 0 ? 'kein Regelverstoß' : count === 1 ? 'ein Regelverstoß' : `${n(count)} Regelverstöße`)
   const st = r.stations
   const stFaults = st.faults?.length ? total(st.faults) : null
@@ -424,7 +438,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       heading: 'Ganzer Paragraph in der vorgeschlagenen Fassung',
       against: 'Geprüft an der Textgegenüberstellung des Ministeriums und, wo sie abweicht, am Gesetzestext des Entwurfs als PDF.',
       result: [
-        `Getestet an ${n(bench.bgbl)} Gesetzen, die schon kundgemacht sind, also im Bundesgesetzblatt veröffentlicht und gültig: Der Monitor hätte dort ${n(bench.shown)} ganze Paragraphen gezeigt, ${n(bench.identical)} davon stimmen Wort für Wort mit dem Gesetz überein.`,
+        `Getestet an ${n(bench.bgbl)} Bundesgesetzblättern mit ${n(bench.laws)} Gesetzen, die schon kundgemacht und gültig sind. An ihnen wurden die Regeln auch entwickelt, bei anderen Gesetzen kann der Anteil niedriger sein. Der Monitor hätte dort ${n(bench.shown)} ganze Paragraphen gezeigt, ${n(bench.identical)} davon stimmen Wort für Wort mit dem Gesetz überein.`,
         // The trade-off, in the open (20.11.2026): a first-time reader found it only under the fold, and it is what the share shown is paid for.
         `Die Prüfung ist streng. Ohne sie hätte der Monitor bei diesen Gesetzen ${n(bench.ungated.shown)} Paragraphen gezeigt, ${n(bench.ungated.shown - bench.ungated.identical)} davon mit Abweichungen vom Gesetz.`,
         ...(witnessed
@@ -438,8 +452,9 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         bar('Zweite Lesung am PDF: der neue Text des Entwurfs falsch gelesen', classes(r.lesefassung.faults, RESULT_WITNESS)),
         bar('Ein Textteil fehlt, und weder RIS noch Textgegenüberstellung enthalten ihn', classes(r.lesefassung.faults, RESULT_BLIND), true),
         bar('Ein Komma fehlt in Text, den der Entwurf unverändert lässt', blindComma, true),
+        ...(edge.tried ? [bar('Ein Wort fehlt am Rand einer gedruckten Passage oder in einer Wortfolge, die mehrfach steht', blindEdge, true)] : []),
       ],
-      consequence: 'Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen. In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen.',
+      consequence: 'Fehlt ein Teil schon im RIS, kann er auch im ganzen Paragraphen des Monitors fehlen. In Text, den der Entwurf unverändert lässt, kann ein Komma fehlen, am Rand einer gedruckten Passage auch ein Wort.',
       rule:
         'Der Monitor setzt den Paragraphen selbst zusammen, aus dem geltenden Text im RIS und den Anweisungen des Entwurfs, und hält ihn gegen die Textgegenüberstellung des Ministeriums. Was sie als geltend zeigt, muss so im RIS stehen, was sie als neu zeigt, in unserem Ergebnis; ihre Absätze müssen in derselben Reihenfolge stehen, und unser Ergebnis darf nichts ändern, was sie nicht zeigt.',
       measured: [
@@ -455,6 +470,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         `Fehlt unserem Ergebnis ein Teil, den auch der geltende Text im RIS nicht hat und den die Gegenüberstellung stillschweigend überspringt, fällt das kaum auf: ${blind.caught === 0 ? 'keiner' : n(blind.caught)} von ${n(blind.tried)} Versuchen gefangen.`,
         // Where the annex prints nothing that changes, the check compares the words, not their punctuation (21.11.2026).
         `Fehlt unserem Ergebnis ein Komma in Text, den der Entwurf unverändert lässt, fällt das kaum auf: ${comma.caught === 0 ? 'keiner' : n(comma.caught)} von ${n(comma.tried)} Versuchen gefangen. Dort vergleicht die Prüfung die Wörter, nicht die Satzzeichen.`,
+        ...(edge.tried ? [`Fehlt unserem Ergebnis ein Wort am Rand einer gedruckten Passage oder in einer Wortfolge, die im Paragraphen mehrfach steht, fällt das seltener auf: ${n(edge.caught)} von ${n(edge.tried)} Versuchen gefangen.`] : []),
         'Bei der zweiten Lesung am PDF: eine Ziffer in einem Platzhalter für ein künftiges Bundesgesetzblatt („BGBl. I Nr. xxx/2025“) vergleicht keine der Prüfungen.',
         'Liest der Monitor den neuen Text an genau der Stelle falsch, an der auch die Textgegenüberstellung vom Gesetzestext abweicht, bestätigt sie den Fehler.',
       ],
@@ -470,7 +486,8 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         nullSentence(st),
       ],
       // Held to faults since 20.11.2026 (`station.ts --mutationen`): one token changed in a unit of a real text must read as a change of substance.
-      faults: st.faults?.length ? [bar('Eine Ziffer, ein Zeichen oder ein Wort wie „nicht“ in einem der beiden Texte geändert', st.faults)] : [],
+      faults: st.faults?.length ? [{ ...bar('Eine Ziffer, ein Zeichen oder ein Wort wie „nicht“ in einem der beiden Texte geändert', st.faults), shownAsChange: true }] : [],
+      faultsHeading: 'Test mit eingebauten Änderungen: Das zeigt der Vergleich',
       consequence: null,
       rule:
         `Verglichen wird der Entwurf mit der Regierungsvorlage, diese mit den Fassungen von Ausschuss und Plenum, und der ganze Weg mit dem Bundesgesetzblatt. Eine dritte Fassung gibt es nicht: Ob ein Unterschied zwischen zwei verschiedenen Texten richtig erkannt ist, lässt sich an nichts Drittem prüfen. Geprüft wird, dass jeder Vergleich beide Texte vollständig wiedergibt und jede als geändert markierte Stelle eine sichtbare Änderung zeigt – und an Texten, die gleich sein müssen, dass der Vergleich nichts findet.${stFaults ? ' Dazu ändern wir in echten Texten je eine Stelle und prüfen, dass der Vergleich sie als Änderung zeigt und nicht als „redaktionell“ oder „unverändert“.' : ''}`,
@@ -482,7 +499,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         `Texte, die gleich sein sollten – die letzte Fassung des Parlaments und das Bundesgesetzblatt, derselbe Entwurf aus zwei Quellen –: in ${n(st.nullUnits)} Einheiten ${n(st.nullResidues)} Unterschiede, ${st.nullSubstantive ? `alle als „redaktionell“ markiert bis auf ${n(st.nullSubstantive)}; ${st.nullSubstantive === 1 ? 'dieser erscheint' : 'diese erscheinen'} als Änderung` : 'alle als „redaktionell“ markiert'}. Ob ein Unterschied aus den Quellen kommt oder aus dem Lesen, entscheidet der Test nicht.`,
       ],
       missed: [
-        'Liest der Monitor ein Wort in einem der beiden Texte falsch, zeigt er eine Änderung, die es nicht gibt; wie oft, zeigt der Test oben. Liest er dasselbe Wort in beiden Texten gleich falsch, bemerkt das niemand.',
+        'Liest der Monitor ein Wort in einem der beiden Texte falsch, zeigt er ohne Vermerk eine Änderung, die es nicht gibt. Wie oft das vorkommt, misst dieser Test nicht. Liest er dasselbe Wort in beiden Texten gleich falsch, bemerkt das niemand.',
       ],
     },
     {
@@ -491,18 +508,18 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       pageName: 'Was ändert der Entwurf?',
       against: `Geprüft am geltenden Recht im RIS und am Entwurf des Bundeslandes, bei ${landList(tgu.lands)}.`,
       result: [
-        `Die Textgegenüberstellungen enthalten ${n(tgu.compared)} geänderte oder neue Paragraphen. Bei ${n(tgu.strict.held)} stimmt der neue Text Wort für Wort mit dem Entwurf des Bundeslandes überein. ${n(tgu.strict.differs)} weichen ab und werden nicht gezeigt.`,
-        `Bei ${n(tgu.strict.unchecked)} Paragraphen nennt der Entwurf den neuen Text nicht so, dass sich Wort für Wort vergleichen lässt. Sie werden gezeigt, wenn der neue Text im Entwurf zumindest vorkommt.`,
+        `Die Textgegenüberstellungen enthalten ${n(tgu.compared)} geänderte oder neue Paragraphen. Bei ${n(tgu.strict.held - tgu.strict.onlyStruck)} stimmt der neue Text Wort für Wort mit dem Entwurf des Bundeslandes überein. ${n(tgu.strict.onlyStruck)} streichen nur; Gestrichenes prüft der Monitor bei den Ländern nicht. ${n(tgu.strict.differs)} weichen ab und werden nicht gezeigt.`,
+        `Bei ${n(tgu.strict.unchecked)} Paragraphen nennt der Entwurf den neuen Text nicht so, dass sich Wort für Wort vergleichen lässt. Sie tragen den Vermerk „nicht geprüft“. Zurückgehalten wird so ein Paragraph nur, wenn mindestens acht neue Wörter und mehr als ein Zehntel des neuen Textes im Entwurf fehlen.`,
       ],
       faults: [
         bar('Ein Satz aus dem Entwurf eines anderen Bundeslandes', [landOther]),
         bar('Ein Satz aus einem anderen Paragraphen desselben Entwurfs', [landOwn]),
         bar('Ein Wort oder eine Zahl falsch, ein Satz fehlt', landWording),
       ],
-      consequence: `Bei den ${n(tgu.strict.unchecked)} Paragraphen ohne Wort-für-Wort-Vergleich bemerkt die Prüfung ein falsches Wort oder eine falsche Zahl nicht. Am Paragraphen steht nicht, ob er dazugehört: Vor dem Zitieren im Dokument des Bundeslandes nachsehen.`,
-      rule: `Gelesen wird die Textgegenüberstellung eines Landes, wo der Monitor ihre Form lesen kann: bei ${landList(tgu.lands)}. Die linke Spalte wird gegen das geltende Recht im RIS gehalten, die rechte gegen den Entwurf des Landes: Was sie als neu zeigt, muss Wort für Wort und Zahl für Zahl der Wortlaut sein, den der Entwurf für den Paragraphen schreibt. Wo der Entwurf den Wortlaut nicht so nennt, muss das Neue zumindest im Entwurf vorkommen.`,
+      consequence: `Bei den ${n(tgu.strict.unchecked)} Paragraphen ohne Wort-für-Wort-Vergleich bemerkt die Prüfung ein falsches Wort oder eine falsche Zahl nicht. Sie tragen den Vermerk „nicht geprüft“: Vor dem Zitieren im Dokument des Bundeslandes nachsehen.`,
+      rule: `Gelesen wird die Textgegenüberstellung eines Landes, wo der Monitor ihre Form lesen kann: bei ${landList(tgu.lands)}. Die linke Spalte wird gegen das geltende Recht im RIS gehalten, die rechte gegen den Entwurf des Landes: Was sie als neu zeigt, muss Wort für Wort und Zahl für Zahl der Wortlaut sein, den der Entwurf für den Paragraphen schreibt. Wo der Entwurf den Wortlaut nicht so nennt, steht am Paragraphen „nicht geprüft“; zurückgehalten wird er nur, wenn mindestens acht neue Wörter und mehr als ein Zehntel des neuen Textes im Entwurf fehlen.`,
       measured: [
-        `In ${n(tgu.documents)} Gegenüberstellungen mit ${n(tgu.compared)} geänderten oder neuen Paragraphen: ${n(tgu.strict.held)} stimmen Wort für Wort mit dem Entwurf überein, ${n(tgu.strict.differs)} weichen ab und werden nicht gezeigt, bei ${n(tgu.strict.unchecked)} ließ sich nur prüfen, ob das Neue im Entwurf vorkommt.`,
+        `In ${n(tgu.documents)} Gegenüberstellungen mit ${n(tgu.compared)} geänderten oder neuen Paragraphen: ${n(tgu.strict.held - tgu.strict.onlyStruck)} stimmen Wort für Wort mit dem Entwurf überein, ${n(tgu.strict.onlyStruck)} streichen nur, ${n(tgu.strict.differs)} weichen ab und werden nicht gezeigt, bei ${n(tgu.strict.unchecked)} ließ sich der neue Text nicht Wort für Wort prüfen.`,
       ],
       missed: [
         `Ein einzelnes falsch gelesenes Wort, eine falsche Zahl, ein fehlender Satz: ${caughtOf(landWording)}. Unbemerkt bleiben sie vor allem bei den ${n(tgu.strict.unchecked)} Paragraphen, deren Wortlaut der Entwurf nicht so nennt, dass er sich Wort für Wort prüfen lässt.`,
@@ -542,7 +559,7 @@ function nullSentence(st: GenauigkeitRecord['stations']): string {
   const editorial = st.nullResidues - st.nullSubstantive
   if (st.nullResidues === 0) return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen keinen Unterschied.`
   const substantive = st.nullSubstantive === 0 ? 'keiner' : st.nullSubstantive === 1 ? 'einer' : n(st.nullSubstantive)
-  return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen ${n(st.nullResidues)} Unterschiede: ${n(editorial)} nur in Schreibweise oder Satzzeichen, als „redaktionell“ markiert, ${substantive} als Änderung.`
+  return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen ${n(st.nullResidues)} Unterschiede: ${n(st.nullPlaceholders)} sind die im Entwurf noch offene Nummer des Bundesgesetzblatts, ${n(editorial - st.nullPlaceholders)} nur Schreibweise oder Satzzeichen, alle als „redaktionell“ markiert, ${substantive} als Änderung.`
 }
 
 /** „Einem fehlt ein Teil.", „2 fehlt ein Teil, einer ist nur halb angewendet." */
@@ -574,13 +591,13 @@ export function genauigkeitKurz(r: GenauigkeitRecord = GENAUIGKEIT): { shows: st
   return {
     shows: [
       'Zu einem Entwurf gehört meist eine Textgegenüberstellung des Ministeriums: eine Tabelle mit altem und neuem Text nebeneinander. Der Monitor übernimmt ihren Text Wort für Wort und markiert die Änderungen in Farbe. Lesen muss er sie aus einem PDF oder einer Tabelle; dabei kann ein Satz verloren gehen oder beim falschen Paragraphen landen.',
-      `Zusätzlich schreibt der Monitor ganze Paragraphen so aus, wie sie nach der Änderung lauten würden. Getestet an ${n(bench.bgbl)} Gesetzen, die inzwischen gültig sind: Der Monitor hätte dort ${n(bench.shown)} ganze Paragraphen gezeigt, ${n(bench.identical)} davon stimmen Wort für Wort mit dem Gesetz überein.`,
+      `Zusätzlich schreibt der Monitor ganze Paragraphen so aus, wie sie nach der Änderung lauten würden. Getestet an ${n(bench.bgbl)} Bundesgesetzblättern mit ${n(bench.laws)} Gesetzen, die inzwischen gültig sind und an denen auch die Regeln entwickelt wurden: Der Monitor hätte dort ${n(bench.shown)} ganze Paragraphen gezeigt, ${n(bench.identical)} davon stimmen Wort für Wort mit dem Gesetz überein.`,
       `Der Monitor vergleicht auch, wie sich ein Bundesgesetz vom Entwurf bis zum Beschluss ändert. ${nullSentence(st)}`,
     ],
     check: [
       // Two marks since 22.11.2026, and „nicht geprüft … aber nicht bestätigt" would read as the other one's name.
       'Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.',
-      `Bei Entwürfen der Bundesländer ist der neue Text bei ${n(tgu.strict.held)} von ${n(tgu.shown)} gezeigten Paragraphen Wort für Wort am Entwurf geprüft, bei den übrigen nicht. Vor dem Zitieren im Dokument des Bundeslandes nachsehen.`,
+      `Bei Entwürfen der Bundesländer ist der neue Text bei ${n(tgu.strict.held - tgu.strict.onlyStruck)} von ${n(tgu.shown)} gezeigten Paragraphen Wort für Wort am Entwurf geprüft, bei den übrigen nicht: ${n(tgu.strict.onlyStruck)} streichen nur, und Gestrichenes prüft der Monitor bei den Ländern nicht. Vor dem Zitieren im Dokument des Bundeslandes nachsehen.`,
       'Der Monitor ist kein amtliches Angebot. Zitiert wird aus dem verlinkten Original.',
     ],
   }
