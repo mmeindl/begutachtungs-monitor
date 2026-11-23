@@ -138,13 +138,6 @@ describe('the Vorlage’s Erläuterungen where none can be shown', () => {
       upstreamBytes.mockRejectedValueOnce(new Error('502'))
       await expect(getVorlageExplanations(root('I', 113))).rejects.toThrow('502')
     })
-
-    it('reads nothing for an Antrag', async () => {
-      const out = await getVorlageExplanations(root('A', 114))
-      expect(lead(out.unavailableReason)).toBe('outOfScope')
-      expect(getGegenstand).not.toHaveBeenCalled()
-      expect(upstreamBytes).not.toHaveBeenCalled()
-    })
   })
 
   it('names Erläuterungen without an Allgemeiner Teil as the draft’s section does', async () => {

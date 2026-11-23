@@ -190,12 +190,11 @@ async function readExplanationsPdf(url: string): Promise<ExplanationsRead | stri
  * draft's section, fed from Parliament's HTML (`explanationsDocumentOfHtml`)
  * or, where it publishes none, from its PDF (`readExplanationsPdf`). Only a
  * Vorlage's: the documents of a Ministerialentwurf at Parliament stay unread
- * (`READ_PARLIAMENT_COPY`), and an Antrag's Begründung stands in its own
- * document.
+ * (`READ_PARLIAMENT_COPY`), and the route answers 404 for an Antrag, whose
+ * Begründung stands in its own document.
  */
 export const getVorlageExplanations = defineCachedFunction(
   async (root: VorlageRoot): Promise<ExplanationsResponse> => {
-    if (root.ityp === 'A') return emptyExplanations(gapDe('outOfScope', 'Die Begründung eines Antrags steht in seinem eigenen Dokument; dort liest der Monitor sie nicht aus.'), null)
     const detail = await getGegenstand(root.gp, 'I', root.inr)
     const group = explanationsGroup(mapDocuments(detail.content?.documents))
     const html = group?.formats.find((f) => f.type === 'html')?.url ?? null
