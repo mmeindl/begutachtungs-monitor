@@ -1,6 +1,6 @@
 {
-  "date": "2026-11-22",
-  "commit": "5ee93d62",
+  "date": "2026-11-23",
+  "commit": "4d0eab9c",
   "gp": "XXVIII",
   "lesefassung": {
     "bench": {
@@ -8,13 +8,13 @@
       "laws": 207,
       "checked": 1794,
       "shown": 459,
-      "identical": 458,
+      "identical": 459,
       "invented": 0,
-      "incomplete": 1,
+      "incomplete": 0,
       "otherwise": 0,
       "ungated": {
         "shown": 1471,
-        "identical": 1442
+        "identical": 1447
       },
       "witnessed": {
         "shown": 150,
@@ -46,6 +46,8 @@
         { "key": "Bezeichnung", "tried": 571, "caught": 570 },
         { "key": "Komma", "tried": 1465, "caught": 1464 },
         { "key": "Ungedruckt-Komma", "tried": 1274, "caught": 3 },
+        { "key": "Rand-weg", "tried": 1395, "caught": 1044 },
+        { "key": "Mehrfach-weg", "tried": 1013, "caught": 901 },
         { "key": "Payload", "tried": 486, "caught": 469 }
       ],
       "table": [
@@ -72,6 +74,8 @@
         { "key": "Bezeichnung", "tried": 324, "caught": 323 },
         { "key": "Komma", "tried": 878, "caught": 876 },
         { "key": "Ungedruckt-Komma", "tried": 922, "caught": 2 },
+        { "key": "Rand-weg", "tried": 1194, "caught": 1023 },
+        { "key": "Mehrfach-weg", "tried": 661, "caught": 608 },
         { "key": "Payload", "tried": 215, "caught": 210 }
       ]
     },
@@ -99,7 +103,8 @@
       "changed": 1518,
       "shown": 698,
       "outside": 17,
-      "composing": 138
+      "composing": 138,
+      "witnessed": 34
     }
   },
   "annex": {
@@ -134,9 +139,9 @@
     },
     "marks": {
       "shown": 6266,
-      "unconfirmed": 755,
+      "unconfirmed": 756,
       "unchecked": 792,
-      "clean": 4719
+      "clean": 4718
     },
     "chain": {
       "pdf": [
@@ -150,14 +155,14 @@
         { "key": "rneu", "tried": 1126, "caught": 1122, "withheld": 905, "held": true }
       ],
       "table": [
-        { "key": "zahl", "tried": 610, "caught": 608, "withheld": 0, "held": true },
+        { "key": "zahl", "tried": 609, "caught": 607, "withheld": 0, "held": true },
         { "key": "bezeichnung", "tried": 287, "caught": 265, "withheld": 0 },
-        { "key": "wort", "tried": 886, "caught": 878, "withheld": 0, "held": true },
-        { "key": "satzweg", "tried": 127, "caught": 126, "withheld": 0, "held": true },
-        { "key": "rweg", "tried": 680, "caught": 668, "withheld": 1, "held": true },
-        { "key": "links", "tried": 302, "caught": 238, "withheld": 204 },
-        { "key": "ralt", "tried": 284, "caught": 284, "withheld": 226, "held": true },
-        { "key": "rneu", "tried": 283, "caught": 283, "withheld": 237 }
+        { "key": "wort", "tried": 885, "caught": 877, "withheld": 0, "held": true },
+        { "key": "satzweg", "tried": 126, "caught": 125, "withheld": 0, "held": true },
+        { "key": "rweg", "tried": 679, "caught": 667, "withheld": 1, "held": true },
+        { "key": "links", "tried": 301, "caught": 237, "withheld": 204 },
+        { "key": "ralt", "tried": 283, "caught": 283, "withheld": 225, "held": true },
+        { "key": "rneu", "tried": 282, "caught": 282, "withheld": 236 }
       ]
     }
   },
