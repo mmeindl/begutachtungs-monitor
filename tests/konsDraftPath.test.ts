@@ -42,4 +42,24 @@ describe('draftPathOf', () => {
     expect(r.comparable).toBe(0)
     expect(r.differs).toEqual([])
   })
+
+  // Dropped unsaid until 23.11.2026: a § of the page in none of the classes.
+  it('accounts for every § shown: the classes add up to the total', () => {
+    const base = { me: '1/ME', law: 'Gesetz' }
+    const r = draftPathOf([
+      at('a'),
+      at('b', { sameInstruction: false }),
+      { ...base, key: 'c', id: 'c', amended: false },
+      { ...base, key: 'd', id: 'd', amended: 'unread' },
+      { ...base, key: 'e', id: 'e', amended: 'noLaw' },
+    ], 1, 0)
+    expect(r).toMatchObject({ shown: 5, enactedUnread: 1, noLawJoined: 1 })
+    expect(r.comparable + r.instructionChanged + r.stockMoved + r.noInstructionLine + r.notAmended + r.enactedUnread + r.noLawJoined).toBe(r.shown)
+  })
+
+  it('lets a law that was joined outrank a Bundesgesetzblatt that names no law for the §', () => {
+    const base = { key: 'a', me: '1/ME', law: 'Gesetz', id: 'a' }
+    expect(draftPathOf([{ ...base, amended: 'noLaw' }, { ...base, amended: false }], 1, 0)).toMatchObject({ notAmended: 1, noLawJoined: 0 })
+    expect(draftPathOf([{ ...base, amended: 'unread' }, at('a')], 1, 0)).toMatchObject({ comparable: 1, enactedUnread: 0 })
+  })
 })

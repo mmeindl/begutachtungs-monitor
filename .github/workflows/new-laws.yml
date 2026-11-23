@@ -1,0 +1,140 @@
+# Weekly: every Bundesgesetz published since the rules were frozen, scored
+# with those rules (`scripts/harness/newLaws.ts`, what it holds and why:
+# `scripts/lib/newLaws.ts`).
+#
+# It runs the code of the tag in `newLawScope.json`, not main's: a score on a
+# law the rules have since been fixed for says nothing about a law nobody has
+# seen. The scope file itself comes from main, because that is where a law
+# used to fix a rule is taken out of the holdout.
+#
+# Exit 1 opens one issue and the first clean run closes it. Exit 2 means it
+# could not measure: the job goes red and an open finding stays open, because
+# a failed measurement is no all-clear.
+#
+# Known trap, the same as in `uptime.yml`: GitHub switches off scheduled
+# workflows in repositories without commits after 60 days.
+name: Neue Gesetze
+
+on:
+  schedule:
+    # Tuesday morning, a day after the annex alarm and off the full hour.
+    - cron: '41 5 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: new-laws
+  cancel-in-progress: false
+
+env:
+  LABEL: neues-gesetz
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Eingefrorenen Stand lesen
+        id: scope
+        run: |
+          tag=$(node -p "require('./scripts/harness/newLawScope.json').rules.tag || ''")
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          [ -n "$tag" ] || echo "Noch keine Regeln eingefroren: nichts zu messen."
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.scope.outputs.tag != ''
+        with:
+          ref: ${{ steps.scope.outputs.tag }}
+          path: frozen
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: steps.scope.outputs.tag != ''
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.scope.outputs.tag != ''
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frozen/pnpm-lock.yaml
+
+      - if: steps.scope.outputs.tag != ''
+        run: pnpm install --frozen-lockfile
+        working-directory: frozen
+
+      # Documents only are served from here (`isLiveQuery`). Restore and save
+      # apart, as in `annex-drift.yml`: this job fails on purpose on a finding.
+      - name: Dokumente laden
+        if: steps.scope.outputs.tag != ''
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: frozen/.harness-cache-new-laws
+          key: new-laws-cache-${{ github.run_id }}
+          restore-keys: new-laws-cache-
+
+      - name: Neue Gesetze messen
+        id: score
+        if: steps.scope.outputs.tag != ''
+        working-directory: frozen
+        shell: bash
+        run: |
+          set +e
+          npx vite-node -c vitest.config.ts scripts/harness/newLaws.ts -- \
+            --scope="$GITHUB_WORKSPACE/scripts/harness/newLawScope.json" \
+            --json="$GITHUB_WORKSPACE/new-laws.json" | tee "$GITHUB_WORKSPACE/new-laws.md"
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Dokumente sichern
+        if: always() && steps.scope.outputs.tag != ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: frozen/.harness-cache-new-laws
+          key: new-laws-cache-${{ github.run_id }}
+
+      - name: Bericht aufheben
+        if: always() && steps.scope.outputs.tag != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: new-laws
+          path: new-laws.*
+          retention-days: 90
+
+      - name: Issue öffnen oder schließen
+        if: steps.score.outputs.code == '0' || steps.score.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE: ${{ steps.score.outputs.code }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          now=$(date -u '+%Y-%m-%d %H:%M UTC')
+          gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --force \
+            --color D93F0B --description "Vom Workflow Neue Gesetze geöffnet und geschlossen" >/dev/null
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open \
+                   --json number --jq '.[0].number // empty')
+          if [ "$CODE" = "1" ] && [ -z "$open" ]; then
+            {
+              echo "@$OWNER — die Messung der neuen Gesetze hat am $now etwas gefunden."
+              echo
+              echo "**Lauf:** $RUN_URL"
+              echo
+              echo '```'
+              cat "$GITHUB_WORKSPACE/new-laws.md"
+              echo '```'
+            } > body.md
+            gh issue create --repo "$GITHUB_REPOSITORY" --label "$LABEL" \
+              --title "Neues Gesetz: Befund der Messung" --body-file body.md
+          elif [ "$CODE" = "0" ] && [ -n "$open" ]; then
+            gh issue close "$open" --repo "$GITHUB_REPOSITORY" --comment "Ohne Befund am $now. Lauf: $RUN_URL"
+          fi
+
+      - name: Nicht gemessen ist kein Befund-frei
+        if: steps.scope.outputs.tag != '' && steps.score.outputs.code != '0' && steps.score.outputs.code != '1'
+        run: exit 1

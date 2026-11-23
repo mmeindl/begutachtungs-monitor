@@ -78,6 +78,27 @@ export function isBegutSearch(url: string): boolean {
   return isRisSearch(url) && new URL(url).searchParams.get('Applikation') === 'Begut'
 }
 
+/**
+ * Every question whose answer can change once a new law is published: a query
+ * to the RIS API, whatever its parameters, and Parliament's JSON about an
+ * item. A document under its own address does not change and stays cached.
+ *
+ * WHY (23.11.2026). Scored from the frozen cache, 38 of the 53 laws in the 18
+ * newest Bundesgesetzblätter read „in keiner Fassung genannt": the version
+ * lists on disk predated them, while RIS had consolidated every one. A law
+ * the cache cannot see looks exactly like a law RIS has not reached.
+ */
+export function isLiveQuery(url: string): boolean {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return false
+  }
+  if (parsed.hostname === 'data.bka.gv.at') return !parsed.searchParams.has('Dokumentnummer')
+  return parsed.hostname.endsWith('parlament.gv.at') && parsed.searchParams.has('json')
+}
+
 export interface FetchCacheOptions {
   /**
    * Requests the disk never answers: they are fetched every time, and the

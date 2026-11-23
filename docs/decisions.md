@@ -1997,6 +1997,21 @@ gets an entry of its own only where it carries a reason the rule does not.
   A new case makes `DRAFT_PATH_DIFFERS_READ` fail until someone has read it.
   The second witness's 150 of 150 stays beside it and is no evidence for
   drafts: on the bench it reads a Bundesgesetzblatt against itself.
+- **Every new law is scored with rules frozen before it existed** (23.11.2026,
+  `scripts/harness/newLaws.ts`, `scripts/lib/newLaws.ts`,
+  `.github/workflows/new-laws.yml`). Every other figure comes from laws the
+  rules were developed on. Nothing proves that every way a law can go wrong
+  has been thought of, so three things are held instead: every law was seen
+  (BGBl I numbers run without a gap, so a missed law is a missing number);
+  every law ends in one outcome, and the outcomes add up to the list; and a
+  law making a kind of change no development law made is named for a person
+  to read. The run uses the tag's code and fresh queries in a cache of its
+  own: from the round's cache, 38 of the 53 laws in the 18 newest
+  Bundesgesetzblätter read as never consolidated, and RIS had all of them. A
+  law used to fix a rule leaves the holdout (`leftHoldout`). BGBl. I Nr.
+  82–103/2026 are reported as a trial and never as clean, because at least 84
+  and 88 were read while the rules were worked on. No figure goes on
+  `/genauigkeit` before the holdout holds laws.
 - **A round names one period, and the builder holds it** (23.11.2026,
   `--nur-periode`, `inPeriod`). RIS ignores the period filter, so „the 400
   newest" held seven drafts (179 §§) of the period before under the label

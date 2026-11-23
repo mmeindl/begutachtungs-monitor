@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "tag": null,
+    "tree": null
+  },
+  "trialFrom": {
+    "year": 2026,
+    "number": 82
+  },
+  "holdoutFrom": {
+    "year": 2026,
+    "number": 104
+  },
+  "leftHoldout": [],
+  "knownKinds": []
+}

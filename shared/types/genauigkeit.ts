@@ -102,6 +102,10 @@ export interface GenauigkeitRecord {
         stockMoved: number
         noInstructionLine: number
         notAmended: number
+        /** Amended by the law, its enacted text unreadable; absent in a record before 23.11.2026. */
+        enactedUnread?: number
+        /** No law of the bench joined to the draft's Artikel; absent in a record before 23.11.2026. */
+        noLawJoined?: number
       }
     }
     /** Faults injected into confirmed results (`faultInjection.ts`, its result classes). */

@@ -27,6 +27,10 @@ export type DraftPathCase = {
 } & (
   /** The Bundesgesetzblatt did not amend this §. */
   | { amended: false }
+  /** It did, and RIS's enacted text of the § could not be read. */
+  | { amended: 'unread' }
+  /** No law of the bench could be joined to the draft's Artikel for this §. */
+  | { amended: 'noLaw' }
   | {
     amended: true
     /** Instruction lines the draft has for the §. */
@@ -61,12 +65,18 @@ export interface DraftPathRecord {
   noInstructionLine: number
   /** Not scored: the law did not amend the §. */
   notAmended: number
+  /** Not scored: the law amended the §, and its enacted text could not be read. */
+  enactedUnread: number
+  /** Not scored: no law of the bench joins to the draft's Artikel. */
+  noLawJoined: number
 }
 
-/** The stronger of two readings of one §: an amending BGBl over none, then the law's own text, then the same instruction. */
+/** The stronger of two readings of one §: a law joined over none, an amending BGBl over that, then the law's own text, then the same instruction. */
 function rank(c: DraftPathCase): number {
-  if (!c.amended) return 0
-  return 1 + (c.sameInstruction && c.lines > 0 ? 2 : 0) + (c.identical ? 4 : 0)
+  if (c.amended === 'noLaw') return 0
+  if (c.amended === false) return 1
+  if (c.amended === 'unread') return 2
+  return 3 + (c.sameInstruction && c.lines > 0 ? 2 : 0) + (c.identical ? 4 : 0)
 }
 
 export function draftPathOf(cases: readonly DraftPathCase[], drafts: number, failed: number): DraftPathRecord {
@@ -75,9 +85,11 @@ export function draftPathOf(cases: readonly DraftPathCase[], drafts: number, fai
     const held = best.get(c.key)
     if (!held || rank(c) > rank(held)) best.set(c.key, c)
   }
-  const out: DraftPathRecord = { drafts, failed, shown: best.size, comparable: 0, identical: 0, differs: [], instructionChanged: 0, stockMoved: 0, noInstructionLine: 0, notAmended: 0 }
+  const out: DraftPathRecord = { drafts, failed, shown: best.size, comparable: 0, identical: 0, differs: [], instructionChanged: 0, stockMoved: 0, noInstructionLine: 0, notAmended: 0, enactedUnread: 0, noLawJoined: 0 }
   for (const c of best.values()) {
-    if (!c.amended) out.notAmended++
+    if (c.amended === 'noLaw') out.noLawJoined++
+    else if (c.amended === 'unread') out.enactedUnread++
+    else if (!c.amended) out.notAmended++
     else if (!c.sameInstruction) out.instructionChanged++
     else if (c.lines === 0) out.noInstructionLine++
     else if (c.sameStock === false) out.stockMoved++

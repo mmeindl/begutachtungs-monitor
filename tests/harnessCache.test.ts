@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, rmSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { installFetchCache, isBegutSearch, isCached, isRisSearch } from '../scripts/lib/harnessCache'
+import { installFetchCache, isBegutSearch, isCached, isLiveQuery, isRisSearch } from '../scripts/lib/harnessCache'
 
 /**
  * The harness cache and the one request it must not answer from disk
@@ -58,6 +58,22 @@ describe('isRisSearch', () => {
 
   it('needs the page parameter: a query without one is not a list', () => {
     expect(isRisSearch('https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=Begut')).toBe(false)
+  })
+})
+
+describe('isLiveQuery', () => {
+  it('is every RIS query and Parliament item, whatever its parameters', () => {
+    expect(isLiveQuery(KONS)).toBe(true)
+    // No `Seitennummer`: the shape of the bench's Begut and BGBl lookups.
+    expect(isLiveQuery('https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=Begut&Titel=Gesetz')).toBe(true)
+    expect(isLiveQuery('https://www.parlament.gv.at/gegenstand/XXVIII/I/589?json=True')).toBe(true)
+  })
+
+  it('is not a document under its own address', () => {
+    expect(isLiveQuery(DOCUMENT)).toBe(false)
+    expect(isLiveQuery('https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=Begut&Dokumentnummer=BEGUT_X')).toBe(false)
+    expect(isLiveQuery('https://www.parlament.gv.at/dokument/XXVIII/I/589/fname.pdf')).toBe(false)
+    expect(isLiveQuery('not a url')).toBe(false)
   })
 })
 

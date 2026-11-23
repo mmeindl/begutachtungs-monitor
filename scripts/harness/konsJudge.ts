@@ -92,6 +92,31 @@ export function misnumberedShown(markers: Readonly<Record<string, number>>): num
 export type RemovalVerdict = 'confirmed' | 'wrong' | 'unverifiable'
 
 /**
+ * A RIS version that is only the §'s old heading and the note that this
+ * Bundesgesetzblatt repealed it: „Risikomanagement (Anm.: § 26a aufgehoben
+ * durch Art. 8 Z 24, BGBl. I Nr. 88/2026)" (BMSVG, read 23.11.2026). Its last
+ * Kundmachungsorgan still says „zuletzt geändert", so without this a right
+ * repeal counted as a wrong one. A sentence or an Absatz before the note is
+ * law that stands, and no stub.
+ */
+export function isRepealStub(text: string, bgblNumber: string): boolean {
+  const flat = text.replace(/\s+/g, ' ').trim()
+  const note = /\(Anm\.: [^()]*\baufgehoben durch ([^()]*)\)$/.exec(flat)
+  if (!note || !note[1]!.includes(bgblNumber.replace(/\s+/g, ' '))) return false
+  const heading = flat.slice(0, note.index).trim()
+  return heading.length <= 200 && !/\(\d+[a-z]?\)|[.;:](?:\s|$)/.test(heading)
+}
+
+/**
+ * RIS's repeal note in a version's XML. The § tree does not carry it, so a
+ * version without a body is read for it here (`kons.ts`).
+ */
+export function repealNoteOf(xml: string): string | null {
+  const flat = xml.replace(/<[^>]+>/g, ' ').replace(/&#xA0;|&nbsp;|\u00A0/g, ' ').replace(/\s+/g, ' ')
+  return /\(\s*Anm\.: [^()]*\baufgehoben durch [^()]*\)/.exec(flat)?.[0].replace(/^\(\s+/, '(').replace(/\s+\)$/, ')') ?? null
+}
+
+/**
  * Whether RIS repealed a § the engine's result no longer carries
  * (audit of 20.11.2026). Without a node in the result such a § never reached
  * the bench's tally, so a wrong repeal and a right one were both invisible —
@@ -108,6 +133,8 @@ export type RemovalVerdict = 'confirmed' | 'wrong' | 'unverifiable'
  * Anything else is a § the engine repealed that RIS keeps.
  */
 export function removalVerdict(afterTexts: readonly (string | null)[] | null, lastOrgan: string | null, bgblNumber: string): RemovalVerdict {
+  // RIS can also keep the repealed § as a stub (`isRepealStub`).
+  if (afterTexts?.some((t) => t !== null) && afterTexts.every((t) => t === null || isRepealStub(t, bgblNumber))) return 'confirmed'
   const repealedBy = /aufgehoben durch\s+(.+?)\s*$/.exec(lastOrgan ?? '')?.[1] ?? null
   if (repealedBy !== null && repealedBy.replace(/\s+/g, ' ') === bgblNumber.replace(/\s+/g, ' ')) return 'confirmed'
   if (afterTexts === null) return 'wrong'

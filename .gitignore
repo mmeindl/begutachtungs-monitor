@@ -26,3 +26,5 @@ timeline/
 .cache/
 # The harnesses' opt-in RIS cache (`scripts/lib/harnessCache.ts`, `--cache`)
 .harness-cache/
+# Its queries fetched fresh for new laws (`scripts/harness/newLaws.ts`), apart from the round's
+.harness-cache-new-laws/

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kindKey, loadKey, matchArticle, misnumberedShown, removalVerdict, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
+import { isRepealStub, kindKey, loadKey, matchArticle, misnumberedShown, removalVerdict, repealNoteOf, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 
 // The BGBl bench's own bookkeeping (19.11.2026): what it got wrong is how a
@@ -122,5 +122,21 @@ describe('removalVerdict: whether RIS repealed a § the engine took out', () => 
     expect(removalVerdict(['Aufgehoben.'], 'BGBl. I Nr. 1/2020 zuletzt geändert durch BGBl. I Nr. 62/2026', bgbl)).toBe('confirmed')
     expect(removalVerdict(['Der Antrag ist schriftlich einzubringen.'], 'BGBl. I Nr. 1/2020 zuletzt geändert durch BGBl. I Nr. 62/2026', bgbl)).toBe('wrong')
     expect(removalVerdict([null], 'BGBl. I Nr. 1/2020 zuletzt geändert durch BGBl. I Nr. 62/2026', bgbl)).toBe('unverifiable')
+  })
+  // BMSVG § 26a, BGBl. I Nr. 88/2026: repealed, and RIS keeps the heading with a note.
+  it('confirms a stub that names this Bundesgesetzblatt, and nothing that only resembles one', () => {
+    const organ = 'BGBl. I Nr. 100/2002 zuletzt geändert durch BGBl. I Nr. 119/2024'
+    const n88 = 'BGBl. I Nr. 88/2026'
+    expect(removalVerdict(['Risikomanagement (Anm.: § 26a aufgehoben durch Art. 8 Z 24, BGBl. I Nr. 88/2026)'], organ, n88)).toBe('confirmed')
+    expect(removalVerdict(['Risikomanagement (Anm.: § 26a aufgehoben durch Art. 8 Z 24, BGBl. I Nr. 8/2026)'], organ, n88)).toBe('wrong')
+    expect(removalVerdict(['Risikomanagement (1) Die Kasse hat vorzusorgen. (Anm.: Abs. 2 aufgehoben durch BGBl. I Nr. 88/2026)'], organ, n88)).toBe('wrong')
+    expect(isRepealStub('Die Kasse hat vorzusorgen. (Anm.: Abs. 2 aufgehoben durch BGBl. I Nr. 88/2026)', n88)).toBe(false)
+  })
+  it('reads the repeal note out of a version\'s XML, which the § tree does not carry', () => {
+    const xml = '<absatz><ueberschrift>Risikomanagement</ueberschrift></absatz><absatz typ="erltext">(<i>Anm.:</i> § 26a aufgehoben durch Art. 8 Z 24,&#xA0;BGBl. I Nr. 88/2026)</absatz>'
+    const note = repealNoteOf(xml)
+    expect(note).toBe('(Anm.: § 26a aufgehoben durch Art. 8 Z 24, BGBl. I Nr. 88/2026)')
+    expect(isRepealStub(`Risikomanagement ${note}`, 'BGBl. I Nr. 88/2026')).toBe(true)
+    expect(repealNoteOf('<absatz>Die Kasse hat vorzusorgen.</absatz>')).toBeNull()
   })
 })

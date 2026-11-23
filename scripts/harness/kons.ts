@@ -61,7 +61,8 @@ import type { AnnexSource } from '../../server/utils/annex/annexSource'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { flattenRisRecord } from '../../server/utils/ris/risRecord'
 import { absatzSequence, designatedUnitsOf, followingUnit, standingUnitsOf, oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
-import { installFetchCache } from '../lib/harnessCache'
+import { installFetchCache, isLiveQuery } from '../lib/harnessCache'
+import { kindsOfLaw } from '../lib/newLaws'
 import { harnessStamp } from '../lib/harnessRecord'
 import { renditionOfPages, witnessVerdict, type DraftRendition } from '../../server/utils/kons/draftWitness'
 import { argAssigned, argFlag } from '../lib/args'
@@ -70,7 +71,7 @@ import { asArray } from '../lib/ris'
 import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 import { draftPathOf, type DraftPathCase, type DraftPathRecord } from '../lib/konsDraftPath'
-import { harnessKey, kindKey, matchArticle, misnumberedShown, removalVerdict, scoredKey, unchangedClass, UNCHANGED_CLASSES, type UnchangedClass } from './konsJudge'
+import { harnessKey, kindKey, matchArticle, misnumberedShown, removalVerdict, repealNoteOf, scoredKey, UNCHANGED_CLASSES, unchangedClass, type UnchangedClass } from './konsJudge'
 
 interface Verdict {
   bgbl: string
@@ -247,7 +248,13 @@ if (oracleDumpFile) writeFileSync(oracleDumpFile, '')
 const refusalFile = argAssigned('refusals') ?? null
 if (refusalFile) writeFileSync(refusalFile, '')
 if (dumpFile) writeFileSync(dumpFile, '')
-if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
+/**
+ * `--frisch` (with `--cache`, 23.11.2026): every query goes upstream, only
+ * documents come from disk (`isLiveQuery`). For laws newer than the cache.
+ * Its answers are written too, so give it its own `HARNESS_CACHE`: in the
+ * round's cache they would move what the next round measures.
+ */
+if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', argFlag('frisch') ? { fresh: isLiveQuery } : {})
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: 'harness/kons' })
@@ -594,6 +601,8 @@ const witnessLines: string[] = []
 const removalTally = new Map<string, number>()
 const removalLines: string[] = []
 let removedRenumbered = 0
+/** The kinds of change each law makes (`kindsOfLaw`), by `Bundesgesetzblatt|Artikel`, for `newLaws.ts`. */
+const lawKinds = new Map<string, string[]>()
 const tally = (map: Map<string, number>, key: string): void => {
   map.set(key, (map.get(key) ?? 0) + 1)
 }
@@ -854,6 +863,17 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // sub-instruction inherits and the §§ a refused payload spells out.
   const refusedIds = refusedUnits(unresolved, refused, unitKey)
   const applied = results.filter((r) => r.applied).length
+  lawKinds.set(`${bgblNumber}|${articleLabel ?? ''}`, kindsOfLaw({
+    package: ctx.package,
+    ops: instructions.map(({ op }) => {
+      const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+      return { kind: op.kind, level: address?.level ?? null, schedule: address ? namedParagraphs(address).some((para) => isSchedule(para)) : false }
+    }),
+    refused: refused.map((r) => causeOf(r.reason)),
+    renumbered: renamed.length > 0,
+    wholeText,
+    constitutional: blocks.some((b) => /Verfassungsbestimmung/.test(b.text)),
+  }))
 
   if (verbose) {
     console.log(`\n${bgblNumber} vom ${kundmachung}${articleLabel ? ` ${articleLabel}` : ''} — ${kurztitel} (Join: ${resolved.via})`)
@@ -1161,7 +1181,9 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       afterTexts = []
       for (const ref of pair.afters) {
         const tree = await fetchParagraphTree(ref)
-        afterTexts.push(tree ? plainText(tree) : null)
+        // A version with a heading and no body may be RIS's stub of a repealed §.
+        const note = tree && !bodyText(tree).trim() && ref.xmlUrl ? repealNoteOf(await getText(ref.xmlUrl)) : null
+        afterTexts.push(tree ? [plainText(tree), note].filter(Boolean).join(' ') : null)
       }
     }
     const last = label ? (versions.get(label) ?? []).at(-1) : undefined
@@ -1209,7 +1231,8 @@ const cases: { id: string; law?: string }[] = wanted !== null
   ? await discoverAmendments(wanted, withSammel)
   : ids.map((id) => {
       const next = argv[argv.indexOf(id) + 1]
-      return { id, law: next && !next.startsWith('-') ? next : undefined }
+      // The next id is the next law, not this one's title (23.11.2026).
+      return { id, law: next && !next.startsWith('-') && !/^BGBLA_/.test(next) ? next : undefined }
     })
 
 if (cases.length === 0) {
@@ -1402,7 +1425,10 @@ async function scoreDraftPath(): Promise<DraftPathRecord> {
         }
         const pair = entry.pairs.get(label)!
         const truths = (await Promise.all(pair.afters.map((ref) => fetchParagraphTree(ref)))).filter((tree): tree is LawNode => tree !== null)
-        if (truths.length === 0) continue
+        if (truths.length === 0) {
+          cases.push({ ...base, amended: 'unread' })
+          continue
+        }
         const text = squash(side(p.segments, 'removed'))
         const heading = squash(side(p.headingSegments, 'removed'))
         const before = pair.before ? await fetchParagraphTree(pair.before) : null
@@ -1418,10 +1444,16 @@ async function scoreDraftPath(): Promise<DraftPathRecord> {
         })
       }
     }
+    // A § of the page no enacted law was joined to stays in the count.
+    const reached = new Set(cases.map((c) => c.key))
+    for (const p of out.paragraphs) {
+      const key = `${recordId}|${p.annexLaw}|${p.id}`
+      if (!reached.has(key)) cases.push({ key, me: draft.me, law: String(p.annexLaw ?? ''), id: p.id, amended: 'noLaw' })
+    }
   }
   const record = draftPathOf(cases, composed, failed)
   console.log(`\n  Entwurfspfad: ${record.drafts} Entwürfe, ${record.shown} gezeigte §§; gleiche Anweisung auf gleichem Text ${record.comparable}, davon Wort für Wort das Gesetz ${record.identical}`)
-  console.log(`    nicht bewertet: Anweisung geändert ${record.instructionChanged}, Text vorher geändert ${record.stockMoved}, ohne Anweisungszeile ${record.noInstructionLine}, vom Gesetz nicht geändert ${record.notAmended}`)
+  console.log(`    nicht bewertet: Anweisung geändert ${record.instructionChanged}, Text vorher geändert ${record.stockMoved}, ohne Anweisungszeile ${record.noInstructionLine}, vom Gesetz nicht geändert ${record.notAmended}, Gesetzestext nicht lesbar ${record.enactedUnread}, kein Gesetz zugeordnet ${record.noLawJoined}`)
   for (const d of record.differs) console.log(`    ✗ ${d.me} ${d.law} § ${d.id}`)
   return record
 }
@@ -1468,6 +1500,9 @@ if (jsonFile) {
     removed: { confirmed: removed('confirmed'), wrong: removed('wrong'), unverifiable: removed('unverifiable'), renumbered: removedRenumbered },
     /** `--entwurf`: the page's own composition of the drafts, against the law (`lib/konsDraftPath.ts`). */
     ...(draftPath ? { draftPath } : {}),
+    /** Law by law, with what kind of change each makes: what `newLaws.ts` accounts for. */
+    laws: verdicts.map((v) => ({ bgbl: v.bgbl, article: v.article, law: v.law, instructions: v.instructions, read: v.read, applied: v.applied, checked: v.checked, identical: v.identical, divergent: v.divergent, note: v.note, kinds: lawKinds.get(`${v.bgbl}|${v.article ?? ''}`) ?? [] })),
+    removalFindings: removalLines,
   }
   writeFileSync(jsonFile, `${JSON.stringify(record, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonFile}`)
