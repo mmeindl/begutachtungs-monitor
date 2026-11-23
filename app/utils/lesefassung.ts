@@ -136,6 +136,11 @@ export function lesefassungUnreachableText(all: string = UNIT_WORD_DE.paragraph.
   return gapDe('unavailable', lesefassungWhole(all))
 }
 
+/** The comparison's own read of that layer failed: its rows stand, and its marks were built without the layer's confirmation. */
+export function lesefassungMarksUnreadText(all: string = UNIT_WORD_DE.paragraph.plural): string {
+  return gapDe('unavailable', `die ganzen ${all} in der vorgeschlagenen Fassung, an denen der Monitor die Vermerke mitprüft. Bis sie wieder abrufbar sind, können hier mehr ${all} einen Vermerk tragen.`)
+}
+
 /**
  * „§ 12", „§§ 12 und 14", „§§ 12, 14 und 30", schedules as RIS names them
  * („Anl. 1") — the units an end-of-law list names, in the server's order.

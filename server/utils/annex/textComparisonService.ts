@@ -69,6 +69,20 @@ export function emptyComparison(who: DraftIdentity, reason: string, source: Trac
   }
 }
 
+/** The Lesefassung the marks ask, and whether asking it failed: a failure is told apart from a draft that has none (null). */
+async function readLesefassung(read: () => Promise<ConsolidatedTextResponse | null>): Promise<{ value: ConsolidatedTextResponse | null; failed: boolean }> {
+  try {
+    return { value: await read(), failed: false }
+  } catch {
+    return { value: null, failed: true }
+  }
+}
+
+/** `validate` of the two cached comparisons: marks built on a failed Lesefassung go out and are not kept (`annex/textComparisonService.ts`, `cache/gathered.ts`). */
+export function keptWithLesefassung(entry: { value?: TextComparisonResponse }): boolean {
+  return entry.value !== undefined && !entry.value.lesefassungUnread
+}
+
 /**
  * The annex read, checked and counted — everything both callers share.
  *
@@ -89,8 +103,10 @@ export async function readAndCheck(
    * may confirm a § word for word (`annexMark.ts`) — asked only once the
    * annex is read. Null where there is none to ask: the annex of a Vorlage
    * without a Begutachtung, or Parliament's copy; then the draft check
-   * stands alone. A run that throws throws through: what the page would
-   * mark without it is shaped by the failure, and must not be cached.
+   * stands alone. A run that fails costs the reader the oracle, not the
+   * annex (23.11.2026; until then the whole section went): the marks are
+   * built without it, which can only mark more, never clear a §. The answer
+   * says so (`lesefassungUnread`) and is not stored (`keptWithLesefassung`).
    */
   lesefassung: () => Promise<ConsolidatedTextResponse | null>,
   /** The verification's cache key — the draft's identity by default. A
@@ -108,12 +124,12 @@ export async function readAndCheck(
   // the Begutachtungsfrist — the day the ministry wrote the annex, not
   // today. Called even without one: `verifyAnnex` then reports why it could
   // check nothing, which the page needs to be able to say.
-  const [verification, consolidated] = await Promise.all([getAnnexVerification(cacheKey, asOf, rows, draft.articles, draft.blocks), lesefassung()])
+  const [verification, oracle] = await Promise.all([getAnnexVerification(cacheKey, asOf, rows, draft.articles, draft.blocks), readLesefassung(lesefassung)])
   // What the gate let through is clean only where its new text is confirmed
   // word for word (21.11.2026): by the draft check, on the rows as parsed —
   // before the gate empties the withheld ones — and the draft text the gate
   // has; or by the oracle of the Lesefassung (`annexMark.ts`).
-  const marks = annexMarks(rows, verification, annexStrictChecks(rows, draft), oracleConfirmedRows(rows, consolidated))
+  const marks = annexMarks(rows, verification, annexStrictChecks(rows, draft), oracleConfirmedRows(rows, oracle.value))
   const checked = checkAnnexRows(rows, verification, marks)
   return {
     ...who,
@@ -129,6 +145,7 @@ export async function readAndCheck(
     // so it goes out as a „Nicht lesbar" gap. Set here, not in the parser,
     // whose wording the annex baseline pins.
     boundaryNote: refusal ? gapDe('unreadable', refusal) : null,
+    ...(oracle.failed ? { lesefassungUnread: true as const } : {}),
     // Counted over the rows as sent, so the numbers on the page and the
     // rows on the page cannot disagree.
     stats: checked.stats,
@@ -267,7 +284,7 @@ export const getTextComparison = defineCachedFunction(
     const out = await readAndCheck(who, row.textComparisonParts ?? [], row.risBeginn ?? '', draft, chosen, pdfLink, lesefassung)
     return typeof out === 'string' ? empty(out, null, pdfLink) : out
   },
-  { name: 'text-comparison', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+  { name: 'text-comparison', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false, validate: keptWithLesefassung },
 )
 
 /**
@@ -311,5 +328,5 @@ export const getRisTextComparison = defineCachedFunction(
     const out = await readAndCheck(who, parts, detail.startedAt ?? '', draft, chosen, pdf, () => getRisConsolidatedText(id))
     return typeof out === 'string' ? emptyComparison(who, out, null, pdf) : out
   },
-  { name: 'text-comparison-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+  { name: 'text-comparison-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false, validate: keptWithLesefassung },
 )

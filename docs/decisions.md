@@ -1395,6 +1395,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   die" where the draft writes „Die oder der"), one as a named false alarm
   (a § repealed whose number the draft gives to the next one, which it
   writes anew).
+- **A failed read of the Lesefassung costs its confirmation, not the annex**
+  (23.11.2026, `readAndCheck`). Since the marks ask the oracle, one failed
+  RIS read behind the Lesefassung took the whole section away, although the
+  annex had been read. Now the rows go out with marks built without the
+  oracle, which can only mark more and never clear a §; the page says so
+  („Gerade nicht abrufbar"), and the answer is not stored.
 - **The draft check reads what the right column strikes, on the Bund**
   (22.11.2026, `struckAccount` in `laender/landTguStrict.ts`, asked by
   `annexStrictChecks` alone). A sentence the draft keeps that the column

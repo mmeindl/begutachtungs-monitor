@@ -354,6 +354,12 @@ export interface TextComparisonResponse {
    */
   annexOf?: 'vorlage' | 'parldion'
   /**
+   * The read of the Lesefassung failed while the marks were built (23.11.2026):
+   * the rows stand, the oracle confirmed none of them, so more §§ can carry a
+   * Vermerk than usual. Such an answer is never stored.
+   */
+  lesefassungUnread?: true
+  /**
    * Pages of the annex PDF whose geometry the parse could not vouch for and
    * therefore did not read (`isProven` in `server/utils/annex/annexPdf.ts`):
    * a page set to another width than the rest of the document, one carrying a

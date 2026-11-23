@@ -22,7 +22,7 @@ import { annexBadge, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexPa
 import { enactedHaystack, newLawGroups } from '~/utils/newLawGroups'
 import { layoutNotes } from '~/utils/layoutNotes'
 import { annexParagraphCiteDe, citeLineDe } from '#shared/utils/citations'
-import { laterAmendmentLine, lesefassungLine, lesefassungNotRunText, lesefassungUnreachableText, mergesIntoNotice, noticeLesefassungToo } from '~/utils/lesefassung'
+import { laterAmendmentLine, lesefassungLine, lesefassungMarksUnreadText, lesefassungNotRunText, lesefassungUnreachableText, mergesIntoNotice, noticeLesefassungToo } from '~/utils/lesefassung'
 import { unitsPluralDe, type UnitKind } from '#shared/utils/unitWord'
 import {
   annexDoubtfulGroupNote,
@@ -168,6 +168,7 @@ watch([status, data], () => {
  * about the layer below the annex, not about the annex.
  */
 const lesefassungNote = computed(() => {
+  if (data.value?.lesefassungUnread) return lesefassungMarksUnreadText(draftUnits.value)
   if (consolidatedStatus.value === 'error') return lesefassungUnreachableText(draftUnits.value)
   return lesefassungNotRunText(consolidated.value ?? null, draftUnits.value)
 })
