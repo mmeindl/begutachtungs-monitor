@@ -65,6 +65,7 @@ import { LAND_NAME, landDraftPath, landLawName, landLawPath, landPublisherDe, la
 import { euLeadOf } from './euRecht'
 import { namedInRvShortDe } from './outcomes'
 import { itemKindOfLawItem, itemPath } from '#shared/utils/procedureRoot'
+import { vorlageOfParliamentUrl } from '#shared/utils/secondRound'
 import { ITEM_KIND_DE, itemCopyDe } from './itemKind'
 import { mergedDe } from '#shared/utils/miterledigung'
 
@@ -591,18 +592,12 @@ export function viewOfRis(c: RisConsultation): EntryView {
  * 18.09.2026 both were one row and the missing pointer alone carried the
  * sentence (`OpenVorlage` in `shared/types/dashboard.ts`).
  */
-/** Period and number of a Vorlage, read off its Parliament address. */
-function vorlageOf(url: string): { gp: string; inr: number } | null {
-  const m = /\/gegenstand\/([IVXLC]+)\/I\/(\d+)(?:\/|$)/.exec(url)
-  return m?.[1] && m[2] ? { gp: m[1], inr: Number(m[2]) } : null
-}
-
 export function viewOfVorlage(v: OpenVorlage): EntryView {
   const c = v.consultation
   // A Vorlage without a draft page has a page of its own since 10.11.2026
   // (`itemPath`) — whatever the evidence
   // says about a Begutachtung, which stays the note's business below.
-  const own = c.kind === 'draft' ? null : vorlageOf(v.parliamentUrl)
+  const own = c.kind === 'draft' ? null : vorlageOfParliamentUrl(v.parliamentUrl)
   // A committee's motion and a motion of the Bundesrat (14.11.2026) are
   // named and linked as what they are.
   const kind = v.kind

@@ -15,6 +15,8 @@ import { feedSourceOf, landFeedItems } from '../utils/laender/feedSource'
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const source = feedSourceOf(event)
+  // Parliament's open items publish no Frist: nothing a calendar could hold.
+  if (source === 'parlament') throw createError({ statusCode: 404, statusMessage: 'Keine Fristen in dieser Quelle' })
   const gp = await getCurrentGp()
   if (source !== 'bund') {
     const body = buildIcsCalendar(siteUrl, [], [], await landFeedItems(source, gp), `Begutachtungsfristen – Land ${LAND_NAME[source]}`)

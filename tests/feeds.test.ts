@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import type { LandConsultation } from '../shared/types'
+import type { LandConsultation, OpenVorlage } from '../shared/types'
 import { draftSummary as draft, risConsultation } from './helpers/builders'
 import {
   bodyEtag,
   buildIcsCalendar,
   buildRssFeed,
   buildSitemap,
+  buildVorlagenRssFeed,
   escapeIcsText,
   escapeXml,
   fnv1a64,
   foldIcsLine,
 } from '../server/utils/feeds'
+import { landDraftInWindow } from '../shared/utils/draftOrder'
+import { openVorlageWordDe } from '../shared/utils/secondRound'
+import { itemCopyDe } from '../app/utils/itemKind'
 
 const SITE = 'https://begutachtungs-monitor.at'
 
@@ -449,5 +453,65 @@ describe('a Land\'s own feed and calendar (25.10.2026)', () => {
 
   it('names the calendar after the Land', () => {
     expect(buildIcsCalendar(SITE, [], [], [land()], 'Begutachtungsfristen – Land Tirol')).toContain('X-WR-CALNAME:Begutachtungsfristen – Land Tirol')
+  })
+
+  it('never cuts a running Frist at the cap, and prints no invented pubDate (23.11.2026)', () => {
+    const closed = Array.from({ length: 60 }, (_, i) => land({ id: `t-2026-${i + 100}`, startedAt: '2026-10-01', deadline: '2026-10-20', active: false }))
+    const open = land({ id: 't-2026-9', startedAt: null, deadline: '2026-09-01', active: true })
+    const xml = buildRssFeed(SITE, [], undefined, [], { code: 't', items: [...closed, open] })
+    expect(xml.match(/<item>/g)).toHaveLength(51)
+    expect(xml).toContain('land-t-2026-9@')
+    const item = xml.split('<item>').find((x) => x.includes('land-t-2026-9@'))!
+    expect(item).not.toContain('<pubDate>')
+  })
+
+  it('orders a draft without a start by the date the list places it by', () => {
+    const undated = land({ id: 't-2026-1', startedAt: null, deadline: '2026-12-09' })
+    const dated = land({ id: 't-2026-2', startedAt: '2026-11-01', deadline: '2026-11-20' })
+    const xml = buildRssFeed(SITE, [], undefined, [], { code: 't', items: [dated, undated] })
+    expect(xml.indexOf('land-t-2026-1@')).toBeLessThan(xml.indexOf('land-t-2026-2@'))
+    expect(xml).toContain('<lastBuildDate>Sun, 01 Nov 2026')
+  })
+
+  it('keeps a running draft across a Bund period, and only a running one', () => {
+    const window = { from: '2029-10-01', to: null }
+    expect(landDraftInWindow(land({ startedAt: '2029-09-20', active: true }), window, true)).toBe(true)
+    expect(landDraftInWindow(land({ startedAt: '2029-09-20', active: false }), window, true)).toBe(false)
+    expect(landDraftInWindow(land({ startedAt: '2029-09-20', active: true }), window)).toBe(false)
+  })
+})
+
+describe('the feed of what takes Stellungnahmen in Parliament (23.11.2026)', () => {
+  const open = (over: Partial<OpenVorlage> = {}): OpenVorlage => ({
+    kind: 'regierungsvorlage', citation: '740 d.B.', title: 'Wehr- und Zivildienstreformgesetz', date: '2026-11-18',
+    parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/740', statementCount: 3,
+    consultation: { kind: 'draft', gp: 'XXVIII', inr: 141 }, ...over,
+  })
+
+  it('links the draft, keeps its own identity and says there is no Frist', () => {
+    const xml = buildVorlagenRssFeed(SITE, 'XXVIII', [open()])
+    expect(xml).toContain('<guid isPermaLink="false">vorlage-XXVIII-740@begutachtungs-monitor.at</guid>')
+    expect(xml).toContain(`<link>${SITE}/entwuerfe/XXVIII/141</link>`)
+    expect(xml).toContain('Regierungsvorlage 740 d.B.: Wehr-')
+    expect(xml).toContain('Stellungnahme möglich bis zum Beschluss im Bundesrat · keine veröffentlichte Frist')
+    expect(xml).toContain(`href="${SITE}/feed.xml?quelle=parlament"`)
+  })
+
+  it('leaves the statement count out (frozen in guid-keyed readers)', () => {
+    expect(buildVorlagenRssFeed(SITE, 'XXVIII', [open({ statementCount: 987 })])).not.toContain('987')
+  })
+
+  it('links an item without a draft to its own page and names an Ausschussbegutachtung', () => {
+    const xml = buildVorlagenRssFeed(SITE, 'XXVIII', [open({ kind: 'ausschussantrag', citation: '365 d.B.', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/365', consultation: { kind: 'committee' } })])
+    expect(xml).toContain(`<link>${SITE}/entwuerfe/XXVIII/ausschussantrag/365</link>`)
+    expect(xml).toContain('Ausschussbegutachtung · Stellungnahme möglich')
+  })
+
+  it('words every kind as the page does', () => {
+    const kinds = [
+      { kind: 'regierungsvorlage', variant: null }, { kind: 'ausschussantrag', variant: null },
+      { kind: 'bundesratsantrag', variant: 'bundesrat' }, { kind: 'bundesratsantrag', variant: 'drittel' },
+    ] as const
+    for (const k of kinds) expect(openVorlageWordDe(k)).toBe(itemCopyDe({ itemKind: k.kind, variant: k.variant }).word)
   })
 })

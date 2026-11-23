@@ -50,6 +50,7 @@ import { finalDecisionOf, objectionUnresolved, promulgationState } from '#shared
 import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE, lawStationPairQuestion } from '#shared/utils/lawStations'
 import type { SourceEntry } from '#shared/utils/provenance'
 import { LAND_NAME } from '#shared/utils/laender'
+import { SECOND_ROUND_CLAUSE } from '#shared/utils/secondRound'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 import { landLawBegutachtungFacts } from './landLaw'
 import { namedInRvFactDe, namedInRvShortDe } from './outcomes'
@@ -371,7 +372,7 @@ export function regulationStatusDe(active: boolean, promulgated: boolean): strin
  * Whoever already has a sentence running takes the clause; it reads both
  * after „möglich" and after „Ohne Frist –".
  */
-export const SECOND_ROUND_CLAUSE = 'bis zum Beschluss im Bundesrat'
+export { SECOND_ROUND_CLAUSE }
 export const SECOND_ROUND_WINDOW =
   `Eine veröffentlichte Frist gibt es dafür nicht – möglich ${SECOND_ROUND_CLAUSE}.`
 

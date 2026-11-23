@@ -68,6 +68,15 @@ const rows = computed(() => {
           </template>
         </span>
       </li>
+      <!-- Its own row, after the sources: these items publish no Frist, so a
+           feed is all there is to subscribe to (23.11.2026). -->
+      <li class="flex flex-col gap-x-4 gap-y-0.5 py-2 sm:flex-row sm:items-baseline">
+        <span class="w-40 shrink-0 font-medium text-ink">Im Parlament</span>
+        <span>
+          <ExternalLink href="/feed.xml?quelle=parlament" class="tap-target link-inline">RSS</ExternalLink>
+          – Vorlagen und Anträge, zu denen gerade eine Stellungnahme möglich ist; ohne veröffentlichte Frist, daher kein Kalender
+        </span>
+      </li>
     </ul>
   </Disclosure>
 </template>

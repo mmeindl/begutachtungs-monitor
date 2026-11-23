@@ -102,7 +102,7 @@ async function lawPathOfEbr(root: VorlageRoot, content: EbrContent): Promise<str
  * A promulgated law — from a Vorlage, an Antrag, a committee's motion or a
  * motion of the Bundesrat: it is a row of the period's list of laws without
  * a Begutachtung, which ran every check there is. A Vorlage not yet
- * promulgated: the second round's check (`zweite-runde.get.ts`) — no draft
+ * promulgated: the second round's check (`openVorlagen.ts`) — no draft
  * in its record, not a budget law, and no draft of the period plausibly
  * behind it by title. Any other kind not yet promulgated: no check exists,
  * so no fact. Every failure, every late answer: false.

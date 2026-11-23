@@ -29,6 +29,20 @@ describe('Tirol — the list, as served on 23.10.2026', () => {
   it('refuses a page that is not the list', () => {
     expect(() => parseTirolList('<html><h1>Wartung</h1></html>')).toThrow(LandSourceError)
   })
+
+  const HEAD = '<h1>Gesetzentwürfe in Begutachtung</h1><header><h2 class="">\n Laufende Begutachtungsverfahren\n </h2></header>'
+
+  it('reads the heading with nothing under it as no running draft (23.11.2026)', () => {
+    expect(parseTirolList(`<html>${HEAD}</div></html>`)).toEqual([])
+  })
+
+  it('refuses an empty read while the page still shows traces of entries', () => {
+    expect(() => parseTirolList(`<html>${HEAD}<div><a href="/public/ggs/risLink.xhtml?gn=1&gj=2026">x</a></div></html>`)).toThrow(LandSourceError)
+  })
+
+  it('refuses a page without entries and without that heading', () => {
+    expect(() => parseTirolList('<html><h1>Gesetzentwürfe in Begutachtung</h1></html>')).toThrow(LandSourceError)
+  })
 })
 
 describe('Tirol — the Landtag\'s record of one Gegenstand', () => {

@@ -10,12 +10,15 @@
  * readers would surface daily phantom updates). Deterministic bodies are
  * also what make the routes' ETag/304 handling effective.
  */
-import type { DraftSummary, LandCode, LandConsultation, RisConsultation } from '../../shared/types'
+import type { DraftSummary, LandCode, LandConsultation, OpenVorlage, RisConsultation } from '../../shared/types'
 import { formatDateDe } from '../../shared/utils/format'
 import { RIS_KIND_LABEL, risFilingNote } from '../../shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath } from '../../shared/utils/laender'
 import { ANLIEGEN_PATH } from '../../shared/utils/anliegen'
 import { euWegePath } from '../../shared/utils/eu'
+import { landDraftDate } from '../../shared/utils/draftOrder'
+import { itemPath } from '../../shared/utils/procedureRoot'
+import { SECOND_ROUND_CLAUSE, openVorlageWordDe, vorlageOfParliamentUrl } from '../../shared/utils/secondRound'
 
 /** Draft page URL inside the monitor. */
 function pageUrl(siteUrl: string, item: DraftSummary): string {
@@ -84,6 +87,14 @@ interface FeedEntry {
   meta: string
   /** ISO date the item first appeared; '' when upstream has none. */
   publishedAt: string
+  /**
+   * The day the feed orders it by: `publishedAt`, or for a Land's draft
+   * without a start the date the list places it by (`landDraftDate`). Never
+   * printed as a pubDate — that day is not when it appeared.
+   */
+  sortDate: string
+  /** The Frist still runs: such an entry is never cut from the feed. */
+  running: boolean
   deadline: string | null
   /** SUMMARY of the calendar event. */
   calendarSummary: string
@@ -97,6 +108,9 @@ interface FeedEntry {
   /** Stable tie-break within one date. */
   tieBreak: string
 }
+
+/** What an RSS item needs of an entry; a calendar's fields only where there is a Frist. */
+type RssEntry = Omit<FeedEntry, 'calendarSummary' | 'calendarDescription'>
 
 function draftEntry(siteUrl: string, item: DraftSummary): FeedEntry {
   // Every Ressort that sent it, in the fold's order: a jointly issued Entwurf
@@ -116,6 +130,8 @@ function draftEntry(siteUrl: string, item: DraftSummary): FeedEntry {
       item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist',
     ].join(' · '),
     publishedAt: item.arrivedAt,
+    sortDate: item.arrivedAt,
+    running: item.active,
     deadline: item.deadline,
     calendarSummary: `Frist: ${item.title} (${item.citation})`,
     calendarDescription: ministries,
@@ -138,6 +154,8 @@ function risEntry(siteUrl: string, item: RisConsultation): FeedEntry {
       risFilingNote(item.active),
     ].join(' · '),
     publishedAt: item.startedAt ?? '',
+    sortDate: item.startedAt ?? '',
+    running: item.active,
     deadline: item.deadline,
     calendarSummary: `Frist: ${item.title} (${kind})`,
     // The ministry AND the reason there is no parliament page: a calendar
@@ -164,10 +182,40 @@ function landEntry(siteUrl: string, item: LandConsultation): FeedEntry {
     title: `${kind}: ${item.title}`,
     meta: [land, item.deadline ? `Frist bis ${formatDateDe(item.deadline)}${item.deadlineFrom ? ' (gerechnet)' : ''}` : item.fristUnknown ? 'Frist unbekannt' : 'Ohne Frist', filing].join(' · '),
     publishedAt: item.startedAt ?? '',
+    sortDate: landDraftDate(item) ?? '',
+    running: item.active,
     deadline: item.deadline,
     calendarSummary: `Frist: ${item.title} (${kind}, ${land})`,
     calendarDescription: `${land} – ${filing}${reckoned}`,
     tieBreak: item.id,
+  }
+}
+
+/**
+ * An item taking Stellungnahmen in Parliament (`?quelle=parlament`,
+ * 23.11.2026). RSS only: it publishes no Frist. The identity comes from
+ * period and number, in a namespace of its own, and the description names no
+ * statement count (frozen in guid-keyed readers, as on a draft).
+ */
+function vorlageEntry(siteUrl: string, gp: string, v: OpenVorlage): RssEntry {
+  const own = vorlageOfParliamentUrl(v.parliamentUrl)
+  const c = v.consultation
+  // The page the start page's row links (`viewOfVorlage`).
+  const path = c.kind === 'draft' ? `/entwuerfe/${c.gp}/${c.inr}` : own ? itemPath(own.gp, v.kind, own.inr) : null
+  return {
+    uid: `vorlage-${own?.gp ?? gp}-${own?.inr ?? encodeURIComponent(v.citation)}@${FEED_UID_DOMAIN}`,
+    url: path ? `${siteUrl}${path}` : v.parliamentUrl,
+    title: `${openVorlageWordDe(v)} ${v.citation}: ${v.title}`,
+    meta: [
+      ...(c.kind === 'committee' ? ['Ausschussbegutachtung'] : []),
+      `Stellungnahme möglich ${SECOND_ROUND_CLAUSE}`,
+      'keine veröffentlichte Frist',
+    ].join(' · '),
+    publishedAt: v.date,
+    sortDate: v.date,
+    running: true,
+    deadline: null,
+    tieBreak: v.citation.padStart(12, '0'),
   }
 }
 
@@ -275,15 +323,55 @@ export function buildRssFeed(
   ressort?: { code: string; name: string | null },
   risItems: RisConsultation[] = [],
   /** A Land's own feed (`?quelle=`, 25.10.2026): its drafts alone, under its name. */
-  land?: { code: LandCode; items: LandConsultation[] },
+  land?: { code: LandCode; items: LandConsultation[]; gap?: string | null },
 ): string {
-  const sorted = [
+  const channelTitle = land
+    ? `Begutachtungs-Monitor – Begutachtungen des Landes ${LAND_NAME[land.code]}`
+    : ressort
+      ? `Begutachtungs-Monitor – Begutachtungsverfahren (${ressort.name ?? ressort.code})`
+      : 'Begutachtungs-Monitor – Begutachtungsverfahren des Bundes'
+  const selfUrl = land
+    ? `${siteUrl}/feed.xml?quelle=${land.code}`
+    : ressort
+      ? `${siteUrl}/feed.xml?ressort=${encodeURIComponent(ressort.code)}`
+      : `${siteUrl}/feed.xml`
+  // "Gesetzes- und Verordnungsentwürfen": the feed stopped being about
+  // Parliament's half only when the RIS records joined it, and a channel
+  // description that names one half is the same wrong claim the homepage
+  // heading carried.
+  const description = land
+    ? `Neue Begutachtungen des Landes ${LAND_NAME[land.code]} zu Gesetzes- und Verordnungsentwürfen: Fristen und was daraus wurde.${land.gap ? ` ${land.gap}` : ''}`
+    : 'Neue Begutachtungsverfahren zu Gesetzes- und Verordnungsentwürfen des Bundes: Fristen, Stellungnahmen und was daraus wurde.'
+  return renderRss(siteUrl, { title: channelTitle, description, selfUrl }, [
     ...items.map((i) => draftEntry(siteUrl, i)),
     ...risItems.map((i) => risEntry(siteUrl, i)),
     ...(land?.items ?? []).map((i) => landEntry(siteUrl, i)),
-  ]
-    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || b.tieBreak.localeCompare(a.tieBreak))
-    .slice(0, RSS_MAX_ITEMS)
+  ])
+}
+
+/**
+ * The feed of what takes Stellungnahmen in Parliament right now
+ * (`/feed.xml?quelle=parlament`, 23.11.2026), newest Einlangen first.
+ */
+export function buildVorlagenRssFeed(siteUrl: string, gp: string, items: readonly OpenVorlage[]): string {
+  return renderRss(siteUrl, {
+    title: 'Begutachtungs-Monitor – Stellungnahme im Parlament möglich',
+    description: `Regierungsvorlagen und Anträge im Parlament, zu denen gerade eine Stellungnahme möglich ist: ${SECOND_ROUND_CLAUSE}, ohne veröffentlichte Frist.`,
+    selfUrl: `${siteUrl}/feed.xml?quelle=parlament`,
+  }, items.map((v) => vorlageEntry(siteUrl, gp, v)))
+}
+
+function renderRss(
+  siteUrl: string,
+  channel: { title: string; description: string; selfUrl: string },
+  all: readonly RssEntry[],
+): string {
+  const ordered = [...all]
+    .sort((a, b) => b.sortDate.localeCompare(a.sortDate) || b.tieBreak.localeCompare(a.tieBreak))
+  // The cap holds the feed's size, never a running Frist: Burgenland's drafts
+  // have no start date, and three of its four open ones fell behind the 50
+  // (23.11.2026).
+  const sorted = ordered.filter((entry, i) => i < RSS_MAX_ITEMS || entry.running)
 
   const entries = sorted.map((entry) => {
     // Deadline into the TITLE: list views of most readers show titles
@@ -307,34 +395,19 @@ export function buildRssFeed(
     ].join('\n')
   })
 
-  const lastBuild = sorted[0] ? rfc1123(sorted[0].publishedAt) : null
-
-  const channelTitle = land
-    ? `Begutachtungs-Monitor – Begutachtungen des Landes ${LAND_NAME[land.code]}`
-    : ressort
-      ? `Begutachtungs-Monitor – Begutachtungsverfahren (${ressort.name ?? ressort.code})`
-      : 'Begutachtungs-Monitor – Begutachtungsverfahren des Bundes'
-  const selfUrl = land
-    ? `${siteUrl}/feed.xml?quelle=${land.code}`
-    : ressort
-      ? `${siteUrl}/feed.xml?ressort=${encodeURIComponent(ressort.code)}`
-      : `${siteUrl}/feed.xml`
+  // The newest day any entry really appeared: the first entry may have none.
+  const newest = sorted.map((e) => e.publishedAt).filter((d) => rfc1123(d)).sort().at(-1)
+  const lastBuild = newest ? rfc1123(newest) : null
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
     '  <channel>',
-    `    <title>${escapeXml(channelTitle)}</title>`,
+    `    <title>${escapeXml(channel.title)}</title>`,
     `    <link>${escapeXml(siteUrl)}</link>`,
-    // "Gesetzes- und Verordnungsentwürfen": the feed stopped being about
-    // Parliament's half only when the RIS records joined it, and a channel
-    // description that names one half is the same wrong claim the homepage
-    // heading carried.
-    `    <description>${escapeXml(land
-      ? `Neue Begutachtungen des Landes ${LAND_NAME[land.code]} zu Gesetzes- und Verordnungsentwürfen: Fristen und was daraus wurde.`
-      : 'Neue Begutachtungsverfahren zu Gesetzes- und Verordnungsentwürfen des Bundes: Fristen, Stellungnahmen und was daraus wurde.')}</description>`,
+    `    <description>${escapeXml(channel.description)}</description>`,
     '    <language>de-at</language>',
-    `    <atom:link href="${escapeXml(selfUrl)}" rel="self" type="application/rss+xml"/>`,
+    `    <atom:link href="${escapeXml(channel.selfUrl)}" rel="self" type="application/rss+xml"/>`,
     ...(lastBuild ? [`    <lastBuildDate>${lastBuild}</lastBuildDate>`] : []),
     ...entries,
     '  </channel>',

@@ -272,6 +272,22 @@ export function landDraftDate(d: LandConsultation): string | null {
 }
 
 /**
+ * Whether a Land's draft belongs to a window. With `keepRunning` (a Land's
+ * feed and calendar, 23.11.2026) a draft whose Frist still runs belongs
+ * whatever its date: a Nationalrat election ends the Bund's period, and no
+ * Land's Frist ends with it.
+ */
+export function landDraftInWindow(
+  d: LandConsultation,
+  window: { from: string; to: string | null },
+  keepRunning = false,
+): boolean {
+  if (keepRunning && d.active) return true
+  const date = landDraftDate(d)
+  return date !== null && date >= window.from && (window.to === null || date <= window.to)
+}
+
+/**
  * The day a row falls into a span of the reader's own by (`?von=&bis=`,
  * 18.11.2026) — the day the order already dates it by (`rowOrderKey`), so a
  * span cuts the list where its dates say:

@@ -22,7 +22,7 @@ import type {
   LandStatement,
 } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
-import { landDraftDate } from '#shared/utils/draftOrder'
+import { landDraftDate, landDraftInWindow } from '#shared/utils/draftOrder'
 import { todayIso } from '#shared/utils/format'
 import { type UpstreamPolicy, UpstreamHttpError, upstreamText } from '../upstream/fetch'
 import { mapWithConcurrency } from '../pool'
@@ -1262,6 +1262,8 @@ export async function readLaenderInWindow(
   status: 'open' | 'closed' | 'all',
   /** The Länder to read; one for a Land's own feed (`feed.xml?quelle=`). */
   lands: readonly LandCode[] = LAND_CODES,
+  /** Keep a draft whose Frist still runs, whatever its date (`landDraftInWindow`). */
+  keepRunning = false,
 ): Promise<Required<LaenderRead>> {
   const results = await Promise.allSettled(lands.map(async (land) => {
     const reader = READERS[land]
@@ -1274,10 +1276,10 @@ export async function readLaenderInWindow(
     else console.warn(`[laender] ${land} nicht abrufbar:`, result.reason instanceof Error ? result.reason.message : result.reason)
     return { land, state: result.status === 'fulfilled' ? 'ok' : 'unavailable', listUrl: READERS[land].listUrl }
   })
-  const inWindow = await withListVerdicts(withLandActiveOn(items).filter((d) => {
-    const date = landDraftDate(d)
-    return date !== null && date >= window.from && (window.to === null || date <= window.to)
-  }), `${window.from}_${window.to ?? 'laufend'}`)
+  const inWindow = await withListVerdicts(
+    withLandActiveOn(items).filter((d) => landDraftInWindow(d, window, keepRunning)),
+    `${window.from}_${window.to ?? 'laufend'}${keepRunning ? '_mit-offenen' : ''}`,
+  )
   const undated: Partial<Record<LandCode, number>> = {}
   for (const d of items) if (landDraftDate(d) === null) undated[d.land] = (undated[d.land] ?? 0) + 1
   return {

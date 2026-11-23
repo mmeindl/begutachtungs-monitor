@@ -119,7 +119,14 @@ export function parseTirolList(html: string): LandConsultation[] {
       active: false,
     })
   }
-  if (!out.length) throw new LandSourceError('t', 'Liste ohne Eintrag')
+  if (!out.length) {
+    /* No running Gesetzentwurf is an answer (23.11.2026): the heading stands
+     * with nothing under it, and that read as a failure took Tirol's
+     * Verordnungen offline too. Only with no trace of an entry on the page:
+     * entries in a new markup must still fail, never read as „none". */
+    if (/<h2[^>]*>\s*Laufende Begutachtungsverfahren\s*<\/h2>/.test(html) && !/risLink\.xhtml|Begutachtungsfrist/.test(html)) return []
+    throw new LandSourceError('t', 'Liste ohne Eintrag')
+  }
   return out
 }
 

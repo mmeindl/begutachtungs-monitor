@@ -119,6 +119,11 @@ describe('Niederösterreich', () => {
     expect(page?.email).toBe('post.begutachtung@noel.gv.at')
   })
 
+  it('reads a Frist whose space the Land wrote as &nbsp; (23.11.2026)', () => {
+    const html = '<h1 id="after-sidenav">NÖ SekROP PV, Änderung</h1><div class="subtitle"><p>Bürgerbegutachtung&nbsp;bis 31.12.2026</p></div>'
+    expect(parseNoeDraftPage(html, noeDraftUrl('Sek_ROP_PV_Gruenland'))?.deadline).toBe('2026-12-31')
+  })
+
   it('takes a page without a Frist for no draft', () => {
     expect(parseNoeDraftPage('<h1 id="after-sidenav">Allgemeine Informationen</h1>', noeDraftUrl('Buergerbegutachtung_Allgemeininfo1'))).toBeNull()
   })

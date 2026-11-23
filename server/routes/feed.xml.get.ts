@@ -13,20 +13,27 @@
  * readers surface a broken subscription over a quiet one.
  *
  * Optional ?quelle=t (or any Land's code) is that Land's feed instead
- * (`feedSourceOf`, 25.10.2026); without it, the Bund's.
+ * (`feedSourceOf`, 25.10.2026); without it, the Bund's. `?quelle=parlament`
+ * (23.11.2026) is the items taking Stellungnahmen in Parliament.
  */
 import { ministryFilterOptions } from '../utils/http/params'
 import { dedupeDraftList } from '../utils/parliament/draftList'
-import { feedSourceOf, landFeedItems } from '../utils/laender/feedSource'
+import { feedSourceOf, landRssItems } from '../utils/laender/feedSource'
 
 const RESSORT_RE = /^[A-Za-z]{2,20}$/
 
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const source = feedSourceOf(event)
+  if (source === 'parlament') {
+    // Loaded here, as the Länder readers are: the Bund's feed needs none of it.
+    const { getOpenVorlagen } = await import('../utils/parliament/openVorlagen')
+    const { gp, items } = await getOpenVorlagen(await getCurrentGp())
+    return respondWithEtag(event, buildVorlagenRssFeed(siteUrl, gp, items), 'application/rss+xml; charset=utf-8')
+  }
   if (source !== 'bund') {
-    const items = await landFeedItems(source, await getCurrentGp())
-    return respondWithEtag(event, buildRssFeed(siteUrl, [], undefined, [], { code: source, items }), 'application/rss+xml; charset=utf-8')
+    const { items, gap } = await landRssItems(source, await getCurrentGp())
+    return respondWithEtag(event, buildRssFeed(siteUrl, [], undefined, [], { code: source, items, gap }), 'application/rss+xml; charset=utf-8')
   }
   const ressortParam = firstQueryValue(getQuery(event).ressort)
   if (ressortParam !== undefined && !RESSORT_RE.test(ressortParam)) {

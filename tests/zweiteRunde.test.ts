@@ -26,7 +26,8 @@ vi.mock('../server/utils/parliament/statements', () => ({
 }))
 
 const { getItemsForGp, getGegenstand } = vi.mocked(await import('../server/utils/parliament/drafts'))
-const { default: handler, secondRoundCandidates, STATUS_IN_PROCEDURE } = await import('../server/api/dashboard/zweite-runde.get')
+const { default: handler } = await import('../server/api/dashboard/zweite-runde.get')
+const { secondRoundCandidates, STATUS_IN_PROCEDURE } = await import('../server/utils/parliament/openVorlagen')
 const { viewOfVorlage } = await import('../app/utils/entryView')
 
 const row = (inr: number, doktyp: string, status: string, title = `Gegenstand ${inr}`) => ({

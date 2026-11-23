@@ -96,7 +96,8 @@ export interface NoeDraftPage {
  */
 export function parseNoeDraftPage(html: string, pageUrl: string): NoeDraftPage | null {
   const title = text(/<h1 id="after-sidenav">([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? '')
-  const fristText = /Bürgerbegutachtung bis ([\d.]+)/.exec(html)?.[1]
+  // The Land writes the space as `&nbsp;` on some pages (Sek_ROP_PV_Gruenland, 23.11.2026).
+  const fristText = /Bürgerbegutachtung(?:\s|&nbsp;|&#160;)+bis(?:\s|&nbsp;|&#160;)+([\d.]+)/.exec(html)?.[1]
   const deadline = fristText ? landDate(fristText) : null
   if (!title || !deadline) return null
   const documents: LandDocument[] = []

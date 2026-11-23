@@ -358,7 +358,7 @@ export const WEGE: readonly Weg[] = [
     // No link behind the mark (16.11.2026): an open Ausschussantrag is a row
     // only under „Alle Arten" — under its own option only where „ohne
     // Entwurf" is evidenced (`choiceAdmitsOpenVorlage`), which no check
-    // gives before the law (`zweite-runde.get.ts`, `unknown`) — so the view
+    // gives before the law (`openVorlagen.ts`, `unknown`) — so the view
     // of its kind would stand empty while some are open.
     openSkip: ['parlament'],
   },

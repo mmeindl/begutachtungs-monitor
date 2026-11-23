@@ -5,7 +5,7 @@
  *
  * One table for the measurement (`scripts/corpus/begutachtungSkipped.ts`)
  * and the list (`server/utils/ris/skippedLaws.ts`, the open Vorlagen of
- * `server/api/dashboard/zweite-runde.get.ts`), moved out of the script on
+ * `server/utils/parliament/openVorlagen.ts`), moved out of the script on
  * 09.11.2026: a hand-maintained table that exists twice drifts.
  *
  * WHY A TABLE AND NOT A RULE. There is no structured signal for the budget

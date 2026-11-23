@@ -1,0 +1,186 @@
+/**
+ * The Regierungsvorlagen — and since 14.11.2026 the committees' own motions
+ * (`BUA`, „Ausschussantrag") and the motions of the Bundesrat (`GABR`,
+ * `GABR13`) — that are taking Stellungnahmen **right now**. Read by the
+ * start page's section (`/api/dashboard/zweite-runde`) and by the feed
+ * `/feed.xml?quelle=parlament`.
+ *
+ * Why this exists. Anyone can file on a Vorlage in the Nationalrat the same
+ * way they filed on the Ministerialentwurf — same list upstream, same form.
+ * Until this section the monitor showed that window only on the detail page
+ * of a draft that happened to have a Vorlage, so the one moment where a
+ * closed Begutachtung still has an open door was invisible to anyone who
+ * did not already know which page to open. In the Nachverfolgung reading
+ * this is input the clubs and the Ressort still receive while the text is
+ * in the procedure — and, before the Nationalrat's Beschluss, input that can
+ * still change it in the Ausschuss.
+ *
+ * Cost. ONE list-101 call for the whole period, narrowed by its `Status`
+ * column to the handful still in the procedure (6 of 117 on 2026-09-15;
+ * the column has three such values since 03.10.2026, see below), then one detail
+ * JSON and one sizing call per candidate, plus
+ * list 81 once — but only when a row names no Ministerialentwurf and the
+ * section would otherwise claim there was none. The
+ * `Status` column agreed with the authoritative flag on 117 of 117 GP-XXVIII
+ * Vorlagen — and is still used only to NARROW: `statementsstate` is read per
+ * item and decides what is shown. Verify, then display; a proxy that was
+ * right yesterday is not a claim.
+ *
+ * NOT in `/kalender.ics`: the Vorlage publishes no Frist — the form closes
+ * with the end of the parliamentary procedure, the Bundesrat's Beschluss —
+ * so there is no date a calendar entry could hang on. In a feed of its own
+ * since 23.11.2026, dated by Einlangen: a feed needs no Frist, and in
+ * `/feed.xml` these rows would reach every subscriber of the drafts unasked.
+ */
+import type { DashboardSecondRound, OpenVorlage } from '#shared/types'
+import { budgetExemptReason } from '#shared/utils/budgetExempt'
+import { stationFor } from '#shared/utils/draftStations'
+import { isFilingOpen, readCommitteeConsultation } from './detailJson'
+import { getDraftsForGp, getGegenstand, getItemsForGp } from './drafts'
+import { findPrecedingDraft } from './precedingDraft'
+import { bundesratVariantOf } from './vorlageDetailAssembly'
+import { getStatementsForRv } from './statements'
+
+/**
+ * Upstream's "still in the parliamentary procedure" (`mapVorlageRow`) —
+ * every value of it.
+ *
+ * `2` is the Vorlage in Behandlung; `1` is „Einlangen im Nationalrat", the
+ * days between arriving and being assigned. The form is open in both, and
+ * narrowing on `2` alone silently dropped the newest arrivals — exactly the
+ * ones with the most time left to file. On 23.09.2026 seven GP-XXVIII
+ * Vorlagen stood at status 1 (620–626 d.B.) and none of them reached this
+ * section.
+ *
+ * `4` since 03.10.2026: the Nationalrat has decided, the Bundesrat has the
+ * text (`STATUS_AT_BUNDESRAT`, inferred from four cases). The window runs
+ * through that phase — Parliament describes it as open until the end of the
+ * parliamentary procedure, and § 23b Abs. 1 GOG-NR says the same — and the
+ * four Vorlagen at `4` that day all had their form open. Narrowing on `1`
+ * and `2` had kept them out.
+ *
+ * `3` since 14.11.2026: 365 d.B. (XXVIII), a committee's motion sent back
+ * to the committee by the plenary, stood at `3` with its form open. No
+ * Regierungsvorlage of GP XXVIII stood at `3` that day; admitted for every
+ * kind all the same, since the flag decides.
+ *
+ * Still only a narrowing: `isFilingOpen` is read per item below and is what
+ * the section claims. Verify, then display.
+ */
+export const STATUS_IN_PROCEDURE: ReadonlySet<string> = new Set(['1', '2', '3', '4'])
+
+/** The document types the section shows: a Regierungsvorlage, a committee's
+ *  motion, and since 14.11.2026 a motion of the Bundesrat or of a third of
+ *  its members (`GABR`, `GABR13`) — whether § 23b GOG-NR covers the second
+ *  is open, so the item's flag decides, as for every row. */
+const KIND_OF_DOKTYP: Readonly<Record<string, OpenVorlage['kind']>> = {
+  RV: 'regierungsvorlage',
+  BUA: 'ausschussantrag',
+  GABR: 'bundesratsantrag',
+  GABR13: 'bundesratsantrag',
+}
+
+/** The rows of the period's item list the section reads a record for. Pure. */
+export function secondRoundCandidates<T extends { doktyp: string; status: string }>(rows: readonly T[]): (T & { kind: OpenVorlage['kind'] })[] {
+  return rows.flatMap((row) => {
+    const kind = KIND_OF_DOKTYP[row.doktyp]
+    return kind && STATUS_IN_PROCEDURE.has(row.status) ? [{ ...row, kind }] : []
+  })
+}
+
+/** One row, before the cross-check has decided about the missing pointer. */
+type PendingVorlage = Omit<OpenVorlage, 'consultation'> & {
+  consultation: OpenVorlage['consultation'] | { kind: 'unresolved' }
+}
+
+export async function getOpenVorlagen(gp: string): Promise<DashboardSecondRound> {
+  const candidates = secondRoundCandidates(await getItemsForGp(gp))
+
+  const resolved = await Promise.all(
+    candidates.map(async (v): Promise<PendingVorlage | null> => {
+      try {
+        const detail = await getGegenstand(gp, 'I', v.inr)
+        // The claim on screen is this flag, not the list column above.
+        if (!isFilingOpen(detail.content)) return null
+
+        // The Begutachtung it came from, if there was one. `preconst` is not
+        // a universal field, so a missing pointer means "we have no page for
+        // it", never "no Begutachtung happened" — the row then links out, and
+        // whether it may also SAY „ohne Begutachtung" is decided below,
+        // against list 81 rather than against a missing field.
+        const pre = v.kind === 'regierungsvorlage' ? detail.content?.preconst ?? [] : []
+        const me = pre.find((p) => p?.ityp === 'ME' && p.gp_code && p.inr != null) ?? null
+
+        // The count enriches the row; it must not be able to remove it.
+        const statementCount = await getStatementsForRv(gp, v.inr)
+          .then((s) => s.total)
+          .catch(() => null)
+
+        /* The budget procedure skips the Begutachtung by design
+         * (`shared/utils/budgetExempt.ts`, 09.11.2026): such a Vorlage
+         * never says „ohne Begutachtung" and is not cross-checked — it says
+         * nothing, like a Vorlage with a plausible draft. */
+        const exempt = !me && budgetExemptReason(gp, [{ ityp: 'I', inr: v.inr }], [v.title]) !== null
+        // The committee's own consultation, from the same record: such a
+        // Vorlage went through a Begutachtung, if not the ministry's.
+        const committee = !me && !exempt && readCommitteeConsultation(detail.content?.phase) !== null
+        /* A committee's motion before its law: no check exists
+         * (`skippedLaws` classes laws, decision 2 of 14.11.2026), so its row
+         * says nothing about a Begutachtung — as its page says „nicht
+         * feststellbar" — unless the committee itself consulted. */
+        // A motion of the Bundesrat the same: no check classes it before its law.
+        const unchecked = (v.kind === 'ausschussantrag' || v.kind === 'bundesratsantrag') && !committee
+        return {
+          kind: v.kind,
+          // Who moved a motion of the Bundesrat, for the row's word — never a member's name.
+          ...(v.kind === 'bundesratsantrag' ? { variant: bundesratVariantOf(v.doktyp) } : {}),
+          citation: v.citation,
+          title: v.title,
+          date: v.date,
+          parliamentUrl: v.parliamentUrl,
+          statementCount,
+          // The list's status column, as a draft's chain reads it (`stationFor`).
+          station: stationFor(null, v.status),
+          consultation: me
+            ? { kind: 'draft' as const, gp: String(me.gp_code), inr: Number(me.inr) }
+            : exempt
+              ? { kind: 'unknown' as const }
+              : committee
+                ? { kind: 'committee' as const }
+                : unchecked
+                  ? { kind: 'unknown' as const }
+                  : { kind: 'unresolved' as const },
+        }
+      } catch {
+        // Per-item tolerance, as in the outcomes section: one failing
+        // Gegenstand must not take the whole section down.
+        return null
+      }
+    }),
+  )
+
+  const rows = resolved.filter((v): v is PendingVorlage => v !== null)
+
+  /**
+   * The cross-check for every row without a pointer: only here, because it
+   * needs list 81 — ONE fetch for all open rows together, and none at all as
+   * long as every Vorlage names its own draft (the normal case: 85 of 117 in
+   * GP XXVIII). The list is in the cache for every page of the monitor
+   * anyway.
+   *
+   * If it fails, the row stays `unknown` and says nothing: a failure of the
+   * check must not turn into the claim it was meant to support.
+   */
+  const unresolved = rows.filter((v) => v.consultation.kind === 'unresolved')
+  const drafts = unresolved.length ? await getDraftsForGp(gp).then((d) => d.items).catch(() => null) : []
+
+  const items: OpenVorlage[] = rows
+    .map((v): OpenVorlage => {
+      if (v.consultation.kind !== 'unresolved') return v as OpenVorlage
+      const checked = drafts !== null && findPrecedingDraft(v, drafts) === null
+      return { ...v, consultation: checked ? { kind: 'none' } : { kind: 'unknown' } }
+    })
+    .sort((a, b) => b.date.localeCompare(a.date) || b.citation.localeCompare(a.citation))
+
+  return { gp, items }
+}

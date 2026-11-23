@@ -3541,6 +3541,29 @@ the reasoning in full stands in that component's header comment.
   (`runtimeConfig.public.contactEmail`, `useContact`), as the site's
   address is: no page writes it out.
 
+### Feeds and calendars
+
+- **One source per subscription** (`?quelle=`): the Bund at the bare address,
+  each Land, and since 23.11.2026 `parlament`. New kinds get a source of their
+  own, so nothing arrives unasked in an existing subscription.
+- **`?quelle=parlament` is RSS only.** It carries what takes Stellungnahmen
+  right now (`getOpenVorlagen`): Regierungsvorlagen, Ausschussanträge and
+  motions of the Bundesrat, dated by Einlangen. They publish no Frist, so no
+  calendar holds them. A Vorlage on a Staatsvertrag takes no Stellungnahme
+  and is not in it; a law without a draft offers nothing to act on and is
+  not either.
+- **The 50-item cap never cuts a running Frist** (23.11.2026). Burgenland's
+  drafts have no start date, and three of its four open ones had fallen
+  behind the cap. A draft without a start is ordered by `landDraftDate` and
+  prints no `pubDate`: that day is not when it appeared.
+- **A running Land Frist outlives the Bund's period** (`landDraftInWindow`):
+  a Nationalrat election ends no Land's Begutachtung.
+- **An unreadable Land: RSS may shrink, a calendar may not.** While a Land's
+  whole list cannot be read, its RSS carries the running drafts and names
+  the gap in the channel description; a reader keeps what it has seen. Its
+  calendar answers 503, because the app would delete every event missing
+  from a shorter answer.
+
 ### Operations
 
 - **The deploy waits for the prewarm.** A restart empties every memory cache, so
