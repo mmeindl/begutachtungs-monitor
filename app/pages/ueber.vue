@@ -190,7 +190,7 @@ const contact = useContact()
         <NuxtLink to="/genauigkeit" class="link-inline">Genauigkeit</NuxtLink>,
         die Zuordnungen unter
         <NuxtLink to="/datenlage#gemessen" class="link-inline">Datenlage</NuxtLink>.
-        Was nicht gemessen ist, steht ebenfalls unter Genauigkeit.
+        Was bei den Textvergleichen nicht gemessen ist, steht ebenfalls unter Genauigkeit.
       </p>
       <p>
         Der Monitor ist
