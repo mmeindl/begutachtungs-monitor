@@ -567,6 +567,52 @@ describe('where one § ends and the next begins, as the ministries set it (21.11
     expect(rows.find((r) => r.gld === '§ 86a.')!.proposed).toBe('')
   })
 
+  // Familienlastenausgleichsgesetz in the Zukunftsdepot annex (RIS 6EE374AD):
+  // six pages of mostly inserted text, so the left column prints its header
+  // six times and five lines of its own. The edge fell on a short heading, and
+  // „Aufbringung der Mittel" and „Übergangs- und Schlußbestimmungen" read as
+  // text that ran to it.
+  it('keeps the headings of a column with a handful of lines, around an inserted §', () => {
+    const body = Array.from({ length: 12 }, (_, i) => at(R0, 780 - i * 12, 'die Behörde hat die Voraussetzungen von Amts wegen zu prüfen und', RE))
+    const pages = [
+      ...Array.from({ length: 5 }, () => pageOf([...header(800), ...body])),
+      pageOf([
+        ...header(800),
+        at(108, 790, '§ 124b. (1) bis (3) …', 139), at(444, 790, '§ 124b. (1) bis (3) …', 475),
+        at(202.5, 778, 'Aufbringung der Mittel', 303.4), at(538.4, 778, 'Aufbringung der Mittel', 639.3),
+        at(444, 766, '§ 39p. Der Aufwand für die Zahlung der Startguthaben ist aus Mitteln des', RE),
+        at(R0, 754, 'Ausgleichsfonds zu tragen.', 540),
+        at(171.3, 742, 'Übergangs- und Schlußbestimmungen', 334.6), at(507.2, 742, 'Übergangs- und Schlußbestimmungen', 670.5),
+        at(108, 730, '§ 55. (1) bis (73) ...', 185.9), at(444, 730, '§ 55. (1) bis (73) ...', 521.8),
+        at(444, 718, '(74) § 39p in der Fassung des Bundesgesetzes tritt mit 1. Juli 2027 in Kraft.', RE),
+      ]),
+    ]
+    const rows = parseAnnexPdf(pages, ONE_LAW).rows
+    const inserted = rows.find((r) => r.gld === '§ 39p.')!
+    expect(inserted.change).toBe('inserted')
+    expect(inserted.heading).toBe('Aufbringung der Mittel')
+    expect(inserted.proposed.startsWith('§ 39p. Der Aufwand')).toBe(true)
+    const after = rows.find((r) => r.gld === '§ 55.')!
+    expect(after.current).toBe('Übergangs- und Schlußbestimmungen § 55. (1) bis (73) ...')
+    expect(after.proposed.startsWith('Übergangs- und Schlußbestimmungen § 55.')).toBe(true)
+  })
+
+  // Budgetbegleitgesetz 2027-2028: „Förderungszeitraum" over the left's § 6,
+  // the right prints that § four lines further down. It is § 6's on both sides.
+  it('leaves a shared heading with a § the other column prints further down', () => {
+    const rows = read([
+      ...filler(780),
+      at(L0, 640, 'die Förderung ist nach Maßgabe der Richtlinien zu gewähren.', 380), at(R0, 640, 'die Förderung ist nach Maßgabe der Richtlinien zu gewähren.', 716),
+      at(209, 628, 'Förderungszeitraum', 297), at(545, 628, 'Förderungszeitraum', 633),
+      at(108, 616, '§ 6. (1) Förderungen können bis 31. Jänner 2027 genehmigt werden.', 400),
+      at(108, 604, '(2) Allfällige Mittel sind zurückzuzahlen.', 330), at(444, 604, '§ 6. (1) Allfällige Mittel sind zurückzuzahlen.', 700),
+    ])
+    const six = rows.find((r) => r.gld === '§ 6.')!
+    expect(six.heading).toBeNull()
+    expect(six.current.startsWith('Förderungszeitraum § 6.')).toBe(true)
+    expect(six.proposed.startsWith('Förderungszeitraum § 6.')).toBe(true)
+  })
+
   // A RIS print sets its headings flush: under a heading line handed on that
   // starts at the margin, a line at the margin is the heading's too
   // (Verbraucherzahlungskontogesetz, RIS F36AA3A2).

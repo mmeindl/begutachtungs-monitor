@@ -553,19 +553,25 @@ interface ColumnEdges {
  * lands on the edge in every one of the 114 documents, and the left column's
  * verdicts barely move (1.651 → 1.659 lines on the Budgetbegleitgesetz).
  */
-function columnEdge(ends: readonly number[], limit: number): number {
+function columnEdge(ends: readonly number[], textLines: number, limit: number): number {
   // An edge measured from a handful of lines is not measured. The smallest
   // column in the corpus prints 10 lines; below that the column's outer limit
-  // stands, which is what the rule did everywhere before.
-  if (ends.length < 10) return limit
+  // stands, which is what the rule did everywhere before. **The handful is
+  // counted without the page furniture** (23.11.2026): the Zukunftsdepot
+  // annex (RIS 6EE374AD) prints 11 lines on the left, six of them the header
+  // „Geltende Fassung" and five of its own, and the edge landed on a short
+  // heading at 303 pt of a column 417 pt wide. Every heading then „ran to the
+  // edge" and none was handed to its §. The furniture stays in the measure
+  // itself: taking it out shifts the top 1 % and moves real edges.
+  if (textLines < 10) return limit
   const sorted = [...ends].sort((a, b) => b - a)
   return sorted[Math.max(1, Math.round(sorted.length / 100))] ?? limit
 }
 
 function columnEdges(lines: readonly AnnexLine[], boundary: number, width: number): ColumnEdges {
   return {
-    left: columnEdge(lines.filter((l) => l.left).map((l) => l.leftEnd), boundary),
-    right: columnEdge(lines.filter((l) => l.right).map((l) => l.rightEnd), width),
+    left: columnEdge(lines.filter((l) => l.left).map((l) => l.leftEnd), lines.filter((l) => l.left && !isChrome(l)).length, boundary),
+    right: columnEdge(lines.filter((l) => l.right).map((l) => l.rightEnd), lines.filter((l) => l.right && !isChrome(l)).length, width),
   }
 }
 
@@ -1515,6 +1521,65 @@ function flushHeadingRun(parts: readonly ColumnLine[], opener: ColumnLine | null
   return n
 }
 
+/** A line shaped as a heading: short of the edge, no sentence, no Absatz, no marker of its own. */
+function isHeadingLine(line: ColumnLine): boolean {
+  const t = line.text.trim()
+  return !line.wrapped && /\p{L}/u.test(t) && !/^[([…]/.test(t) && !SENTENCE_END.test(t) && !BODY_LINE_RE.test(t) && markerOf(t) === null
+}
+
+/** The first line at or after `from` that carries text, or -1. */
+function nextWithText(lines: readonly ColumnLine[], from: number): number {
+  for (let k = from; k < lines.length; k++) if (lines[k]!.text.trim()) return k
+  return -1
+}
+
+/**
+ * A heading both columns print, over a § only one of them prints: the row's
+ * context, in neither column's text.
+ *
+ * The Familienlastenausgleichsgesetz in the Zukunftsdepot drafts (RIS 6EE374AD,
+ * E2452166) prints „Aufbringung der Mittel" on both sides, then the new § 39p
+ * on the right alone, then „Übergangs- und Schlußbestimmungen" and § 55 on both.
+ * The draft inserts § 39p without a heading: the words are the law's, over the
+ * place. Each column walked on its own, the right gave them to § 39p as new
+ * text and the left to the next § it prints, as text it loses. Only for a §
+ * the other column prints nowhere in this section: where it prints it further
+ * down (Budgetbegleitgesetz 2027-2028, § 6), the heading is that §'s on both
+ * sides. The whole stack of such lines goes, „VI. ABSCHNITT" over „Vertrieb".
+ * Centred in one column is enough: a column of five lines has no margins to
+ * measure a centre against (`columnMargin`).
+ */
+function moveSharedHeadings<T extends ColumnLine>(left: T[], right: T[], contents: { left: ContentsLines; right: ContentsLines }): void {
+  const prints = (lines: readonly ColumnLine[], skip: ContentsLines) => new Set(lines.flatMap((line, k) => {
+    const marker = skip.lines.has(k) ? null : markerOf(line.text)
+    const id = marker?.[1]?.startsWith('§') ? idOfMarker(normalizeText(marker[1])) : null
+    return id ? [id] : []
+  }))
+  const inLeft = prints(left, contents.left)
+  const inRight = prints(right, contents.right)
+  const shared = (k: number) => k < left.length && !!left[k]!.text && left[k]!.text === right[k]!.text && !contents.left.lines.has(k) && !contents.right.lines.has(k) && isHeadingLine(left[k]!) && isHeadingLine(right[k]!) && !!(left[k]!.centred || right[k]!.centred)
+  for (let i = 0; i < left.length; i++) {
+    if (!shared(i)) continue
+    let end = i
+    while (shared(end + 1)) end++
+    const l = nextWithText(left, end + 1)
+    const r = nextWithText(right, end + 1)
+    const leftFirst = l >= 0 && (r < 0 || l < r)
+    const rightFirst = r >= 0 && (l < 0 || r < l)
+    const at = leftFirst ? l : r
+    const marker = leftFirst || rightFirst ? markerOf((leftFirst ? left : right)[at]!.text) : null
+    const id = marker?.[1]?.startsWith('§') ? idOfMarker(normalizeText(marker[1])) : null
+    if (id && !(leftFirst ? inRight : inLeft).has(id)) {
+      const heading = left.slice(i, end + 1).map((line) => line.text.trim()).join(' ')
+      const context = [left[at]!.context, heading].filter(Boolean).join(' ')
+      left[at]!.context = context
+      right[at]!.context = context
+      for (let k = i; k <= end; k++) left[k]!.text = right[k]!.text = ''
+    }
+    i = end
+  }
+}
+
 /**
  * One column's lines → its units.
  *
@@ -2358,6 +2423,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       return { text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(repealOf ? { repealOf } : {}), ...(besideOpens ? { besideOpens } : {}) }
     })
     const toc = contentsInBoth(leftLines, rightLines)
+    moveSharedHeadings(leftLines, rightLines, toc)
     // Two prints of a § are joined only where they are one law's (`unitsOfColumn`).
     const join = { join: law !== null || resolution.refusal === null }
     const leftRead = unitsOfColumn(leftLines, toc.left, layout, join)
