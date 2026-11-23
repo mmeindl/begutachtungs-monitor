@@ -25,6 +25,7 @@
 import { headingAddress, ARTICLE_HEADING_RE, isAddressHeading, splitHeading, ziffernOf, type ExplanationsDocument, type ExplanationsPart } from './risExplanations'
 import { articleNumberKey, leadingArticleKey } from '../text/designation'
 import { normalizeText } from '../lawtext/normalize'
+import type { TextBlock } from '../lawtext/lawUnits'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 // One reading of a designation for both sides of the lookup. Its `\b` changes
 // nothing for what `headingAddress` builds: 0 of 4.215 designations differ over the
@@ -241,8 +242,11 @@ const DEGREE_AS_SPACE_RE = /(?<=[A-Za-zÄÖÜäöüß.§])°(?=[\d(])/g
  * the first address heading — one fifth of the documents do it that way
  * (`explanations/risExplanations.ts`, the same finding on the XML).
  */
-export function parseExplanationsHtml(
-  html: string,
+export function parseExplanationsHtml(html: string, options: ExplanationsParseOptions = {}): HtmlExplanations {
+  return parseExplanationBlocks(parseParliamentHtml(html), options)
+}
+
+export interface ExplanationsParseOptions {
   /**
    * Keep an address heading that stands inside an Allgemeiner Teil the
    * ressort headed as such — „Zu Artikel X (Änderung des …):" before
@@ -253,8 +257,15 @@ export function parseExplanationsHtml(
    * that Vorlage's Allgemeiner Teil read „Erläuterungen", „Hauptgesichtspunkte
    * des Entwurfes:" and nothing else.
    */
-  options: { generalAsHeaded?: boolean } = {},
-): HtmlExplanations {
+  generalAsHeaded?: boolean
+}
+
+/**
+ * The walk over a document's blocks, whichever format they were read from:
+ * Parliament's HTML here, its PDF in `explanationsPdf.ts`, so that a heading
+ * means the same in both.
+ */
+export function parseExplanationBlocks(blocks: readonly TextBlock[], options: ExplanationsParseOptions = {}): HtmlExplanations {
   const general: string[] = []
   /** An Allgemeiner Teil heading was read and no Besonderer Teil yet. */
   let inHeadedGeneral = false
@@ -268,7 +279,7 @@ export function parseExplanationsHtml(
   /** The law it named — see `HtmlPassage.law`. */
   let law: string | null = null
 
-  for (const block of parseParliamentHtml(html)) {
+  for (const block of blocks) {
     const text = normalizeText(block.text.replace(DEGREE_AS_SPACE_RE, ' ')).trim()
     if (!text) continue
 
