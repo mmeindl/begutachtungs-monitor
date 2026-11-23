@@ -1195,6 +1195,8 @@ interface ColumnLine {
   across?: boolean
   /** A repeal word alone, beside the line where the other column opens a § this column does not print: that §'s designation (`repealedBeside`). */
   repealOf?: string
+  /** The § the other column opens on this line, at the Absatz this line opens with (`sameAbsatzBeside`). */
+  besideOpens?: string
 }
 
 /**
@@ -1256,6 +1258,41 @@ function undottedParagraph(line: ColumnLine, parts: readonly ColumnLine[]): RegE
   if (!before || !SENTENCE_END.test(before.text.trim())) return null
   const marker = UNDOTTED_PARAGRAPH_RE.exec(line.text)
   return marker && !CITATION_TAIL_RE.test(line.text.slice(marker[0].length)) ? marker : null
+}
+
+/** „§ 8. (1)" at the head of a line: a § and the Absatz it opens with. */
+const OPENS_AT_ABSATZ_RE = new RegExp(String.raw`^(§\s*${PARAGRAPH_NUMBER}\.)\s*\((\d+[a-z]*)\)`)
+const ABSATZ_FIRST_RE = /^\((\d+[a-z]*)\)/
+
+/**
+ * The § the other column opens on this line, where this one opens with the
+ * same Absatz and prints no designation: „(1) Mit der Vollziehung …" beside
+ * „§ 8. (1) Mit der Vollziehung …" in the Fluorierte Treibhausgase-Gesetz
+ * (RIS 1174CDB5), whose left column copies the law in force without that
+ * „§ 8.".
+ */
+function sameAbsatzBeside(own: string, other: string): string | null {
+  const opened = OPENS_AT_ABSATZ_RE.exec(other.trim())
+  const absatz = ABSATZ_FIRST_RE.exec(own.trim())
+  return opened && absatz && opened[2] === absatz[1] ? normalizeText(opened[1]!) : null
+}
+
+/**
+ * Does the § named beside this line open here? Only behind the shape
+ * `undottedParagraph` asks for: a centred heading that ends no sentence, under
+ * a line that ends one, so the § before is finished. Without it the first row
+ * of § 8 ran on as struck text of § 7 and § 8 kept no left half. An Absatz
+ * alone is no evidence: the Bundesabgabenordnung's „§ 86." stands on a line
+ * of its own in the Abgabenänderungsgesetz 2025 (RIS 24E5B4AA), and its „(1)"
+ * beside the left column's „§ 86a. (1)" is § 86's own.
+ */
+function opensBeside(line: ColumnLine, open: string | null, parts: readonly ColumnLine[]): string | null {
+  const named = line.besideOpens
+  if (!named || (open !== null && idOfMarker(open) === idOfMarker(named))) return null
+  const heading = parts.at(-1)
+  const before = parts.at(-2)
+  if (!heading?.centred || heading.wrapped || SENTENCE_END.test(heading.text.trim())) return null
+  return before && SENTENCE_END.test(before.text.trim()) ? named : null
 }
 
 /**
@@ -1567,8 +1604,12 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
     // words beside the other column's § are that §'s, not the § above
     // (`repealedBeside`).
     const repealOf = marker ? null : (line.repealOf ?? null)
+    // A § this column opens without printing its designation: the row's key
+    // is the other column's, and the designation goes on the line, or the
+    // word diff shows a § number that stands in both as new.
+    const beside = marker || repealOf ? null : opensBeside(line, current.gld, current.parts)
     const above = current.parts.at(-1)?.text.trim()
-    if ((!marker && !repealOf) || (above !== undefined && !SENTENCE_END.test(above) && CONTINUED_RE.test(above))) {
+    if ((!marker && !repealOf && !beside) || (above !== undefined && !SENTENCE_END.test(above) && CONTINUED_RE.test(above))) {
       current.parts.push(line)
       continue
     }
@@ -1647,7 +1688,8 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
     // short line is: „Netzen" under „… von Gigabit-" (35452, § 14b).
     while (centredLayout && carried.length > 0 && (carried[0]!.inset ?? 0) < HEADING_INSET && runsOn(current.parts.at(-1))) current.parts.push(carried.shift()!)
     if (current.gld !== null || current.parts.length > 0) units.push(current)
-    current = { gld: marker ? normalizeText(marker[1] ?? marker[0]) : repealOf, context: line.context ?? overContents, parts: [...carried, line], opener: line, ...(marker ? {} : { repealed: true as const }) }
+    const opening = beside ? { ...line, text: `${beside} ${line.text}` } : line
+    current = { gld: marker ? normalizeText(marker[1] ?? marker[0]) : (repealOf ?? beside), context: line.context ?? overContents, parts: [...carried, opening], opener: opening, ...(repealOf ? { repealed: true as const } : {}) }
     overContents = null
   }
   if (current.gld !== null || current.parts.length > 0) units.push(current)
@@ -2306,10 +2348,14 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       inset: margin.start === null ? null : start - margin.start,
       axis: margin.start === null || margin.end === null ? null : (margin.start + margin.end) / 2,
     })
-    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}) }))
+    const leftLines = section.lines.map((l) => {
+      const besideOpens = sameAbsatzBeside(l.left, l.right)
+      return { text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(besideOpens ? { besideOpens } : {}) }
+    })
     const rightLines = section.lines.map((l) => {
       const repealOf = repealedBeside(l.left, l.right)
-      return { text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(repealOf ? { repealOf } : {}) }
+      const besideOpens = sameAbsatzBeside(l.right, l.left)
+      return { text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(repealOf ? { repealOf } : {}), ...(besideOpens ? { besideOpens } : {}) }
     })
     const toc = contentsInBoth(leftLines, rightLines)
     // Two prints of a § are joined only where they are one law's (`unitsOfColumn`).

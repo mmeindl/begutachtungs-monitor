@@ -535,6 +535,38 @@ describe('where one § ends and the next begins, as the ministries set it (21.11
     expect(c.current.startsWith('Aufsicht § 120c.')).toBe(true)
   })
 
+  // Fluorierte Treibhausgase-Gesetz (RIS 1174CDB5): the left column prints
+  // no „§ 8." at its first row, only at the next („§ 8. (2) …"), and the row
+  // ran on as struck text of § 7 while § 8 kept no left half.
+  it('opens the § the other column opens at the same Absatz, under a heading', () => {
+    const rows = read([
+      at(108, 780, '§ 7. (1) Wer gegen die Pflichten verstößt, ist zu bestrafen.', 380), at(444, 780, '§ 7. (1) Wer gegen die Pflichten verstößt, ist zu bestrafen.', 716),
+      ...filler(766),
+      at(L0, 640, 'zu bestrafen. Der Versuch ist strafbar.', 260), at(R0, 640, 'zu bestrafen. Der Versuch ist strafbar.', 595),
+      at(223, 628, 'Vollziehung', 280), at(563, 628, 'Vollziehung', 619),
+      at(105, 616, '(1) Mit der Vollziehung dieses Bundesgesetzes ist der Bundesminister betraut.', 417.4), at(445, 616, '§ 8. (1) Mit der Vollziehung dieses Bundesgesetzes ist die Bundesministerin betraut.', 753.3),
+      at(105, 604, '§ 8. (2) …', 147), at(445, 604, '§ 8. (2) …', 486),
+    ])
+    expect(rows.find((r) => r.gld === '§ 7.')!.current.endsWith('Der Versuch ist strafbar.')).toBe(true)
+    const eight = rows.find((r) => r.gld === '§ 8.')!
+    expect(eight.current).toBe('Vollziehung § 8. (1) Mit der Vollziehung dieses Bundesgesetzes ist der Bundesminister betraut. § 8. (2) …')
+    expect(eight.proposed.startsWith('Vollziehung § 8. (1)')).toBe(true)
+  })
+
+  // Bundesabgabenordnung in the Abgabenänderungsgesetz 2025 (RIS 24E5B4AA):
+  // „§ 86." on a line of its own, and its „(1)" beside the left's „§ 86a. (1)".
+  it('leaves an Absatz with the § its column has open, whatever the other column opens beside it', () => {
+    const rows = read([
+      ...filler(780),
+      at(L0, 640, 'ohne unnötigen Aufschub zu entscheiden.', 288), at(R0, 640, 'ohne unnötigen Aufschub zu entscheiden.', 560),
+      at(550, 628, 'Mängelbehebung', 622),
+      at(105, 616, '§ 86. Anbringen können mündlich vorgebracht werden.', 408), at(434, 616, '§ 86.', 455),
+      at(105, 604, '§ 86a. (1) Anbringen können eingereicht werden.', 407), at(434, 604, '(1) Mängel von Anbringen berechtigen nicht zur Zurückweisung.', 753),
+    ])
+    expect(rows.find((r) => r.gld === '§ 86.')!.proposed).toContain('(1) Mängel von Anbringen')
+    expect(rows.find((r) => r.gld === '§ 86a.')!.proposed).toBe('')
+  })
+
   // A RIS print sets its headings flush: under a heading line handed on that
   // starts at the margin, a line at the margin is the heading's too
   // (Verbraucherzahlungskontogesetz, RIS F36AA3A2).
