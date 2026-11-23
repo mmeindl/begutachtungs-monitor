@@ -122,8 +122,40 @@ describe('explanationBlocks', () => {
     expect(texts(page(full('das Bundes-', 700), run('und Landesrecht', 689)))).toEqual(['das Bundes- und Landesrecht'])
   })
 
+  it('keeps a heading in body type whole while its bracket is open', () => {
+    const lines = page(full('Ein Absatz bis zum Rand.', 730), run('Zu Artikel VII (Überschreitung von Aufwendungen', 700), run('ohne Ausgleich im Ergebnishaushalt):', 689), run('Die Erfahrungen zeigen das.', 667))
+    expect(texts(lines)).toEqual(['Ein Absatz bis zum Rand.', 'Zu Artikel VII (Überschreitung von Aufwendungen ohne Ausgleich im Ergebnishaushalt):', 'Die Erfahrungen zeigen das.'])
+  })
+
+  it('ends a short line with a closed bracket as before', () => {
+    expect(texts(page(full('Ein Absatz bis zum Rand.', 730), run('Zu § 5 (Aufsicht):', 700), run('Die Behörde prüft.', 689)))).toEqual(['Ein Absatz bis zum Rand.', 'Zu § 5 (Aufsicht):', 'Die Behörde prüft.'])
+  })
+
   it('takes a raised run as a word of its own, as the HTML’s <sup> reads', () => {
     const line = [run('StGB', 700, { width: 22 }), run('12', 703, { x: LEFT + 22, width: 6, size: 6.5 })]
     expect(texts(page(...line))).toEqual(['StGB 12'])
+  })
+})
+
+describe('a heading over a group of Artikel', () => {
+  const block = (text: string) => ({ kind: 'other' as const, cls: 'PdfAbs', text, gld: null })
+  const doc = (group: string) => [block('Besonderer Teil'), block('Zu Z 1 (§ 6 Abs. 4 BMSVG):'), block('Der Satz zu § 6.'), block(group), block('Die Pensionen werden angepasst.')]
+
+  it.each(['Zu den Art. 16 bis 26:', 'Zu den Art. 2, 3 und 4 (Änderung des Arbeitsverfassungsgesetzes):', 'Zu den Art. 35, 36 und 40 (§ 5 ASVG):'])('keeps the reasoning of %s from the § before it', (group) => {
+    const { special } = parseExplanationBlocks(doc(group), { generalAsHeaded: true, articleGroups: true })
+    expect(special[0]!.text).toEqual(['Der Satz zu § 6.'])
+    expect(special[1]).toMatchObject({ heading: group, paragraphs: [], article: null, text: ['Die Pensionen werden angepasst.'] })
+  })
+
+  it('leaves a sentence that opens the same way in its passage', () => {
+    const sentence = 'Zu den Art. 16 bis 26 ist Folgendes festzuhalten:'
+    const { special } = parseExplanationBlocks(doc(sentence), { generalAsHeaded: true, articleGroups: true })
+    expect(special).toHaveLength(1)
+    expect(special[0]!.text).toContain(sentence)
+  })
+
+  it('stays in the passage for the reasoning comparison', () => {
+    const { special } = parseExplanationBlocks(doc('Zu den Art. 16 bis 26:'))
+    expect(special).toHaveLength(1)
   })
 })

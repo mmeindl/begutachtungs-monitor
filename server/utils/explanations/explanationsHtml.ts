@@ -258,6 +258,29 @@ export interface ExplanationsParseOptions {
    * des Entwurfes:" and nothing else.
    */
   generalAsHeaded?: boolean
+  /**
+   * End the passage at a heading over a group of Artikel (`isArticleGroupHeading`),
+   * where the reasoning is shown under its §. Off for the reasoning comparison,
+   * which reads such a heading inside the passage on purpose
+   * (`reasoningDiff.test.ts`, „Zu den Art. 8 bis 10").
+   */
+  articleGroups?: boolean
+}
+
+/**
+ * „Zu den Art. 16 bis 26:", „Zu den Art. 2, 3 und 4 (Änderung des …):": a
+ * heading over several Artikel with no Ziffer. It is no address
+ * (`isAddressHeading`), so it and the prose under it stayed in the passage
+ * before it: 8 of the 633 Vorlagen of GP XXVI to XXVIII showed the reasoning
+ * for other laws under one § (23.11.2026; 408 d.B. XXVII the pension laws'
+ * under § 6 BMSVG). Outside its brackets it holds Artikel numbers and a colon,
+ * so a sentence that opens the same way is no such heading.
+ */
+function isArticleGroupHeading(text: string): boolean {
+  if (text.length > 400 || !text.endsWith(':') || !/^Zu\s+den\s+Art(?:ikel|\.)?\s*\d/i.test(text)) return false
+  let flat = text
+  for (let i = 0; i < 2; i++) flat = flat.replace(/\([^()]*\)/g, ' ')
+  return /^Zu den Art(?:ikel|\.)?\s*\d+[a-z]?(?:\s*(?:,|und|sowie|bis)\s*(?:Art(?:ikel|\.)?\s*)?\d+[a-z]?)*\s*:$/i.test(flat.replace(/\s+/g, ' ').trim())
 }
 
 /**
@@ -304,6 +327,17 @@ export function parseExplanationBlocks(blocks: readonly TextBlock[], options: Ex
 
     if (options.generalAsHeaded && inHeadedGeneral) {
       general.push(text)
+      continue
+    }
+
+    // Its reasoning belongs to several laws, so to no one §, and the mark above
+    // it no longer says which law follows.
+    if (options.articleGroups && inSpecial && isArticleGroupHeading(text)) {
+      mark = null
+      section = null
+      law = null
+      current = { heading: text, paragraphs: [], text: [], article: null, ziffern: [], section: null, law: null }
+      special.push(current)
       continue
     }
 

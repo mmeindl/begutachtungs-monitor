@@ -352,6 +352,16 @@ gets an entry of its own only where it carries a reason the rule does not.
   (`dropped`); a footnote stands behind the paragraph that points to it. Only
   a Vorlage: an Antrag's Begründung and a Ministerialentwurf's documents at
   Parliament stay unread, and the credit is „freies Werk".
+  With no HTML to compare, the 41 PDF-only documents were held to their own
+  pages (23.11.2026): of 36,088 printed lines every one is in the reading or
+  explained as a stamp, a running line, a bound-in annex or a table, and all
+  919 printed „Zu …" addresses open a passage of their own.
+- **A heading over a group of Artikel ends the passage before it, where the
+  reasoning is shown at its §** (23.11.2026, `isArticleGroupHeading`). „Zu den
+  Art. 16 bis 26:" is no address, so its text stayed in the passage above: 8 of
+  633 Vorlagen of GP XXVI to XXVIII, six of them read from HTML, showed the
+  reasoning for other laws under one § (408 d.B. XXVII: the pension laws' under
+  § 6 BMSVG). The reasoning comparison still reads it inside the passage.
 - **Salzburg, the one Land with a statement, in this order of evidence:** a
   draft of the register joined to the law (the Land's record or the title
   search) — consulted; the Regierungsvorlage's Erläuterungen carry

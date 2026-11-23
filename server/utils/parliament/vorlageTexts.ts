@@ -181,7 +181,7 @@ async function readExplanationsPdf(url: string): Promise<ExplanationsRead | stri
   const read = explanationBlocks(pages)
   if (!isSoundExplanationsRead(read)) return gapDe('unreadable', 'Die Erläuterungen dieser Regierungsvorlage ließen sich aus dem PDF des Parlaments nicht vollständig auslesen.')
   const labelled = read.blocks.some((b) => /Allgemeiner\s+Teil/i.test(b.text))
-  return { parsed: parseExplanationBlocks(read.blocks, { generalAsHeaded: true }), labelled, dropped: read.tableLines + read.unplacedNotes }
+  return { parsed: parseExplanationBlocks(read.blocks, { generalAsHeaded: true, articleGroups: true }), labelled, dropped: read.tableLines + read.unplacedNotes }
 }
 
 /**
@@ -207,7 +207,7 @@ export const getVorlageExplanations = defineCachedFunction(
       const text = await fetchDocument(html)
       // Whether the ressort headed an Allgemeiner Teil — the section says
       // whether it shows a named part or our reading of the document.
-      read = { parsed: parseExplanationsHtml(text, { generalAsHeaded: true }), labelled: /Allgemeiner\s+Teil/i.test(stripHtmlToText(text)), dropped: 0 }
+      read = { parsed: parseExplanationsHtml(text, { generalAsHeaded: true, articleGroups: true }), labelled: /Allgemeiner\s+Teil/i.test(stripHtmlToText(text)), dropped: 0 }
     } else {
       const fromPdf = await readExplanationsPdf(pdf!)
       if (typeof fromPdf === 'string') return emptyExplanations(fromPdf, document)

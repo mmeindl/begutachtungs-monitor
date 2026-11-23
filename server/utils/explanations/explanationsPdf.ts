@@ -264,6 +264,11 @@ const ADDRESS_START_RE = /^Zu\s+(?:den\s+)?(?:§|Z\s*\d|Art\b|Art\.|Artikel\b|Ab
 /** Words a line-end hyphen stands before and keeps, with a space: „Bundes- und Landesrecht". */
 const KEEPS_SPACE_RE = /^(?:und|oder|bzw|sowie|bis|als|wie)\b/
 
+/** An address heading whose bracket is still open goes on in the next line: „Zu Artikel VII (Überschreitung von Aufwendungen / ohne Ausgleich …):". */
+function isOpenAddress(text: string): boolean {
+  return text.length <= 200 && ADDRESS_START_RE.test(text) && (text.match(/\(/g)?.length ?? 0) > (text.match(/\)/g)?.length ?? 0)
+}
+
 /** Closing marks that stand right behind the line before: „(Herstellungs-)Kosten". */
 const CLOSING_RE = /^[)\]},.;:!?“”"']/
 
@@ -466,6 +471,9 @@ export function explanationBlocks(pages: readonly ExplanationPage[]): Explanatio
     if (!opens && opensAddress && !beforeFull) opens = true
     // A heading opens with a capital; „zu Art. 57 …" at a line's start goes on from the line before.
     if (opens && current !== null && /^zu\s/.test(line.text)) opens = false
+    // A heading set in body type: its second line stops short of the margin like a paragraph's first, and is still the heading.
+    const held = current as { text: string } | null
+    if (opens && samePage && held !== null && !opensAddress && gap <= step * 1.22 && isOpenAddress(held.text)) opens = false
     if (opens) close()
     if (current === null) current = { text: line.text, bold: line.bold, marks: [...line.marks] }
     else {
