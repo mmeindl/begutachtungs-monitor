@@ -385,6 +385,53 @@ function cutPastSharedEdge(pages: readonly AnnexPage[], cut: number): number {
   return Number.isFinite(start) ? Math.round((edge + start) / 2) : cut
 }
 
+/** How far a page's own gutter may stand from the document's cut and still be that gutter. */
+const PAGE_FRAME_SHIFT = 30
+
+/**
+ * The cut for a page whose text is set off the document's frame.
+ *
+ * One cut serves every page, and a ressort's pages need not agree. The
+ * Budgetbegleitgesetz 2025 (RIS 196B9BA1) prints its header pair in one place
+ * on all 23 pages and shifts the text under it from page to page: the right
+ * column opens at 424.5 on one and 417.5 on another, while the left column
+ * runs to 424 on a third. The document's cut fell at 426, and every full line
+ * of a right column opening short of it crossed it, went to `spanning` and
+ * stood in neither column: the mirror of a left column reaching past the cut
+ * (`cutPastSharedEdge`). The seam of the header pair, which gates a displaced
+ * page, cannot see this: the header did not move.
+ *
+ * The page says so itself: around the cut its ink leaves a strip empty that
+ * does not hold the cut, and on one line a run crossing the cut stands at one
+ * edge of that strip with the other column's run at the other. A heading
+ * across both columns has nothing beside it, and a page with nothing crossing
+ * keeps the document's cut.
+ */
+function pageCut(page: AnnexPage, cut: number): number {
+  const crossing = page.items.filter((item) => item.text.trim() && item.x < cut && item.x + item.width > cut + GUTTER_TOLERANCE)
+  if (crossing.length === 0) return cut
+  const from = Math.round(cut) - PAGE_FRAME_SHIFT
+  const to = Math.round(cut) + PAGE_FRAME_SHIFT
+  const coverage = new Array<number>(to - from + 1).fill(0)
+  for (const item of page.items) {
+    if (!item.text.trim()) continue
+    for (let x = Math.max(from, Math.floor(item.x)); x <= Math.min(to, Math.ceil(item.x + item.width)); x++) coverage[x - from]!++
+  }
+  const [low, high] = lowestStretch(coverage)
+  const strip = [from + low, from + high] as const
+  if (strip[0] <= cut && cut <= strip[1]) return cut
+  const parted = baselines(page).some((line) => {
+    const runs = line.filter((run) => run.text.trim())
+    return runs.some((run) => {
+      if (!crossing.includes(run)) return false
+      const opensRight = run.x >= strip[1] - 1 && runs.some((other) => other.x + other.width <= strip[0] + 1)
+      const endsLeft = run.x + run.width <= strip[0] + 1 && runs.some((other) => other.x >= strip[1] - 1)
+      return opensRight || endsLeft
+    })
+  })
+  return parted ? Math.round((strip[0] + strip[1]) / 2) : cut
+}
+
 /**
  * The column boundary: where the two-column lines part, and failing that the
  * emptiest vertical strip in the middle of the page.
@@ -2317,9 +2364,15 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     return { rows: [], refusal: null, droppedPages: pages.length - proven.length, unreadable: 'Auf keiner Seite der Beilage war die Seitengeometrie belegt: Breite, Drehung oder Schräglage der Textläufe weichen voneinander ab.' }
   }
   const estimate = columnBoundary(proven)
+  /** A page as the document's cut reads it, and as its own does (`pageCut`), which is mostly the same reading. */
+  const readAt = (page: AnnexPage, cut: number) => {
+    const atDocumentCut = linesFromPage(page, cut, layout)
+    const own = pageCut(page, cut)
+    return { page, own, atDocumentCut, lines: own === cut ? atDocumentCut : linesFromPage(page, own, layout) }
+  }
   const read = proven.map((page) => {
-    const lines = linesFromPage(page, estimate, layout)
-    return { page, lines, seam: headerSeam(lines) }
+    const at = readAt(page, estimate)
+    return { ...at, seam: headerSeam(at.atDocumentCut) }
   })
 
   // The second half of the page gate. `isProven` vouches for a page's width,
@@ -2378,7 +2431,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   // instead, which prints the header pair on 2 of its 7 pages. So the ink keeps
   // the cut.
   const boundary = vouched.length === read.length ? estimate : columnBoundary(vouched.map((p) => p.page))
-  const pageLines = vouched.length === read.length ? vouched.map((p) => p.lines) : vouched.map((p) => linesFromPage(p.page, boundary, layout))
+  const remeasured = vouched.length === read.length ? vouched : vouched.map((p) => readAt(p.page, boundary))
+  const pageLines = remeasured.map((p) => p.lines)
   const placed = pageLines.flat()
 
   // The one structural check this path has. Everything below reads a column
@@ -2407,15 +2461,30 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   const documentStarts = startsDocument(pageLines)
   // Measured over the whole document, like the boundary: a single page need
   // not print one line that reaches its column's edge.
-  const edges = columnEdges(placed, boundary, vouched[0]?.page.width ?? width)
+  //
+  // Both are the document's as read at its own cut, so a page that keeps that
+  // cut is judged exactly as if no other page had moved (`pageCut`). A page
+  // that moved is set elsewhere and is judged against its own (`frameOf`).
+  const atCut = remeasured.flatMap((p) => p.atDocumentCut)
+  const edges = columnEdges(atCut, boundary, vouched[0]?.page.width ?? width)
   // Where each column's body text runs, for `isCentred` — over the content,
   // not the chrome: a page number on each of 113 pages is a common end too.
   // Nor over a designation set across the gutter, which is neither column's
   // text alone (`AnnexLayout.designationsAcross`).
-  const body = lines.filter((l) => !l.across)
-  const margins = {
-    left: { start: columnMargin(body.filter((l) => l.left).map((l) => l.leftStart), 'start'), end: columnMargin(body.filter((l) => l.left).map((l) => l.leftEnd), 'end') },
-    right: { start: columnMargin(body.filter((l) => l.right).map((l) => l.rightStart), 'start'), end: columnMargin(body.filter((l) => l.right).map((l) => l.rightEnd), 'end') },
+  const marginsOf = (of: readonly AnnexLine[]) => {
+    const body = of.filter((l) => !isChrome(l) && !l.across)
+    return {
+      left: { start: columnMargin(body.filter((l) => l.left).map((l) => l.leftStart), 'start'), end: columnMargin(body.filter((l) => l.left).map((l) => l.leftEnd), 'end') },
+      right: { start: columnMargin(body.filter((l) => l.right).map((l) => l.rightStart), 'start'), end: columnMargin(body.filter((l) => l.right).map((l) => l.rightEnd), 'end') },
+    }
+  }
+  const margins = marginsOf(atCut)
+  /** A page read at a cut of its own (`pageCut`), with the edges and margins it is set to. */
+  const frameOf = new Map<AnnexLine, { edges: ColumnEdges; margins: typeof margins }>()
+  for (const p of remeasured) {
+    if (p.lines === p.atDocumentCut) continue
+    const frame = { edges: columnEdges(p.lines, p.own, p.page.width), margins: marginsOf(p.lines) }
+    for (const line of p.lines) frameOf.set(line, frame)
   }
 
   const { candidates, roles } = candidateLines(lines, edges, layout.lawsByName ? articles.flatMap((a) => (a.title ? [a.title] : [])) : [])
@@ -2496,12 +2565,14 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     })
     const leftLines = section.lines.map((l) => {
       const besideOpens = sameAbsatzBeside(l.left, l.right)
-      return { text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(besideOpens ? { besideOpens } : {}) }
+      const frame = frameOf.get(l) ?? { edges, margins }
+      return { text: l.left, wrapped: reachedEdge(l.leftEnd, frame.edges.left), centred: isCentred(l.leftStart, l.leftEnd, frame.margins.left), flush: isFlush(l.leftStart, frame.margins.left), ...at(l.leftStart, l.leftEnd, frame.margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(besideOpens ? { besideOpens } : {}) }
     })
     const rightLines = section.lines.map((l) => {
       const repealOf = repealedBeside(l.left, l.right)
       const besideOpens = sameAbsatzBeside(l.right, l.left)
-      return { text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(repealOf ? { repealOf } : {}), ...(besideOpens ? { besideOpens } : {}) }
+      const frame = frameOf.get(l) ?? { edges, margins }
+      return { text: l.right, wrapped: reachedEdge(l.rightEnd, frame.edges.right), centred: isCentred(l.rightStart, l.rightEnd, frame.margins.right), flush: isFlush(l.rightStart, frame.margins.right), ...at(l.rightStart, l.rightEnd, frame.margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(repealOf ? { repealOf } : {}), ...(besideOpens ? { besideOpens } : {}) }
     })
     const toc = contentsInBoth(leftLines, rightLines)
     moveSharedHeadings(leftLines, rightLines, toc)

@@ -1828,6 +1828,18 @@ gets an entry of its own only where it carries a reason the rule does not.
   notes in the schedule class („IKT rückwirkend 5.5.2023"), and such a line
   opens no schedule. A document without the template's classes is returned
   unchanged, so the RIS path cannot move through this code.
+- **A page whose text is set off the document's frame is cut at its own
+  gutter and judged against its own edges** (23.11.2026, `pageCut` in
+  `annex/annexPdf.ts`). The Budgetbegleitgesetz 2025 prints its header pair
+  in one place on every page and shifts the text under it, so the right
+  column opens at 424.5 on one page and 417.5 on another. Only where a line
+  shows it: a run crossing the document's cut at one edge of the page's empty
+  strip, the other column's run at the other. Every other page keeps the
+  document's cut, and edges and margins are measured as read at that cut, so
+  a page that did not move reads as if no other had. Rejected: one cut in
+  front of the leftmost column (it cut words off the pages set further
+  right), and moving a page into the document's frame (the margins of a
+  moved page then decide what counts as a heading on the others).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

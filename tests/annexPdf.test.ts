@@ -179,6 +179,37 @@ describe('parseAnnexPdf', () => {
   })
 })
 
+// Budgetbegleitgesetz 2025 (RIS 196B9BA1): the header pair stands in one place
+// on every page and the text under it shifts from page to page. At the
+// document's cut, a right column opening short of it read as spanning.
+describe('a page set off the document\'s frame', () => {
+  const header = (): AnnexItem[] => [wide(222, 800, 'Geltende Fassung', 70), wide(545, 800, 'Vorgeschlagene Fassung', 90)]
+  const body = (leftX: number, rightX: number, para: string): AnnexItem[] => [
+    wide(leftX, 700, `§ ${para}. (1) Der Beamte ist auf seinen Antrag zu versetzen, wenn er das 62. Lebensjahr`, rightX - 7 - leftX),
+    wide(rightX, 700, `§ ${para}. (1) Der Beamte ist auf seinen Antrag zu versetzen, wenn er das 63. Lebensjahr`, 329),
+    ...Array.from({ length: 12 }, (_, n) => [
+      wide(leftX, 689 - n * 11, 'vollendet hat und eine ruhegenussfähige Gesamtdienstzeit von Monaten aufweist', rightX - 7 - leftX),
+      wide(rightX, 689 - n * 11, 'vollendet hat und eine ruhegenussfähige Gesamtdienstzeit von Monaten aufweist', 329),
+    ]).flat(),
+  ]
+  const pages = [pageOf([...header(), ...body(96, 431, '1')], 841.92), pageOf([...header(), ...body(96, 431, '2')], 841.92), pageOf([...header(), ...body(82, 418, '3')], 841.92)]
+
+  it('reads both columns of the page that moved', () => {
+    const cut = columnBoundary(pages)
+    expect(cut).toBeGreaterThan(418)
+    const row = parseAnnexPdf(pages, ONE_LAW).rows.find((r) => r.gld === '§ 3.')!
+    expect(row.current).toContain('62. Lebensjahr vollendet hat')
+    expect(row.proposed).toContain('63. Lebensjahr vollendet hat')
+    expect(row.current).not.toContain('63. Lebensjahr')
+  })
+
+  it('leaves a heading across both columns to its page, which keeps the cut', () => {
+    const across = pageOf([...header(), ...body(96, 431, '4'), wide(300, 500, 'Änderung des Bundesbahn-Pensionsgesetzes und weiterer Gesetze', 260)], 841.92)
+    const lines = linesFromPage(across, columnBoundary([across]))
+    expect(lines.at(-1)!.spanning).toBe('Änderung des Bundesbahn-Pensionsgesetzes und weiterer Gesetze')
+  })
+})
+
 describe('columnBoundary', () => {
   // The columns are not symmetric. On one annex the proposed column starts at
   // x = 414,7 while the page midline is 421, so the midline filed its body
