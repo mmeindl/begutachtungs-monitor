@@ -1466,6 +1466,15 @@ gets an entry of its own only where it carries a reason the rule does not.
   comma, „2,5" and „25" were one number to the check's repair of run-together
   words. Both make the check account for less, so the corpus was read: one
   real § moves.
+- **A comparison sign is a word of the draft check** (23.11.2026, `strictTokens`).
+  „<", „>", „≤", „≥" and „≠" are tokens, so „< 0,3" and „≤ 0,3" are two limits;
+  until now they were punctuation, and Bäderhygieneverordnung § 30, where the
+  draft writes „<" and the annex prints „≤", stood without a Vermerk. A look-alike
+  is the sign it looks like: the modifier letters „˂ ˃" one ministry's font prints
+  (§§ 27 and 28 of the same Verordnung), the full-width forms, the slanted „≦ ≧ ⩽
+  ⩾". „=" stays punctuation: it stands in formulas, whose layout neither document
+  keeps. Measured over GP XXVIII: that one § moves on both annex paths, none of
+  the 1,166 §§ of the Länder.
 - **A failed read of the Lesefassung costs its confirmation, not the annex**
   (23.11.2026, `readAndCheck`). Since the marks ask the oracle, one failed
   RIS read behind the Lesefassung took the whole section away, although the
@@ -1650,10 +1659,9 @@ gets an entry of its own only where it carries a reason the rule does not.
   first sentence ends its heading zone there; a renumbering line that runs
   on into „und § 2 wird …" reads the § as moved. It does not ask the other
   direction, old wording the draft replaces that still stands in the column
-  (51 candidates, most of them places the check cannot read), and it
-  compares no signs („<" against „≤"). The Länder do not ask for struck
-  text: there a § that differs is withheld, and 28 shown §§ would newly
-  differ.
+  (51 candidates, most of them places the check cannot read). The Länder do
+  not ask for struck text: there a § that differs is withheld, and 28 shown
+  §§ would newly differ.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a

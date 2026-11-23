@@ -112,8 +112,17 @@ import { RUNS_ON_RE } from './landTgu'
 const JOINERS = 'und|oder|bzw|sowie|beziehungsweise'
 /** A word broken at a line's end („Verord- nung", „Infrastruktur- Dienstleistung"), never an Ergänzungsstrich („Land- und Forstwirtschaft"). The marks of `markedText` between the halves stay. */
 const BROKEN_WORD_RE = new RegExp(`(?<=[\\p{L}\\p{N}])-([\\s\\uE000\\uE001]+)(?!(?:${JOINERS})(?![\\p{L}\\p{N}]))(?=\\p{L})`, 'gu')
+/**
+ * A comparison sign is a word of the law (23.11.2026): „< 0,3" and „≤ 0,3" are two limits, and read as punctuation they were one
+ * (Bäderhygieneverordnung § 30). Its look-alikes are one sign: the modifier letters „˂ ˃" a ministry's font prints for „< >"
+ * (§§ 27 and 28 of the same Verordnung), the full-width forms and the slanted „≦ ≧ ⩽ ⩾". „=" stays punctuation: it stands in
+ * formulas, whose layout neither document keeps.
+ */
+const SIGN_FORMS: Readonly<Record<string, string>> = { '˂': '<', '˃': '>', '＜': '<', '＞': '>', '≦': '≤', '≧': '≥', '⩽': '≤', '⩾': '≥' }
+const SIGN_FORM_RE = /[˂˃＜＞≦≧⩽⩾]/gu
+const SIGN_RE = /^[<>≤≥≠]$/u
 /** A decimal figure is one token: cut at its comma, „2,5“ and „25“ were one number to `respace`. */
-const TOKEN_RE = /[\uE000\uE001]|§|(?<![\p{L}\p{N}-])\d+,\d+(?![\p{L}\p{N}])|[\p{L}\p{N}-]+/gu
+const TOKEN_RE = /[\uE000\uE001]|§|[<>≤≥≠]|(?<![\p{L}\p{N}-])\d+,\d+(?![\p{L}\p{N}])|[\p{L}\p{N}-]+/gu
 
 /** A token with whether it stands inside a stretch marked `\uE000…\uE001` — two private-use characters no text carries and no normalisation touches. */
 interface Marked {
@@ -197,7 +206,7 @@ function designationForm(flat: string, at: number, length: number, previous: rea
 const withoutResidue = (text: string): string => text.replace(/[ðÐ]/g, ' ').replace(/ã/g, '„').replace(/Ò/g, '“').replace(/¸/g, 'ü').replace(/‰/g, 'ä').replace(/ˆ/g, 'ö')
 
 function markedTokens(text: string): Marked[] {
-  const normal = normalizeText(withoutResidue(text))
+  const normal = normalizeText(withoutResidue(text).replace(SIGN_FORM_RE, (c) => SIGN_FORMS[c]!))
   const flat = normal
     .toLowerCase()
     .replace(BROKEN_WORD_RE, (_m, gap: string) => gap.replace(/\s+/g, ''))
@@ -211,7 +220,7 @@ function markedTokens(text: string): Marked[] {
     else {
       // „ß" read as the ligature „ﬂ" comes back as „fl" („Maflgabe", the same two drafts): one spelling for both.
       const word = m[0].replace(/-/g, '').replace(/ß/g, 'fl')
-      const designation = designationForm(flat, m.index, m[0].length, out)
+      const designation = !SIGN_RE.test(word) && designationForm(flat, m.index, m[0].length, out)
       // A shape also where the figure is printed like one but not read as a unit's start: „… 15." after an elision mark the caller reads as a word.
       const like = designation || (/^(?:\d+[a-z]*|[a-z]{1,2})$/.test(word) && /[.)]/.test(flat[m.index + m[0].length] ?? ''))
       // A word is no designation for this though `designationForm` takes it for one („… Werkzeug und Berufskleidung). Ausgaben …").

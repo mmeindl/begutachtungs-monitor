@@ -71,6 +71,19 @@ describe('a word or a figure the payload prints at another place (23.11.2026)', 
     expect(state('(2) Der Satz beträgt 25 % des Betrags.', '(2) Der Satz beträgt {3} [2,5] % des Betrags.')).toBe('differs')
     expect(state('(2) Der Satz beträgt 2,5 % des Betrags.', '(2) Der Satz beträgt {3} [2,5] % des Betrags.')).toBe('holds')
   })
+
+  it('reads a comparison sign as a word: „<“ is not „≤“, and a look-alike is the sign it looks like (Bäderhygieneverordnung §§ 27, 28 and 30)', () => {
+    expect(strictTokens('pH-Wert < 7,5 und ≥ 6 sowie ≠ 3')).toEqual(['phwert', '<', '7,5', 'und', '≥', '6', 'sowie', '≠', '3'])
+    expect(strictTokens('˂ 5 ˃ 6 ＜ 7 ＞ 8 ≦ 9 ⩽ 10 ≧ 11 ⩾ 12')).toEqual(strictTokens('< 5 > 6 < 7 > 8 ≤ 9 ≤ 10 ≥ 11 ≥ 12'))
+    expect(state('(2) Der Wert muss < 0,3 mg/l betragen.', '(2) Der Wert muss {hoch} [≤ 0,3 mg/l] betragen.')).toBe('differs')
+    expect(state('(2) Der Wert muss < 0,3 mg/l betragen.', '(2) Der Wert muss {hoch} [0,3 mg/l] betragen.')).toBe('differs')
+    expect(state('(2) Der Wert muss > 0,3 mg/l betragen.', '(2) Der Wert muss {hoch} [˃ 0,3 mg/l] betragen.')).toBe('holds')
+  })
+
+  it('takes a sign for no designation and keeps „=“ as punctuation', () => {
+    expect(state('(2) Es gilt a = 5.', '(2) Es gilt {b} [a 5.]')).toBe('holds')
+    expect(strictTokens('(< 5.)')).toEqual(['<', '5'])
+  })
 })
 
 describe('strictTokens', () => {
