@@ -1708,7 +1708,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   (23.11.2026, `PLACE_BEHIND_RE`): „wird das Zitat „X“ nach der Wortfolge „Y“
   durch das Zitat „Z“ ersetzt", „das Wort „und“ vor „Geburtsdatum“ durch einen
   Beistrich". Only with nothing but the place between the quotation and its
-  „durch". The §§ such a line named stayed „nicht geprüft".
+  „durch". The §§ such a line named stayed „nicht geprüft". Such a wording is
+  that occurrence (`WordPlace`): it accounts only where it touches the quoted
+  place, not for another „und" of the unit, and kept at its place it covers no
+  twin struck elsewhere (a reader's attack on KFG § 114b, 23.11.2026). A plain
+  „wird das Wort „und“ durch …" names no place and still counts at every one of
+  its unit.
 - **A quoted wording is also found with a word the column prints apart**
   (23.11.2026), where the same column prints that word joined at another
   place: „§§ 4a" and „§§ 4 a" in one Absatz (Fremdenpolizeigesetz § 61). A

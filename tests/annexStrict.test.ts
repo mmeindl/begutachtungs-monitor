@@ -442,6 +442,18 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
       expect(check(blocksWith(lines[0]!, '2. In § 5 Abs. 2 (neu) entfallen die Z 1 und die Ziffernbezeichnung „2.“.'), renumbered, CURRENT).state).toBe('differs')
     })
 
+    it('takes a word the line places by the words beside it at that occurrence only, and lets its kept twin cover nothing (KFG § 114b)', () => {
+      const line = '1. In § 5 Abs. 1 wird das Wort „und“ vor „Geburtsdatum“ durch einen Beistrich ersetzt.'
+      const current = '(1) Daten der Lehrer und Schüler sowie Name und Geburtsdatum der Person.'
+      expect(check(blocksWith(line), '(1) Daten der Lehrer und Schüler sowie Name, Geburtsdatum der Person.', current).state).toBe('holds')
+      expect(check(blocksWith(line), '(1) Daten der Lehrer Schüler sowie Name und Geburtsdatum der Person.', current)).toMatchObject({ state: 'differs', struckNotInDraft: ['und'] })
+      // The same with the place behind: „nach der Wortfolge".
+      const after = '1. In § 5 Abs. 1 wird das Wort „oder“ nach der Wortfolge „Name“ durch das Wort „und“ ersetzt.'
+      const two = '(1) Lehrer oder Schüler sowie Name oder Anschrift.'
+      expect(check(blocksWith(after), '(1) Lehrer oder Schüler sowie Name und Anschrift.', two).state).toBe('holds')
+      expect(check(blocksWith(after), '(1) Lehrer und Schüler sowie Name oder Anschrift.', two).state).toBe('differs')
+    })
+
     it('credits a number of the new count only where a line at or before it maps this old number to it', () => {
       const current = '(7) Die Behörde ist zuständig. (8) Die Frist ist nicht verlängerbar. (9) Der Antrag ist schriftlich.'
       const proposed = '(6) Die Behörde ist zuständig. (7) Die Frist ist verlängerbar. (8) Der Antrag ist schriftlich.'

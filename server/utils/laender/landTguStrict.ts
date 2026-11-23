@@ -315,6 +315,9 @@ export interface DraftWording {
   struck?: Struck
 }
 
+/** Where a line sets an old wording by the words beside it: „das Wort „und“ vor „Geburtsdatum“" stands before them. */
+export interface WordPlace { side: 'before' | 'after'; tokens: string[] }
+
 /**
  * What a draft's instructions for a § strike (22.11.2026), each with the
  * instruction's line: the wording they quote as replaced or struck
@@ -329,7 +332,7 @@ export interface DraftWording {
  */
 export interface Struck {
   /** …each with the places its line names (`places`): it accounts only there, or anywhere in the § where they name the § whole or nothing below it. */
-  named: { tokens: string[]; line: string; designation?: true; places?: AddressUnit[] }[]
+  named: { tokens: string[]; line: string; designation?: true; places?: AddressUnit[]; touching?: WordPlace }[]
   repealed: (AddressUnit & { line: string })[]
   /** …`replaces` where the line writes the stretch anew (a payload, a quoted new wording), `heading` where it is the heading; `sentences` where it counts sentences only, which ones („erster", „dritter bis sechster", „letzter" -1) of the units it names first (`in`; none: the §). */
   byPosition: { count: number; places: AddressUnit[]; line: string; replaces?: true; heading?: true; sentences?: { at: number[]; in: AddressUnit[] }; whole?: true }[]
@@ -428,7 +431,7 @@ const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jewei
  * Read clause by clause, since German puts the verb at either end:
  * „entfällt die Wortfolge „X"" and „wird die Wortfolge „X" gestrichen".
  */
-export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean; range: boolean; rewrites: boolean }[] {
+export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean; range: boolean; rewrites: boolean; touching?: WordPlace }[] {
   const line = withoutResidue(raw)
   const quotes = [...line.matchAll(QUOTE_RE)]
   const bounds = [...line.matchAll(CLAUSE_RE)].map((m) => m.index)
@@ -500,7 +503,15 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     const verb = behind ?? [...line.slice(clauseStart, q.start).replace(QUOTE_RE, ' ').matchAll(new RegExp(VERB_RE.source, 'gu'))].at(-1)?.[1]
     return verb !== undefined && /^(?:lautet|lauten|ersetzt)$/u.test(verb)
   }
-  return out.map((q) => ({ text: q.text, role: inexact && q.role === 'new' ? null : q.role, designation: (q.role === 'new' || q.role === 'old') && q.designation, range: q.range, rewrites: rewrites(q) }))
+  // „das Wort „und“ vor „Geburtsdatum“ durch …": the old wording with the quotation that says where it stands.
+  const touching = (q: (typeof out)[number], i: number): WordPlace | null => {
+    const place = q.role === 'old' && out[i + 1]?.role === 'anchor' ? PLACE_BEHIND_RE.exec(q.after) : null
+    return place ? { side: /^\s*[Vv]or/u.test(place[0]) ? 'before' : 'after', tokens: strictTokens(out[i + 1]!.text) } : null
+  }
+  return out.map((q, i) => {
+    const place = touching(q, i)
+    return { text: q.text, role: inexact && q.role === 'new' ? null : q.role, designation: (q.role === 'new' || q.role === 'old') && q.designation, range: q.range, rewrites: rewrites(q), ...(place ? { touching: place } : {}) }
+  })
 }
 
 /** A block that opens with a § designation: „§ 2. (1) Die …", „„§ 21a", „§ 20a". */
@@ -1291,7 +1302,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
     // What each run's line strikes (`Struck`): the wording it quotes as old, and the payload under a line whose last verb removes.
     const struckOf = (run: Run): Struck => {
       const line = run.line ?? ''
-      const quoted: Struck['named'] = quoteRoles(line).filter((q) => q.role === 'old').map((q) => ({ tokens: strictTokens(q.text), line, ...(q.designation ? { designation: true as const } : {}) }))
+      const quoted: Struck['named'] = quoteRoles(line).filter((q) => q.role === 'old').map((q) => ({ tokens: strictTokens(q.text), line, ...(q.designation ? { designation: true as const } : {}), ...(q.touching ? { touching: q.touching } : {}) }))
       if (run.line !== null && removesPayload(run.line)) quoted.push(...run.payload.map((b) => ({ tokens: strictTokens(`${b.gld ?? ''} ${b.text}`.replace(FOOTER_RE, ' ')), line })))
       const { count, sentences: counted, whole, firstAt } = positionsOf(line)
       // Where it strikes by position: the units the line names („In § 5 Abs. 2 entfällt der letzte Satz"), none for the § itself.
@@ -2372,14 +2383,18 @@ function struckAccount(
       if (count === 'new') return part.ids.includes(around.at >= 0 ? newIdAt(around.at) : around.id) && numberedAs(part.level, around.id, part.ids, at, n.line) && at + width <= around.end
       return part.ids.includes(around.id) && at + width <= around.end
     }))
-    named.push({ tokens, law })
+    // A wording the line places by the words beside it („das Wort „und“ vor „Geburtsdatum“") is that occurrence and no other: not
+    // another „und" of the unit, and, kept at its place, no cover for a twin struck elsewhere (`twins`, 23.11.2026, KFG § 114b).
+    const place = n.touching
+    const touches = (a: number, width: number) => !place || (place.side === 'before' ? words[a + width] === place.tokens[0] : words[a - 1] === place.tokens.at(-1))
+    if (!place) named.push({ tokens, law })
     // A line that follows a renumbering may count by the new numbers without saying so („§ 5 Abs. 2 und 3 entfällt; die Abs. 4 bis 9
     // erhalten …" and then „In § 5 Abs. 5 entfällt die Zeichenfolge „Abs. 1“", which stands in the old Abs. 7). Only where the unit
     // of the number the column prints does not carry the wording at all: there the line means that one.
     for (const form of parted.length === tokens.length ? [tokens] : [tokens, parted]) {
-      const places = placesOf(words, form)
+      const places = placesOf(words, form).filter((x) => touches(x, form.length))
       const printedCount = places.filter((x) => inPlace(x, form.length, 'printed'))
-      for (const a of printedCount.length ? printedCount : places.filter((x) => inPlace(x, form.length, 'new'))) for (let k = a; k < a + form.length; k++) mark(left[k]!.p, 'named')
+      for (const a of printedCount.length ? printedCount : places.filter((x) => inPlace(x, form.length, 'new'))) for (let k = a; k < a + form.length; k++) if (!place || struck.has(left[k]!.p)) mark(left[k]!.p, 'named')
     }
   }
   // …and a struck stretch that stands in such a wording, though the wording does not stand whole in the column: „Der Leiter der
