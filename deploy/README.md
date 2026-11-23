@@ -72,6 +72,12 @@ The commit that runs is in `/srv/begutachtungs-monitor/REVISION`. To ship
 uncommitted changes on purpose, pass `--allow-dirty` — the revision then ends
 in `-dirty`.
 
+Before a deploy that changes how documents are read, compare the heap of the
+new revision with the live one, on the same machine and a copy of the harness
+cache: `pnpm harness:memory <worktree with a build> <outdir> <cache copy>`, then
+`python3 scripts/harness/memory/gc.py <outdir>/server.log <outdir>/rss.txt`.
+The figures of one run alone say little.
+
 **When the systemd unit changes** (it did on 2026-08-31: `StateDirectory=`),
 `deploy.sh` is not enough — it only ships `.output/`. Re-run the bootstrap,
 which is idempotent and rewrites the unit:
