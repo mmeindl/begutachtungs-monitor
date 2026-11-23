@@ -352,12 +352,12 @@ describe('Klasse B: die Felder, die der Bericht seit dem 19.11.2026 trägt', () 
   })
 
   it('lässt die eingecheckte Grundlinie gelten, wie sie ist', () => {
-    // Written from a CI artefact on 19.11.2026, before these four fields
-    // were compared. Every draft it holds, measured exactly as it says and
-    // carrying the new fields, is no finding.
+    // Written from a CI artefact, and since 23.11.2026 it holds these four
+    // fields too. Every draft it holds, measured exactly as it says, is no
+    // finding.
     const fixture = JSON.parse(readFileSync('tests/fixtures/annex-baseline.json', 'utf8')) as AnnexBaseline
     for (const path of ['xml', 'pdf'] as const) {
-      const drafts = Object.entries(fixture.paths[path]).map(([id, entry]) => ({ ...sound(), ...entry, id, source: path, ...fields }))
+      const drafts = Object.entries(fixture.paths[path]).map(([id, entry]) => ({ ...sound(), ...entry, id, source: path }))
       expect(drafts.length).toBeGreaterThan(MIN_DRAFTS_WITH_ANNEX)
       expect(classBFindings({ ...report([]), path, drafts }, fixture)).toEqual([])
     }
