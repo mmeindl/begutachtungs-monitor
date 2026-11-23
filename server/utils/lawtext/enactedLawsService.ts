@@ -13,38 +13,13 @@
  * (`DraftArticle.amends`) — the same test `enactedLaws` of the Erläuterungen
  * answer and `enactedParagraphs` of the Lesefassung run on.
  */
-import type { EnactedLaw, EnactedLawsResponse, TraceLink } from '#shared/types'
-import { displayId } from '#shared/utils/unitName'
-import type { TextBlock } from './lawUnits'
-import { segmentUnits } from './lawUnits'
-import { draftArticlesOfXml, getDraftArticles, type DraftText } from './draftArticlesService'
+import type { EnactedLawsResponse, TraceLink } from '#shared/types'
+import { enactedLawsOf, otherArticlesOf } from './enactedText'
+import { risFootnotes, risTables } from './risXml'
+import { fetchDocument } from '../upstream/fetchDocument'
+import { draftArticlesOfXml, getDraftArticles } from './draftArticlesService'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import type { RisDocumentUrls } from '../ris/risRecord'
-
-/** What a § prints below its heading: Absätze, Ziffern, and text the parser did not class. */
-const BODY: ReadonlySet<TextBlock['kind']> = new Set(['abs', 'ziff', 'other'])
-
-/** Pure: the draft's parse → its new laws, each with its §§. */
-export function enactedLawsOf(draft: DraftText): EnactedLaw[] {
-  const enacting = draft.articles.filter((a) => !a.amends && a.key !== null)
-  if (enacting.length === 0) return []
-  const units = segmentUnits(draft.blocks)
-  return enacting
-    .map((a) => ({
-      law: a.key!,
-      paragraphs: units
-        .filter((u) => u.article === a.key)
-        .map((u) => ({
-          // A second unit of the same number („#dup") is real text, printed
-          // under the number the draft gives it (`displayId`).
-          id: displayId(u.id),
-          heading: u.heading,
-          lines: u.blocks.filter((b) => BODY.has(b.kind) && b.text.trim()).map((b) => ({ text: b.text, sub: b.kind === 'ziff' })),
-        }))
-        .filter((p) => p.lines.length > 0),
-    }))
-    .filter((l) => l.paragraphs.length > 0)
-}
 
 const RIS_LABEL = 'Entwurf im RIS'
 
@@ -56,8 +31,15 @@ function sourceOf(doc: RisDocumentUrls | null | undefined): TraceLink | null {
 /** For a Ministerialentwurf: the RIS text through the RIS↔ME join. */
 export async function getEnactedLaws(gp: string, inr: number): Promise<EnactedLawsResponse> {
   const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
-  if (!row?.risDocument?.xml) return { laws: [], source: null }
-  return { laws: enactedLawsOf(await getDraftArticles(gp, inr, 'ris-xml')), source: sourceOf(row.risDocument) }
+  if (!row?.risDocument?.xml) return { laws: [], footnotes: [], otherArticles: [], source: null }
+  const draft = await getDraftArticles(gp, inr, 'ris-xml')
+  const xml = await fetchDocument(row.risDocument.xml)
+  return {
+    laws: enactedLawsOf(draft, risTables(xml)),
+    footnotes: risFootnotes(xml),
+    otherArticles: otherArticlesOf(draft),
+    source: sourceOf(row.risDocument),
+  }
 }
 
 /** For a Begutachtung without a parliamentary Gegenstand: its own RIS record. */
@@ -65,6 +47,13 @@ export async function getRisEnactedLaws(id: string): Promise<EnactedLawsResponse
   const detail = await getRisConsultation(id)
   if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
   const xml = detail.mainDocument.xml
-  if (!xml) return { laws: [], source: null }
-  return { laws: enactedLawsOf(await draftArticlesOfXml(xml)), source: sourceOf(detail.mainDocument) }
+  if (!xml) return { laws: [], footnotes: [], otherArticles: [], source: null }
+  const draft = await draftArticlesOfXml(xml)
+  const document = await fetchDocument(xml)
+  return {
+    laws: enactedLawsOf(draft, risTables(document)),
+    footnotes: risFootnotes(document),
+    otherArticles: otherArticlesOf(draft),
+    source: sourceOf(detail.mainDocument),
+  }
 }

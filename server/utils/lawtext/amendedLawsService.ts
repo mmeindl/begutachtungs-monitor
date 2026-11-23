@@ -169,12 +169,17 @@ async function lawsOfTitle(blocks: readonly TextBlock[], date: string): Promise<
  * der Verordnung (EU) 2018/1724", 120/ME XXVIII and 352/ME XXVII, both new
  * laws, measured 14.11.2026).
  */
-const AMENDING_NAME_RE = /\bmit (?:dem|der|denen)\b.*\b(?:geändert|abgeändert|novelliert|aufgehoben)\b|^(?:Änderung|Aufhebung|Novellierung)\b|novelle\b/i
+const CHANGING_NAME_RE = /\bmit (?:dem|der|denen)\b.*\b(?:geändert|abgeändert|novelliert)\b|^(?:Änderung|Novellierung)\b|novelle\b/i
+const REPEALING_NAME_RE = /\bmit (?:dem|der|denen)\b.*\baufgehoben\b|^Aufhebung\b/i
+/** „…, mit dem das X aufgehoben und das Y erlassen wird" (139/ME XXVIII). */
+const ENACTING_NAME_RE = /\bmit (?:dem|der|denen)\b.*\berlassen\b/i
 
 /**
  * Does the text create law rather than amend it? Only on positive evidence
  * (14.11.2026): no law found, AND no Novellierungsanordnung in the text, AND
- * no name of it that says it amends or repeals.
+ * no name of it that says it amends, AND no name that says it repeals unless
+ * a name also says it enacts (23.11.2026): 139/ME XXVIII repeals one law and
+ * enacts its 44-§ successor, and a repeal alone still makes no new law.
  *
  * Until then it was „Artikel read, no law found", and a law the reader could
  * not name became a new one: 53 d.B. XXIV and 51 d.B. XXVII amend the B-VG,
@@ -187,7 +192,9 @@ export function createsNewLawFrom(text: DraftText, lawCount: number): boolean {
   if (lawCount > 0 || text.articles.length === 0) return false
   if (text.blocks.some((b) => b.kind === 'novao')) return false
   const names = [...text.articles.map((a) => a.title ?? a.key), ...text.blocks.filter((b) => b.kind === 'title').map((b) => b.text)]
-  return !names.some((n) => n !== null && AMENDING_NAME_RE.test(n))
+    .filter((n): n is string => n !== null)
+  if (names.some((n) => CHANGING_NAME_RE.test(n))) return false
+  return !names.some((n) => REPEALING_NAME_RE.test(n)) || names.some((n) => ENACTING_NAME_RE.test(n))
 }
 
 /**

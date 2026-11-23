@@ -4,6 +4,7 @@
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  */
+import type { LawTable, LawTableCell, LawTextPart } from '../../../shared/types/annex'
 import type { BlockKind, TextBlock } from './lawUnits'
 import { ARTICLE_LINE_RE, ARTICLE_RE, refineArticleHeadings } from './articleHeadings'
 import { stripTags } from './normalize'
@@ -132,12 +133,50 @@ function risText(inner: string, printedQuotes = false): string {
   )
 }
 
+/** RIS's runs set apart: raised, lowered (a footnote's mark among them), underlined (a fraction's bar). */
+const SCRIPT_RE = /<(super|sub|fnzeichen|u)\b[^>]*>([\s\S]*?)<\/\1\s*>/g
+const RAISED = '\uE000'
+const LOWERED = '\uE001'
+const SCRIPT_END = '\uE002'
+const UNDERLINED = '\uE003'
+const SCRIPT_RUN_RE = /([\uE000\uE001\uE003])([^\uE002]*)\uE002/g
+const SCRIPT_MARK: Readonly<Record<string, string>> = { super: RAISED, fnzeichen: RAISED, sub: LOWERED, u: UNDERLINED }
+const SCRIPT_POS: Readonly<Record<string, NonNullable<LawTextPart['pos']>>> = { [RAISED]: 'sup', [LOWERED]: 'sub', [UNDERLINED]: 'u' }
+
 /**
- * RIS Begut main-document XML → flat block list, same kinds as the Parliament
- * HTML parser — including the pass that marks the Artikel headings RIS types
- * as `art` or as a table-of-contents column (`refineArticleHeadings`).
+ * The block's text in printed runs, or null where nothing is raised or
+ * lowered (`TextBlock.parts`). Private-use marks through the one reader, so
+ * the runs are normalised exactly as `text` is.
  */
-export function parseRisXml(xml: string): TextBlock[] {
+function printedParts(inner: string): LawTextPart[] | null {
+  if (!/<(?:super|sub|fnzeichen|u)\b/.test(inner)) return null
+  const marked = risText(inner.replace(SCRIPT_RE, (_, tag: string, body: string) => `${SCRIPT_MARK[tag]}${body}${SCRIPT_END}`))
+  const parts: LawTextPart[] = []
+  let at = 0
+  for (const m of marked.matchAll(SCRIPT_RUN_RE)) {
+    if (m.index > at) parts.push({ text: marked.slice(at, m.index) })
+    // A space RIS sets inside the run stays outside it, or two words join.
+    const run = m[2]!.trim()
+    if (/^\s/.test(m[2]!)) parts.push({ text: ' ' })
+    if (run) parts.push({ text: run, pos: SCRIPT_POS[m[1]!]! })
+    if (run && /\s$/.test(m[2]!)) parts.push({ text: ' ' })
+    at = m.index + m[0].length
+  }
+  if (at < marked.length) parts.push({ text: marked.slice(at) })
+  return parts
+}
+
+/** The document's footnotes (`<fntext nr="1">`), which no block carries. Pure. */
+export function risFootnotes(xml: string): { nr: string; text: string }[] {
+  return [...xml.matchAll(/<fntext\b[^>]*\bnr="([^"]+)"[^>]*>([\s\S]*?)<\/fntext>/g)]
+    .map((m) => ({ nr: m[1]!, text: risText(m[2]!) }))
+    .filter((f) => f.text)
+}
+
+const TABLE_RE = /<table\b[\s\S]*?<\/table>/g
+
+/** The document without what RIS prints around it on every page. */
+function risBody(xml: string): string {
   // `fzinhalt` is the page FOOTER RIS prints under every page
   // ("www.ris.bka.gv.at   Seite 2 von 2"), the counterpart to the `kzinhalt`
   // header. Without it the footer came through as an ordinary Absatz with no
@@ -145,15 +184,25 @@ export function parseRisXml(xml: string): TextBlock[] {
   // measured over the offline cache on 22.09.2026, 180 of 314 readable
   // Erläuterungen documents carried it. The two sibling parsers strip all
   // three (`lawtext/konsTree.ts`, `annex/comparisonRows.ts`); this one did not.
-  const body = xml
+  return xml
     .replace(/<kzinhalt[\s\S]*?<\/kzinhalt>/g, '')
     .replace(/<fzinhalt[\s\S]*?<\/fzinhalt>/g, '')
     .replace(/<layoutdaten[\s\S]*?<\/layoutdaten>/g, '')
+}
+
+/**
+ * RIS Begut main-document XML → flat block list, same kinds as the Parliament
+ * HTML parser — including the pass that marks the Artikel headings RIS types
+ * as `art` or as a table-of-contents column (`refineArticleHeadings`).
+ */
+export function parseRisXml(xml: string): TextBlock[] {
+  const body = risBody(xml)
   // Blocks inside a table keep their kind (the ME→RV comparison reads cell
   // text like any other) but carry a `table:` prefix in `cls`, so the
   // amendment engine can refuse a payload that is a table.
-  const tables = [...body.matchAll(/<table\b[\s\S]*?<\/table>/g)].map((t) => [t.index!, t.index! + t[0].length] as const)
-  const inTable = (at: number): boolean => tables.some(([from, to]) => at >= from && at < to)
+  const tables = [...body.matchAll(TABLE_RE)].map((t) => [t.index!, t.index! + t[0].length] as const)
+  const tableAt = (at: number): number => tables.findIndex(([from, to]) => at >= from && at < to)
+  const inTable = (at: number): boolean => tableAt(at) >= 0
   const blocks: TextBlock[] = []
   for (const m of body.matchAll(RIS_BLOCK_RE)) {
     const tag = m[1]!
@@ -173,6 +222,8 @@ export function parseRisXml(xml: string): TextBlock[] {
     const printed = risText(own, true)
     const quoted = printed !== text && printed.length === text.length ? { quoteMarks: [...text].flatMap((c, i) => (c === '"' ? [printed[i]!] : [])).join('') } : {}
     if (!text && !gld) continue
+    const runs = printedParts(own)
+    const scripted = runs ? { parts: runs } : {}
     const split = tag === 'ueberschrift' && !gld && !inTable(m.index!) ? articleNameSplit(typ, inner) : null
     if (split) {
       const cls = `${tag}/${typ}`
@@ -199,7 +250,67 @@ export function parseRisXml(xml: string): TextBlock[] {
     } else {
       kind = 'toc'
     }
-    blocks.push({ kind, cls: `${inTable(m.index!) ? 'table:' : ''}${tag}/${typ}`, text, gld: gld || null, ...(inTable(m.index!) ? { table: true as const } : {}), ...quoted })
+    blocks.push({ kind, cls: `${inTable(m.index!) ? 'table:' : ''}${tag}/${typ}`, text, gld: gld || null, ...(inTable(m.index!) ? { table: true as const, tableAt: tableAt(m.index!) } : {}), ...quoted, ...scripted })
   }
   return refineArticleHeadings(blocks)
+}
+
+/** One cell: its printed lines, and whether the document sets all of them as a heading or in bold. */
+function tableCell(attrs: string, html: string): LawTableCell & { emphasised: boolean } {
+  const lines: LawTableCell['lines'] = []
+  let emphasised = true
+  for (const m of html.matchAll(RIS_BLOCK_RE)) {
+    if (m[1] === 'absatz' && /typ="kz"/.test(m[2]!)) continue
+    const inner = m[3]!
+    const parts = printedParts(inner)
+    const text = parts ? parts.map((p) => p.text).join('') : risText(inner)
+    if (!text) continue
+    lines.push({ text, ...(parts ? { parts } : {}) })
+    if (m[1] !== 'ueberschrift' && !/^\s*<b>[\s\S]*<\/b>\s*$/.test(inner)) emphasised = false
+  }
+  const span = (name: string): number => Number(new RegExp(`\\b${name}="(\\d+)"`).exec(attrs)?.[1] ?? 1)
+  const colspan = span('colspan')
+  const rowspan = span('rowspan')
+  return { lines, emphasised: emphasised && lines.length > 0, ...(colspan > 1 ? { colspan } : {}), ...(rowspan > 1 ? { rowspan } : {}) }
+}
+
+/**
+ * Without the rows that hold nothing: the converter's spacers, 113 in the
+ * tables of the 53 new laws of GP XXVII–XXVIII, which read as a blank line of
+ * data. Not a row a cell above reaches into with its `rowspan`: without it,
+ * that cell would span one row too many.
+ */
+function withoutSpacerRows<C extends LawTableCell>(rows: C[][]): C[][] {
+  const reached = new Set<number>()
+  rows.forEach((row, r) => row.forEach((c) => {
+    for (let i = r + 1; i < r + (c.rowspan ?? 1); i++) reached.add(i)
+  }))
+  return rows.filter((row, r) => reached.has(r) || row.some((c) => c.lines.length > 0))
+}
+
+/**
+ * The document's tables with their rows and columns, in the order of
+ * `TextBlock.tableAt` (23.11.2026). The blocks keep reading a table as a run
+ * of cells, because the comparisons are keyed on that; a reader needs the
+ * grid, since an empty cell is what says which column a value stands in
+ * (149/ME XXVIII, Anlage 1: Schwefeldioxid 350 under MW1 and 120 under TMW).
+ *
+ * RIS marks no header. The leading rows whose filled cells are all bold or
+ * headings are taken as one, as the document sets them; a table bold
+ * throughout has none.
+ */
+export function risTables(xml: string): LawTable[] {
+  return [...risBody(xml).matchAll(TABLE_RE)].map((t) => {
+    const title = /^<table\b[^>]*\btitle="([^"]*)"/.exec(t[0])?.[1]?.trim()
+    const rows = withoutSpacerRows([...t[0].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g)].map((r) =>
+      [...r[1]!.matchAll(/<td\b([^>]*?)(?:\/>|>([\s\S]*?)<\/td>)/g)].map((c) => tableCell(c[1]!, c[2] ?? '')),
+    ))
+    const isHead = (row: (typeof rows)[number]) => row.some((c) => c.lines.length) && row.every((c) => !c.lines.length || c.emphasised)
+    const firstBody = rows.findIndex((row) => !isHead(row))
+    const heads = firstBody < 0 ? 0 : firstBody
+    return {
+      ...(title ? { title } : {}),
+      rows: rows.map((row, i) => row.map(({ emphasised: _, ...cell }) => (i < heads ? { ...cell, header: true as const } : cell))),
+    }
+  })
 }

@@ -199,9 +199,8 @@ const stationList = computed(() => (data.value ? stations(data.value, stationCon
 /* The comparisons, keyed by the question they answer. All three exist since
  * 17.09.2026: the ressort's annex, the ME→RV diff, and — where parliament
  * published a changed text — the same comparison section with the pair
- * preselected. `#gegenueberstellung` is rendered unconditionally, so it is
- * offered unconditionally here; whether the question is worth asking for a
- * draft that creates new law is the station model's call, not this map's.
+ * preselected. The first leads to the annex, or for a draft that creates a
+ * law to that law's text (`#gesetzestext`, 23.11.2026).
  *
  * The parliament link leads into „Im Parlament" since 01.10.2026, where that
  * station's steps stand now (`lawDiffSteps`), and opens the first of them —
@@ -211,7 +210,7 @@ const parliamentStation = computed(() =>
 )
 const parliamentTextList = computed(() => (data.value ? parliamentTexts(data.value) : []))
 const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() => ({
-  vorschlag: '#gegenueberstellung',
+  vorschlag: amendedLaws.value?.createsNewLaw ? '#gesetzestext' : '#gegenueberstellung',
   ...(data.value?.enactment ? { begutachtung: '#textvergleich' } : {}),
   ...(parliamentStation.value
     ? { parlament: '#textvergleich-parlament' }
@@ -563,12 +562,15 @@ const ministryLinks = computed(() => {
               <!-- The ressort's own comparison, available from day one.
                  `#gegenueberstellung` is kept as the anchor because that link is
                  already in circulation. A new law has nothing to be held
-                 against, so the question is not asked — the same rule the bar
-                 applies. `amendedLaws` arrives on the client, so for the rare
-                 Stammgesetz this block can disappear after first paint; that is
-                 accepted, the alternative is asking a question we know is
-                 wrong on every other draft's first paint. -->
-              <PageSubsection v-if="!amendedLaws?.createsNewLaw" id="gegenueberstellung" heading="Was ändert der Entwurf?">
+                 against, so it gets the question its text answers, and the
+                 text (23.11.2026). `amendedLaws` arrives on the client, so
+                 for the rare Stammgesetz this block swaps after first paint;
+                 that is accepted, the alternative is asking a question we
+                 know is wrong on every other draft's first paint. -->
+              <PageSubsection v-if="amendedLaws?.createsNewLaw" id="gesetzestext" heading="Was regelt der Entwurf?">
+                <NewLawSection :gp="data.gp" :inr="data.inr" />
+              </PageSubsection>
+              <PageSubsection v-else id="gegenueberstellung" heading="Was ändert der Entwurf?">
                 <TextComparisonSection :gp="data.gp" :inr="data.inr" :cite-as="draftCitationDe(data.citation, data.gp)" />
               </PageSubsection>
 

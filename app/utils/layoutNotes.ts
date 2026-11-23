@@ -11,12 +11,20 @@
  * cached GP XXVIII station corpus: 11 unchanged units with the mark in 4
  * drafts, 35 unchanged units from a table in 6.
  */
-import type { LawDiffUnit } from '#shared/types'
-import { FIGURE_NOT_COMPARED_DE, TABLE_AS_TEXT_DE, hasFigure } from '#shared/utils/figureMark'
+import type { EnactedParagraph, LawDiffUnit } from '#shared/types'
+import { FIGURE_IN_LAW_TEXT_DE, FIGURE_NOT_COMPARED_DE, TABLE_AS_TEXT_DE, TABLE_IN_LAW_TEXT_DE, hasFigure } from '#shared/utils/figureMark'
 
 /** The figure sentence where any of the texts carries the mark; the table sentence where `table`. */
 export function layoutNotes(texts: readonly (string | null | undefined)[], table = false): string[] {
   return [...(texts.some((t) => hasFigure(t)) ? [FIGURE_NOT_COMPARED_DE] : []), ...(table ? [TABLE_AS_TEXT_DE] : [])]
+}
+
+/** Under a § of a new law, which is printed and not compared. */
+export function enactedLayoutNotes(lines: EnactedParagraph['lines']): string[] {
+  return [
+    ...(lines.some((l) => hasFigure(l.text)) ? [FIGURE_IN_LAW_TEXT_DE] : []),
+    ...(lines.some((l) => l.table) ? [TABLE_IN_LAW_TEXT_DE] : []),
+  ]
 }
 
 /** The same for a run of units printed together — a fold of unchanged units: each sentence once. */

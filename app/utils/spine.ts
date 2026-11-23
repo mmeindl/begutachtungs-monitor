@@ -1192,12 +1192,9 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
       name: 'Entwurf',
       state: 'done',
       facts: kept(formatDateDe(d.arrivedAt), changes),
-      // Nothing to hold a new law against, so the question is not asked:
-      // the annex would answer with a generic "not available", which reads
-      // as a gap in our data instead of a fact about the draft.
-      comparison: ctx.createsNewLaw
-        ? null
-        : { id: 'vorschlag', question: 'Was ändert der Entwurf?' },
+      // A new law has nothing to be held against, so its question is what
+      // it regulates, answered by its own text (23.11.2026, `NewLawSection`).
+      comparison: { id: 'vorschlag', question: ctx.createsNewLaw ? 'Was regelt der Entwurf?' : 'Was ändert der Entwurf?' },
     },
     {
       id: 'begutachtung',

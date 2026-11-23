@@ -663,12 +663,10 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
                        (`h-5`, the line of `text-sm`) and kept there when the
                        name wraps; its overhang (`CiteButton`) adds no height. -->
                   <div class="mb-1 flex items-start gap-x-3 text-sm">
-                    <p class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <LawUnitLine :name="b.label || b.extra">
                       <!-- The arrow is for the eye; a screen reader hears „wird zu". -->
-                      <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}</span>
-                      <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
-                      <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
-                    </p>
+                      <template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}
+                    </LawUnitLine>
                     <span v-if="b.cite" class="ml-auto flex h-5 shrink-0 items-center">
                       <CiteButton :text="b.cite.text" :subject="b.cite.subject" />
                     </span>

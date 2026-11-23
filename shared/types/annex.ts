@@ -495,12 +495,63 @@ export interface EnactedParagraph {
   id: string
   /** The § heading the draft prints above it. */
   heading: string | null
-  /** The parser's blocks in printed order; `sub` for a Ziffer or Litera. */
-  lines: { text: string; sub: boolean }[]
+  /** Headings of the law's structure that open here („2. Abschnitt", „Zuständigkeiten"). */
+  before?: string[]
+  /** The parser's blocks in printed order. */
+  lines: EnactedLine[]
+}
+
+/**
+ * A run of a printed line, set apart where the document sets it so: raised or
+ * lowered (m³, Amaxₜ, a footnote's mark), or underlined, which is how RIS
+ * draws a fraction's bar (297/ME XXVII).
+ */
+export interface LawTextPart {
+  text: string
+  pos?: 'sup' | 'sub' | 'u'
+}
+
+export interface EnactedLine {
+  /** The words, a raised or lowered run joined to the word it belongs to. */
+  text: string
+  /** A Ziffer or Litera. */
+  sub: boolean
+  /** A table's cell. */
+  table?: true
+  /** A heading inside the unit: an Anlage's subheading, or a formula RIS sets as one. */
+  heading?: true
+  /** Only where a run is raised or lowered; `text` is these joined. */
+  parts?: LawTextPart[]
+  /** The line IS a table, in its rows and columns; `text` is its cells, for the search. */
+  grid?: LawTable
+}
+
+/** A table of a law as the document sets it (23.11.2026). An empty cell is a cell. */
+export interface LawTable {
+  /** The document's own name for the table, where it gives one. */
+  title?: string
+  rows: LawTableCell[][]
+}
+
+export interface LawTableCell {
+  /** Empty for an empty cell. */
+  lines: { text: string; parts?: LawTextPart[] }[]
+  colspan?: number
+  rowspan?: number
+  /** In a leading row the document sets in bold or as headings. */
+  header?: true
 }
 
 export interface EnactedLawsResponse {
   laws: EnactedLaw[]
+  /** The document's footnotes, by the number its text marks them with. */
+  footnotes: { nr: string; text: string }[]
+  /**
+   * Artikel without a Promulgationsklausel and without a § of their own, in
+   * the shape of a § („Artikel 1", its heading, its text): the repeal that
+   * stands beside the new law in 139/ME XXVIII. Printed, never dropped.
+   */
+  otherArticles: EnactedParagraph[]
   /** The RIS document the text is read from. */
   source: TraceLink | null
 }

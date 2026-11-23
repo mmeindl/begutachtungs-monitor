@@ -15,6 +15,7 @@ import { normalizeText, stripQuotes } from './normalize'
 import { parseRisXml } from './risXml'
 import { isQualifierLine, promulgationByArticle } from './draftArticles'
 import type { BgblCitation } from './bgblCitation'
+import type { LawTextPart } from '../../../shared/types/annex'
 
 export type BlockKind =
   | 'para_head' // 45UeberschrPara — the § heading line ("Anwendungsbereich")
@@ -40,6 +41,8 @@ export interface TextBlock {
    * table is compared as a run of words (`TABLE_AS_TEXT_DE`).
    */
   table?: true
+  /** Which `<table>` of the document, in order (`risTables`); RIS only. Read by the print of a new law. */
+  tableAt?: number
   /**
    * The double quotation marks of `text` as RIS prints them, one character
    * per mark in their order („“”), set only where one was folded: `text`
@@ -51,6 +54,13 @@ export interface TextBlock {
    * whole (`getDraftArticles`).
    */
   quoteMarks?: string
+  /**
+   * The text as printed, in runs, set only where RIS raises or lowers one
+   * (23.11.2026): `text` reads „m 3" for m³, and every comparison is keyed on
+   * that form, so it stays. Read by the print of a new law alone
+   * (`enactedLawsService.ts`).
+   */
+  parts?: LawTextPart[]
 }
 
 /**
@@ -251,7 +261,7 @@ export function novaoHeading(text: string): string {
  * both. Both readers must end up with the same words, and the cheapest way to
  * be sure of that is to move as little as possible.
  */
-const ANLAGE_DESIGNATION_RE = /^"?\s*(?:Anlage|Anlagen|Anhang|Anhänge|Anl\.)\s+\S/i
+export const ANLAGE_DESIGNATION_RE = /^"?\s*(?:Anlage|Anlagen|Anhang|Anhänge|Anl\.)\s+\S/i
 
 /**
  * „(zu § 10 Abs. 1a UStG)" — the rest of the designation, set on its own line.
@@ -270,7 +280,7 @@ const ANLAGE_CONTINUATION_RE = /^\(\s*zu\s/i
  * Textgegenüberstellung, not law text. Parliament's Word template marks the
  * same line `71Anlagenbez`, which its reader keeps as text (`other`).
  */
-const RIS_SCHEDULE_DESIGNATION_CLS = 'ueberschrift/anlage'
+export const RIS_SCHEDULE_DESIGNATION_CLS = 'ueberschrift/anlage'
 
 /**
  * How a block changes the quotation state. A payload is enclosed in

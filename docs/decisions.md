@@ -3053,10 +3053,12 @@ not yet followed, or the EU cycle, starts there.
   rows, no club filter, no counts per club.
 - **„Neues Gesetz" needs positive evidence** (14.11.2026,
   `createsNewLawFrom`): no law found AND no Novellierungsanordnung AND no
-  name saying it amends or repeals. A law the reader could not name is „nicht
-  lesbar", never „neues Recht"; a text it could not identify (a motion's
-  „Gesetzesantrag" or „Antrag") is a stated gap in the frame, never a
-  missing frame.
+  name saying it amends, or that it repeals without also enacting
+  (23.11.2026: 139/ME XXVIII repeals one law and enacts its successor; the
+  rule flips that draft and no other of GP XXVII–XXVIII). A law the reader
+  could not name is „nicht lesbar", never „neues Recht"; a text it could not
+  identify (a motion's „Gesetzesantrag" or „Antrag") is a stated gap in the
+  frame, never a missing frame.
 - **A new law's row links its text** (20.11.2026, `newLawText` in
   `entwurfFrame.ts`): „Neues Gesetz" stands where „Ändert" would, its value
   the draft's „Gesetzestext" (the PDF, else the HTML) with „Zitieren", as a
@@ -3066,7 +3068,37 @@ not yet followed, or the EU cycle, starts there.
   „Gesetzestext" on a Ministerialentwurf and a Regierungsvorlage alike
   (120/ME XXVIII, 352/ME XXVII, 250 d.B. XXVIII). Without one (an Antrag
   publishes only itself) the row keeps its sentence, never an empty value.
-  The credit names Parliament, whose document list it is.
+  The credit names Parliament, whose document list it is. Its sentence says
+  what the text is and nothing about law in force (23.11.2026): „ändert kein
+  geltendes Gesetz" stood there, and at least 14 of the 53 new laws of GP
+  XXVII–XXVIII repeal one.
+- **A new law's text stands on its draft page** (23.11.2026,
+  `NewLawSection`, `enactedText.ts`). A Ministerialentwurf with
+  `createsNewLaw` answers „Was regelt der Entwurf?" with its law by § from the
+  RIS parse, the Begründung at each §, the group open and cut after 30 units.
+  Its own section, because none of those drafts has a readable annex. Groups
+  for every law only there: in an amending draft the enacted list also holds
+  Artikel that are no law („Inkrafttreten": 15 entries in 13 drafts), so
+  the annex's leftovers stay its filter. **The print is a layer over the
+  parse, and the parse does not move:** `segmentUnits` keeps dropping the
+  structure's headings and reading schedules as text of the last §, because
+  every comparison is keyed on that, and `TextBlock.text` keeps „m 3". The
+  print walks the blocks again for Anlagen as units, headings, formulas and
+  raised, lowered or underlined runs (`parts`; an underline is how RIS draws
+  a fraction's bar), and reads the footnotes. **A table prints as a table**
+  (`risTables`, `EnactedTable`): an empty cell is what says which column a
+  value stands in (149/ME XXVIII, Anlage 1: 350 under MW1, 120 under TMW), and
+  as a run of cells that was lost. A grid is printed only where each block of
+  the parse is one of its cells; otherwise the cells run on under „Nicht
+  lesbar". RIS marks no header, so leading rows set all in bold count as one.
+  Checked against RIS's HTML edition by a separate parser, the 53 new laws and
+  the new laws inside 87 amending drafts: all 43 tables match cell by cell,
+  with row, column and span; of 1,133,468 tokens, none of the new laws'
+  differs, and the five that differ in amending drafts are RIS's two editions
+  disagreeing (36/ME and 83/ME XXVII) or „Inkrafttreten" entries that are not
+  printed (`everyLawEnd`). Vorlagen and Anträge without a Begutachtung (95
+  new laws) are not in it: they need an endpoint and Parliament's credit, and
+  their text has not been measured.
 - **A law is named from a title or a clause only by an exact match**
   (14.11.2026, `titleLaws.ts`, `law-by-name`): where no clause cites a
   Stammnorm, the title „…, mit dem das X (und das Y) geändert wird" names

@@ -495,14 +495,13 @@ function withheldReason(cause: AnnexWithheldCause | null, unit: UnitKind): strin
             <!-- „Zitieren" at the row's right edge, as at a unit of the §
                  comparison (`LawDiffSection`). -->
             <div v-if="p.gld || p.heading" class="mb-1 flex items-start gap-x-3 text-sm">
-              <p class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+              <LawUnitLine :name="p.heading">
                 <!-- A § the draft renumbers says so where its number stands: the
                      right column's text opens with the new one, which read as an
                      inserted word and nothing more (26.10.2026). The arrow is for
                      the eye; a screen reader hears „wird zu". -->
-                <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}<template v-if="p.renumberedTo"><span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span>{{ p.renumberedTo }}</template></span>
-                <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
-              </p>
+                <template v-if="p.gld" #default>{{ p.gld }}<template v-if="p.renumberedTo"><span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span>{{ p.renumberedTo }}</template></template>
+              </LawUnitLine>
               <!-- One call per §, not three: the blocks re-render on every keystroke of the search. -->
               <template v-for="c in [paraCite(g, p)]" :key="c?.text ?? ''">
                 <span v-if="c" class="ml-auto flex h-5 shrink-0 items-center">
@@ -669,6 +668,7 @@ function withheldReason(cause: AnnexWithheldCause | null, unit: UnitKind): strin
           :key="g.key"
           :law="g.law"
           :total="g.total"
+          :schedules="g.schedules"
           :paragraphs="g.paragraphs"
           :end="g.end"
           :open="groupOpen(g.key)"

@@ -139,6 +139,13 @@ describe('createsNewLaw only on positive evidence (14.11.2026)', () => {
     expect(createsNewLawFrom(repeal, 0)).toBe(false)
   })
 
+  it('is a new law where the title repeals one law and enacts its successor (139/ME XXVIII)', () => {
+    const successor = textOf(['11Titel', 'Bundesgesetz, mit dem das Bundesgesetz über das Verbot der geologischen Speicherung von Kohlenstoffdioxid aufgehoben und das Bundesgesetz über die geologische Speicherung von Kohlenstoffdioxid (KSp-G) erlassen wird'], ['51Abs', '…'])
+    expect(createsNewLawFrom(successor, 0)).toBe(true)
+    const amendsToo = textOf(['11Titel', 'Bundesgesetz, mit dem das X-Gesetz aufgehoben, das Y-Gesetz erlassen und das Z-Gesetz geändert wird'], ['51Abs', '…'])
+    expect(createsNewLawFrom(amendsToo, 0)).toBe(false)
+  })
+
   it('is a new law where the text names itself and carries §§ but no instruction', () => {
     expect(createsNewLawFrom(NEW_LAW, 0)).toBe(true)
     // The EU act a new law carries out may itself amend one; that is not the law's own name (352/ME XXVII).

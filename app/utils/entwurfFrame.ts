@@ -40,8 +40,13 @@ export interface NewLawText {
   cite: string | null
 }
 
-/** „Neues Gesetz" without a text document to link, and the line under the link where there is one. */
-export const NEW_LAW_DE = 'Der Entwurf ändert kein geltendes Gesetz, sein Gesetzestext ist das neue Gesetz.'
+/**
+ * „Neues Gesetz" without a text document to link, and the line under the link
+ * where there is one. It claims nothing about law in force (23.11.2026): „ändert
+ * kein geltendes Gesetz" stood here, and at least 14 of the 53 new laws of GP
+ * XXVII–XXVIII repeal one (the Produkthaftungsgesetz in 151/ME XXVIII).
+ */
+export const NEW_LAW_DE = 'Der Gesetzestext des Entwurfs ist ein neues Gesetz.'
 
 /**
  * The draft's own law text among its documents (20.11.2026). „Gesetzestext"

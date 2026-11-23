@@ -913,3 +913,14 @@ describe('parliamentStandDe', () => {
       .toBe(`Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht wurde er nicht. Neu eingebracht als Initiativantrag 416/A, ist er als ${bgblShort('Bundesgesetzblatt I Nr. 65/2025')} kundgemacht.`)
   })
 })
+
+describe('the Entwurf station of a draft that creates a law', () => {
+  const entwurf = (createsNewLaw: boolean) => stations(draft(), { createsNewLaw }).find((s) => s.id === 'entwurf')!
+  it('asks what the draft regulates and still points at its section', () => {
+    expect(entwurf(true).comparison).toEqual({ id: 'vorschlag', question: 'Was regelt der Entwurf?' })
+    expect(entwurf(true).facts).toContain('neues Gesetz')
+  })
+  it('asks what an amending draft changes', () => {
+    expect(entwurf(false).comparison).toEqual({ id: 'vorschlag', question: 'Was ändert der Entwurf?' })
+  })
+})

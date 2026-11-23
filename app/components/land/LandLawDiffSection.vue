@@ -486,13 +486,12 @@ const hasUnits = computed(() => units.value.length > 0)
             <div v-else class="border-b border-hairline px-4 py-3 last:border-b-0">
               <!-- „Zitieren" at the row's right edge, as at the Bund's (`LawDiffSection`). -->
               <div class="mb-1 flex items-start gap-x-3 text-sm">
-                <p class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                <LawUnitLine :name="b.label">
                   <!-- A § the later text numbers otherwise says so where its number
                        stands, as the Bund's Beilage does: the arrow is for the eye,
                        a screen reader hears „wird zu". -->
-                  <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}<template v-if="inForceNumber(b.unit)">&nbsp;{{ IN_FORCE_MARK }}</template></span>
-                  <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
-                </p>
+                  <template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}<template v-if="inForceNumber(b.unit)">&nbsp;{{ IN_FORCE_MARK }}</template>
+                </LawUnitLine>
                 <span v-if="b.cite" class="ml-auto flex h-5 shrink-0 items-center">
                   <CiteButton :text="b.cite.text" :subject="b.cite.subject" />
                 </span>

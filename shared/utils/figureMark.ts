@@ -32,6 +32,16 @@ export const FIGURE_NOT_COMPARED_DE = gapDe('outOfScope', `Abbildungen vergleich
  */
 export const TABLE_AS_TEXT_DE = gapDe('outOfScope', 'Tabellen vergleicht der Monitor als Text, Zelle für Zelle der Reihe nach; Zeilen und Spalten zeigt der Vergleich nicht.')
 
+/**
+ * The same two facts at a new law's §, where nothing is compared
+ * (23.11.2026). A table prints in its rows and columns (`EnactedTable`); this
+ * sentence stands only over one whose grid could not be confirmed against the
+ * parse, whose cells then run one after the other. The words stay; the
+ * sentence says what they lost and where the original stands.
+ */
+export const TABLE_IN_LAW_TEXT_DE = gapDe('unreadable', 'Zeilen und Spalten dieser Tabelle ließen sich nicht lesen. Der Monitor zeigt ihre Zellen der Reihe nach; die Tabelle steht im Gesetzestext des Ministeriums.')
+export const FIGURE_IN_LAW_TEXT_DE = gapDe('outOfScope', `Abbildungen zeigt der Monitor nicht. „${FIGURE_MARK}“ steht, wo der Gesetzestext des Ministeriums eine setzt.`)
+
 /** The mark, bare or with the annex's `alt` text („[Abbildung: Kamerasymbol]", `annex/tableCells.ts`). */
 const FIGURE_MARK_RE = /\[Abbildung(?::[^\]]*)?\]/
 

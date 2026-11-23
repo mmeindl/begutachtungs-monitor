@@ -15,9 +15,12 @@
  *
  * The anchor is looked up again on each pass, not once: a component may
  * rewrite the hash while the page settles (`LawDiffSection` sends a link from
- * before 01.10.2026 on to the section that now holds its comparison).
- * Client-side navigation is the router's business and is left alone — there
- * the sections above have usually loaded already.
+ * before 01.10.2026 on to the section that now holds its comparison), and
+ * the anchor may not stand in the page yet: `#gesetzestext` of a new law
+ * mounts once the client knows the draft creates one (23.11.2026), so its
+ * arrival is one more change of height to answer. Client-side navigation is
+ * the router's business and is left alone — there the sections above have
+ * usually loaded already.
  */
 const SETTLE_MS = 10_000
 const USER_INPUT = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const
@@ -32,7 +35,7 @@ function anchor(): HTMLElement | null {
 }
 
 function holdAnchor() {
-  if (!anchor() || typeof ResizeObserver === 'undefined') return
+  if (!location.hash || typeof ResizeObserver === 'undefined') return
   const keep = () => anchor()?.scrollIntoView({ block: 'start' })
   const observer = new ResizeObserver(keep)
   const stop = () => {
