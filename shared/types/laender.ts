@@ -350,6 +350,13 @@ export interface LandLawDiffResponse {
    */
   withheld: { law: string | null; id: string; fromId?: string; reason?: LandWithheldReason }[]
   /**
+   * On a Landesgesetz's page: the laws this Landesgesetzblatt repeals as a
+   * whole, each with the §§ RIS records as repealed by it
+   * (`lgblRepealedLaws`, 23.11.2026). Said once per law, as a fact; these
+   * §§ are neither shown nor withheld.
+   */
+  repealedWhole?: { law: string; ids: string[] }[]
+  /**
    * §§ shown as changed or new whose new text was not held word for word
    * against the draft's own Gesetzestext (`notHeld` in `landTguGuard.ts`,
    * 20.11.2026): marked „nicht geprüft" at the §, the reason said once per

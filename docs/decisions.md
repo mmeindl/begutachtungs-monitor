@@ -2216,6 +2216,19 @@ gets an entry of its own only where it carries a reason the rule does not.
   `lawUnmatched`. 509 → 158 of 1,937 tied §§, and 153 of the 158 belong to
   laws a Landesgesetzblatt repeals whole. The instructions are a guard, not
   content: what the page shows are RIS's two versions of the §.
+- **A law a Landesgesetzblatt repeals as a whole is stated once, not listed
+  § by §** (23.11.2026, `lgblRepealedLaws`, `LandRepealedLaws`). One row
+  per law: it says that the Landesgesetzblatt repeals the law as a whole,
+  and how many §§ RIS records as repealed by it. It is what the
+  Landesgesetzblatt does, so the row takes no gap lead word and no „nicht
+  gezeigt". It needs both witnesses: every version RIS ties is „aufgehoben
+  durch" this Landesgesetzblatt, and one of its own sentences puts that law
+  out of force by the Stammnorm RIS gives it, never a § or an Artikel of it,
+  never „mit Ausnahme". RIS alone is not enough: it records two Verordnungen
+  as repealed by Salzburg's LGBl. Nr. 64/2018 that the Landesgesetzblatt
+  does not name, and those §§ stay `lawUnmatched`. Over the 90
+  Landesgesetzblätter of the harness 164 §§ moved here (153 `lawUnmatched`,
+  11 `uninstructed`), no other outcome.
 - **A „lautet:" wording RIS's version lacks withholds the §** (22.11.2026,
   `lautetMissing`, reason `wordingNotInRis`). Wien LGBl. Nr. 45/2020 lets a
   wording expire, RIS ties the version after the expiry to it, and the page

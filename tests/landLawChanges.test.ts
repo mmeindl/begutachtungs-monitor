@@ -1,7 +1,7 @@
 /** What a Landesgesetz changed, § by § (`landLawChanges.ts`): every doubt is a § not compared. */
 import { describe, expect, it } from 'vitest'
 import { diffLandDraft, lgblUnits } from '../server/utils/laender/landLawDiff'
-import { instructionLawFor, instructionLawsOf, lautetMissing, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, lgblRenumberedParagraphs, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
+import { instructionLawFor, instructionLawsOf, lautetMissing, lgblArticleClauses, lgblInstructedParagraphs, isNamed, konsKey, konsUnit, lgblNamedParagraphs, lgblRenumberedParagraphs, lgblRepealedLaws, namesAsLast, pairOf, repealedBy, subInstructionHeads, type LandKonsVersion } from '../server/utils/laender/landLawChanges'
 
 const v = (over: Partial<LandKonsVersion>): LandKonsVersion => ({ gesetzesnummer: '20001217', law: 'Salzburger Kinderbildungs- und -betreuungsgesetz 2019', key: '§5', from: null, to: null, organ: '', xmlUrl: 'x', stammnorm: '57/2019', abbreviation: null, ...over })
 
@@ -250,5 +250,43 @@ describe('konsUnit', () => {
     expect(konsUnit('<nutzdaten><ueberschrift typ="art" ct="text"><n>§ 40*)</n><br />Hegeabschuss</ueberschrift><absatz typ="abs" ct="text">Text.</absatz></nutzdaten>', { key: '§40', law: 'X' }, 'X')!.heading).toBe('Hegeabschuss')
     // The number alone is the id still, never a title.
     expect(konsUnit('<nutzdaten><ueberschrift typ="para" ct="text">§ 8</ueberschrift><absatz typ="abs" ct="text">Text.</absatz></nutzdaten>', { key: '§8', law: 'X' }, 'X')!.heading).toBeNull()
+  })
+})
+
+describe('lgblRepealedLaws — a law the Landesgesetzblatt repeals whole (23.11.2026)', () => {
+  const doc = (...blocks: string[]) => `<risdok><nutzdaten>${blocks.map((b) => `<absatz typ="abs">${b}</absatz>`).join('')}</nutzdaten></risdok>`
+  const repealed = (law: string, stammnorm: string) => ({ law, stammnorm, organ: `LGBl. Nr. ${stammnorm} aufgehoben durch LGBl. Nr. 56/2026` })
+
+  it('takes a law RIS records as repealed and the Landesgesetzblatt’s own sentence puts out of force, in each way it is written', () => {
+    const cases: [string, string, string][] = [
+      ['Oö. Sportgesetz', '93/1997', 'Dieses Landesgesetz tritt in Kraft. Gleichzeitig tritt das Oö. Sportgesetz, LGBl. Nr. 93/1997, in der Fassung des Landesgesetzes LGBl. Nr. 85/2018, außer Kraft.'],
+      ['1. Oö. Euro-Umstellungsgesetz', '126/1998', '1. Das 1. Oö. Euro-Umstellungsgesetz, LGBl. Nr. 126/1998, wird aufgehoben.'],
+      ['Schulratgesetz', '35/1963', 'Das Schulratgesetz, LGBl.Nr. 35/1963, in der Fassung LGBl.Nr. 30/1985, tritt mit Ablauf des 31. Dezember 2018 außer Kraft.'],
+      ['Wiener Statistikgesetz', '37/1987', '§ 13. Dieses Gesetz tritt in Kraft. Gleichzeitig tritt das Gesetz über die Statistik in Wien (Wiener Statistikgesetz), LGBl. für Wien Nr. 37/1987 in der geltenden Fassung, außer Kraft.'],
+      ['Oö. Berufsausbildungsgesetz 1991', '95/1991', '(2) Mit dem Inkrafttreten tritt das Oö. Berufsausbildungsgesetz 1991, LGBl. Nr. 95/1991, in der Fassung des Bundesgesetzes BGBl. I Nr. 42/2024, außer Kraft.'],
+      // Salzburg cites the number alone; the year stands in the name.
+      ['Salzburger Schulaufsichts-Ausführungsgesetz 1995', '67/1995', 'Das Salzburger Schulaufsichts-Ausführungsgesetz 1995, LGBl Nr 67, zuletzt geändert durch das Gesetz LGBl Nr 51/2014, wird mit Wirkung vom 1. Jänner 2019 aufgehoben.'],
+    ]
+    for (const [law, stammnorm, sentence] of cases) expect([...lgblRepealedLaws([repealed(law, stammnorm)], '56/2026', doc(sentence))]).toEqual([law])
+  })
+
+  it('does not take RIS’s word alone: the Landesgesetzblatt names the law nowhere (Salzburg LGBl. Nr. 64/2018)', () => {
+    expect([...lgblRepealedLaws([repealed('Sitzungsgeldverordnung 2014', '55/2014')], '56/2026', doc('Das Gesetz X, LGBl Nr 66/1995, tritt außer Kraft.'))]).toEqual([])
+  })
+
+  it('does not take a repeal of a part, or a law RIS still ties a wording to', () => {
+    const law = 'Beispielgesetz'
+    for (const sentence of [
+      '§ 5 des Beispielgesetzes, LGBl. Nr. 12/2001, tritt außer Kraft.',
+      'Das Beispielgesetz, LGBl. Nr. 12/2001, tritt mit Ausnahme des § 3 außer Kraft.',
+      'Das Beispielgesetz, LGBl. Nr. 12/2001, tritt hinsichtlich der Gemeinden außer Kraft.',
+    ]) expect([...lgblRepealedLaws([repealed(law, '12/2001')], '56/2026', doc(sentence))]).toEqual([])
+    const stands = { law, stammnorm: '12/2001', organ: 'LGBl. Nr. 12/2001 zuletzt geändert durch LGBl. Nr. 56/2026' }
+    expect([...lgblRepealedLaws([repealed(law, '12/2001'), stands], '56/2026', doc('Das Beispielgesetz, LGBl. Nr. 12/2001, tritt außer Kraft.'))]).toEqual([])
+  })
+
+  it('holds the name where two of the laws share a Stammnorm', () => {
+    const laws = [repealed('Schulzeit-Delegierungsverordnung 2014', '55/2014'), repealed('Sitzungsgeldverordnung 2014', '55/2014')]
+    expect([...lgblRepealedLaws(laws, '56/2026', doc('Die Sitzungsgeldverordnung 2014, LGBl. Nr. 55/2014, tritt außer Kraft.'))]).toEqual(['Sitzungsgeldverordnung 2014'])
   })
 })

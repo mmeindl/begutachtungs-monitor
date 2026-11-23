@@ -33,6 +33,7 @@ import {
   konsUnit,
   lautetMissing,
   konsVersionOf,
+  lgblRepealedLaws,
   namesAsLast,
   pairOf,
   repealedBy,
@@ -104,6 +105,9 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   const instructions = lgblInstructedParagraphs(lgbl)
   const lawKeys = instructionLawsOf(versions, lgbl, lgblXml)
   const renumbered = lgblRenumbered(lgbl)
+  // A law the Landesgesetzblatt repeals as a whole is one fact, not a row per § (`lgblRepealedLaws`, 23.11.2026).
+  const repealedLaws = lgblRepealedLaws([...news, ...repeals], nummer, lgblXml)
+  const repealedIds = new Map<string, string[]>()
   const withheld: LandLawDiffResponse['withheld'] = []
   let complete = searchComplete
   // Each § as RIS pairs its two versions: the earlier wording (none for a new §) and the later one (none for a repeal).
@@ -128,6 +132,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
       pairs.push([null, unit])
       return
     }
+    if (repealedLaws.has(v.law)) return void repealedIds.set(v.law, [...(repealedIds.get(v.law) ?? []), v.key])
     const lawKey = lawKeys.get(v.law)
     // No instruction's law matched to this one (or none read at all): whether an instruction names the § is
     // not known. Named „unpaired" until 20.11.2026, whose sentence says an instruction names it.
@@ -174,8 +179,10 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   const unitOfPair = ([a, b]: [LawUnit | null, LawUnit | null]) => (b ?? a)!
   const byOrder = (x: [LawUnit | null, LawUnit | null], y: [LawUnit | null, LawUnit | null]) => (unitOfPair(x).article ?? '').localeCompare(unitOfPair(y).article ?? '', 'de') || unitOfPair(x).id.localeCompare(unitOfPair(y).id, 'de', { numeric: true })
   pairs.sort(byOrder)
-  if (!pairs.length) {
-    return { value: { ...off(gapDe('unreadable', 'Keinen Paragraphen dieses Landesgesetzblatts konnte der Monitor sicher vergleichen.')).value, withheld }, complete }
+  const repealedWhole = [...repealedIds].map(([law, ids]) => ({ law, ids: ids.sort((a, b) => a.localeCompare(b, 'de', { numeric: true })) })).sort((a, b) => a.law.localeCompare(b.law, 'de'))
+  const repealFields = repealedWhole.length ? { repealedWhole } : {}
+  if (!pairs.length && !(repealedWhole.length && !withheld.length)) {
+    return { value: { ...off(gapDe('unreadable', 'Keinen Paragraphen dieses Landesgesetzblatts konnte der Monitor sicher vergleichen.')).value, withheld, ...repealFields }, complete }
   }
   // Compared pair by pair, as RIS pairs them (20.11.2026): the § comparison's own alignment re-paired the
   // two versions of one § by heading and likeness, and 46 of 1,937 §§ stood twice, „neu" beside „entfallen".
@@ -205,6 +212,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
       droppedLaws: [],
       sharedWith: [],
       withheld,
+      ...repealFields,
     },
     complete,
   }
@@ -213,5 +221,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-13', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: keepIncompleteFor(0, NOT_YET_HELD_MS) },
+  { name: 'land-law-changes-14', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: keepIncompleteFor(0, NOT_YET_HELD_MS) },
 )

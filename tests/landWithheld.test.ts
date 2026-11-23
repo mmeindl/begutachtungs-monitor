@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { enactedNote, moveTargets, quotedInstruction, reachesGroups, reachesNote, renumberedNote, unreadAnnouncedNote, withheldGroups, withheldMatches, withheldNotes } from '../app/utils/landWithheld'
+import { enactedNote, moveTargets, quotedInstruction, reachesGroups, reachesNote, renumberedNote, repealedWholeNote, unreadAnnouncedNote, withheldGroups, withheldMatches, withheldNotes } from '../app/utils/landWithheld'
 
 describe('withheldGroups — where the page counts a § it does not show', () => {
   it('files a § of another law under that law, not under the one group shown (Kärnten 38532/2024)', () => {
@@ -216,5 +216,12 @@ describe('the leads of a Landesgesetz’s withheld §§ (21.11.2026)', () => {
     for (const reason of ['uninstructed', 'unpaired', 'lawUnmatched', 'enactedUnread', 'wordingNotInRis', 'renumbered'] as const) {
       expect(withheldNotes([{ law: 'L', id: '§1', reason }])[0]!.lead).toBe('Nicht gezeigt:')
     }
+  })
+})
+
+describe('repealedWholeNote — a law the Landesgesetzblatt repeals whole (23.11.2026)', () => {
+  it('states what the Landesgesetzblatt does, with RIS’s count, and no gap’s lead word', () => {
+    expect(repealedWholeNote(28)).toBe('Das Landesgesetzblatt hebt diese Rechtsvorschrift als Ganzes auf; das RIS führt 28 ihrer Paragraphen als dadurch aufgehoben.')
+    expect(repealedWholeNote(1)).toBe('Das Landesgesetzblatt hebt diese Rechtsvorschrift als Ganzes auf; das RIS führt einen ihrer Paragraphen als dadurch aufgehoben.')
   })
 })

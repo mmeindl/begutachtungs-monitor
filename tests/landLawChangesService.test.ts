@@ -219,3 +219,30 @@ describe('compareLandLawChanges — a § the Landesgesetzblatt repeals (20.11.20
     expect(value.withheld).toEqual([{ law: LAW, id: '§2', reason: 'unpaired' }])
   })
 })
+
+describe('compareLandLawChanges — a law the Landesgesetzblatt repeals whole (23.11.2026)', () => {
+  const repealed = (para: string) => {
+    const r = ref(para, 'p1.xml', '2026-07-01')
+    Object.assign(r.Data.Metadaten.Landesrecht.LrKons, { Kundmachungsorgan: 'LGBl. Nr. 12/2001 aufgehoben durch LGBl. Nr. 56/2026', StammnormBgblnummer: '12/2001' })
+    return r
+  }
+
+  it('states the law once with its §§, neither shown nor withheld, and reads no history', async () => {
+    XML['repeal.xml'] = `<risdok><nutzdaten><absatz typ="abs">Das ${LAW}, LGBl. Nr. 12/2001, tritt außer Kraft.</absatz></nutzdaten></risdok>`
+    konsRefsOfLgbl.mockResolvedValue({ refs: [repealed('§ 2'), repealed('§ 10'), repealed('§ 1')], complete: true })
+    const { value } = await compareLandLawChanges('ooe', 'LGBl. Nr. 56/2026', 'repeal.xml', null, '2026-06-30')
+    expect(value.available).toBe(true)
+    expect(value.unavailableReason).toBeNull()
+    expect(value.units).toEqual([])
+    expect(value.withheld).toEqual([])
+    expect(value.repealedWhole).toEqual([{ law: LAW, ids: ['§1', '§2', '§10'] }])
+    expect(konsParagraphHistory).not.toHaveBeenCalled()
+  })
+
+  it('keeps a § RIS alone calls repealed as withheld', async () => {
+    konsRefsOfLgbl.mockResolvedValue({ refs: [repealed('§ 2')], complete: true })
+    const { value } = await compareLandLawChanges('ooe', 'LGBl. Nr. 56/2026', 'lgbl.xml', null, '2026-06-30')
+    expect(value.repealedWhole).toBeUndefined()
+    expect(value.withheld).toEqual([{ law: LAW, id: '§2', reason: 'lawUnmatched' }])
+  })
+})

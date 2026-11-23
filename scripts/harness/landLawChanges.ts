@@ -40,8 +40,9 @@
  *
  * THE INVARIANT: every § RIS ties to the Landesgesetzblatt (named last in
  * its Kundmachungsorgan, or repealed by it — `namesAsLast`, `repealedBy`)
- * ends exactly once: shown, or withheld with a reason; or the section is
- * off as a whole, with its sentence. A § in neither, or in both, or twice,
+ * ends exactly once: shown, withheld with a reason, or stated with its law
+ * as repealed whole (`lgblRepealedLaws`); or the section is off as a whole,
+ * with its sentence. A § in neither, or in both, or twice,
  * fails the run (exit 1) and is printed.
  *
  * Output: `<dir>/lgbl.jsonl` (one line per Landesgesetzblatt: its record,
@@ -56,8 +57,9 @@
  *
  * THE RECORD ALSO SAYS WHY (22.11.2026): `lawUnmatched` splits the §§
  * withheld as lawUnmatched into those of a law the Landesgesetzblatt
- * repeals whole (every version RIS ties is „aufgehoben durch" it — no
- * instruction amends it) and the rest, each of which `summary.md` lists;
+ * repeals whole by RIS's records alone (every version RIS ties is
+ * „aufgehoben durch" it, and no sentence of the Landesgesetzblatt names the
+ * law, or the page would state it) and the rest, each of which `summary.md` lists;
  * `lautet.byClass` sorts the „lautet:" misses (`lautetMissing`). A § shown
  * though its Landesgesetzblatt's own wording is missing in RIS's version
  * (`lautet.byClass.shownWordingNotInRis`) fails the run, as a broken
@@ -130,7 +132,7 @@ const sha = (s: string | null | undefined) => (s == null ? null : createHash('sh
 interface ParagraphLine {
   law: string
   id: string
-  /** `shown:<change>`, `withheld:<reason>`, `off` (the section as a whole), or `lost` / `twice` (the invariant broken). */
+  /** `shown:<change>`, `withheld:<reason>`, `repealedWhole` (the law stated once as repealed), `off` (the section as a whole), or `lost` / `twice` (the invariant broken). */
   outcome: string
   fromHash: string | null
   toHash: string | null
@@ -152,7 +154,7 @@ interface LgblLine {
   paragraphs: ParagraphLine[]
   /** Withheld entries for §§ RIS does not tie to the Landesgesetzblatt — an instruction names them (`unpaired`). */
   instructedOnly: { law: string | null; id: string; reason: string }[]
-  /** The laws every version of which RIS ties to this Landesgesetzblatt as its repeal: repealed whole, no instruction amends them. */
+  /** The laws every version of which RIS ties to this Landesgesetzblatt as its repeal; the page states one as repealed only where the Landesgesetzblatt's own sentence names it (`lgblRepealedLaws`). */
   repealedWhole?: string[]
 }
 
@@ -187,6 +189,7 @@ function outcomes(value: LandLawDiffResponse, tied: readonly { law: string; id: 
     if (u.fromId && u.fromId !== u.id) add(u.fromArticle ?? u.article, u.fromId, o)
   }
   for (const w of value.withheld) add(w.law, w.id, { outcome: `withheld:${w.reason ?? 'none'}`, from: null, to: null })
+  for (const r of value.repealedWhole ?? []) for (const id of r.ids) add(r.law, id, { outcome: 'repealedWhole', from: null, to: null })
   const tiedKeys = new Set(tied.map((t) => `${t.law}|${t.id}`))
   const paragraphs = tied.map(({ law, id }) => {
     const hits = seen.get(`${law}|${id}`) ?? []
@@ -359,7 +362,7 @@ md.push('## „lautet:"', '', `${lautet.instructions} Anweisungen „… lautet:
 // The §§ withheld as lawUnmatched: of a law repealed whole, or one of the rest, each listed.
 const unmatched = lines.flatMap((l) => l.paragraphs.filter((p) => p.outcome === 'withheld:lawUnmatched').map((p) => ({ l, p, whole: (l.repealedWhole ?? []).includes(p.law) })))
 const lawUnmatched = { repealedWhole: unmatched.filter((x) => x.whole).length, other: unmatched.filter((x) => !x.whole).length }
-md.push('## lawUnmatched', '', `${unmatched.length} §§: ${lawUnmatched.repealedWhole} eines Gesetzes, das das Landesgesetzblatt als Ganzes aufhebt; ${lawUnmatched.other} andere:`, '', ...unmatched.filter((x) => !x.whole).map(({ l, p }) => `- ${l.land} ${l.nr} ${p.law} ${p.id}`), '')
+md.push('## lawUnmatched', '', `${unmatched.length} §§: ${lawUnmatched.repealedWhole} eines Gesetzes, das nur das RIS als aufgehoben führt (das Landesgesetzblatt nennt es nicht, sonst stünde es als aufgehoben auf der Seite); ${lawUnmatched.other} andere:`, '', ...unmatched.filter((x) => !x.whole).map(({ l, p }) => `- ${l.land} ${l.nr} ${p.law} ${p.id}`), '')
 writeFileSync(join(outDir, 'lautet.txt'), lautet.lines.map((l) => `${l.land} ${l.nr} ${l.id}${l.whole ? ` (ganz${l.notInLgbl.length ? `, ${l.outsideWording ? 'nur Nummer, Überschrift oder Gliederung' : 'im Text'}` : ''})` : ''}\n  ${l.instruction}\n  fehlt im RIS: ${l.notInRis.join(' ') || '—'}${l.whole ? `\n  fehlt im LGBl: ${l.notInLgbl.join(' ') || '—'}` : ''}`).join('\n') + '\n')
 
 // --- Against an earlier run ----------------------------------------------

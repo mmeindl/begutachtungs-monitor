@@ -277,6 +277,17 @@ export function enactedNote(): string {
 }
 
 /**
+ * A law the Landesgesetzblatt repeals as a whole, with the §§ RIS records as
+ * repealed by it (`lgblRepealedLaws`, 23.11.2026). What the Landesgesetzblatt
+ * does, so no gap's lead word. „Rechtsvorschrift": it may be a Verordnung;
+ * „ihrer": RIS need not list every § the law ever had.
+ */
+export function repealedWholeNote(paragraphs: number): string {
+  const counted = paragraphs === 1 ? 'einen ihrer Paragraphen' : `${paragraphs} ihrer Paragraphen`
+  return `Das Landesgesetzblatt hebt diese Rechtsvorschrift als Ganzes auf; das RIS führt ${counted} als dadurch aufgehoben.`
+}
+
+/**
  * Where the draft renumbers §§ and the comparison could not pair one of them
  * old → new (`LandLawDiffResponse.renumbered`, 26.10.2026): said above the
  * list, as a warning that a § may stand beside the one that takes its

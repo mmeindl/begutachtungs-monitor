@@ -18,6 +18,7 @@ import { NO_WORD_DIFF_DE, readsSideBySide, splitSegments } from '~/utils/diffSid
 import { unitLayoutNotes } from '~/utils/layoutNotes'
 import { landUncheckedMarks, landUncheckedNote } from '~/utils/landUnchecked'
 import ListBox from '~/components/ui/ListBox.vue'
+import LandRepealedLaws from '~/components/land/LandRepealedLaws.vue'
 import LandWithheldNotes from '~/components/land/LandWithheldNotes.vue'
 
 /**
@@ -259,6 +260,13 @@ const withheldByGroup = computed(() => {
    call, as the Bund's (`landUnchecked.ts`, 20.11.2026). */
 const uncheckedMarks = computed(() => landUncheckedMarks(data.value?.available ? data.value.draftUnchecked : undefined))
 
+/* The laws the Landesgesetzblatt repeals as a whole, one row each (23.11.2026); a search keeps those it names. */
+const repealedLaws = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  const laws = data.value?.repealedWhole ?? []
+  return q ? laws.filter((r) => r.law.toLowerCase().includes(q)) : laws
+})
+
 /* A station pair (19.11.2026): neither the Textgegenüberstellung nor a Landesgesetz's page. */
 const station = computed(() => !ofDraft.value && !ofLaw.value)
 
@@ -395,7 +403,7 @@ const hasUnits = computed(() => units.value.length > 0)
            and with why (25.10.2026) — Kärnten 15193/2025 said „keine
            Paragraphen" and named none of the 21 its Novelle changes. -->
       <ComparisonCaveats v-if="droppedNote" :notes="[droppedNote]" class="mt-3" />
-      <ListBox v-if="unshownLaws.length" class="mt-3">
+      <ListBox v-if="unshownLaws.length || repealedLaws.length" class="mt-3">
         <DiffGroup
           v-for="law in unshownLaws"
           :key="law"
@@ -407,6 +415,7 @@ const hasUnits = computed(() => units.value.length > 0)
         >
           <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :enacted="enactedLaws.has(law)" :moved-to="movedToByGroup.get(law)" :document-url="(ofLaw ? data.toDocument?.url : data.fromDocument?.url) ?? null" :lgbl="ofLaw" :station="station" alone />
         </DiffGroup>
+        <LandRepealedLaws :laws="repealedLaws" />
       </ListBox>
     </template>
     <template v-else>
@@ -424,7 +433,8 @@ const hasUnits = computed(() => units.value.length > 0)
         </p>
       </ComparisonCaveats>
       <ListBox>
-        <template #header>
+        <!-- A Landesgesetzblatt that only repeals has no § to filter. -->
+        <template v-if="hasUnits" #header>
           <DiffToolbar
             v-model:query="query"
             v-model:hidden="hiddenKinds"
@@ -564,6 +574,7 @@ const hasUnits = computed(() => units.value.length > 0)
             </div>
           </template>
         </DiffGroup>
+        <LandRepealedLaws :laws="repealedLaws" />
         <!-- The Land's passages on §§ of a package the reader could not file
              under one of its laws: at no law's § of that number, and not
              lost either — at the list's end, in the shape the Bund's annex
@@ -580,7 +591,7 @@ const hasUnits = computed(() => units.value.length > 0)
             </div>
           </Disclosure>
         </section>
-        <NoMatches v-if="hasUnits" :found="visible.length > 0 || withheldByGroup.size > 0" />
+        <NoMatches v-if="hasUnits" :found="visible.length > 0 || withheldByGroup.size > 0 || repealedLaws.length > 0" />
       </ListBox>
       <!-- Whose texts and whose reading: the Land's and the Landtag's PDFs,
            RIS's Kundmachung, and the comparison ours — read from PDFs,

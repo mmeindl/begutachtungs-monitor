@@ -19,7 +19,8 @@
  * (`uninstructed`), §§ an instruction names that found no pair
  * (`unpaired`), §§ of a law no instruction's law could be matched to
  * (`lawUnmatched`, 20.11.2026). A law the Landesgesetzblatt enacts anew has no instructions
- * and no earlier version: its §§ stand as new.
+ * and no earlier version: its §§ stand as new. A law it repeals as a whole
+ * is stated once, with the number of its §§ (`lgblRepealedLaws`, 23.11.2026).
  *
  * Measured before it was built as a set per law (10.11.2026: 57 of 176
  * laws with equal sets, the first § of each instruction only) — too coarse
@@ -408,6 +409,59 @@ export function lautetMissing(instruction: LawUnit, key: string, unit: Pick<LawU
   const rest = instruction.text.slice(at.index + at[0].length)
   const wording = /^\s*[„"]/.test(rest) ? [...rest.matchAll(/„([^“”]*)[“”]|"([^"]*)"/g)].map((m) => m[1] ?? m[2]!).join(' ') : rest
   return [...wordsOf(wording)].filter((w) => !ris.has(w))
+}
+
+/** A point after an abbreviation or a number („LGBl.", „Oö.", „31. Dezember", „1. Das …"): no sentence ends there. */
+const NO_SENTENCE_END_RE = /(?<![\p{L}\p{N}])(LGBl|BGBl|Nr|Oö|Stmk|Bgld|Ktn|Krnt|Sbg|Tir|Vlbg|Vbg|Wr|NÖ|Abs|Art|Z|lit|idF|bzw|vgl)\.|(\d)\.(?=\s)/gu
+/** A sentence that puts something out of force: „… tritt … außer Kraft", „… wird … aufgehoben". */
+const REPEALS_RE = /\b(?:tritt|treten)\b.*\baußer\s+Kraft\s*$|\b(?:wird|werden)\b.*\baufgehoben\s*$/u
+/** What makes the repeal one of a part: a §, an Artikel, an Absatz, an exception, a limit. */
+const PART_ONLY_RE = /§|(?<![\p{L}])(?:Art(?:ikel)?|Abs)(?![\p{L}])|Ausnahme|ausgenommen|hinsichtlich|soweit|teilweise/u
+/** The law's citation in such a sentence: „LGBl. Nr. 93/1997", „LGBl. für Wien Nr. 37/1987", Salzburg's „LGBl Nr 66" with the year in the law's name. */
+const CITED_RE = /LG\s?Bl\.?\s*(?:für\s+Wien\s*)?(?:Nr\.?\s*)?(\d+)(?:\/(\d{4}))?/u
+
+/** The sentences of a Landesgesetzblatt that repeal something whole, each cut into its subjects („das A, LGBl. …, und das B, LGBl. …"). */
+function repealSubjects(xml: string): string[] {
+  const body = xml.slice(Math.max(0, xml.indexOf('<nutzdaten')))
+  const out: string[] = []
+  for (const m of body.matchAll(/<(absatz|listelem)\b[^>]*>([\s\S]*?)<\/\1>/g)) {
+    const text = decodeEntities(stripMarkup(m[2]!)).replace(/\s+/g, ' ').trim().replace(NO_SENTENCE_END_RE, '$1$2')
+    for (const sentence of text.split(/[.;](?:\s+|$)/)) {
+      if (REPEALS_RE.test(sentence) && !PART_ONLY_RE.test(sentence)) out.push(...sentence.split(/(?:,\s*|\s+(?:und|sowie)\s+)(?=(?:das|die|der)\s)/u))
+    }
+  }
+  return out
+}
+
+/**
+ * The laws a Landesgesetzblatt repeals as a whole (23.11.2026): every
+ * version RIS ties to it is „aufgehoben durch" it, AND one of its own
+ * sentences puts the law out of force by the Stammnorm RIS gives it — „Das
+ * Schulratgesetz, LGBl.Nr. 35/1963, … tritt … außer Kraft", „1. Das 1. Oö.
+ * Euro-Umstellungsgesetz, LGBl. Nr. 126/1998, wird aufgehoben."
+ *
+ * RIS alone is not enough: it files two Verordnungen as repealed by
+ * Salzburg's LGBl. Nr. 64/2018 that the Landesgesetzblatt names nowhere, and
+ * a law of which a Landesgesetzblatt repeals one § looks the same in its
+ * records. A sentence about a part (a §, an Artikel, „mit Ausnahme …") does
+ * not count. Where the citation gives no year, the Stammnorm's year must
+ * stand in the law's name beside it; where two of the laws share a
+ * Stammnorm, the sentence must hold the law's name too.
+ */
+export function lgblRepealedLaws(own: readonly Pick<LandKonsVersion, 'law' | 'organ' | 'stammnorm'>[], nummer: string, xml: string): Set<string> {
+  const laws = [...new Set(own.map((v) => v.law))].filter((law) => own.every((v) => v.law !== law || repealedBy(v.organ, nummer)))
+  if (!laws.length) return new Set()
+  const subjects = repealSubjects(xml).flatMap((text) => {
+    const cited = CITED_RE.exec(text)
+    return cited ? [{ text, number: cited[1]!, year: cited[2] ?? null }] : []
+  })
+  const stammOf = (law: string) => /^(\d+)\/(\d{4})/.exec(own.find((v) => v.law === law && v.stammnorm)?.stammnorm ?? '')
+  return new Set(laws.filter((law) => {
+    const stamm = stammOf(law)
+    if (!stamm) return false
+    const shared = laws.some((other) => other !== law && stammOf(other)?.[0] === stamm[0])
+    return subjects.some((s) => s.number === stamm[1] && (s.year === stamm[2] || (s.year === null && s.text.includes(stamm[2]!))) && (!shared || holdsAll(s.text, lgblWords(law))))
+  }))
 }
 
 /**
