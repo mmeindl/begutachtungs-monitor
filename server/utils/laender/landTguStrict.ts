@@ -1044,6 +1044,10 @@ const ordinalAt = (word: string): number[] | null => (/beiden\s+ersten|ersten\s+
 /** „die Sätze sechs und sieben", „die Sätze drei bis fünf": sentences counted in words after the noun. */
 const CARDINALS = ['zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn']
 const BY_CARDINAL_RE = new RegExp(`(?<![\\p{L}])(?:die\\s+)?(?:Sätze|Halbsätze)\\s+(${CARDINALS.join('|')})(?:\\s+(und|bis)\\s+(${CARDINALS.join('|')}))?(?![\\p{L}])`, 'gu')
+/** „§ 5 Abs. 8 1. Satz lautet:", „In § 270 Abs. 3 lautet Satz 7:": a sentence numbered in figures, not „Abs. 1" or the „2." of a list. */
+const BY_FIGURE_RE = /(?<![\p{L}\d.])(?:(\d{1,2})\.\s*Satz|Satz\s+(\d{1,2}))(?![\p{L}\d])/gu
+/** The verb a sentence named in figures stands right behind („lautet Satz 7:"), with nothing else to strike. */
+const VERB_BEFORE_FIGURE_RE = new RegExp(`(?<![\\p{L}])(?:lautet|lauten|${REMOVING})\\s*$`, 'u')
 /**
  * „der Schlussteil", „der Klammerausdruck", „die Zeilen betreffend …" — a unit described, not quoted: not „die Zeile mit der
  * Wortfolge „…“", which names what it strikes by a quotation (22.11.2026: counted as a position, it let any one struck line
@@ -1122,6 +1126,16 @@ function positionsOf(raw: string): { count: number; sentences: number[] | null; 
     const [a, b] = [m[1], m[3]].map((c) => (c ? CARDINALS.indexOf(c) + 2 : 0))
     const named = !m[2] ? [null] : m[2] === 'und' ? [a!, b!] : Array.from({ length: Math.max(0, n) }, (_, i) => a! + i)
     sentences.push(...(/^(?:die\s+)?Sätze/u.test(m[0]) && m[2] ? named : named.map(() => null)))
+  }
+  // „§ 5 Abs. 8 1. Satz lautet:" and „In § 270 Abs. 3 lautet Satz 7:" (23.11.2026) are read as „erster Satz" is: the sentence the verb is
+  // said of, right before or right behind it and with nothing beside it. „In § 6 Abs. 6 1. Satz wird das Wort …" names only a place.
+  for (const m of line.matchAll(BY_FIGURE_RE)) {
+    const end = m.index + m[0].length
+    const behind = VERB_BEFORE_FIGURE_RE.test(line.slice(0, m.index)) && /^\s*[.:;]?\s*$/u.test(line.slice(end))
+    if (place(m.index) || !(m[1] ? struckBare(end) : behind)) continue
+    count++
+    seen(m.index)
+    sentences.push(Number(m[1] ?? m[2]))
   }
   // „der Überschrift des § 38" in the list of places of a line that quotes what it replaces (E-ControlG, 22.11.2026: „In § 4, …
   // der Überschrift des § 38, … wird der Ausdruck „E-Control“ jeweils durch … ersetzt" counted twelve positions in each §): a place.

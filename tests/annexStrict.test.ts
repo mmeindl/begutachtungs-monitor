@@ -407,6 +407,15 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     })
   })
 
+  it('reads a sentence numbered in figures as „erster Satz“ is read, and no figure that only names a place (23.11.2026)', () => {
+    const current = '(1) Die Behörde ist zuständig. Sie entscheidet schriftlich. Sie ist an Weisungen nicht gebunden.'
+    const proposed = '(1) Die Behörde ist zuständig. Sie ist an Weisungen nicht gebunden.'
+    for (const line of ['1. § 5 Abs. 1 2. Satz entfällt.', '1. In § 5 Abs. 1 entfällt Satz 2.']) expect(check(blocksWith(line), proposed, current)).toMatchObject({ state: 'holds', struck: { byPosition: 3 } })
+    // Another sentence than the one it numbers, and a figure that only says where a wording stands.
+    expect(check(blocksWith('1. § 5 Abs. 1 3. Satz entfällt.'), proposed, current).state).toBe('differs')
+    expect(check(blocksWith('1. In § 5 Abs. 1 2. Satz wird das Wort „nie“ durch das Wort „oft“ ersetzt.'), proposed, current).state).toBe('differs')
+  })
+
   it('repeals no unit by a verb that has an object of its own, and reads „Art." as an address (22.11.2026)', () => {
     // B-VG Art. 11, SchUG § 42: „entfällt die Wortfolge „…““ was read as a repeal of the Absatz the line names as its place.
     const current = '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet und andere. Sie ist an Weisungen nicht gebunden.'

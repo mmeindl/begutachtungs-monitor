@@ -1672,6 +1672,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   Energieausweis-Vorlage-Gesetz § 9, ÄAO 2015 §§ 3 and 19, Mediengesetz § 27,
   Bäderhygieneverordnung §§ 42 and 47); none moves the other way, and the PDF
   path, which prints such rows inside its text, does not move.
+- **A sentence numbered in figures is a position like „erster Satz"**
+  (23.11.2026, `BY_FIGURE_RE`): „§ 5 Abs. 8 1. Satz lautet:", „In § 270 Abs. 3
+  lautet Satz 7:", only with the verb right beside it. A figure that names a
+  place („In § 6 Abs. 6 1. Satz wird das Wort …") stays a place. Two of the 9,089
+  distinct lines of GP XXVIII change; no § moves.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a
