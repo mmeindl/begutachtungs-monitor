@@ -1738,11 +1738,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   under „(neu)". Two §§ that already differ name more struck words for it
   (Konfitürenverordnung Anlage 1, AEV pflanzliche Nahrungs- und Futtermittel
   § 1); no § changes its verdict.
-- **A repeal word alone in brackets is the annex's notation** (23.11.2026):
-  „(entfällt)" in the right column, also where the draft says „ersetzt" and no
-  repealing verb stands (Zivildienstgesetz 1986 §§ 23c, 60 and 63, each read).
-  Outside brackets it stays a word, and what the column strikes beside it is
-  held as any struck text.
+- **A repeal word alone in brackets is the annex's notation, beside words its
+  row strikes** (23.11.2026, `besideStruckWords`): „(entfällt)" in the right
+  column, also where the draft says „ersetzt" and no repealing verb stands
+  (Zivildienstgesetz 1986 §§ 23c, 60 and 63, each read). What the column strikes
+  beside it is held as any struck text. Over an elision, „(1) …" turned into
+  „(1) (entfällt)", the column would repeal an Absatz it does not show, and the
+  word stays a word the draft has to account for. Outside brackets it is one
+  anyway. None of the six such rows of GP XXVIII stands against an elision.
 - **RIS's own note in the left column is no struck text** (23.11.2026,
   `RIS_NOTE_RE`): „(Anm. 1)" and „(Anm.: Z 2 aufgehoben durch BGBl. …)", whole in
   their brackets, also where the word diff keeps a figure of the note and cuts it

@@ -1763,9 +1763,22 @@ function respace(shown: Marked[], wordings: readonly Wording[]): void {
   }
 }
 
+/** What an elision mark is read as: a word no law prints, which the layout says is none of the §'s text. */
+export const ELISION_WORD = 'auslassungszeichen'
+
 const REPEALING = new Set(['entfallen', 'entfällt', 'aufgehoben'])
 /** RIS's apparatus inside a § of the consolidated text: a numbered note, or a whole note in brackets. */
 const RIS_NOTE_RE = /\(\s*Anm\.\s*(?:\d+\s*|:[^()]*)\)/gu
+
+/** Whether the new word at `at` stands right beside words its row strikes, the annex's elision mark not counted. */
+function besideStruckWords(diff: readonly DiffWord[], at: number): boolean {
+  return [-1, 1].some((step) => {
+    for (let k = at + step; k >= 0 && k < diff.length && diff[k]!.kind !== 'equal' && diff[k]!.row === diff[at]!.row; k += step) {
+      if (diff[k]!.kind === 'removed' && diff[k]!.word !== ELISION_WORD) return true
+    }
+    return false
+  })
+}
 
 /** Whether `needle` stands in `hay` as one stretch. */
 function contains(hay: readonly string[], needle: readonly string[]): boolean {
@@ -1838,10 +1851,12 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   })
   // „(2) entfallen": how a column prints a repealed Absatz — the instruction's verb, not text of the law. In brackets („(entfällt)")
   // it is the annex's notation whatever verb the draft uses („Die §§ 60 bis 63 werden durch folgende §§ 61 und 62 ersetzt",
-  // Zivildienstgesetz 1986): what the column strikes beside it is held as any struck text.
+  // Zivildienstgesetz 1986), but only beside words its row strikes, which are then held as any struck text. Over an elision
+  // („(1) …" turned into „(1) (entfällt)") the column would repeal an Absatz it does not show, with no line that says so.
   const repeals = found.some((f) => f.text.some((t) => t.some((w) => REPEALING.has(w))))
+  const diffed = unit.segments ? diffWords(unit.segments) : []
   shown.forEach((t) => {
-    if (REPEALING.has(t.word) && (repeals || t.bracketed)) t.marked = false
+    if (REPEALING.has(t.word) && (repeals || (t.bracketed && t.at !== undefined && besideStruckWords(diffed, t.at)))) t.marked = false
   })
   const draft: string[] = []
   const optional: boolean[] = []

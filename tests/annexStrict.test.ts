@@ -488,6 +488,8 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
   it('reads a repeal word alone in brackets as the annex\'s notation, whatever verb the draft uses (Zivildienstgesetz 1986 § 60)', () => {
     const current = '§ 5. Die Behörde ist zuständig.'
     expect(check(blocksWith('1. Die §§ 5 und 6 werden durch folgenden § 6 ersetzt:'), '§ 5. (entfällt)', current)).toMatchObject({ state: 'holds', notInDraft: [] })
+    // Over an elision it repeals an Absatz the column does not show: no notation.
+    expect(check(blocksWith('1. In § 5 Abs. 2 wird das Wort „vier“ durch das Wort „fünf“ ersetzt.'), '(1) (entfällt) (2) Die Frist beträgt fünf Wochen.', '(1) … (2) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'differs', notInDraft: ['entfällt'] })
     // Not as a word of the text, and not where what it stands beside is struck without an instruction.
     expect(check(blocksWith('1. In § 5 wird das Wort „Behörde“ durch das Wort „Stelle“ ersetzt.'), '§ 5. Die Stelle ist entfällt zuständig.', current).notInDraft).toEqual(['entfällt'])
     expect(check(blocksWith('1. In § 5 wird das Wort „Behörde“ durch das Wort „Stelle“ ersetzt.'), '§ 5. (entfällt)', current).state).toBe('differs')

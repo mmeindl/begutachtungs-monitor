@@ -50,7 +50,7 @@ import { printedQuotes, segmentUnits, type TextBlock } from '../lawtext/lawUnits
 import { draftUnits } from './annexDraft'
 import { REASON_CUT, REASON_UNREADABLE_DESIGNATION, type AnnexDraft } from './verdict'
 import { refusedAddress } from '../laender/landTguGuard'
-import { STRICT_UNCHECKED, newNumbers, draftWording, strictCheck, strictTokens, writesAnew, type DraftWording, type ElidedRow, type StrictCheck, type Wording } from '../laender/landTguStrict'
+import { ELISION_WORD, STRICT_UNCHECKED, newNumbers, draftWording, strictCheck, strictTokens, writesAnew, type DraftWording, type ElidedRow, type StrictCheck, type Wording } from '../laender/landTguStrict'
 
 /** Why a § was not held, beside `STRICT_UNCHECKED`: the draft's Gesetzestext could not be read at all. */
 export const DRAFT_UNREAD = 'der Gesetzestext des Entwurfs ließ sich nicht lesen'
@@ -144,8 +144,6 @@ export function divisionStack(words: readonly string[], marked: readonly boolean
 
 /** The annex's marks for a stretch it leaves out („(2) bis (4) …", „[…]"), as `elision.ts` reads them. */
 const ELISION_RUN_RE = /\[\s*(?:\.{2,}|…+)\s*\]|\.{2,}|…+/g
-/** What an elision mark is read as: a word no law prints, which the layout says is none of the §'s text. */
-export const ELISION_WORD = 'auslassungszeichen'
 /** A designation's part as `strictTokens` reads it: „(2)", „4.", „b)", „Abs.", „xx". */
 const CHAIN_WORD_RE = /^(?:\d+[a-z]*|[a-z]{1,2}|x{2,4}|bis|und|sowie|abs|z|lit|§)$/
 const CHAIN_JOIN = new Set(['bis', 'und', 'sowie'])
