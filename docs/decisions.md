@@ -1705,6 +1705,18 @@ gets an entry of its own only where it carries a reason the rule does not.
   „Inhaltsverzeichnis", „Inhaltsübersicht" or nothing: an entry is a place, no
   wording of the §, and accounts for none of the column's. Both shapes had no role, so the § stayed
   „nicht geprüft" (Landarbeitsgesetz 2021 § 3, now held and read).
+- **What a line quotes for the heading counts only above the § designation**
+  (23.11.2026, `Wording.heading`, `headingZone`): the quotation behind „lautet
+  die Überschrift" and every new one of a line about one §'s heading alone („Die
+  Überschrift zu § 11 lautet „X“", „In der Überschrift des § 13 wird …"). Read
+  as any wording it accounted for itself wherever it stood: with the old heading
+  kept and the quoted one set behind Abs. 1's last sentence, Landarbeitsgesetz
+  2021 § 3 passed, and so did the standard forms before it. The zone ends at the
+  § designation where that stands after no sentence's end and no Absatz, a
+  division's number („2. Abschnitt") being neither; where the column opens with
+  the designation or prints none, at the first other designation or sentence's
+  end. A heading written as a payload under „Die Überschrift des § 5 lautet:" is
+  aligned as any payload and not held to the zone.
 - **The old wording may stand in front of the place that says where it is**
   (23.11.2026, `PLACE_BEHIND_RE`): „wird das Zitat „X“ nach der Wortfolge „Y“
   durch das Zitat „Z“ ersetzt", „das Wort „und“ vor „Geburtsdatum“ durch einen

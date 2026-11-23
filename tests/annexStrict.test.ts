@@ -442,6 +442,16 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
       expect(check(blocksWith(lines[0]!, '2. In § 5 Abs. 2 (neu) entfallen die Z 1 und die Ziffernbezeichnung „2.“.'), renumbered, CURRENT).state).toBe('differs')
     })
 
+    it('takes what a line quotes for the heading only above the § designation (Landarbeitsgesetz 2021 § 3)', () => {
+      const headed = (body: string, heading: string) => annexStrictChecks([
+        row({ law: LAW, gld: '§ 5.', para: '§ 5.', current: 'Freie Dienstnehmer', proposed: heading }),
+        row({ law: LAW, para: '§ 5.', current: '§ 5. (1) Die Behörde ist zuständig.', proposed: body }),
+      ], { ...draft, blocks: blocksWith('1. In § 5 lautet die Überschrift „Freie Dienstnehmer und Arbeitnehmer“.') }).get(`${LAW}#§ 5.`)!
+      expect(headed('§ 5. (1) Die Behörde ist zuständig.', 'Freie Dienstnehmer und Arbeitnehmer').state).toBe('holds')
+      // The old heading kept, the quoted one set behind the Absatz's last sentence.
+      expect(headed('§ 5. (1) Die Behörde ist zuständig. Freie Dienstnehmer und Arbeitnehmer', 'Freie Dienstnehmer')).toMatchObject({ state: 'differs', notInDraft: ['freie', 'dienstnehmer', 'und', 'arbeitnehmer'] })
+    })
+
     it('finds a quoted number the column prints apart, and no word it prints whole (FPG § 61, ORF-G § 31)', () => {
       const figure = '(1) Nach §§ 4a gilt dies, nach §§ 4 a nicht.'
       expect(check(blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „nach §§ 4a“.'), '(1) Nach §§ 4a gilt dies, nicht.', figure).state).toBe('holds')

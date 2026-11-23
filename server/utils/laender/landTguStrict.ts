@@ -285,6 +285,8 @@ export interface Wording {
    * replaces what the line names.
    */
   bridges?: true
+  /** A wording its line writes for the §'s heading (`quoteRoles`): it accounts only above the § designation (`headingZone`). */
+  heading?: true
   /**
    * A designation the instruction gives („erhält die Absatzbezeichnung
    * „(5)""): a single token accounts only for a place printed as a
@@ -419,8 +421,10 @@ const IN_PLACE_NEW_RE = new RegExp(`^\\s*(?:(?:tritt|treten)\\s+)?(?:jeweils\\s+
  * says it of the table of contents, however the draft calls it („Inhaltsverzeichnis", „Inhaltsübersicht") or if it does not:
  * an entry is a place, no wording of the §, and accounts for none of the column's (`ENTRY_BEFORE_RE`).
  */
-const WRITES_PART_RE = /(?<![\p{L}])(?:lautet|lauten)\s+(?:die|der|das)\s+(?:Überschrift|Eintragung|Eintrag)(?:\s+zu\s+§\s*\d+[a-z]*)?\s*$/u
-const ENTRY_BEFORE_RE = /(?<![\p{L}])(?:Eintragung|Eintrag)(?:\s+zu\s+§\s*\d+[a-z]*)?\s*$/u
+const WRITES_PART_RE = /(?<![\p{L}])(?:lautet|lauten)\s+(?:die|der|das)\s+(?:Überschrift|Eintragung|Eintrag)(?:\s+zu\s+§\s*\d+[a-z]*)?\s*:?\s*$/u
+/** A line that speaks of one §'s heading and of nothing else in it: „Die Überschrift zu § 11 lautet „X“", „In der Überschrift des § 13 wird das Wort …". */
+const HEADING_LINE_RE = /^\s*(?:\d+[a-z]*\.\s*)?(?:In\s+der|Der|Die)\s+Überschrift\s+(?:zu|zum|des|von|vor)\s+§\s*\d+[a-z]*(?![\p{L}\d])/u
+const ENTRY_BEFORE_RE = /(?<![\p{L}])(?:Eintragung|Eintrag)(?:\s+zu\s+§\s*\d+[a-z]*)?\s*:?\s*$/u
 const DESIGNATION_TEXT_RE = /^\s*(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.?|[a-z]{1,2}\)?)\s*$/u
 /** A replacement the instruction leaves to the reader's grammar: the wording is not quoted as it will stand. */
 const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jeweiligen|jeweils\s+richtigen/u
@@ -433,7 +437,7 @@ const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jewei
  * Read clause by clause, since German puts the verb at either end:
  * „entfällt die Wortfolge „X"" and „wird die Wortfolge „X" gestrichen".
  */
-export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean; range: boolean; rewrites: boolean; touching?: WordPlace }[] {
+export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean; range: boolean; rewrites: boolean; touching?: WordPlace; heading?: true }[] {
   const line = withoutResidue(raw)
   const quotes = [...line.matchAll(QUOTE_RE)]
   const bounds = [...line.matchAll(CLAUSE_RE)].map((m) => m.index)
@@ -510,9 +514,13 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
     const place = q.role === 'old' && out[i + 1]?.role === 'anchor' ? PLACE_BEHIND_RE.exec(q.after) : null
     return place ? { side: /^\s*[Vv]or/u.test(place[0]) ? 'before' : 'after', tokens: strictTokens(out[i + 1]!.text) } : null
   }
+  // What the line writes for the heading: the quotation right behind „lautet die Überschrift", every new one of a line about the heading alone.
+  const bare = line.replace(QUOTE_RE, ' ')
+  const headingLine = HEADING_LINE_RE.test(line) && (bare.match(/§/gu) ?? []).length === 1 && ![...bare.matchAll(ADDRESS_RE)].some((m) => addressUnits(m[0]).some((u) => u.level > 0))
+  const forHeading = (q: (typeof out)[number]) => q.role === 'new' && !q.designation && (headingLine || (WRITES_PART_RE.test(q.before) && !ENTRY_BEFORE_RE.test(q.before) && !/Inhalts(?:verzeichnis|übersicht|angabe)/u.test(line.slice(0, q.start))))
   return out.map((q, i) => {
     const place = touching(q, i)
-    return { text: q.text, role: inexact && q.role === 'new' ? null : q.role, designation: (q.role === 'new' || q.role === 'old') && q.designation, range: q.range, rewrites: rewrites(q), ...(place ? { touching: place } : {}) }
+    return { text: q.text, role: inexact && q.role === 'new' ? null : q.role, designation: (q.role === 'new' || q.role === 'old') && q.designation, range: q.range, rewrites: rewrites(q), ...(place ? { touching: place } : {}), ...(forHeading(q) ? { heading: true as const } : {}) }
   })
 }
 
@@ -1285,13 +1293,16 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       if (run.line !== null) {
         const roles = quoteRoles(run.line)
         let k = 0
-        const kept = withoutResidue(run.line).replace(QUOTE_RE, (m) => (roles[k++]?.role === 'new' ? m : ' '))
+        const kept = withoutResidue(run.line).replace(QUOTE_RE, (m) => {
+          const role = roles[k++]
+          return role?.role === 'new' && !role.heading ? m : ' '
+        })
         standing.push(...strictTokens(kept))
         // A designation the line gives is held where it is printed as one (`Wording.designation`), not as a word of the text.
         let d = 0
         const own = withoutResidue(run.line).replace(QUOTE_RE, (m) => {
           const role = roles[d++]
-          return role?.role === 'new' && !role.designation ? m : ' '
+          return role?.role === 'new' && !role.designation && !role.heading ? m : ' '
         })
         written.push(...[...own.matchAll(WRITTEN_RE)].flatMap((m) => strictTokens(m[1]!)))
       }
@@ -1340,7 +1351,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         const roles = run.line === null ? [] : quoteRoles(run.line)
         for (const quote of roles) {
           const tokens = quote.role === 'new' ? strictTokens(quote.text) : []
-          if (tokens.length) into.general.push({ tokens, optional: tokens.map(() => false), repeats: true, ...(quote.designation ? { designation: true } : {}), ...(quote.rewrites && !roles.some((q) => q.role === 'old') ? { bridges: true as const } : {}) })
+          if (tokens.length) into.general.push({ tokens, optional: tokens.map(() => false), repeats: true, ...(quote.designation ? { designation: true } : {}), ...(quote.rewrites && !roles.some((q) => q.role === 'old') ? { bridges: true as const } : {}), ...(quote.heading ? { heading: true as const } : {}) })
         }
         into.general.push(...rangeDesignations(roles).map(designationWording))
       }
@@ -1375,7 +1386,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
         if (quote.role !== 'new') continue
         const tokens = strictTokens(quote.text)
         if (!tokens.length) continue
-        for (const key of keys) at(draft.law, key).wordings.push({ tokens, optional: tokens.map(() => false), repeats: true, once: keys.length === 1, ...(quote.designation ? { designation: true } : {}), ...(quote.rewrites && !roles.some((q) => q.role === 'old') ? { bridges: true as const } : {}) })
+        for (const key of keys) at(draft.law, key).wordings.push({ tokens, optional: tokens.map(() => false), repeats: true, once: keys.length === 1, ...(quote.designation ? { designation: true } : {}), ...(quote.rewrites && !roles.some((q) => q.role === 'old') ? { bridges: true as const } : {}), ...(quote.heading ? { heading: true as const } : {}) })
       }
       if (!run.payload.length || removesPayload(run.line ?? '')) continue
       const pieces = payloadPieces(run.payload)
@@ -1783,6 +1794,19 @@ const REPEALING = new Set(['entfallen', 'entfällt', 'aufgehoben'])
 /** RIS's apparatus inside a § of the consolidated text: a numbered note, or a whole note in brackets. */
 const RIS_NOTE_RE = /\(\s*Anm\.\s*(?:\d+\s*|:[^()]*)\)/gu
 
+/**
+ * How many words of the column stand in the §'s heading: those ahead of the § designation, where it stands behind them and
+ * after no sentence's end and no Absatz, a division's number („2. Abschnitt") being neither (not a citation of the § in its own
+ * text); where it opens the column
+ * („§ 5. Geltungsbereich (1) …") or is not printed, those up to the first other designation or the first sentence's end.
+ */
+function headingZone(shown: readonly Marked[], ownAt: number): number {
+  if (ownAt > 0 && !shown.slice(0, ownAt).some((t) => (t.stop && t.shape === undefined) || (t.designation && t.shape === '()'))) return ownAt
+  const from = ownAt === 0 ? 2 : 0
+  const end = shown.findIndex((t, i) => i >= from && (t.designation || t.stop))
+  return end < 0 ? shown.length : end
+}
+
 /** Whether the new word at `at` stands right beside words its row strikes, the annex's elision mark not counted. */
 function besideStruckWords(diff: readonly DiffWord[], at: number): boolean {
   return [-1, 1].some((step) => {
@@ -1885,10 +1909,13 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     if (ownAt(draft, j)) optional[j] = true
   })
   if (shown.length * draft.length > MAX_ALIGN_CELLS) return unchecked(STRICT_UNCHECKED.tooLong)
+  // Where the §'s heading stands: what a line writes for the heading accounts only here (23.11.2026).
+  const headingEnd = headingZone(shown, words.findIndex((_, k) => ownAt(words, k)))
   // A stretch quoted in an instruction's line accounts for each place it stands at…
   const placed = shown.map(() => false)
   for (const w of [...all.filter((x) => x.repeats), ...general]) {
     for (const at of placesOf(words, w.tokens)) {
+      if (w.heading && at + w.tokens.length > headingEnd) continue
       // …a designation it gives only where the column prints one: „(5)", not the „5" of „binnen 5 Wochen".
       if (w.designation && w.tokens.length === 1 && !shown[at]!.designation) continue
       for (let k = 0; k < w.tokens.length; k++) placed[at + k] = true
@@ -1899,6 +1926,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   const aligned = align(shown.map((t, i) => ({ word: t.word, marked: t.marked && !placed[i] })), draft, wild)
   const accounted = shown.map((_, i) => placed[i]! || aligned.shown[i]!)
   const quoted = [...all.filter((x) => x.repeats), ...general].map((w) => w.tokens)
+  const quotedForText = [...all.filter((x) => x.repeats), ...general].filter((w) => !w.heading).map((w) => w.tokens)
   // Those that account for struck words between their own (`struckAccount`): only a wording that stands for text its line
   // replaces without quoting it (`Wording.bridges`). Not one whose line quotes what it replaces („„1. April 2026“ durch
   // „1. Oktober 2027“ ersetzt"): such a line names what it strikes, and between two words of its new wording stands nothing
@@ -1906,7 +1934,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   // for, GrEStG § 18; and so were „1982", „(TEN-E-VO)" and a verb that five annexes strike beside the wording their draft
   // replaces). Nor one a line inserts: it strikes nothing at all (a fourth review: under „nach dem Wort „mit“ die Wortfolge
   // „1. Oktober 2027“ eingefügt" the same dropped clause still passed).
-  const bridging = [...all.filter((x) => x.repeats), ...general].filter((w) => w.bridges).map((w) => w.tokens)
+  const bridging = [...all.filter((x) => x.repeats), ...general].filter((w) => w.bridges).map((w) => ({ tokens: w.tokens, end: w.heading ? headingEnd : shown.length }))
   // A new stretch between two equal words can be cut one word earlier or
   // later („zu [tätigen; 3. … zu] tätigen."): where it is the draft's as one
   // stretch at either cut, it is the draft's.
@@ -1939,7 +1967,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
         if (shift === 0 || i + shift < 0 || j + shift > shown.length) continue
         // The same text at the other cut: what leaves at one end enters at the other.
         const same = shift > 0 ? words.slice(i, i + shift).every((w, k) => w === words[j + k]) : words.slice(j + shift, j).every((w, k) => w === words[i + shift + k])
-        if (same && [draft, ...quoted].some((t) => contains(t, words.slice(i + shift, j + shift)))) {
+        if (same && [draft, ...quotedForText].some((t) => contains(t, words.slice(i + shift, j + shift)))) {
           for (let k = i; k < j; k++) accounted[k] = true
           break
         }
@@ -1997,7 +2025,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     return false
   }
   const notShown = draft.filter((_, j) => !optional[j] && !aligned.draft[j] && !behindElision(j))
-  for (const w of all) if (w.repeats && w.once && !contains(words, w.tokens)) notShown.push(...w.tokens)
+  for (const w of all) if (w.repeats && w.once && !contains(w.heading ? words.slice(0, headingEnd) : words, w.tokens)) notShown.push(...w.tokens)
   // New text the draft writes elsewhere — for a § the document prints no
   // block of its own for, or in an instruction whose address was not read:
   // whose text it is, is then not read, and the § is not held strictly.
@@ -2105,7 +2133,7 @@ function struckAccount(
   shown: readonly Marked[],
   draft: { at: readonly number[]; pieces: readonly { from: number; to: number; adds: boolean; whole: boolean; line?: string }[]; optional: readonly boolean[] },
   designations: boolean,
-  quoted: readonly (readonly string[])[],
+  quoted: readonly { tokens: readonly string[]; end: number }[],
   elidedRows: readonly ElidedRow[],
 ): { notInDraft: string[]; by: StruckBy } {
   const by: StruckBy = { named: 0, rewritten: 0, repealed: 0, byPosition: 0, notation: 0 }
@@ -2632,9 +2660,10 @@ function struckAccount(
   // not a whole sentence struck between two of its words (RAO § 23: „Die Rechtsanwaltskammer darf“ across a kept sentence; 22.11.2026).
   const shownWords = shown.map((t) => t.word)
   const stopAt = new Set(left.flatMap((l, k) => (read[k]!.stop ? [l.p] : [])))
-  for (const q of quoted) {
+  for (const { tokens: q, end } of quoted) {
     if (q.length < 2) continue
     for (const at of placesOf(shownWords, q)) {
+      if (at + q.length > end) continue
       const places = shown.slice(at, at + q.length).map((t) => t.at).filter((x): x is number => x !== undefined).sort((a, b) => a - b)
       for (let i = 0; i + 1 < places.length; i++) {
         const between = [...Array(places[i + 1]! - places[i]! - 1).keys()].map((d) => places[i]! + 1 + d).filter((x) => struck.has(x))
