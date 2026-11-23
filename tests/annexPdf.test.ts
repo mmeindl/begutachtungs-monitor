@@ -195,6 +195,67 @@ describe('columnBoundary', () => {
     expect(boundary).toBeLessThanOrEqual(414)
   })
 
+  // Regierungsvorlage 630 d.B. XXVII: the left column runs to 481 pt, the
+  // right starts at 488, past the middle tenth of the page the search covers.
+  // The cut fell at 443, and EStG § 124b Z 348 lost half its list a) to d).
+  describe('a left column that reaches past the middle of the page', () => {
+    const body = (from: number): AnnexItem[] => Array.from({ length: 16 }, (_, n) => [
+      wide(120, from - n * 11, 'a) Zuwendungen, die aus Mitteln des COVID-19-Krisenbewältigungsfonds gemäß dem', 361),
+      wide(n % 4 === 3 ? 488 : 523, from - n * 11, 'Krisenbewältigungsfonds gemäß dem Bundesgesetz', n % 4 === 3 ? 269 : 234),
+    ]).flat()
+
+    it('cuts between that column and the next', () => {
+      const boundary = columnBoundary([pageOf(body(700))])
+      expect(boundary).toBeGreaterThanOrEqual(481)
+      expect(boundary).toBeLessThanOrEqual(488)
+    })
+
+    it('reads both columns of each line, and short words past the old cut stay left', () => {
+      const shape = pageOf([...body(700), wide(120, 500, 'Interessenvertretungen, die für die Bewältigung der', 325), wide(450, 500, 'dem', 31), wide(523, 500, 'Bundesländer', 60)])
+      const lines = linesFromPage(shape, columnBoundary([shape]))
+      expect(lines.every((l) => l.spanning === null)).toBe(true)
+      expect(lines[0]!.left.startsWith('a) Zuwendungen')).toBe(true)
+      expect(lines[0]!.right.startsWith('Krisenbewältigungsfonds')).toBe(true)
+      expect(lines.at(-1)!.left.endsWith('Bewältigung der dem')).toBe(true)
+    })
+
+    it('keeps a heading across both columns spanning', () => {
+      const shape = pageOf([...body(700), wide(300, 500, 'Änderung des Einkommensteuergesetzes 1988 und weiterer Gesetze', 320)])
+      const lines = linesFromPage(shape, columnBoundary([shape]))
+      expect(lines.at(-1)!.spanning).toBe('Änderung des Einkommensteuergesetzes 1988 und weiterer Gesetze')
+    })
+
+    // Ten headings set in two runs each share an end at the same x, but a word
+    // space stands between the runs: no column ends there.
+    it('takes no edge from headings split into runs across the gutter', () => {
+      const items: AnnexItem[] = []
+      for (let n = 0; n < 12; n++) {
+        items.push({ x: 60, y: 700 - n * 14, width: 345, text: 'Text der geltenden Fassung in voller Breite' })
+        items.push({ x: 414.7, y: 700 - n * 14, width: 360, text: 'Text der vorgeschlagenen Fassung in Breite' })
+      }
+      const plain = columnBoundary([pageOf(items, 841.92)])
+      const headings = Array.from({ length: 12 }, (_, n) => [
+        wide(330, 500 - n * 14, 'Änderung des Bundesgesetzes über die', 170),
+        wide(503, 500 - n * 14, 'Einkommensteuer', 117),
+      ]).flat()
+      expect(columnBoundary([pageOf([...items, ...headings], 841.92)])).toBeLessThanOrEqual(plain + 8)
+    })
+
+    it('does not move the cut for a few runs that share an end, or for a right column starting left of it', () => {
+      const items: AnnexItem[] = []
+      for (let n = 0; n < 12; n++) {
+        items.push({ x: 60, y: 700 - n * 14, width: 345, text: 'Text der geltenden Fassung in voller Breite' })
+        items.push({ x: 414.7, y: 700 - n * 14, width: 360, text: 'Text der vorgeschlagenen Fassung in Breite' })
+      }
+      const plain = columnBoundary([pageOf(items, 841.92)])
+      const table = Array.from({ length: 9 }, (_, n) => [
+        wide(405, 500 - n * 14, '1. Oktober 1964 bis 31. Dezember 1964', 178),
+        wide(608, 500 - n * 14, '488 Monate', 60),
+      ]).flat()
+      expect(columnBoundary([pageOf([...items, ...table], 841.92)])).toBeLessThanOrEqual(plain + 8)
+    })
+  })
+
   it('falls back to the middle when there is no text to find a gutter in', () => {
     expect(columnBoundary([pageOf([], 800)])).toBe(400)
   })

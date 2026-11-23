@@ -1337,6 +1337,15 @@ gets an entry of its own only where it carries a reason the rule does not.
   Wasserstraßen-Verkehrsordnung, which print only „Siehe …pdf" and showed a
   neighbour's pointer as „nicht geprüft", now show their own and are withheld,
   because that pointer is no text of the law in RIS.
+- **Where ten runs crossing the cut end at one x with another run behind a
+  real gap, the cut moves behind that edge** (23.11.2026,
+  `cutPastSharedEdge`). The search covers the middle tenth of the page, and
+  Regierungsvorlage 630 d.B. XXVII sets its gutter at 481 to 488 pt, outside
+  it. Every full line of the left column then read as a heading across both
+  columns, and EStG § 124b Z 348 lost half of its list. A word-by-word
+  exception would still have filed the short words past the old cut on the
+  right. Over GP XXVIII's PDF annexes it moves the cut of one part that is
+  not read as a comparison, and no row.
 - **The left column of a Bund annex is held by containment alone**
   (21.11.2026, measured, no rule). The gate's left check and the oracle's
   check 1 both ask whether the column's text stands in the standing §. They

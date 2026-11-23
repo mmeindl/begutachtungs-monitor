@@ -340,6 +340,51 @@ function gutterBand(pages: readonly AnnexPage[], from: number, to: number): [num
   return [from + bestFrom, from + bestTo]
 }
 
+/** How many runs have to end at one x, each with another run behind a gap, before that x is a column's edge. */
+const SHARED_EDGE_RUNS = 10
+/** Wider than a word space of a heading set across both columns. */
+const COLUMN_GAP = 12
+
+/**
+ * The cut, moved behind the left column where that column reaches past it.
+ *
+ * `columnBoundary` searches the middle tenth of the page, and a document may
+ * set its gutter outside it. Regierungsvorlage 630 d.B. XXVII runs its left
+ * column to 481 pt and starts its right one at 507 or later, so the cut fell at
+ * 443, inside the left column: every full line of that column crossed the cut,
+ * went to `spanning`, and EStG § 124b Z 348 lost lines of its list a) to d) in
+ * both columns. What shows it is many runs crossing the cut that all end at one
+ * x with a further run behind a real gap. A heading across both columns has no
+ * common end, and its word spaces are narrower than the gap.
+ */
+function cutPastSharedEdge(pages: readonly AnnexPage[], cut: number): number {
+  const ends = new Map<number, number>()
+  for (const page of pages) {
+    for (const line of baselines(page)) {
+      const runs = line.filter((run) => run.text.trim())
+      for (const run of runs) {
+        const end = run.x + run.width
+        if (run.x >= cut || end <= cut + GUTTER_TOLERANCE) continue
+        const behind = runs.filter((other) => other !== run && other.x >= end - 1).map((other) => other.x)
+        if (behind.length > 0 && Math.min(...behind) >= end + COLUMN_GAP) ends.set(Math.round(end), (ends.get(Math.round(end)) ?? 0) + 1)
+      }
+    }
+  }
+  const shared = [...ends].sort((a, b) => b[1] - a[1])[0]
+  if (!shared || shared[1] < SHARED_EDGE_RUNS) return cut
+  const edge = shared[0]
+  // The right column starts at the nearest x past that edge that several runs
+  // share: 488 there, where a list's indent puts the runs of the lines above at 507.
+  const starts = new Map<number, number>()
+  for (const page of pages) {
+    for (const item of page.items) {
+      if (item.text.trim() && item.x > edge + 1) starts.set(Math.round(item.x), (starts.get(Math.round(item.x)) ?? 0) + 1)
+    }
+  }
+  const start = Math.min(...[...starts].filter(([, n]) => n >= MARGIN_LINES).map(([x]) => x))
+  return Number.isFinite(start) ? Math.round((edge + start) / 2) : cut
+}
+
 /**
  * The column boundary: where the two-column lines part, and failing that the
  * emptiest vertical strip in the middle of the page.
@@ -422,7 +467,7 @@ export function columnBoundary(pages: readonly AnnexPage[]): number {
   // the page, which is where the gutter sits in every annex measured.
   if (band) {
     const [lowFrom, lowTo] = lowestStretch(coverage)
-    return Math.round((searchFrom + lowFrom + searchFrom + lowTo) / 2)
+    return cutPastSharedEdge(pages, Math.round((searchFrom + lowFrom + searchFrom + lowTo) / 2))
   }
   let best = Math.round(width / 2)
   let least = Number.POSITIVE_INFINITY
@@ -434,7 +479,7 @@ export function columnBoundary(pages: readonly AnnexPage[]): number {
       best = x
     }
   }
-  return best
+  return cutPastSharedEdge(pages, best)
 }
 
 /** How far a page's width may fall from the document's before it is another page. */
