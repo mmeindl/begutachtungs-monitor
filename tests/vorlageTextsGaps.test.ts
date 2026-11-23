@@ -17,7 +17,9 @@ vi.mock('../server/utils/annex/annexSource', async (importOriginal) => ({
 }))
 vi.mock('../server/utils/parliament/drafts', () => ({ getGegenstand: vi.fn() }))
 vi.mock('../server/utils/upstream/fetchDocument', () => ({ fetchDocument: vi.fn() }))
+vi.mock('../server/utils/annex/annexPdfService', () => ({ annexFromPdf: vi.fn(), annexFromParliamentPdf: vi.fn() }))
 
+const { annexFromParliamentPdf } = vi.mocked(await import('../server/utils/annex/annexPdfService'))
 const { parliamentAnnex } = vi.mocked(await import('../server/utils/annex/annexSource'))
 const { getGegenstand } = vi.mocked(await import('../server/utils/parliament/drafts'))
 const { fetchDocument } = vi.mocked(await import('../server/utils/upstream/fetchDocument'))
@@ -37,13 +39,35 @@ beforeEach(() => {
 })
 
 describe('the Vorlage’s Textgegenüberstellung where none can be read', () => {
-  it('names a PDF-only one as not read by the monitor', async () => {
+  it('keeps an Antrag’s PDF-only annex unread, and says so', async () => {
     parliamentAnnex.mockResolvedValue({ pdf: PDF, html: null })
-    const out = await getVorlageTextComparison(root('I', 101))
+    const out = await getVorlageTextComparison(root('A', 101))
     expect(out.available).toBe(false)
     expect(lead(out.unavailableReason)).toBe('outOfScope')
     expect(out.unavailableReason).toContain('nur als PDF')
     expect(out.pdf).toEqual(PDF)
+    expect(annexFromParliamentPdf).not.toHaveBeenCalled()
+  })
+
+  it('says „Nicht lesbar" for a Vorlage’s PDF that does not open or yields no row, and links it', async () => {
+    getGegenstand.mockResolvedValue(record())
+    parliamentAnnex.mockResolvedValue({ pdf: PDF, html: null })
+    annexFromParliamentPdf.mockResolvedValueOnce(null)
+    const closed = await getVorlageTextComparison(root('I', 107))
+    annexFromParliamentPdf.mockResolvedValueOnce({ rows: [], refusal: null, droppedPages: 0 } as never)
+    const empty = await getVorlageTextComparison(root('I', 108))
+    for (const out of [closed, empty]) {
+      expect(out.available).toBe(false)
+      expect(lead(out.unavailableReason)).toBe('unreadable')
+      expect(out.pdf).toEqual(PDF)
+    }
+  })
+
+  it('lets a failed fetch of the PDF through instead of answering with a gap', async () => {
+    getGegenstand.mockResolvedValue(record())
+    parliamentAnnex.mockResolvedValue({ pdf: PDF, html: null })
+    annexFromParliamentPdf.mockRejectedValueOnce(new Error('502'))
+    await expect(getVorlageTextComparison(root('I', 109))).rejects.toThrow('502')
   })
 
   it('claims no absence where Parliament’s list holds none', async () => {

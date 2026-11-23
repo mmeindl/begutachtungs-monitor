@@ -19,16 +19,20 @@
  * find, never one Parliament did not publish: a list proves no absence
  * (21.11.2026; until then both sections said „nicht veröffentlicht").
  *
- * A DOCUMENT PARLIAMENT HOLDS AS A PDF ONLY IS „NICHT IM MONITOR", not
- * „Nicht lesbar" (22.11.2026): no reading of this document failed. The
- * monitor reads none of Parliament's PDFs, which is its scope, for every
- * document of the kind (`shared/utils/gaps.ts`, `outOfScope`). Nothing in
- * law stands against reading a Vorlage's; it is not built.
+ * A VORLAGE'S TEXTGEGENÜBERSTELLUNG HELD AS A PDF ONLY IS READ FROM THAT PDF
+ * (23.11.2026): the ministry's annex in the template the PDF reader knows,
+ * under Parliament's margin stamps (`annex/parliamentPdfStamps.ts`), and a
+ * freies Werk like its HTML. An Antrag's is Parliament's three-column working
+ * copy, which the two-column reader does not fit. It stays „Nicht im Monitor",
+ * as do a Vorlage's Erläuterungen held as a PDF only: no reading of them
+ * failed, the monitor does not attempt one (`shared/utils/gaps.ts`,
+ * `outOfScope`).
  */
 import { gapDe } from '#shared/utils/gaps'
 import type { ExplanationsResponse, TextComparisonResponse, TraceLink } from '#shared/types'
 import { rootKey } from '#shared/utils/procedureRoot'
-import { parliamentAnnex } from '../annex/annexSource'
+import { annexFromParliamentPdf } from '../annex/annexPdfService'
+import { asGap, parliamentAnnex, type AnnexSource } from '../annex/annexSource'
 import { parseTextComparison } from '../annex/comparisonRows'
 import { emptyComparison, readAndCheck } from '../annex/textComparisonService'
 import { DERIVED_CACHE } from '../cache/base'
@@ -48,17 +52,32 @@ import { explanationsGroup, type VorlageDetailInputs } from './vorlageDetailAsse
 type VorlageRoot = VorlageDetailInputs['root']
 
 /**
+ * A Vorlage's annex from Parliament's PDF: what was read, or the sentence
+ * that says why nothing was. A PDF that cannot be fetched throws and is not
+ * cached (`annexFromParliamentPdf`); one that was received and yields no row
+ * is a fact about the document.
+ */
+async function readVorlagePdf(pdf: TraceLink, articles: Parameters<typeof annexFromParliamentPdf>[1]): Promise<AnnexSource | string> {
+  const parsed = await annexFromParliamentPdf(pdf.url, articles)
+  if (parsed === null) return gapDe('unreadable', 'Das PDF der Textgegenüberstellung zu dieser Regierungsvorlage ließ sich nicht öffnen.')
+  if (parsed.rows.length === 0) return asGap(parsed.unreadable) ?? gapDe('unreadable', 'Die Textgegenüberstellung zu dieser Regierungsvorlage ließ sich aus dem PDF nicht auslesen.')
+  return { parsed, source: pdf, publisher: 'parlament', readFrom: 'pdf', droppedPages: parsed.droppedPages, frontMatterDiffers: parsed.frontMatterDiffers ?? [] }
+}
+
+/**
  * The item's Textgegenüberstellung, with the same checks as a draft's
- * (`readAndCheck`): a Vorlage's from the ressort, an Antrag's Parliament's
- * own working copy (`parlDionAnnex.ts`, since 12.11.2026), turned into the
- * two-column form first. Where neither is there to read, one sentence.
+ * (`readAndCheck`): a Vorlage's from the ressort, as HTML or else from the
+ * PDF, an Antrag's Parliament's own working copy (`parlDionAnnex.ts`, since
+ * 12.11.2026), turned into the two-column form first. Where neither is there
+ * to read, one sentence.
  */
 export const getVorlageTextComparison = defineCachedFunction(
   async (root: VorlageRoot): Promise<TextComparisonResponse> => {
     const who: DraftIdentity = { gp: root.gp, inr: root.inr, risId: null }
     const what = root.ityp === 'A' ? 'zu diesem Antrag' : 'zu dieser Regierungsvorlage'
     const annex = await parliamentAnnex(root.gp, root.inr, root.ityp)
-    if (!annex.html) {
+    const pdfToRead = !annex.html && root.ityp !== 'A' ? annex.pdf : null
+    if (!annex.html && !pdfToRead) {
       return emptyComparison(
         who,
         annex.pdf
@@ -68,22 +87,28 @@ export const getVorlageTextComparison = defineCachedFunction(
         annex.pdf,
       )
     }
-    const [draft, detail, html] = await Promise.all([getRootDraftArticles(root), getGegenstand(root.gp, root.ityp, root.inr), fetchDocument(annex.html.url)])
+    const [draft, detail, html] = await Promise.all([getRootDraftArticles(root), getGegenstand(root.gp, root.ityp, root.inr), annex.html ? fetchDocument(annex.html.url) : null])
     // Parliament's three-column working copy, as two columns; any other document as it is.
-    const parlDion = isParlDionAnnex(html)
-    const twoColumns = parlDion ? parlDionTwoColumns(html) : html
-    const parsed = twoColumns ? parseTextComparison(twoColumns, draft.articles) : null
-    if (!parsed || parsed.rows.length === 0) {
-      return emptyComparison(who, gapDe('unreadable', `Die Textgegenüberstellung ${what} ließ sich nicht auslesen.`), null, annex.pdf)
+    const parlDion = html !== null && isParlDionAnnex(html)
+    let chosen: AnnexSource | string
+    if (html === null) {
+      chosen = await readVorlagePdf(pdfToRead!, draft.articles)
+    } else {
+      const twoColumns = parlDion ? parlDionTwoColumns(html) : html
+      const parsed = twoColumns ? parseTextComparison(twoColumns, draft.articles) : null
+      if (!parsed || parsed.rows.length === 0) {
+        return emptyComparison(who, gapDe('unreadable', `Die Textgegenüberstellung ${what} ließ sich nicht auslesen.`), null, annex.pdf)
+      }
+      const source = parlDion ? { label: 'Textgegenüberstellung (Arbeitsdokument ParlDion)', url: annex.html!.url } : annex.html!
+      chosen = { parsed, source, publisher: 'parlament', readFrom: 'table', droppedPages: 0 }
     }
-    const source = parlDion ? { label: 'Textgegenüberstellung (Arbeitsdokument ParlDion)', url: annex.html.url } : annex.html
     const asOf = detail.content?.einlangen?.slice(0, 10) ?? ''
     const out = await readAndCheck(
       who,
       [],
       asOf,
       draft,
-      { parsed, source, publisher: 'parlament', readFrom: 'table', droppedPages: 0 },
+      chosen,
       annex.pdf,
       // No Lesefassung of a Vorlage's annex: the draft check stands alone.
       async () => null,
@@ -135,7 +160,7 @@ export const getVorlageExplanations = defineCachedFunction(
     if (!html) {
       return emptyExplanations(
         pdf
-          ? gapDe('outOfScope', 'Die Erläuterungen dieser Regierungsvorlage liegen beim Parlament nur als PDF vor; ein PDF des Parlaments liest der Monitor nicht aus.')
+          ? gapDe('outOfScope', 'Die Erläuterungen dieser Regierungsvorlage liegen beim Parlament nur als PDF vor; aus einem PDF des Parlaments liest der Monitor Erläuterungen nicht aus.')
           : gapDe('unreadable', 'Unter den Dokumenten des Parlaments zu dieser Regierungsvorlage fand der Monitor keine Erläuterungen.'),
         document,
       )
@@ -153,7 +178,9 @@ export const getVorlageExplanations = defineCachedFunction(
     }
     const articles = doc.special ? (await getRootDraftArticles(root)).articles : []
     const paragraphs = explanationsByParagraph(doc, articles)
-    const annex = paragraphs.length > 0 && Boolean((await parliamentAnnex(root.gp, root.inr, 'I')).html)
+    // The annex is read from either format (`getVorlageTextComparison`).
+    const annexDocument = paragraphs.length > 0 ? await parliamentAnnex(root.gp, root.inr, 'I') : null
+    const annex = Boolean(annexDocument?.html ?? annexDocument?.pdf)
     return {
       available: true,
       publisher: 'parlament',

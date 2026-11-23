@@ -28,6 +28,7 @@
  */
 import { parseAnnexParts, type AnnexPage, type AnnexParse } from './annexPdf'
 import { pagesOf } from './annexPdfPages'
+import { withoutParliamentStamps } from './parliamentPdfStamps'
 import { DERIVED_CACHE } from '../cache/base'
 import { storageKeyOf } from '../cache/key'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
@@ -133,6 +134,28 @@ export const annexFromPdf = defineCachedFunction(
     name: 'annex-pdf-parse',
     base: DERIVED_CACHE,
     getKey: (urls: readonly string[], articles: readonly DraftArticle[]) => storageKeyOf(`${urls.join('|')}|${articlesKey(articles)}`),
+    maxAge: DERIVED_ANALYSIS_TTL_S,
+    swr: false,
+  },
+)
+
+/**
+ * The same parse for Parliament's PDF of a Regierungsvorlage's annex
+ * (`parliament/vorlageTexts.ts`): the ministry's document under Parliament's
+ * margin stamps, which come off first (`parliamentPdfStamps.ts`). Its own
+ * cache name, because the same URL read without that step is another answer.
+ * The rules on failure are `annexFromPdf`'s.
+ */
+export const annexFromParliamentPdf = defineCachedFunction(
+  async (url: string, articles: readonly DraftArticle[]): Promise<AnnexParse | null> => {
+    const base64 = await fetchAnnexPdf(url)
+    const pages = await pagesOf(new Uint8Array(Buffer.from(base64, 'base64'))).catch(() => null)
+    return parseAnnexParts([pages && withoutParliamentStamps(pages)], articles)
+  },
+  {
+    name: 'annex-pdf-parse-parliament',
+    base: DERIVED_CACHE,
+    getKey: (url: string, articles: readonly DraftArticle[]) => storageKeyOf(`${url}|${articlesKey(articles)}`),
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },

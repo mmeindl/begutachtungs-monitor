@@ -237,7 +237,7 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
  * wording is pinned by the annex baseline; the lead word is set here, where
  * the sentence leaves for the page (19.11.2026).
  */
-function asGap(reason: string | undefined): string | undefined {
+export function asGap(reason: string | undefined): string | undefined {
   if (reason === undefined) return undefined
   return splitGap(reason) ? reason : gapDe('unreadable', reason)
 }
