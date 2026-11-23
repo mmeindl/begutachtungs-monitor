@@ -4305,6 +4305,10 @@ mark sound §§ or risk a wrong clearance.
   nothing false, and the rule would sit in the shared draft check.
 - **Three §§ the PDF reader files differently from the HTML** among 517
   compared: 625 d.B. XXVIII §§ 90b and 96a, 1493 d.B. XXVII § 27.
+- **A division heading can stay at the end of the § passage before it.** In
+  408 d.B. XXVII the reasoning under § 6 BMSVG ends with the headings of the
+  next part („4. Abschnitt (Gesundheit, Soziales und Konsumentenschutz)
+  Allgemeines"). The reasoning itself is the right one.
 - **`normalizeText` turns an en dash into a hyphen** on every path, so a column
   shows „-" where the document prints „–". It is one sign and no word.
 
