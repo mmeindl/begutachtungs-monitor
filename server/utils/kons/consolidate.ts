@@ -42,7 +42,7 @@ import { articleBlocks, draftArticles, type ClauseName, type DraftArticle } from
 import { addressesWholeText, createdParagraphs, createdUnits, opAddress } from './novao'
 import { mapWithConcurrency } from '../pool'
 import type { ComparisonRow } from '../annex/comparisonRows'
-import { absatzSequence, designatedUnitsOf, standingUnitsOf, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
+import { absatzSequence, designatedUnitsOf, followingUnit, standingUnitsOf, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
 import { witnessVerdict, type DraftRendition } from './draftWitness'
 
 /**
@@ -643,7 +643,12 @@ export async function consolidate(
         // With the Absätze as the page displays them, so check 5 can hold the
         // annex's markers against them (`absatzOrderBroken`, 26.10.2026).
         const annex = annexOf(w.article)
-        const report = oracleVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node))
+        // What stands after this §, for a heading at its foot (`isFollowingHeading`).
+        const following = followingUnit(annex.rows, id, annex.law, (next) => {
+          const from = originOf(next)
+          return [afterById.get(next), from === null ? null : beforeById.get(from)]
+        })
+        const report = oracleVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node), following)
         const gate = gateParagraph({
           refused: refusedIds.has(id),
           plausible: guard.plausible,
@@ -654,7 +659,7 @@ export async function consolidate(
         // where the two part (`kons/draftWitness.ts`, 20.11.2026). It then
         // carries those places, and is never counted as confirmed.
         const witness = gate.cause === 'anhang-widerspricht' && sources.draftRendition
-          ? witnessVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), await draftRendition(), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node))
+          ? witnessVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), await draftRendition(), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node), following)
           : null
         if (!gate.show && !witness?.released) {
           hold(id, gate.cause!)

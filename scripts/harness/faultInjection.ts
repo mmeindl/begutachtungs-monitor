@@ -139,23 +139,16 @@
  * | fremder geltender Satz rechts | 986/986 (658 einbehalten, 328 markiert) | 289/289 (228, 61) |
  * | fremder Entwurfssatz rechts   | 980/983 (793, 187)                      | 275/288 (224, 51) |
  *
- * Both are held to 95 %, R-neu on the PDF path only. What passes on the table
- * path is one shape, all 13 in one draft (the Strafprozessrechts-
- * änderungsgesetz): the donor § opens with its heading, so the „sentence"
- * appended is a heading — „Beendigung des Ermittlungsverfahrens und Absehen
- * von der Einleitung eines Ermittlungsverfahrens (1) ..." — and both
- * word-for-word checks pass a heading at the foot of a §'s new text as the
- * heading of the § that follows, which is where the table path files one
- * (the draft check objects to the Absatz number behind it at most, and the
- * oracle's confirmation then stands against that). With a full stop behind
- * it the oracle contradicts; a plain foreign sentence it contradicts always
- * (probed 22.11.2026). Two of the three PDF misses are the same shape — a
- * division heading („ABSCHNITT II …") and a line without a closing sign
- * behind an omission mark —, the third a donor whose words the draft writes
- * for that § too. Neither check asks whether the heading is the following
- * §'s: that is the limit, and `--misses` shows each such place
- * (`faultSite`). U stays with the gate: a row alike in both columns shows no
- * new and no struck word, so neither check of the table reads it.
+ * What passed on the table path was one shape, all 13 in one draft (the
+ * Strafprozessrechtsänderungsgesetz): the donor § opens with its heading, so
+ * the „sentence" appended is a heading, and both word-for-word checks took a
+ * heading at the foot of a §'s new text for the following §'s by its shape.
+ * Two of the three PDF misses were the same. Since 23.11.2026 the oracle asks
+ * whose it is (`isFollowingHeading` in `kons/tguOracle.ts`), and both classes
+ * are held to 95 % on both paths. A donor that happens to be the heading of
+ * the § that does follow still passes: nothing tells it from the real one.
+ * U stays with the gate: a row alike in both columns shows no new and no
+ * struck word, so neither check of the table reads it.
  *
  * A kept sentence struck passed wherever the draft check held before the
  * fault, while it read no old text: 216 of 955 and 148 of 683 were caught.
@@ -164,7 +157,7 @@
  * classes above) — in none of the misses the reviews read did the faulted
  * column agree with the draft. Zahl, Wort, neuer Satz fehlt and behaltener
  * Satz gestrichen are held to 95 % under `--mindestens` (`CHAIN_FLOORED`),
- * on both paths; the two foreign sentences as said above. Neuer Satz fehlt stood at
+ * on both paths, as are the two foreign sentences. Neuer Satz fehlt stood at
  * 206 of 233 on the PDF path while the draft check excused missing wording
  * behind an elision mark as far as the column's edge: every one of the 27
  * misses was a § that closes on such a mark. Since the mark stands only for
@@ -472,7 +465,7 @@ import { parseTextComparison, type ComparisonRow } from '../../server/utils/anne
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { applyNovelle, instructionsFromUnits, renamedOrigins, type Instruction, type StandingLaw } from '../../server/utils/kons/lawApply'
 import { annexScope } from '../../server/utils/kons/consolidate'
-import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, LABEL_NOTE, PLACE_NOTE, ROW_ORDER_NOTE, absatzSequence, containmentKey, designatedUnitsOf, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
+import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, LABEL_NOTE, PLACE_NOTE, ROW_ORDER_NOTE, absatzSequence, containmentKey, designatedUnitsOf, followingUnit, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
 import { printedStretches } from '../../server/utils/annex/elision'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
 import { isDivision, isSchedule, unitKey } from '../../server/utils/text/designation'
@@ -777,7 +770,6 @@ const CHAIN_FLOOR = 95
 const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why: string }>> = {
   bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
   links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
-  rneu: { path: 'table', why: 'beginnt der Paragraph des Spenders mit einer Überschrift, ist der Spender diese Überschrift; eine Überschrift am Ende des neuen Textes halten die Prüfung gegen den Entwurf und das Orakel für die des folgenden Paragraphen' },
 }
 const notFlooredOf = (key: ChainKey): string | undefined => {
   const not = CHAIN_NOT_FLOORED[key]
@@ -1816,7 +1808,12 @@ async function injectIntoResults(
       const got = plainText(node)
       const paraRows = paragraphRows(annex.rows, id, annex.law, origin)
       const standingUnits = beforeNode ? standingUnitsOf(beforeNode) : null
-      const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node))
+      // What stands after this §, as the page reads it: a fault leaves the neighbours alone.
+      const following = followingUnit(annex.rows, id, annex.law, (next) => {
+        const from = originOf(next)
+        return [afterById.get(next), from === null ? null : beforeById.get(from)]
+      })
+      const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node), following)
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
       const touching = touchingOf(instructions, applied, node)
       /**
@@ -1827,8 +1824,8 @@ async function injectIntoResults(
       const judgedVerdict = (...args: Parameters<typeof oracleVerdict>): OracleReport => {
         const judged = oracleVerdict(...args)
         if (judged.verdict !== 'widersprochen' || !rendition) return judged
-        const [pid, b, g, r, ra, sa, su, ru] = args
-        const witnessed = witnessVerdict(pid, b, g, r, touching, rendition, ra, sa, su, ru)
+        const [pid, b, g, r, ra, sa, su, ru, fo] = args
+        const witnessed = witnessVerdict(pid, b, g, r, touching, rendition, ra, sa, su, ru, fo)
         return witnessed.released ? { ...judged, verdict: 'bestätigt', note: `Zeuge: ${witnessed.places.map((pl) => `„${pl.annex}" / „${pl.draft}"`).join('; ')}` } : judged
       }
       /**
@@ -1842,9 +1839,9 @@ async function injectIntoResults(
        * no tree of its own: the Absätze read are the unfaulted result's.
        */
       const judgeAsPage = (faultedGot: string, faultedNode: LawNode, faultedBefore: LawNode | null = beforeNode): OracleReport =>
-        judgedVerdict(id, faultedBefore ? plainText(faultedBefore) : null, faultedGot, paraRows, absatzSequence(faultedNode), faultedBefore ? (absatzSequence(faultedBefore) ?? null) : null, faultedBefore ? standingUnitsOf(faultedBefore) : null, designatedUnitsOf(faultedNode))
+        judgedVerdict(id, faultedBefore ? plainText(faultedBefore) : null, faultedGot, paraRows, absatzSequence(faultedNode), faultedBefore ? (absatzSequence(faultedBefore) ?? null) : null, faultedBefore ? standingUnitsOf(faultedBefore) : null, designatedUnitsOf(faultedNode), following)
       if (report.verdict === 'widersprochen' && rendition) {
-        const witnessed = witnessVerdict(id, before, got, paraRows, touching, rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node))
+        const witnessed = witnessVerdict(id, before, got, paraRows, touching, rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node), following)
         if (witnessed.released) {
           results.witnessed++
           for (const kind of PAYLOAD_KINDS) {
@@ -1862,9 +1859,9 @@ async function injectIntoResults(
             // witness or after) or the witness itself.
             let by: 'Orakel' | 'Zeuge' | null = null
             if (faultedNode !== undefined && faultedGot !== null) {
-              const judged = oracleVerdict(id, before, faultedGot, paraRows, absatzSequence(faultedNode), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(faultedNode))
+              const judged = oracleVerdict(id, before, faultedGot, paraRows, absatzSequence(faultedNode), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(faultedNode), following)
               if (judged.verdict === 'bestätigt') by = 'Orakel'
-              else if (judged.verdict === 'widersprochen' && witnessVerdict(id, before, faultedGot, paraRows, touchingOf(mutated.instructions, again, faultedNode), rendition, absatzSequence(faultedNode), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(faultedNode)).released) by = 'Zeuge'
+              else if (judged.verdict === 'widersprochen' && witnessVerdict(id, before, faultedGot, paraRows, touchingOf(mutated.instructions, again, faultedNode), rendition, absatzSequence(faultedNode), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(faultedNode), following).released) by = 'Zeuge'
             }
             const shownAnyway = by !== null
             if (!shownAnyway) {
@@ -1890,7 +1887,7 @@ async function injectIntoResults(
       // its verdict — what the reading can reach at all.
       const gaps = silentOmissions(paraRows, standingUnits).skipped
       // Every verdict the reading moves, named — a count cannot be read.
-      const unread = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, null, designatedUnitsOf(node))
+      const unread = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, null, designatedUnitsOf(node), following)
       if (unread.verdict !== report.verdict) {
         results.moved.push(`${cite} ${unitLabel(id)}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${unread.verdict} → ${report.verdict}${report.note ? ` — ${report.note.slice(0, 100)}` : ''}`)
         if (argFlag('alarme')) results.moved.push(...silentOmissions(paraRows, standingUnits).rows.filter((r) => r.kind === 'pair').flatMap((r) => [`          geltend      : ${r.current.slice(0, 400)}`, `          vorgeschlagen: ${r.proposed.slice(0, 400)}`]), `          Ergebnis     : ${got.slice(0, 400)}`)
@@ -1968,7 +1965,7 @@ async function injectIntoResults(
         const judgeAgain = (swap: ReadonlyMap<ComparisonRow, ComparisonRow>) => {
           const swapped = paraRows.map((r) => swap.get(r) ?? r)
           const read = swapped.some((r, i) => r !== paraRows[i])
-          return { read, confirms: !read || oracleVerdict(id, before, got, swapped, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node)).verdict === 'bestätigt' }
+          return { read, confirms: !read || oracleVerdict(id, before, got, swapped, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node), following).verdict === 'bestätigt' }
         }
         for (const r of paraRows) {
           if (r.kind !== 'pair' || !(r.gld ?? r.para)) continue
@@ -1992,7 +1989,7 @@ async function injectIntoResults(
       ] as const) {
         if (!faulted) continue
         into.tried++
-        const judged = oracleVerdict(id, before, got, faulted, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node))
+        const judged = oracleVerdict(id, before, got, faulted, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node), following)
         if (judged.verdict !== 'bestätigt') {
           into.caught++
           into.byCheck.set(checkOf(judged.note), (into.byCheck.get(checkOf(judged.note)) ?? 0) + 1)
@@ -2010,10 +2007,10 @@ async function injectIntoResults(
       // witness stands in where the annex alone is wrong.
       const annexFault = numberInAnnex(paraRows)
       if (annexFault && rendition) {
-        const judged = oracleVerdict(id, before, got, annexFault, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node))
+        const judged = oracleVerdict(id, before, got, annexFault, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node), following)
         if (judged.verdict === 'widersprochen') {
           oracleFaults.BeilageZahl.tried++
-          if (!witnessVerdict(id, before, got, annexFault, touching, rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node)).released) oracleFaults.BeilageZahl.caught++
+          if (!witnessVerdict(id, before, got, annexFault, touching, rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits, designatedUnitsOf(node), following).released) oracleFaults.BeilageZahl.caught++
           else oracleFaults.BeilageZahl.misses.push(`${cite} ${unitLabel(id)} — gezeigt ist das unveränderte Ergebnis`)
         }
       }

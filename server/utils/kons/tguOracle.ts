@@ -935,6 +935,100 @@ function isGroupHeadingOnly(stretch: string): boolean {
 }
 
 /**
+ * What stands right after a § (23.11.2026): the words the annex's next block
+ * prints ahead of its § symbol, and the headings the § of that block carries
+ * in RIS and in the result (`followingUnit`).
+ */
+export interface FollowingUnit {
+  printed: readonly string[]
+  headings: readonly string[]
+}
+
+/** Nothing known of what follows: no heading at the foot is taken for the next §'s. */
+export const NOTHING_FOLLOWS: FollowingUnit = { printed: [], headings: [] }
+
+/**
+ * What follows the § `id` in the annex. `nodesOf` gives the trees the caller
+ * holds for a § of the same law, by the number it carries after the draft:
+ * its result and the standing § it came from. A § the caller did not load
+ * has no headings here, and the annex's own print is all there is.
+ */
+export function followingUnit(byParagraph: ReadonlyMap<string, ComparisonRow[]>, id: string, law: string | null | undefined, nodesOf: (id: string) => readonly (LawNode | null | undefined)[]): FollowingUnit {
+  const own = drawerRows(byParagraph, id, law)
+  const position = POSITION.get(byParagraph)
+  if (own.length === 0 || !position) return NOTHING_FOLLOWS
+  const end = Math.max(...own.map((r) => position.get(r) ?? -1))
+  const ownLaw = own[0]!.law ?? ''
+  let next: { key: string; at: number; rows: ComparisonRow[] } | null = null
+  for (const [key, rows] of byParagraph) {
+    if (rows === own || !key.startsWith(`${ownLaw}#`)) continue
+    const at = position.get(rows[0]!) ?? -1
+    if (at > end && (!next || at < next.at)) next = { key, at, rows }
+  }
+  if (!next) return NOTHING_FOLLOWS
+  const first = next.rows.find((r) => r.kind === 'pair')
+  const aheadOfSymbol = (cell: string): string => cell.slice(0, PARAGRAPH_SYMBOL_RE.exec(cell)?.index ?? cell.length)
+  const printed = first ? [first.current, first.proposed].map(aheadOfSymbol).filter(Boolean) : []
+  const nextId = next.key.slice(next.key.lastIndexOf('#') + 1)
+  const headings = nodesOf(nextId).flatMap((node) => (node ? [[...node.context, node.heading ?? ''].filter(Boolean).join(' ')] : [])).filter(Boolean)
+  return { printed, headings }
+}
+
+/** A heading's words, for comparing it across sources: no § designation, no punctuation, no case. */
+function headingWords(t: string): string[] {
+  return normalizeText(t).replace(PARAGRAPH_MARKER_RE, ' ').toLowerCase().match(/[\p{L}\d]+/gu) ?? []
+}
+
+/** Whether `needle` stands in `hay` as a run of whole words — or, long enough not to be chance, with the line's hyphens closed up. */
+function holdsHeading(hay: readonly string[], needle: readonly string[]): boolean {
+  if (needle.length === 0) return false
+  for (let i = 0; i + needle.length <= hay.length; i++) if (needle.every((w, k) => hay[i + k] === w)) return true
+  const closed = needle.join('')
+  return closed.length >= MIN_CLOSED_HEADING && hay.join('').includes(closed)
+}
+/** How long a heading has to be before it may match with its words run together (a hyphen the PDF's line break set). */
+const MIN_CLOSED_HEADING = 16
+
+/**
+ * The trailer of a stretch with the number in front of it. `NEXT_HEADING_RE`
+ * takes the stop of „3. Abschnitt" for a sentence's end and leaves „Abschnitt",
+ * which any group's heading holds: the number is what says which one.
+ */
+function withItsNumber(stretch: string, trailer: string): string {
+  const number = /(?:\d+[a-z]*|[IVXLCDM]+)\.$/.exec(stretch.slice(0, stretch.length - trailer.length))
+  return number ? `${number[0]}${trailer}` : trailer
+}
+
+/**
+ * Whether a heading-shaped stretch at the foot of a § is the following §'s
+ * (23.11.2026). By its shape alone it passed wherever it came from: a heading
+ * of any other § appended to the new text was read as the next one's, and
+ * neither word-for-word check saw it. It has to stand in what follows
+ * (`FollowingUnit`), or in the last stretch of the same row's left column,
+ * where it is no new text at all: the annex prints it on both sides. A
+ * heading that is a row of its own is not asked (`withoutNextGroup`,
+ * `placedStretches`): nothing of the § stands beside it.
+ */
+function isFollowingHeading(stretch: string, following: FollowingUnit, left: string): boolean {
+  const words = headingWords(stretch)
+  if (words.length === 0) return false
+  if ([...following.printed, ...following.headings].some((h) => holdsHeading(headingWords(h), words))) return true
+  // A group's bare number, its title printed over the next block („…
+  // ungeteilten Hand. Fünfter Abschnitt", then „Gremium zur Weiterentwicklung
+  // … § 285.", UGB): it has no wording to compare, so the next block must
+  // exist and must not open with a group of its own.
+  const bare = NUMBERED_UNIT_RE.exec(stretch.trim())
+  if (bare && /^[\s.:]*$/.test(stretch.trim().slice(bare[0].length)) && following.printed.length > 0 && !following.printed.some((p) => NUMBERED_UNIT_RE.test(p))) return true
+  const whole = headingWords(left)
+  if (whole.length >= words.length && words.every((w, i) => whole[whole.length - words.length + i] === w)) return true
+  // Behind the left column's last sentence, where its own foot stands: in its
+  // body the same words are law text („… die sichere Verwahrung …", WaffV § 4).
+  const last = printedStretches(markedOmissions(left)).at(-1)
+  const foot = last?.replace(DESIGNATION_DOT_RE, (d) => d.replace('.', ' ')).split(/[.;:!?]/).at(-1)
+  return foot !== undefined && holdsHeading(headingWords(foot), words)
+}
+
+/**
  * The rows of a § without the next group's heading at their foot
  * (20.11.2026). The table path files the heading of the group that follows
  * a § — „3a. Abschnitt", then its title „Organhandel und verwandte strafbare
@@ -1010,11 +1104,11 @@ function oldStyleDotsOff(stretch: string): string {
 /**
  * „… ist zu bestrafen. Begehung einer Verwaltungsübertretung in einem die
  * Zurechnungsfähigkeit" — the next §'s heading, cut where the PDF wraps it,
- * left at the foot of this § (SPG § 82, AIFMG § 38, NAG § 49). The oracle
- * does not know the neighbour, so the shape has to carry it: after a
- * sentence's end, the last thing in the cell, a capital first, at most 14
+ * left at the foot of this § (SPG § 82, AIFMG § 38, NAG § 49). Its shape:
+ * after a sentence's end, the last thing in the cell, a capital first, at most 14
  * words, and no full stop, colon, semicolon, digit or § of its own — law text
- * ends its sentences, a heading does not.
+ * ends its sentences, a heading does not. The shape says only that it may be
+ * a heading: whose it is, `isFollowingHeading` asks.
  */
 const NEXT_HEADING_RE = /(?<=[.;!?])\s+\p{Lu}[^.;:!?§\d]*$/u
 
@@ -1137,7 +1231,10 @@ export function unaccountedStretch(text: string, cell: string, anchor: ((at: num
  * ended — so check 2 can hold the rows of a § in the order the annex prints
  * them (`oracleVerdict`).
  */
-function placedStretches(text: string, cell: string, from: number, anchor: ((at: number, stretch: string) => boolean) | null, heading: HeadingPlacement | null): { missing: string | null; end: number } {
+function placedStretches(text: string, cell: string, from: number, anchor: ((at: number, stretch: string) => boolean) | null, heading: HeadingPlacement | null, footOk: ((heading: string) => boolean) | null = null): { missing: string | null; end: number } {
+  // The left column is held against the standing §, whose neighbours are no
+  // question there; a caller that passes no `footOk` keeps the shape's word.
+  const foot = (t: string): boolean => footOk === null || footOk(t)
   let at = from
   let first = true
   let anchored = anchor
@@ -1175,15 +1272,18 @@ function placedStretches(text: string, cell: string, from: number, anchor: ((at:
     }
     // Nor does a stretch that is nothing but a group heading — wherever it
     // stands, since the next group's heading comes at the foot of a §.
-    if (found < 0 && isGroupHeadingOnly(stretch)) continue
+    // Over the § itself (its opening row's first stretch) it heads this §, and
+    // as the whole of a cell it is a row of the annex's own, set between two
+    // §§. Behind text of the § it has to be the following §'s (`isFollowingHeading`).
+    if (found < 0 && isGroupHeadingOnly(stretch) && ((first && heading !== null) || stretches.length === 1 || foot(stretch))) continue
     // The next §'s heading or group number as the last stretch, behind a
     // mark (`isHeadingAfterMark`).
-    if (found < 0 && index > 0 && index === stretches.length - 1 && isHeadingAfterMark(stretch)) continue
+    if (found < 0 && index > 0 && index === stretches.length - 1 && isHeadingAfterMark(stretch) && foot(stretch)) continue
     // The next §'s heading, wrapped at the foot of the cell: only the last
     // stretch, only after a finished sentence (`NEXT_HEADING_RE`), or with
     // its group's letter (`LETTERED_NEXT_HEADING_RE`).
     const nextHeading = index === stretches.length - 1 ? (isNextHeading(stretch) ? NEXT_HEADING_RE : isLetteredNextHeading(stretch) ? LETTERED_NEXT_HEADING_RE : null) : null
-    if (found < 0 && nextHeading) {
+    if (found < 0 && nextHeading && foot(withItsNumber(stretch, nextHeading.exec(stretch)![0]))) {
       const trimmed = key(stretch.replace(nextHeading, ''))
       const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)
       if (retry >= 0) {
@@ -1192,7 +1292,7 @@ function placedStretches(text: string, cell: string, from: number, anchor: ((at:
       }
     }
     const trailing = [TRAILING_GROUP_RE, TRAILING_UNIT_FIRST_RE].find((re) => re.test(stretch))
-    if (found < 0 && trailing) {
+    if (found < 0 && trailing && foot(trailing.exec(stretch)![0])) {
       const trimmed = key(stretch.replace(trailing, ''))
       const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)
       if (retry >= 0) {
@@ -2333,9 +2433,11 @@ export function labelBroken(rows: readonly ComparisonRow[], units: readonly Desi
  * an omission the annex makes without its „…" (`silentOmissions`); left out,
  * such a row is read as before. `resultUnits` (`designatedUnitsOf` of the
  * result) are the labels check 6 holds the annex's against
- * (`labelBroken`); left out, check 6 is not made.
+ * (`labelBroken`); left out, check 6 is not made. `following` is what stands
+ * after the § (`followingUnit`); left out, no heading at the foot of the new
+ * text is taken for the next §'s, so such a § can only come out worse.
  */
-export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null, standingUnits: StandingUnits | null = null, resultUnits: readonly DesignatedUnit[] | null = null): OracleReport {
+export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null, standingUnits: StandingUnits | null = null, resultUnits: readonly DesignatedUnit[] | null = null, following: FollowingUnit = NOTHING_FOLLOWS): OracleReport {
   // An omission without its „…", written out where the standing § proves it
   // (`silentOmissions`) — every check below then reads it as an omission.
   rows = withoutHeldGroupTitle(withoutNextGroup(silentOmissions(rows, standingUnits).rows), before)
@@ -2400,13 +2502,14 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
     // disagrees with us where in truth it simply left text out.
     const anchor = opensWithHeading(row) ? headingAnchor(row.current, beforeKey, gotKey) : null
     const heading: HeadingPlacement | null = row === opener ? { required: groupStretchCarriesHeading(row.current, beforeKey), stackOk: stackOkFor(row.current) } : null
-    const placed = placedStretches(gotKey, row.proposed, rowsEnd, anchor, heading)
+    const footOk = (t: string): boolean => isFollowingHeading(t, following, row.current)
+    const placed = placedStretches(gotKey, row.proposed, rowsEnd, anchor, heading, footOk)
     if (placed.missing !== null) {
       // In the result, but before the row above: the annex prints the rows of
       // a § in its order, and on the table path each Ziffer is a row of its
       // own, so two of them swapped read like the right order wherever every
       // row was looked up from the start (19.11.2026).
-      const elsewhere = rowsEnd > 0 && placedStretches(gotKey, row.proposed, 0, anchor, heading && { ...heading, required: false }).missing === null
+      const elsewhere = rowsEnd > 0 && placedStretches(gotKey, row.proposed, 0, anchor, heading && { ...heading, required: false }, footOk).missing === null
       return { para: id, verdict: 'widersprochen', rows: rows.length, note: elsewhere ? `${ROW_ORDER_NOTE}: "${placed.missing.slice(0, 60)}"` : `Vorgeschlagene Fassung nicht im Ergebnis: "${placed.missing.slice(0, 60)}"` }
     }
     rowsEnd = placed.end

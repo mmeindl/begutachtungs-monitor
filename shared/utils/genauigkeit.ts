@@ -407,8 +407,6 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
       'Eine falsche Absatz- oder Ziffernbezeichnung fällt nicht auf, wenn der Entwurf dieselbe Bezeichnung an einer anderen Stelle des Paragraphen nennt.',
       'Ein Satz, der bleibt und als gestrichen gezeigt ist, fällt nicht auf, wenn der Entwurf an dieser Stelle selbst streicht, ohne den Wortlaut zu nennen („der letzte Satz entfällt“), oder den Absatz neu fasst.',
       'Fehlt ein Satz in der linken Spalte, steht er rechts als neu. Schreibt der Entwurf diesen Satz selbst, etwa weil er den Absatz neu fasst, geht der Abgleich mit dem Gesetzestext trotzdem auf.',
-      // The one shape of a foreign sentence that passes (22.11.2026): both word-for-word checks take a heading at the foot of a § for the next §'s.
-      'Steht am Ende des neuen Textes eine Überschrift von anderswo, fällt das nicht auf: Die Prüfung hält sie für die Überschrift des folgenden Paragraphen.',
       'Wie oft ein Vermerk zu Unrecht steht, zeigt dieser Test nicht: Er baut Fehler ein und zählt, wie viele auffallen.',
     ],
   }

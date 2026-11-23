@@ -55,12 +55,12 @@ import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/u
 import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../../server/utils/harness/risKonsHistory'
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../../server/utils/harness/applyReport'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
-import { refusedUnits } from '../../server/utils/kons/konsGate'
+import { refusedUnits, unitsByKey } from '../../server/utils/kons/konsGate'
 import type { ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import type { AnnexSource } from '../../server/utils/annex/annexSource'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { flattenRisRecord } from '../../server/utils/ris/risRecord'
-import { absatzSequence, designatedUnitsOf, standingUnitsOf, oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { absatzSequence, designatedUnitsOf, followingUnit, standingUnitsOf, oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { installFetchCache } from '../lib/harnessCache'
 import { harnessStamp } from '../lib/harnessRecord'
 import { renditionOfPages, witnessVerdict, type DraftRendition } from '../../server/utils/kons/draftWitness'
@@ -819,6 +819,13 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // § 8. A number vacated and filled anew keeps its own label here, as it did.
   const originOfId = renamedOrigins(renamed)
   const standingIdOf = (id: string): string => originOfId(id) ?? id
+  // What stands after a §, as the page reads it (`followingUnit`).
+  const afterByKey = unitsByKey(after.paragraphs)
+  const beforeByKey = unitsByKey(law.paragraphs)
+  const nodesAfter = (next: string): (LawNode | undefined)[] => {
+    const from = originOfId(next)
+    return [afterByKey.get(next), from === null ? undefined : beforeByKey.get(from)]
+  }
   // The question a per-paragraph publication gate turns on: when the engine
   // reports no refusal for a §, is that § actually right? Refusals are known
   // at draft time; correctness is not, because the law has not been passed yet.
@@ -976,7 +983,8 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // With the Absätze, as the page asks it (`kons/consolidate.ts`): a
     // Prüfstand measuring checks 1 to 4 alone would report another oracle.
     // The annex rows of the § as it reads afterwards, and the struck rows of the § it came from.
-    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id)), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node)) : null
+    const following = oracle && id ? followingUnit(oracle.rows, id, oracle.lawKey, nodesAfter) : undefined
+    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id)), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node), following) : null
     const oracleKey: OracleVerdict | 'kein Orakel' = oracleReport?.verdict ?? 'kein Orakel'
     // The annex path is the last key part of both tallies below: „—" where
     // no oracle was loaded for the Novelle.
@@ -1004,7 +1012,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     if (oracle && id && plausible && oracleReport?.verdict === 'widersprochen') {
       const rendition = await ctx.rendition()
       const witnessed = rendition
-        ? witnessVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id)), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node))
+        ? witnessVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id)), touching.map(({ instruction }) => ({ op: instruction.op, line: instruction.line, payload: instruction.payload.map((p) => plainText(p)) })), rendition, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null, designatedUnitsOf(node), following)
         : null
       tally(witnessTally, `${rendition ? (witnessed!.released ? 'gezeigt' : witnessed!.reason) : 'kein PDF'}|${outcome}`)
       witnessShown = witnessed?.released === true

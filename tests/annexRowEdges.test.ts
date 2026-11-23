@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, unaccountedStretch, containmentKey } from '../server/utils/kons/tguOracle'
+import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, unaccountedStretch, containmentKey, type FollowingUnit } from '../server/utils/kons/tguOracle'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { printedStretches } from '../server/utils/annex/elision'
 import { comparableTokens } from '../server/utils/annex/annexText'
@@ -81,6 +81,51 @@ describe('the foot of a row', () => {
     const got = 'Der Dritte hat Auskunft zu geben. Die übrigen Absätze bleiben.'
     const rows = [pair('§ 3. Der Dritte hat Auskunft zu geben. (4) ... Eintragung', '§ 3. Der Dritte hat Information zu geben. (4) ... Eintragung', '§ 3.')]
     expect(oracleVerdict('3', got, got, rows).verdict).not.toBe('bestätigt')
+  })
+})
+
+describe('a heading at the foot of a §\'s new text', () => {
+  const got = 'Der Dritte hat Auskunft zu geben.'
+  const left = '§ 3. Der Dritte hat Bericht zu geben.'
+  const before = 'Der Dritte hat Bericht zu geben.'
+  const right = (foot: string) => `§ 3. Der Dritte hat Auskunft zu geben. ${foot}`
+  const verdict = (foot: string, following?: FollowingUnit, current = left) => oracleVerdict('3', before, got, [pair(current, right(foot), '§ 3.')], undefined, undefined, null, null, following).verdict
+
+  it('is not taken for the next §\'s by its shape', () => {
+    for (const foot of ['Eintragung und Weiterleitung von Daten', '4. Abschnitt', 'E. Beistandspflicht.']) expect(verdict(foot)).toBe('widersprochen')
+  })
+
+  it('passes where RIS or the result gives the next § that heading, wrapped or with its group', () => {
+    expect(verdict('Eintragung und Weiterleitung', { printed: [], headings: ['Eintragung und Weiterleitung von Daten'] })).toBe('bestätigt')
+    expect(verdict('4. Abschnitt', { printed: [], headings: ['4. Abschnitt Strafbestimmungen Zuständigkeit'] })).toBe('bestätigt')
+  })
+
+  it('passes where the annex\'s next block opens with it', () => {
+    expect(verdict('Eintragung von Daten', { printed: ['Eintragung von Daten '], headings: [] })).toBe('bestätigt')
+  })
+
+  it('does not pass another group\'s number, or a heading of some other §', () => {
+    expect(verdict('3. Abschnitt', { printed: [], headings: ['4. Abschnitt Strafbestimmungen'] })).toBe('widersprochen')
+    expect(verdict('Eintragung von Daten', { printed: ['Vollziehung '], headings: ['Vollziehung'] })).toBe('widersprochen')
+  })
+
+  it('passes a group\'s bare number where the next block prints the title, not where it opens with a group of its own', () => {
+    expect(verdict('Fünfter Abschnitt', { printed: ['Gremium zur Weiterentwicklung '], headings: ['Gremium zur Weiterentwicklung'] })).toBe('bestätigt')
+    expect(verdict('Fünfter Abschnitt', { printed: ['Sechster Abschnitt Gremium '], headings: [] })).toBe('widersprochen')
+    expect(verdict('Fünfter Abschnitt Vertrieb', { printed: ['Gremium zur Weiterentwicklung '], headings: [] })).toBe('widersprochen')
+  })
+
+  it('passes where the left column prints the same heading at its own foot, and not where those words are its law text', () => {
+    expect(verdict('4. Abschnitt', undefined, `${left} 4. Abschnitt`)).toBe('bestätigt')
+    const standing = 'Der Dritte hat die sichere Verwahrung zu prüfen. Der Dritte hat Bericht zu geben.'
+    const result = 'Der Dritte hat die sichere Verwahrung zu prüfen. Der Dritte hat Auskunft zu geben.'
+    const rows = [pair(`§ 3. ${standing}`, `§ 3. ${result} Sichere Verwahrung`, '§ 3.')]
+    expect(oracleVerdict('3', standing, result, rows).verdict).toBe('widersprochen')
+  })
+
+  it('leaves a group heading that is a row of its own to the annex', () => {
+    const rows = [pair(left, '§ 3. Der Dritte hat Auskunft zu geben.', '§ 3.'), pair('', '4. Abschnitt', null)]
+    expect(oracleVerdict('3', before, got, rows).verdict).toBe('bestätigt')
   })
 })
 

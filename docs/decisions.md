@@ -1951,8 +1951,8 @@ gets an entry of its own only where it carries a reason the rule does not.
   held to 95 % only where the chain can reach it (`CHAIN_FLOORED`: a figure,
   a word, the last new sentence, on both paths; since 22.11.2026 a sentence
   the draft keeps struck in the right column, on both paths; a sentence of
-  another § in the right column, old text on both paths and proposed text on
-  the PDF path); a class not held carries
+  another § in the right column, old and proposed text, on both paths since
+  23.11.2026); a class not held carries
   its reason in the record (`CHAIN_NOT_FLOORED` → `notFloored`), so a floor
   never fails by construction and never passes by silence.
 - **A sentence of another § in the right column is judged through the
@@ -1961,16 +1961,36 @@ gets an entry of its own only where it carries a reason the rule does not.
   fault the page marks nearly always: the draft check holds the new words
   against the wording the draft writes for that §. Through the chain 986 of
   986 and 980 of 983 on the PDF path, 289 of 289 and 275 of 288 on the table
-  path. What passes is a heading: where the donor § opens with one, the
-  „sentence" appended is that heading, and both word-for-word checks pass a
-  heading at the foot of a §'s new text as the heading of the § that
-  follows — the oracle by its shape alone (`isNextHeading`: it does not
-  know the neighbour), the draft check objecting to the Absatz number
-  behind it at most. All thirteen table misses are that, in one draft.
+  path. What passed was a heading: where the donor § opens with one, the
+  „sentence" appended is that heading, and both word-for-word checks took a
+  heading at the foot of a §'s new text for the following §'s (next rule).
   Fault U stays with the gate: a row alike in both columns shows no new and
   no struck word, so neither check of the table reads it. A line of
   `--misses` names the place of the fault and what stood there
   (`faultSite`), and whether the oracle read the faulted row.
+- **A heading at the foot of a §'s new text has to be the following §'s**
+  (23.11.2026, `isFollowingHeading` and `followingUnit` in
+  `kons/tguOracle.ts`). By its shape alone, a heading of any other § set
+  behind the new text passed: a real heading from elsewhere, appended to the
+  last changed row of a confirmed §, was caught in 91 of 1,531 §§ on the PDF
+  path and 112 of 969 on the table path. It now passes only where the annex's
+  next block prints it, where the next block's § carries it in RIS or in the
+  result, or where the left column prints it at its own foot, so that it is
+  no new text: 1,521 of 1,529 and 953 of 968 are caught. What still passes is
+  a heading that really is the next §'s (nothing tells it from the real one),
+  one appended to a row that is itself a heading, and a group's bare number
+  where the next block prints its title and opens with no group of its own:
+  a row of its own between two §§ and a bare number have no wording to
+  compare. Both foreign-sentence classes are held to 95 % on both paths. Every
+  § that moved was read, on the list of 23.11.2026 (3,161 and 2,017 verdicts).
+  Three lose the oracle's confirmation. Gesundheitstelematikgesetz § 1 is a
+  real difference the shape had hidden: the draft appends „sowie" to a Ziffer
+  and leaves its full stop, so the composed text reads „(5. Abschnitt).
+  sowie" where the annex prints none. Arzneimittelgesetz § 9d (a group heading
+  whose § the annex does not print) and the Methodenverordnung's § 10 (a
+  schedule's title) are sound and pay for the rule; of them, only § 9d newly
+  carries „nicht bestätigt". A removed pass falls to check 2's contradiction,
+  no looser reading. The BGBl bench and the witness's releases do not move.
 - **A harness resolves a law as the page does** (21.11.2026,
   `scripts/lib/productionSources.ts`: `annexSourcesOf` over
   `resolveKonsLaw`, without Nitro's cache). A failed lookup counts as a
