@@ -23,10 +23,13 @@
  * (23.11.2026): the ministry's annex in the template the PDF reader knows,
  * under Parliament's margin stamps (`annex/parliamentPdfStamps.ts`), and a
  * freies Werk like its HTML. An Antrag's is Parliament's three-column working
- * copy, which the two-column reader does not fit. It stays „Nicht im Monitor",
- * as do a Vorlage's Erläuterungen held as a PDF only: no reading of them
- * failed, the monitor does not attempt one (`shared/utils/gaps.ts`,
- * `outOfScope`).
+ * copy, which the two-column reader does not fit. It stays „Nicht im Monitor":
+ * no reading of it failed, the monitor does not attempt one
+ * (`shared/utils/gaps.ts`, `outOfScope`).
+ *
+ * SO ARE A VORLAGE'S ERLÄUTERUNGEN HELD AS A PDF ONLY (23.11.2026, the reader
+ * and what it was measured on: `explanations/explanationsPdf.ts`). A PDF the
+ * reader cannot vouch for is „Nicht lesbar" and linked, never an empty section.
  */
 import { gapDe } from '#shared/utils/gaps'
 import type { ExplanationsResponse, TextComparisonResponse, TraceLink } from '#shared/types'
@@ -38,9 +41,11 @@ import { emptyComparison, readAndCheck } from '../annex/textComparisonService'
 import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { explanationsByParagraph } from '../explanations/explanationsJoin'
-import { explanationsDocumentOfHtml, parseExplanationsHtml } from '../explanations/explanationsHtml'
+import { explanationsDocumentOfHtml, parseExplanationBlocks, parseExplanationsHtml, type HtmlExplanations } from '../explanations/explanationsHtml'
+import { explanationBlocks, explanationPagesOf, isWholeReading } from '../explanations/explanationsPdf'
 import { getRootDraftArticles } from '../lawtext/draftArticlesService'
 import type { DraftIdentity } from '../ris/draftIdentity'
+import { upstreamBytes, UpstreamTooLargeError, type UpstreamPolicy } from '../upstream/fetch'
 import { fetchDocument } from '../upstream/fetchDocument'
 import { isParlDionAnnex, parlDionTwoColumns } from '../annex/parlDionAnnex'
 import { mapDocuments } from './detailJson'
@@ -145,31 +150,72 @@ function emptyExplanations(reason: string, document: TraceLink | null): Explanat
   }
 }
 
+/** As the annex's PDF (`annexPdfService.ts`): one attempt, the upstream hosts only, a cap for a file that is no document. */
+const EXPLANATIONS_PDF_POLICY: UpstreamPolicy = { timeoutMs: 25_000, retries: 0, maxBytes: 16 * 1024 * 1024, upstreamHostsOnly: true }
+
+/** What the PDF's reading gives the section, or the sentence that says why it gives nothing. */
+interface ExplanationsRead {
+  parsed: HtmlExplanations
+  labelled: boolean
+  /** Lines of tables left out; the section says so. */
+  dropped: number
+}
+
+/**
+ * The Erläuterungen from Parliament's PDF. A fetch that fails throws and is
+ * not cached, as for the annex; a document that arrived and cannot be read
+ * is a fact about that document.
+ */
+async function readExplanationsPdf(url: string): Promise<ExplanationsRead | string> {
+  const tooLarge = gapDe('unreadable', 'Das PDF der Erläuterungen zu dieser Regierungsvorlage ist zu groß, um es auszulesen.')
+  const bytes = await upstreamBytes(url, EXPLANATIONS_PDF_POLICY).then(
+    (got) => new Uint8Array(got.bytes),
+    (err) => {
+      if (err instanceof UpstreamTooLargeError) return null
+      throw err
+    },
+  )
+  if (!bytes) return tooLarge
+  const pages = await explanationPagesOf(bytes).catch(() => null)
+  if (!pages) return gapDe('unreadable', 'Das PDF der Erläuterungen zu dieser Regierungsvorlage ließ sich nicht öffnen.')
+  const read = explanationBlocks(pages)
+  if (!isWholeReading(read)) return gapDe('unreadable', 'Die Erläuterungen dieser Regierungsvorlage ließen sich aus dem PDF des Parlaments nicht vollständig auslesen.')
+  const labelled = read.blocks.some((b) => /Allgemeiner\s+Teil/i.test(b.text))
+  return { parsed: parseExplanationBlocks(read.blocks, { generalAsHeaded: true }), labelled, dropped: read.tableLines + read.unplacedNotes }
+}
+
 /**
  * The Vorlage's Erläuterungen: the Allgemeiner Teil for the section, the
  * Besonderer Teil at the Paragraphen of the Textgegenüberstellung — the
- * draft's section, fed from Parliament's HTML (`explanationsDocumentOfHtml`).
+ * draft's section, fed from Parliament's HTML (`explanationsDocumentOfHtml`)
+ * or, where it publishes none, from its PDF (`readExplanationsPdf`). Only a
+ * Vorlage's: the documents of a Ministerialentwurf at Parliament stay unread
+ * (`READ_PARLIAMENT_COPY`), and an Antrag's Begründung stands in its own
+ * document.
  */
 export const getVorlageExplanations = defineCachedFunction(
   async (root: VorlageRoot): Promise<ExplanationsResponse> => {
+    if (root.ityp === 'A') return emptyExplanations(gapDe('outOfScope', 'Die Begründung eines Antrags steht in seinem eigenen Dokument; dort liest der Monitor sie nicht aus.'), null)
     const detail = await getGegenstand(root.gp, 'I', root.inr)
     const group = explanationsGroup(mapDocuments(detail.content?.documents))
     const html = group?.formats.find((f) => f.type === 'html')?.url ?? null
     const pdf = group?.formats.find((f) => f.type === 'pdf')?.url ?? null
-    const document = html || pdf ? { label: EXPLANATIONS_LABEL, url: (html ?? pdf)! } : null
-    if (!html) {
-      return emptyExplanations(
-        pdf
-          ? gapDe('outOfScope', 'Die Erläuterungen dieser Regierungsvorlage liegen beim Parlament nur als PDF vor; aus einem PDF des Parlaments liest der Monitor Erläuterungen nicht aus.')
-          : gapDe('unreadable', 'Unter den Dokumenten des Parlaments zu dieser Regierungsvorlage fand der Monitor keine Erläuterungen.'),
-        document,
-      )
+    const url = html ?? pdf
+    if (!url) return emptyExplanations(gapDe('unreadable', 'Unter den Dokumenten des Parlaments zu dieser Regierungsvorlage fand der Monitor keine Erläuterungen.'), null)
+    const document = { label: EXPLANATIONS_LABEL, url }
+    let read: ExplanationsRead
+    if (html) {
+      const text = await fetchDocument(html)
+      // Whether the ressort headed an Allgemeiner Teil — the section says
+      // whether it shows a named part or our reading of the document.
+      read = { parsed: parseExplanationsHtml(text, { generalAsHeaded: true }), labelled: /Allgemeiner\s+Teil/i.test(stripHtmlToText(text)), dropped: 0 }
+    } else {
+      const fromPdf = await readExplanationsPdf(pdf!)
+      if (typeof fromPdf === 'string') return emptyExplanations(fromPdf, document)
+      read = fromPdf
     }
-    const text = await fetchDocument(html)
-    // Whether the ressort headed an Allgemeiner Teil — the section says
-    // whether it shows a named part or our reading of the document.
-    const labelled = /Allgemeiner\s+Teil/i.test(stripHtmlToText(text))
-    const doc = explanationsDocumentOfHtml(parseExplanationsHtml(text, { generalAsHeaded: true }), labelled)
+    const { labelled } = read
+    const doc = explanationsDocumentOfHtml(read.parsed, labelled)
     if (!doc.general) {
       return emptyExplanations(
         gapDe('unreadable', 'Die Erläuterungen dieser Regierungsvorlage heben keinen Allgemeinen Teil hervor. Was das Ministerium schreibt, steht im Dokument selbst.'),
@@ -185,13 +231,13 @@ export const getVorlageExplanations = defineCachedFunction(
       available: true,
       publisher: 'parlament',
       unavailableReason: null,
-      source: { label: EXPLANATIONS_LABEL, url: html },
+      source: { label: EXPLANATIONS_LABEL, url },
       document,
       heading: doc.general.heading,
       labelled,
       passages: doc.general.passages.map((p) => ({ heading: p.heading, text: p.text })),
       chars: doc.general.chars,
-      dropped: 0,
+      dropped: read.dropped,
       hasSpecial: doc.special !== null,
       paragraphs,
       paragraphsAtAnnex: annex,

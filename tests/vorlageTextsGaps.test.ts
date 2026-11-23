@@ -18,11 +18,21 @@ vi.mock('../server/utils/annex/annexSource', async (importOriginal) => ({
 vi.mock('../server/utils/parliament/drafts', () => ({ getGegenstand: vi.fn() }))
 vi.mock('../server/utils/upstream/fetchDocument', () => ({ fetchDocument: vi.fn() }))
 vi.mock('../server/utils/annex/annexPdfService', () => ({ annexFromPdf: vi.fn(), annexFromParliamentPdf: vi.fn() }))
+vi.mock('../server/utils/upstream/fetch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../server/utils/upstream/fetch')>()),
+  upstreamBytes: vi.fn(),
+}))
+vi.mock('../server/utils/explanations/explanationsPdf', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../server/utils/explanations/explanationsPdf')>()),
+  explanationPagesOf: vi.fn(),
+}))
 
 const { annexFromParliamentPdf } = vi.mocked(await import('../server/utils/annex/annexPdfService'))
 const { parliamentAnnex } = vi.mocked(await import('../server/utils/annex/annexSource'))
 const { getGegenstand } = vi.mocked(await import('../server/utils/parliament/drafts'))
 const { fetchDocument } = vi.mocked(await import('../server/utils/upstream/fetchDocument'))
+const { upstreamBytes, UpstreamTooLargeError } = vi.mocked(await import('../server/utils/upstream/fetch'))
+const { explanationPagesOf } = vi.mocked(await import('../server/utils/explanations/explanationsPdf'))
 const { getVorlageExplanations, getVorlageTextComparison } = await import('../server/utils/parliament/vorlageTexts')
 
 const root = (ityp: 'I' | 'A', inr: number) => ({ gp: 'XXVIII', ityp, inr })
@@ -89,12 +99,52 @@ describe('the Vorlage’s Erläuterungen where none can be shown', () => {
     expect(out.document).toBeNull()
   })
 
-  it('names a PDF-only one as not read by the monitor, and links it', async () => {
-    getGegenstand.mockResolvedValue(record(['Erläuterungen', 'PDF']))
-    const out = await getVorlageExplanations(root('I', 105))
-    expect(lead(out.unavailableReason)).toBe('outOfScope')
-    expect(out.unavailableReason).toContain('nur als PDF')
-    expect(out.document?.url).toMatch(/\.pdf$/)
+  describe('held as a PDF only', () => {
+    const line = (text: string, y: number, bold = false) => ({ x: 85, y, width: 300, text, size: 10, bold })
+    const sound = [{ width: 595, height: 842, offTurn: 0, runs: [line('Allgemeiner Teil', 720, true), line('Das Gesetz regelt die Sache.', 700), line('Besonderer Teil', 670, true), line('Zu § 1:', 650, true), line('Die Begründung.', 639)] }]
+    const asked = () => getGegenstand.mockResolvedValue(record(['Erläuterungen', 'PDF']))
+
+    it('reads it, credits Parliament and links the PDF', async () => {
+      asked()
+      upstreamBytes.mockResolvedValue({ bytes: new Uint8Array(4) } as never)
+      explanationPagesOf.mockResolvedValue(sound)
+      parliamentAnnex.mockResolvedValue({ pdf: null, html: null })
+      const out = await getVorlageExplanations(root('I', 105))
+      expect(out.available).toBe(true)
+      expect(out.publisher).toBe('parlament')
+      expect(out.source?.url).toMatch(/\.pdf$/)
+      expect(out.passages[0]!.text).toEqual(['Das Gesetz regelt die Sache.'])
+      expect(out.hasSpecial).toBe(true)
+    })
+
+    it('says „Nicht lesbar" and links it where the PDF does not open, is too large or holds no text', async () => {
+      upstreamBytes.mockResolvedValue({ bytes: new Uint8Array(4) } as never)
+      asked()
+      explanationPagesOf.mockRejectedValueOnce(new Error('bad'))
+      const closed = await getVorlageExplanations(root('I', 110))
+      explanationPagesOf.mockResolvedValueOnce([{ width: 595, height: 842, offTurn: 0, runs: [] }])
+      const empty = await getVorlageExplanations(root('I', 111))
+      upstreamBytes.mockRejectedValueOnce(new UpstreamTooLargeError('x', 1))
+      const large = await getVorlageExplanations(root('I', 112))
+      for (const out of [closed, empty, large]) {
+        expect(out.available).toBe(false)
+        expect(lead(out.unavailableReason)).toBe('unreadable')
+        expect(out.document?.url).toMatch(/\.pdf$/)
+      }
+    })
+
+    it('lets a failed fetch through instead of answering with a gap', async () => {
+      asked()
+      upstreamBytes.mockRejectedValueOnce(new Error('502'))
+      await expect(getVorlageExplanations(root('I', 113))).rejects.toThrow('502')
+    })
+
+    it('reads nothing for an Antrag', async () => {
+      const out = await getVorlageExplanations(root('A', 114))
+      expect(lead(out.unavailableReason)).toBe('outOfScope')
+      expect(getGegenstand).not.toHaveBeenCalled()
+      expect(upstreamBytes).not.toHaveBeenCalled()
+    })
   })
 
   it('names Erläuterungen without an Allgemeiner Teil as the draft’s section does', async () => {
