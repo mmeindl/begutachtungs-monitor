@@ -72,7 +72,7 @@ import { REASON_NOTHING_TO_COMPARE } from '../../server/utils/annex/verdict'
 import { consolidate } from '../../server/utils/kons/consolidate'
 import { oracleConfirmedRows } from '../../shared/utils/annexOutcomes'
 import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
-import { corpusReach, harnessStamp } from '../lib/harnessRecord'
+import { corpusReach, harnessStamp, inPeriod } from '../lib/harnessRecord'
 
 const cache = installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: isBegutSearch, replay: argFlag('liste-aus-cache') })
 
@@ -795,15 +795,18 @@ for (let page = 1; page <= Math.ceil(limit / 100) && docs.length < limit; page++
   if (refs.length === 0) break
   docs.push(...refs)
 }
+// `--nur-periode` (23.11.2026): only the drafts of the period, for `/genauigkeit`, which names it. The weekly drift alarm reads the whole window.
+const scoped = argFlag('nur-periode') ? inPeriod(gp, docs.slice(0, limit), (doc: any) => doc?.Data?.Metadaten?.Bundesrecht?.Begut?.BeginnBegutachtungsfrist) : null
+const measuredDocs = scoped?.records ?? docs.slice(0, limit)
 // The first line of the run: which drafts it measures, and from which list.
-const listWindow = windowOf(docs.slice(0, limit), cache.served)
-console.log(`GP ${gp}: ${docs.length} Entwürfe aus dem RIS — ${windowLine(listWindow)}\n`)
+const listWindow = windowOf(measuredDocs, cache.served)
+console.log(`GP ${gp}: ${measuredDocs.length} Entwürfe aus dem RIS — ${windowLine(listWindow)}\n`)
 
 const results: DraftResult[] = []
 /** The drafts of the list the run looked at, and those whose reading threw, with why — the record's reach. */
 let requested = 0
 const unreached: { id: string; cause: string }[] = []
-for (const doc of docs.slice(0, limit)) {
+for (const doc of measuredDocs) {
   const label = `${doc?.Data?.Metadaten?.Bundesrecht?.Begut?.Begutachtungsverfahrennummer ?? ''} ${doc?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? ''} ${doc?.Data?.Metadaten?.Bundesrecht?.Titel ?? ''}`
   if (only && !label.toLowerCase().includes(only.toLowerCase())) continue
   requested++
@@ -968,6 +971,7 @@ if (jsonPath) {
     limit,
     records: docs.length,
     window: listWindow,
+    period: scoped?.period ?? null,
     // `results`, not `gated` or `scored`: a draft whose annex was refused can
     // have lost pages all the same, and its assurances hold just as much. The
     // prose report's filters are there for percentages, not for assurances.

@@ -25,6 +25,10 @@
  *    reason (a § the gate marks keeps that mark);
  *  - verified, or unchecked with nothing owed (`REASON_NOTHING_TO_COMPARE`):
  *    - shows no change: not asked;
+ *    - prints a row alike in both columns that the standing § does not
+ *      account for (`unchangedRowsNotStanding`, the maintainer's decision of
+ *      23.11.2026): „nicht bestätigt", whatever the other checks say. Neither
+ *      reads such a row: it shows no new and no struck word;
  *    - shows only deletions, or the draft check held it with no new word:
  *      since 22.11.2026 the draft check reads struck text too
  *      (`struckAccount`). Where it objects — to struck text the draft keeps,
@@ -128,6 +132,8 @@ export interface MarkInput {
   strict: StrictCheck | undefined
   /** The oracle confirmed the §; null where the draft has no Lesefassung. */
   oracleConfirmed: boolean | null
+  /** A row alike in both columns that the standing § does not account for (`AnnexVerification.unchangedNotStanding`). */
+  unchangedNotStanding?: boolean
 }
 
 const GATE: AnnexMark = { kind: 'gate' }
@@ -148,6 +154,7 @@ export function markOf(input: MarkInput, objection: ObjectionRule = OBJECTION_OV
   if (input.verdict === 'withheld') return GATE
   if (input.verdict === 'unchecked' && input.uncheckedReason !== REASON_NOTHING_TO_COMPARE) return GATE
   if (!input.showsChange) return GATE
+  if (input.unchangedNotStanding) return UNCONFIRMED
   const confirmed = input.oracleConfirmed === true
   const strict = input.strict
   if (!input.showsNewText || (strict?.state === 'holds' && strict.newWords === 0)) {
@@ -199,6 +206,7 @@ export function annexMarks(
       showsChange: showsNewText || group.some(isDisplayedChange),
       strict: strict.get(key),
       oracleConfirmed: confirmed === null ? null : printed.length > 0 && printed.every((r) => confirmed.has(r)),
+      unchangedNotStanding: verification.unchangedNotStanding?.[key] === true,
     }, objection))
   }
   return out

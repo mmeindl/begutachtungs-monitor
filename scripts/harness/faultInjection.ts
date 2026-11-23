@@ -442,7 +442,7 @@
  * Usage:  npx vite-node -c vitest.config.ts scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme] [--urteile] [--zeige=<§> [--voll]] [--liste-aus-cache]
  */
 import { annexParagraphKey, comparableTokens, designationKey } from '../../server/utils/annex/annexText'
-import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange } from '../../server/utils/annex/coverage'
+import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange, unchangedRowsNotStanding } from '../../server/utils/annex/coverage'
 import { paragraphReference } from '../../server/utils/annex/verdict'
 import {
   MIN_STANDING_STRETCH,
@@ -476,7 +476,7 @@ import { windowLine, windowOf } from '../lib/annexReport'
 import { renditionOfPages, witnessVerdict, type DraftRendition, type WitnessInstruction, type WitnessPlace } from '../../server/utils/kons/draftWitness'
 import { writeFileSync } from 'node:fs'
 import { argAssigned, argFlag } from '../lib/args'
-import { corpusReach, floorOf, harnessStamp, type FloorStatus } from '../lib/harnessRecord'
+import { corpusReach, floorOf, harnessStamp, inPeriod, type FloorStatus } from '../lib/harnessRecord'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
 import { bumpedDesignation, donorSentence, keptSentenceGone, lastSentenceGone, raisedNumber, secondSentenceGone, swappedWord } from '../lib/rightColumnFaults'
@@ -729,7 +729,7 @@ interface DraftResult {
  * row (another cut of the §), its confirmation stands — which can only
  * understate what is caught, and is counted (`oracleAsked`).
  */
-type ChainKey = 'zahl' | 'bezeichnung' | 'wort' | 'satzweg' | 'rweg' | 'links' | 'ralt' | 'rneu'
+type ChainKey = 'zahl' | 'bezeichnung' | 'wort' | 'satzweg' | 'rweg' | 'links' | 'ralt' | 'rneu' | 'u' | 'uzeile'
 interface ChainTally {
   label: string
   tried: number
@@ -755,9 +755,11 @@ const chainFaults: Record<ChainKey, ChainTally> = {
   links: chainTally('Satz links verloren'),
   ralt: chainTally('fremder geltender Satz rechts'),
   rneu: chainTally('fremder Entwurfssatz rechts'),
+  u: chainTally('fremder Satz beidspaltig, eigene Zeile'),
+  uzeile: chainTally('fremder Satz beidspaltig, in geänderter Zeile'),
 }
 /** The classes held to 95 % under `--mindestens` (withheld or marked, the rule in force), on both paths unless `CHAIN_NOT_FLOORED` names one. */
-const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg', 'rweg', 'ralt', 'rneu']
+const CHAIN_FLOORED: readonly ChainKey[] = ['zahl', 'wort', 'satzweg', 'rweg', 'ralt', 'rneu', 'u']
 const CHAIN_FLOOR = 95
 /**
  * Why a class is not held to the floor (22.11.2026), on one path or on both:
@@ -770,6 +772,7 @@ const CHAIN_FLOOR = 95
 const CHAIN_NOT_FLOORED: Partial<Record<ChainKey, { path?: 'pdf' | 'table'; why: string }>> = {
   bezeichnung: { why: 'eine Absatz- oder Ziffernbezeichnung hält die Prüfung gegen den Entwurf, wo ein Text des Entwurfs für den Paragraphen dieselbe Bezeichnung irgendwo druckt' },
   links: { why: 'ein Satz, der links fehlt, steht rechts als neu: schreibt ihn der Entwurf selbst, hält ihn die Prüfung gegen den Entwurf; ob er schon galt, prüft nur die linke Spalte gegen das RIS' },
+  uzeile: { why: 'ein kurzer fremder Satz in einer langen geänderten Zeile bleibt unter der Schwelle von 95 %, die die linke Spalte für den ganzen Paragraphen hält' },
 }
 const notFlooredOf = (key: ChainKey): string | undefined => {
   const not = CHAIN_NOT_FLOORED[key]
@@ -1036,7 +1039,23 @@ async function inject(doc: any): Promise<DraftResult | null> {
     // change (`isDisplayedChange`), and both right-column rules read only what
     // the word diff shows as *inserted*, of which a mirrored row has nothing.
     // The number that is not settled in advance is `silenced`.
-    if (oldDonor !== null) record(faults.U, judge(withMirroredRow(para.rows, site, oldDonor), para.standing, wide, bagOf(para)), baseVerdict)
+    if (oldDonor !== null) {
+      const faultU = withMirroredRow(para.rows, site, oldDonor)
+      const verdictU = judge(faultU, para.standing, wide, bagOf(para))
+      record(faults.U, verdictU, baseVerdict)
+      chain.push({ key: 'u', para, rows: faultU, verdict: verdictU })
+    }
+    // The same sentence inside a changed row (23.11.2026). The PDF path produces no separate
+    // mirrored row among the §§ that pass the left check, so U alone said nothing about it:
+    // what it can produce is this, and the left check does read a changed row.
+    if (oldDonor !== null) {
+      const current = `${site.current} ${oldDonor}`
+      const proposed = `${site.proposed} ${oldDonor}`
+      const faultRow = withRow(para.rows, site, { ...site, current, proposed, segments: diffTokens(current, proposed).segments })
+      const verdictRow = judge(faultRow, para.standing, wide, bagOf(para))
+      record(faults.UZeile, verdictRow, baseVerdict)
+      chain.push({ key: 'uzeile', para, rows: faultRow, verdict: verdictRow })
+    }
   }
   // The draft's PDF in the same record: the second witness's reading (`kons/draftRendition.ts`).
   const mainPdf = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
@@ -1066,7 +1085,7 @@ function judgeChain(cite: string, rows: readonly ComparisonRow[], draft: { artic
     const groupKey = annexParagraphKey(c.para.law, c.para.para)
     if (withheld(base.get(c.para)!)) continue
     const oracleBefore = chainOracle.judges.has(groupKey)
-    const inputBefore = { verdict: 'verified' as const, uncheckedReason: null, showsNewText: insertedStretches(c.para.rows).length > 0, showsChange: showsChangeOf(c.para.rows), strict: before.get(groupKey), oracleConfirmed: oracleBefore }
+    const inputBefore = { verdict: 'verified' as const, uncheckedReason: null, showsNewText: insertedStretches(c.para.rows).length > 0, showsChange: showsChangeOf(c.para.rows), strict: before.get(groupKey), oracleConfirmed: oracleBefore, unchangedNotStanding: unchangedRowsNotStanding(c.para.rows, c.para.standing.text).length > 0 }
     // Each value of the open cell over the §§ it shows without a mark before the fault; the class's own figures are the rule's in force.
     const rules = RULES.filter((rule) => markOf(inputBefore, rule).kind === 'gate')
     if (rules.length === 0) continue
@@ -1087,7 +1106,7 @@ function judgeChain(cite: string, rows: readonly ComparisonRow[], draft: { artic
     const oracleAfter = oracleBefore && again.every((a) => a.confirms)
     if (inForce && oracleBefore) tally.oracleBefore++
     if (inForce && again.some((a) => a.read)) tally.oracleAsked++
-    const input = { verdict: 'verified' as const, uncheckedReason: null, showsNewText: insertedStretches(c.rows).length > 0, showsChange: showsChangeOf(c.rows), strict: after.get(c.key)!.get(groupKey), oracleConfirmed: oracleAfter }
+    const input = { verdict: 'verified' as const, uncheckedReason: null, showsNewText: insertedStretches(c.rows).length > 0, showsChange: showsChangeOf(c.rows), strict: after.get(c.key)!.get(groupKey), oracleConfirmed: oracleAfter, unchangedNotStanding: unchangedRowsNotStanding(c.rows, c.para.standing.text).length > 0 }
     for (const rule of rules) tally.byRule[rule][markOf(input, rule).kind === 'gate' ? 'unmarked' : 'marked']++
     if (!inForce) continue
     if (markOf(input).kind === 'gate') {
@@ -2291,6 +2310,7 @@ const faults = {
   Rold: tally('R-alt fremder geltender Satz rechts'),
   Rnew: tally('R-neu fremder Entwurfssatz rechts'),
   U: tally('U     fremder Satz beidspaltig gleich'),
+  UZeile: tally('U-Zeile fremder Satz beidspaltig in geänderter Zeile'),
   Zahl: tally('Zahl  erste Zahl des Textes, neu, +7'),
   Bezeichnung: tally('Spalte-Bezeichnung erste Marke, neu, +1'),
   Wort: tally('Wort  längstes neues Wort getauscht'),
@@ -2377,14 +2397,17 @@ for (let page = 1; page <= Math.ceil(limit / 100) && docs.length < limit; page++
   if (refs.length === 0) break
   docs.push(...refs)
 }
-const listWindow = windowOf(docs.slice(0, limit), cache.served)
-console.log(`GP ${gp}: ${docs.length} Entwürfe aus dem RIS — ${windowLine(listWindow)}\n`)
+// `--nur-periode` (23.11.2026): as `annexPdf.ts`, so the faults are set into the drafts `/genauigkeit` names.
+const scoped = argFlag('nur-periode') ? inPeriod(gp, docs.slice(0, limit), (doc: any) => doc?.Data?.Metadaten?.Bundesrecht?.Begut?.BeginnBegutachtungsfrist) : null
+const measuredDocs = scoped?.records ?? docs.slice(0, limit)
+const listWindow = windowOf(measuredDocs, cache.served)
+console.log(`GP ${gp}: ${measuredDocs.length} Entwürfe aus dem RIS — ${windowLine(listWindow)}\n`)
 
 let drafts = 0
 /** The drafts of the list the run looked at, and those it could not read, with why — the record's reach. */
 let requested = 0
 const unreached: { id: string; cause: string }[] = []
-for (const doc of docs.slice(0, limit)) {
+for (const doc of measuredDocs) {
   const label = `${doc?.Data?.Metadaten?.Bundesrecht?.Begut?.Begutachtungsverfahrennummer ?? ''} ${doc?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? ''} ${doc?.Data?.Metadaten?.Bundesrecht?.Titel ?? ''}`
   if (only && !label.toLowerCase().includes(only.toLowerCase())) continue
   requested++
@@ -2599,6 +2622,7 @@ if (jsonPath) {
     gp,
     path: xmlMode ? 'table' : 'pdf',
     window: listWindow,
+    period: scoped?.period ?? null,
     drafts,
     floor: floor ? { min: floor.min, passed: floor.passed, failed: floor.failed, unheld: floor.unheld, notApplicable: floor.notApplicable } : null,
     annex: Object.values(faults).map((f) => ({

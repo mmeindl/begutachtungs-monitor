@@ -1,6 +1,8 @@
+import { unchangedRowsNotStanding } from '../server/utils/annex/coverage'
 import { describe, expect, it } from 'vitest'
 import { MARK_DELETIONS, MARK_DRAFT_UNREAD, MARK_LONG, MARK_UNASSIGNED, MARK_WORDING, OBJECTION_OVER_CONFIRMATION, annexMarks, markOf, type MarkInput } from '../server/utils/annex/annexMark'
 import { DRAFT_UNREAD } from '../server/utils/annex/annexStrict'
+import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { REASON_CUT, REASON_NOTHING_TO_COMPARE, REASON_TOO_SHORT, type AnnexVerification } from '../server/utils/annex/verdict'
 import { STRICT_UNCHECKED, type StrictCheck } from '../server/utils/laender/landTguStrict'
 import { landUncheckedNote } from '../app/utils/landUnchecked'
@@ -156,5 +158,33 @@ describe('annexMarks: the table over a parsed annex, under the gate\'s keys', ()
     const vv = verification({ verdicts: { 'G#§ 4.': 'verified' } })
     expect(annexMarks(two, vv, checks, new Set([two[0]!])).get('G#§ 4.')).toEqual({ kind: 'unconfirmed' })
     expect(annexMarks(two, vv, checks, new Set(two)).get('G#§ 4.')).toEqual({ kind: 'gate' })
+  })
+})
+
+describe('an unchanged row the standing § does not account for (23.11.2026)', () => {
+  const pair = (current: string, change: ComparisonRow['change'] = 'unchanged', elided = false) => ({ kind: 'pair', law: 'G', heading: null, gld: '§ 1.', para: '§ 1.', paraAfter: null, current, proposed: current, change, elided, segments: null, editorial: false }) as unknown as ComparisonRow
+  const standing = 'Die Behörde hat den Antrag binnen vier Wochen zu prüfen und das Ergebnis der antragstellenden Person mitzuteilen.'
+
+  it('finds a foreign sentence, and leaves the § its own text', () => {
+    expect(unchangedRowsNotStanding([pair('Die Behörde hat den Antrag binnen vier Wochen zu prüfen.')], standing)).toEqual([])
+    const foreign = pair('Der Rechnungshof veröffentlicht seinen jährlichen Bericht über sämtliche Förderungen.')
+    expect(unchangedRowsNotStanding([foreign], standing)).toEqual([foreign])
+  })
+
+  it('needs three missing words: one is a spelling, and a short row moves by a fifth', () => {
+    expect(unchangedRowsNotStanding([pair('Die Behörde hat den Antragsteller binnen vier Wochen')], standing)).toEqual([])
+  })
+
+  it('asks neither a changed row nor one the annex elides', () => {
+    const foreign = 'Der Rechnungshof veröffentlicht seinen jährlichen Bericht über sämtliche Förderungen.'
+    expect(unchangedRowsNotStanding([pair(foreign, 'changed'), pair(foreign, 'unchanged', true)], standing)).toEqual([])
+  })
+
+  it('costs a § its clean state, even where the oracle confirms it, and never withholds', () => {
+    const input = { verdict: 'verified' as const, uncheckedReason: null, showsNewText: true, showsChange: true, strict: undefined, oracleConfirmed: true }
+    expect(markOf(input)).toEqual({ kind: 'gate' })
+    expect(markOf({ ...input, unchangedNotStanding: true })).toEqual({ kind: 'unconfirmed' })
+    expect(markOf({ ...input, verdict: 'withheld', unchangedNotStanding: true })).toEqual({ kind: 'gate' })
+    expect(markOf({ ...input, showsNewText: false, showsChange: false, unchangedNotStanding: true })).toEqual({ kind: 'gate' })
   })
 })

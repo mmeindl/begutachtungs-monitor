@@ -653,6 +653,8 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   units: draftLines.reduce((n, l) => n + (l.stats?.total ?? 0), 0),
   hits: hits.length,
   accepted: accepted.length,
+  // Of those, the ones whose reason says the reader did not catch them: an open fault of ours, not the documents' own (23.11.2026).
+  acceptedReader: accepted.filter((h) => /vom Leser nicht aufgefangen/.test(acceptedRecord.accepted[hitKey(h)]!)).length,
   breaches: breachLines.length,
   symmetry: symmetryLines.length,
   stale: stale.length,

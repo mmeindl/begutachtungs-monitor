@@ -483,7 +483,7 @@ export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 
  * be read word for word; the § is too long for the word-for-word alignment;
  * the draft's Gesetzestext was not found or not read.
  */
-export type LandDraftUncheckedReason = 'unassigned' | 'wording' | 'long' | 'draftUnread'
+export type LandDraftUncheckedReason = 'unassigned' | 'wording' | 'long' | 'draftUnread' | 'struck' | 'noDraftCheck'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

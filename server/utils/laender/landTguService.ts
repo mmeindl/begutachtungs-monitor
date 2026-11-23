@@ -48,7 +48,7 @@ import { parseAnnexPdf, type AnnexLayout, type AnnexPage } from '../annex/annexP
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from '../annex/tableCells'
 import { ktnTguReading } from './landTguKaernten'
 import { tirolTguPages, tirolTguReading } from './landTguTirol'
-import { guardTguUnits, instructedAccount, notHeld, undrafted, unprintedInstructed } from './landTguGuard'
+import { guardTguUnits, instructedAccount, notHeld, undrafted, unprintedInstructed, withoutDraftRules } from './landTguGuard'
 import type { Gathered } from '../cache/gathered'
 
 /** RIS documents fetched at once while checking the §§ */
@@ -843,7 +843,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
  * already holds (`draftPagesOf`).
  */
 async function withoutUndrafted(land: LandCode, detail: LandDraftDetail, units: LawDiffUnit[], draftPagesOf: PagesReader | undefined, bytesOf: BytesReader): Promise<{ units: LawDiffUnit[]; withheld: LandLawDiffResponse['withheld']; unchecked: NonNullable<LandLawDiffResponse['draftUnchecked']>; complete: boolean; blocks: TextBlock[] | null }> {
-  if (land === 'ktn') return { units, withheld: [], unchecked: [], complete: true, blocks: null }
+  if (land === 'ktn') return { units, withheld: [], unchecked: withoutDraftRules(units), complete: true, blocks: null }
   let blocks: TextBlock[] | null
   let failed = false
   try {

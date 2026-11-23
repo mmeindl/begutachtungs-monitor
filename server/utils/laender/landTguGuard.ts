@@ -272,10 +272,36 @@ export function undrafted(guard: TguGuard): Map<number, 'notInDraft' | 'draftDif
  * long for the alignment or its word difference was not computed. A reason
  * this table does not know is said as the first: the mark stands either way.
  */
-export function draftUncheckedReason(reason: string | null): Exclude<LandDraftUncheckedReason, 'draftUnread'> {
+export function draftUncheckedReason(reason: string | null): Exclude<LandDraftUncheckedReason, 'draftUnread' | 'struck' | 'noDraftCheck'> {
   if (reason?.startsWith(STRICT_UNCHECKED.quoteRole)) return 'wording'
   if (reason === STRICT_UNCHECKED.undiffed || reason === STRICT_UNCHECKED.tooLong) return 'long'
   return 'unassigned'
+}
+
+/**
+ * Whether what a § strikes stands unconfirmed although its new text holds
+ * (23.11.2026). A Land's § that differs is withheld, and the struck-text
+ * objection has false alarms, so it withholds nothing here (`docs/decisions.md`,
+ * „Struck text on the Länder"): it sets the mark. The rule is the Bund's
+ * (`annex/annexMark.ts`), without its oracle, which no Land has: a § with
+ * struck words no instruction strikes, and one with no new word whose struck
+ * text the draft does not name by a quotation, a repeal or a unit written anew.
+ */
+export function struckNotHeld(strict: StrictCheck | undefined): boolean {
+  if (strict?.state !== 'holds') return false
+  if (strict.struckNotInDraft?.length) return true
+  if (strict.newWords > 0) return false
+  const by = strict.struck
+  return !(by && by.named + by.repealed + by.rewritten > 0 && by.byPosition === 0)
+}
+
+/**
+ * Kärnten's §§ shown as changed or new, each with the mark (23.11.2026). Its
+ * right column is the Novelle's instructions reprinted, so neither draft rule
+ * is asked of it, and until then such a § stood as if it had been checked.
+ */
+export function withoutDraftRules(units: readonly LawDiffUnit[]): { law: string | null; id: string; change: 'changed' | 'inserted'; reason: LandDraftUncheckedReason }[] {
+  return units.flatMap((u) => (u.change === 'changed' || u.change === 'inserted' ? [{ law: u.article, id: u.id, change: u.change, reason: 'noDraftCheck' as const }] : []))
 }
 
 /**
@@ -295,6 +321,7 @@ export function notHeld(guard: TguGuard): Map<number, LandDraftUncheckedReason> 
     if (off.has(i)) continue
     if (!guard.read) out.set(i, 'draftUnread')
     else if (guard.strict.get(i)?.state !== 'holds') out.set(i, draftUncheckedReason(guard.strict.get(i)?.reason ?? null))
+    else if (struckNotHeld(guard.strict.get(i))) out.set(i, 'struck')
   }
   return out
 }

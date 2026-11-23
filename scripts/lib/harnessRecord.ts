@@ -15,6 +15,7 @@
  * record carries both counts, so the builder can refuse a short one.
  */
 import { execSync } from 'node:child_process'
+import { gpWindow } from '../../shared/utils/gp'
 
 /**
  * Where an uncommitted change moves what a harness measures: the server
@@ -104,6 +105,39 @@ export function floorOf(classes: readonly { key: string; tried: number; caught: 
 /** A reach from what was asked for and what failed, each failure with its cause. */
 export function corpusReach(requested: number, unreached: { id: string; cause: string }[]): CorpusReach {
   return { requested, reached: requested - unreached.length, unreached }
+}
+
+/** The period a run was cut to (`--nur-periode`), and whether its list reached the period's first day. */
+export interface PeriodScope {
+  gp: string
+  from: string
+  to: string | null
+  /** Drafts of the list that fall into the period. */
+  listed: number
+  /** The list holds a draft older than the period, so none of the period's can lie beyond its end. */
+  complete: boolean
+}
+
+/**
+ * The records of one Gesetzgebungsperiode (23.11.2026). RIS ignores
+ * `Begut.Gesetzgebungsperiode` and answers with its whole list, newest first,
+ * so „the 400 newest" reached back to 27.08.2024 and the page called seven
+ * drafts of the period before „der XXVIII. Gesetzgebungsperiode". A record
+ * without a Beginn stays: the harness names it as a draft it could not place.
+ */
+export function inPeriod<T>(gp: string, records: readonly T[], beginnOf: (record: T) => string | null | undefined): { records: T[]; period: PeriodScope } {
+  const window = gpWindow(gp)
+  if (!window) throw new Error(`inPeriod: no calendar row for GP ${gp}`)
+  const day = (record: T): string | null => beginnOf(record)?.slice(0, 10) || null
+  const kept = records.filter((record) => {
+    const d = day(record)
+    return d === null || (d >= window.from && (window.to === null || d <= window.to))
+  })
+  const complete = records.some((record) => {
+    const d = day(record)
+    return d !== null && d < window.from
+  })
+  return { records: kept, period: { gp, from: window.from, to: window.to, listed: kept.length, complete } }
 }
 
 /** What a cached Länder list held for one Land, and when it was fetched. */

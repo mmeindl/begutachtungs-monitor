@@ -37,11 +37,11 @@
         Was die rechte Spalte als neu zeigt, muss Wort für Wort und Zahl
         für Zahl der Wortlaut sein, den der Entwurf des Landes für den
         Paragraphen schreibt; sonst zeigt der Monitor ihn nicht. Wo sich
-        das nicht prüfen lässt, steht beim Paragraphen „nicht geprüft“
-        und beim Gesetz der Grund. Kärnten druckt in der rechten Spalte
-        die Änderungsanordnungen der Novelle: Gezeigt wird dort nur, was eine
-        Anordnung ganz abdruckt, und gegen den Entwurf geprüft wird es
-        nicht.
+        das nicht prüfen lässt, auch bei Gestrichenem, steht beim Paragraphen
+        „nicht geprüft“ und beim Gesetz der Grund. Kärnten druckt in der
+        rechten Spalte die Änderungsanordnungen der Novelle: Gezeigt wird dort
+        nur, was eine Anordnung ganz abdruckt. Gegen den Entwurf geprüft wird
+        es nicht, darum trägt es „nicht geprüft“.
       </dd>
     </div>
     <div>

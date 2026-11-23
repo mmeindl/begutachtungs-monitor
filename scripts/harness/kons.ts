@@ -46,7 +46,7 @@
  * (`applyReport.ts`, `halbangewendet`).
  */
 import { applyNovelle, instructionsFromUnits, renamedOrigins, resolveTarget, type StandingLaw } from '../../server/utils/kons/lawApply'
-import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
+import { bodyText, plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
@@ -69,6 +69,7 @@ import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { asArray } from '../lib/ris'
 import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
+import { draftPathOf, type DraftPathCase, type DraftPathRecord } from '../lib/konsDraftPath'
 import { harnessKey, kindKey, matchArticle, misnumberedShown, removalVerdict, scoredKey, unchangedClass, UNCHANGED_CLASSES, type UnchangedClass } from './konsJudge'
 
 interface Verdict {
@@ -188,6 +189,12 @@ const dumpFile = argAssigned('dump') ?? null
  * annex prints „(1) bis (5) …" — so the confirmed text lacks law that stands.
  */
 const withOracle = argFlag('oracle')
+/**
+ * `--entwurf` (with `--oracle`, 23.11.2026): also composes each draft behind
+ * the bench as its page does (`consolidate`) and scores the §§ whose
+ * instructions went into the law unchanged (`lib/konsDraftPath.ts`).
+ */
+const withDraftPath = withOracle && argFlag('entwurf')
 /**
  * The annex is read through the page's own source choice, `annexSourceFor`
  * (`annex/annexSource.ts`): older-name candidates, bundles, then the named
@@ -534,6 +541,8 @@ interface Oracle {
    * figure would let the XML path vouch for the PDF path.
    */
   path: AnnexPath
+  /** The draft's RIS record, for the run over the draft path (`--entwurf`). */
+  recordId: string
 }
 
 /** `AnnexSource.readFrom` as the tables name it. */
@@ -650,7 +659,8 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
   const rows = source.parsed.rows
   const path: AnnexPath = source.readFrom === 'pdf' ? 'PDF' : 'XML'
   const meId = String(me.zitation ?? `${me.inr}/ME`)
-  if (!article) return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(draftBlocks), lawKey: undefined, path }
+  if (withDraftPath) draftRecords.set(flat.id, { flat, documents, draftBlocks, beginn: candidates[0]!.beginn, me: meId })
+  if (!article) return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(draftBlocks), lawKey: undefined, path, recordId: flat.id }
   const parts = articleBlocks(draftBlocks).filter((p) => p.article.amends)
   const match = matchArticle(parts.map((p) => p.article), article)
   if ('reason' in match) {
@@ -660,8 +670,12 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
     return { note: `Artikel des Entwurfs zu ${article.title ?? article.number ?? '?'} nicht gefunden — ${match.reason}` }
   }
   const part = parts.find((p) => p.article === match)!
-  return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(part.blocks), lawKey: match.key, path }
+  return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(part.blocks), lawKey: match.key, path, recordId: flat.id }
 }
+
+/** `--entwurf`: the drafts behind the bench, and each law of a Bundesgesetzblatt that came of one. */
+const draftRecords = new Map<string, { flat: NonNullable<ReturnType<typeof flattenRisRecord>>; documents: ReturnType<NonNullable<typeof annexDocumentsOf>>; draftBlocks: TextBlock[]; beginn: string; me: string }>()
+const enactedLaws: { recordId: string; kurztitel: string; article: DraftArticle; blocks: readonly TextBlock[]; pairs: Map<string, { before: KonsParagraphRef | null; afters: KonsParagraphRef[] }> }[] = []
 
 /**
  * One read of a record's annex per run. A Sammelnovelle asks for the same
@@ -775,6 +789,8 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       tally(oracleNotes, `Orakel geladen (${loaded.path})`)
     }
   }
+
+  if (withDraftPath && oracle) enactedLaws.push({ recordId: oracle.recordId, kurztitel, article, blocks, pairs })
 
   /** The newest version that already existed when this amendment was promulgated. */
   const lastBefore = (list: readonly KonsParagraphRef[]): KonsParagraphRef | null => {
@@ -1337,12 +1353,87 @@ for (const v of verdicts.filter((x) => x.note)) console.log(`  ? ${v.bgbl}${v.ar
 }
 
 /**
+ * The draft path (`--entwurf`): every draft behind the bench composed by the
+ * page's `consolidate`, each § it shows held against the law that came of it.
+ * The annex is RIS's (`annexSourceFor`), without the page's fallback to
+ * Parliament's copy, which these drafts do not need.
+ */
+async function scoreDraftPath(): Promise<DraftPathRecord> {
+  const { consolidate } = await import('../../server/utils/kons/consolidate')
+  const { resolveKonsLaw, fetchParagraphXml, draftRenditionOf } = await import('../lib/productionSources')
+  const squash = (text: string): string => text.replace(/\s+/g, '')
+  const side = (segments: readonly { type: string; text: string }[] | null | undefined, drop: 'removed' | 'inserted'): string =>
+    (segments ?? []).filter((s) => s.type !== drop).map((s) => s.text).join(' ')
+  const cases: DraftPathCase[] = []
+  let composed = 0
+  let failed = 0
+  for (const [recordId, draft] of draftRecords) {
+    let out: Awaited<ReturnType<typeof consolidate>>
+    try {
+      out = await consolidate({ gp: null, inr: null, risId: recordId }, draft.draftBlocks, draft.beginn, {
+        resolveLaw: resolveKonsLaw,
+        paragraphXml: (ref) => fetchParagraphXml(ref.nor, ref.xmlUrl!),
+        annexRows: async (articles) => {
+          const source = await annexSourceFor!(draft.documents, articles)
+          return typeof source === 'string' ? null : source.parsed.rows
+        },
+        draftRendition: () => draftRenditionOf(draft.flat.mainDocument.pdf ?? null),
+      })
+      composed++
+    } catch (err) {
+      failed++
+      console.error(`Entwurfspfad: ${draft.me} nicht zusammengesetzt — ${String(err).slice(0, 160)}`)
+      continue
+    }
+    const parts = articleBlocks(draft.draftBlocks).filter((p) => p.article.amends)
+    for (const entry of enactedLaws.filter((e) => e.recordId === recordId)) {
+      const article = parts.length === 1 ? parts[0]!.article : matchArticle(parts.map((p) => p.article), entry.article)
+      if ('reason' in article) continue
+      const part = parts.find((p) => p.article === article)!
+      const draftLines = linesByParagraph(part.blocks)
+      const lawLines = linesByParagraph(entry.blocks)
+      for (const p of out.paragraphs) {
+        if (parts.length > 1 && p.annexLaw !== article.key) continue
+        const label = [...entry.pairs.keys()].find((l) => (isSchedule(l) ? unitKey(l) === p.id : scoredKey(l) === p.id))
+        const base = { key: `${recordId}|${p.annexLaw}|${p.id}`, me: draft.me, law: entry.kurztitel, id: p.id }
+        if (!label) {
+          cases.push({ ...base, amended: false })
+          continue
+        }
+        const pair = entry.pairs.get(label)!
+        const truths = (await Promise.all(pair.afters.map((ref) => fetchParagraphTree(ref)))).filter((tree): tree is LawNode => tree !== null)
+        if (truths.length === 0) continue
+        const text = squash(side(p.segments, 'removed'))
+        const heading = squash(side(p.headingSegments, 'removed'))
+        const before = pair.before ? await fetchParagraphTree(pair.before) : null
+        const a = draftLines.get(p.id) ?? new Set<string>()
+        const b = lawLines.get(p.id) ?? new Set<string>()
+        cases.push({
+          ...base,
+          amended: true,
+          lines: a.size,
+          sameInstruction: a.size === b.size && [...a].every((line) => b.has(line)),
+          sameStock: before ? squash(bodyText(before)) === squash(side(p.segments, 'inserted')) : null,
+          identical: truths.some((tree) => squash(bodyText(tree)) === text && squash(tree.heading ?? '') === heading),
+        })
+      }
+    }
+  }
+  const record = draftPathOf(cases, composed, failed)
+  console.log(`\n  Entwurfspfad: ${record.drafts} Entwürfe, ${record.shown} gezeigte §§; gleiche Anweisung auf gleichem Text ${record.comparable}, davon Wort für Wort das Gesetz ${record.identical}`)
+  console.log(`    nicht bewertet: Anweisung geändert ${record.instructionChanged}, Text vorher geändert ${record.stockMoved}, ohne Anweisungszeile ${record.noInstructionLine}, vom Gesetz nicht geändert ${record.notAmended}`)
+  for (const d of record.differs) console.log(`    ✗ ${d.me} ${d.law} § ${d.id}`)
+  return record
+}
+
+/**
  * `--json=<file>`: the run's figures as a record (19.11.2026), for
  * `scripts/harness/genauigkeit.ts`, which writes what `/genauigkeit` shows.
  * The gate's tally whole, keyed as above — `plausibel|Orakel|Ergebnis|
  * Verweigerung|Weg` —, so a figure the page wants is summed from it rather
  * than parsed out of the lines printed here.
  */
+const draftPath = withDraftPath ? await scoreDraftPath() : null
 const jsonFile = argAssigned('json')
 if (jsonFile) {
   const missed = new Set(unreached.map((u) => u.id))
@@ -1375,6 +1466,8 @@ if (jsonFile) {
     markers: Object.fromEntries([...markerTally].sort(([a], [b]) => a.localeCompare(b))),
     /** The §§ the engine took out (21.11.2026): RIS repealed them, or not, or cannot say; and those it moved to another number. */
     removed: { confirmed: removed('confirmed'), wrong: removed('wrong'), unverifiable: removed('unverifiable'), renumbered: removedRenumbered },
+    /** `--entwurf`: the page's own composition of the drafts, against the law (`lib/konsDraftPath.ts`). */
+    ...(draftPath ? { draftPath } : {}),
   }
   writeFileSync(jsonFile, `${JSON.stringify(record, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonFile}`)

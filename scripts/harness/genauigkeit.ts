@@ -8,11 +8,11 @@
  *
  * `<dir>` holds what the round wrote, under these names:
  *
- *   kons.json        kons.ts -- --discover=60 --sammel --cache --oracle --json=<dir>/kons.json
- *   fi-pdf.json      faultInjection.ts -- --gp=XXVIII --mindestens=95 --json=<dir>/fi-pdf.json
- *   fi-xml.json      faultInjection.ts -- --gp=XXVIII --xml --mindestens=95 --json=<dir>/fi-xml.json
- *   annex-pdf.json   annexPdf.ts -- --gp=XXVIII --json=<dir>/annex-pdf.json
- *   annex-xml.json   annexPdf.ts -- --gp=XXVIII --xml --json=<dir>/annex-xml.json
+ *   kons.json        kons.ts -- --discover=60 --sammel --cache --oracle --entwurf --json=<dir>/kons.json
+ *   fi-pdf.json      faultInjection.ts -- --gp=XXVIII --nur-periode --mindestens=95 --json=<dir>/fi-pdf.json
+ *   fi-xml.json      faultInjection.ts -- --gp=XXVIII --nur-periode --xml --mindestens=95 --json=<dir>/fi-xml.json
+ *   annex-pdf.json   annexPdf.ts -- --gp=XXVIII --nur-periode --json=<dir>/annex-pdf.json
+ *   annex-xml.json   annexPdf.ts -- --gp=XXVIII --nur-periode --xml --json=<dir>/annex-xml.json
  *   station.json     station.ts -- --gp=XXVIII --cache --json=<dir>/station.json
  *   land-guard/      landGuard.ts -- --out <dir>/land-guard --cached-only
  *   land-st/         landStations.ts -- --out <dir>/land-st --cached-only
