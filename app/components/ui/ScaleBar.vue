@@ -1,6 +1,9 @@
 <script lang="ts">
-/** Where a label stands against its point: from it, centred on it, or ending at it. */
-export type ScaleAlign = 'start' | 'center' | 'end'
+/**
+ * Where a label stands against its point: from it, centred on it, or ending
+ * at it. `end-narrow` ends at it on a phone and is centred from `sm` up.
+ */
+export type ScaleAlign = 'start' | 'center' | 'end' | 'end-narrow'
 
 export interface ScaleMark {
   key: string
@@ -55,9 +58,12 @@ const props = withDefaults(defineProps<{
    * `auto`: the value label is centred on its dot except within 10 % of
    * either end, where it would run off a long track. `center`: always
    * centred — for a word short enough to fit anyway („Heute"), so it stands
-   * over its dot and not beside it.
+   * over its dot and not beside it. `center-inset`: centred too, but its
+   * centre stays 4rem from the track's start — for a longer label on a value
+   * in the track's left half, which would otherwise run off a phone's track.
+   * In rem, so it holds when a reader enlarges the text.
    */
-  valueAlign?: 'auto' | 'center'
+  valueAlign?: 'auto' | 'center' | 'center-inset'
   /**
    * Where the ink line begins, percent of the track — 0, its start, unless
    * the track is shared by several rows (the EU act page, 04.11.2026): there
@@ -76,13 +82,15 @@ const pct = (n: number) => `${Math.min(100, Math.max(0, n))}%`
 /* The value centred over its dot, except where centring would push it past
  * either end of the track. */
 const valueAlign = computed(() => (
-  props.valueAlign === 'center' ? '-translate-x-1/2' : props.value < 10 ? '' : props.value > 90 ? '-translate-x-full' : '-translate-x-1/2'
+  props.valueAlign === 'center' || props.valueAlign === 'center-inset' ? '-translate-x-1/2' : props.value < 10 ? '' : props.value > 90 ? '-translate-x-full' : '-translate-x-1/2'
 ))
+const valueLeft = computed(() => (props.valueAlign === 'center-inset' ? `max(4rem, ${pct(props.value)})` : pct(props.value)))
 
 const MARK_ALIGN: Record<ScaleAlign, string> = {
   start: '',
   center: '-translate-x-1/2 text-center',
   end: '-translate-x-full text-right',
+  'end-narrow': '-translate-x-full text-right sm:-translate-x-1/2 sm:text-center',
 }
 
 const ticks = computed(() => (props.marks ?? []).filter((m) => m.tick))
@@ -96,7 +104,7 @@ const DOT = computed(() => `absolute top-0 box-border size-3 -translate-x-1/2 ro
       <span
         class="absolute whitespace-nowrap"
         :class="valueAlign"
-        :style="{ left: pct(value) }"
+        :style="{ left: valueLeft }"
       >{{ valueLabel }}</span>
     </div>
     <div :class="valueLabel ? 'relative mt-1 h-3' : 'relative h-3'" aria-hidden="true">

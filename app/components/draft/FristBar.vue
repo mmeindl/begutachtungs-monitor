@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { spanInDays } from '#shared/utils/format'
 import type { FristKind } from '~/utils/deadlines'
-import { FULL_FRIST_DAYS, fristPeriodFor, fristSpanDe } from '~/utils/deadlines'
+import { FULL_FRIST_DAYS, fristClassLineDe, fristClassOf, fristPeriodFor, fristSpanDe } from '~/utils/deadlines'
 
 /**
  * A Frist against the Regelfall, drawn in the rail's station grammar
@@ -24,12 +24,17 @@ import { FULL_FRIST_DAYS, fristPeriodFor, fristSpanDe } from '~/utils/deadlines'
  * never dots — as dots they read as stations, and once the end dot is
  * filled a 62-day Frist showed four identical black dots.
  *
- * For every Frist, not only at the edges. A label „Kurze Frist" on three
- * quarters of all pages would stop meaning anything — that is why the rail
- * names the class only at the edges. A line is the measurement itself, and
- * it shows both directions: a six-week Frist reaches the Regelfall, a longer
- * one runs past it. That about three quarters fall short of the Regelfall
- * is a finding, not a verdict on this page.
+ * The line is drawn for every Frist; the words „Kurze Frist" and „Volle
+ * Frist" stand over it only at the edges, in the rail's wording
+ * (`fristClassLineDe`, 23.11.2026), so rail and section say the same. A
+ * class on three quarters of all pages would stop meaning anything. A line
+ * is the measurement itself, and it shows both directions: a six-week Frist
+ * reaches the Regelfall, a longer one runs past it. That about three
+ * quarters fall short of the Regelfall is a finding, not a verdict on this
+ * page.
+ *
+ * A short Frist's label is centred on the dot and kept inside the track
+ * (`center-inset`): near the left end of a phone's track it would run off.
  *
  * Neutral on purpose: no red for short and no green for full. The Regelfall
  * allows exceptions (urgency, an EU deadline), and the line cannot know the
@@ -42,6 +47,10 @@ import { FULL_FRIST_DAYS, fristPeriodFor, fristSpanDe } from '~/utils/deadlines'
  * long term ran into the Regelfall's (4 px at 390 px for 62 days);
  * the „Methode" under the bar states it (`MethodFrist`). The median is context, never the yardstick:
  * half of all drafts lie below it by definition.
+ *
+ * On a phone the median's label ends at its tick (`end-narrow`, 23.11.2026):
+ * a longer Frist stretches the scale and draws the two ticks together, and
+ * two centred labels would run into each other.
  *
  * The median is the one of the period the Frist began in (21.10.2026, „seit
  * 2013" until then): a draft is held against the practice of the government
@@ -62,7 +71,8 @@ const days = computed(() => {
   const n = spanInDays(props.start, props.deadline)
   return n !== null && n >= 1 ? n : null
 })
-const span = computed(() => fristSpanDe(props.start, props.deadline))
+const label = computed(() => fristClassLineDe(props.start, props.deadline) ?? fristSpanDe(props.start, props.deadline))
+const labelAlign = computed(() => (fristClassOf(props.start, props.deadline) === 'short' ? 'center-inset' : 'auto'))
 
 /* The track is six weeks, or the Frist where it ran longer — so a long
  * Frist reaches its end and the Regelfall moves inward. */
@@ -84,7 +94,7 @@ const marks = computed(() => [
 ].map((m) => ({
   ...m,
   at: pct(m.days),
-  align: m.days === scale.value ? 'end' as const : 'center' as const,
+  align: m.days === scale.value ? 'end' as const : m.key === 'median' ? 'end-narrow' as const : 'center' as const,
   tick: true,
 })))
 </script>
@@ -93,7 +103,8 @@ const marks = computed(() => [
   <ScaleBar
     v-if="days"
     :value="pct(days)"
-    :value-label="span"
+    :value-label="label"
+    :value-align="labelAlign"
     :marks="marks"
   >
     <template #mark="{ mark }">{{ mark.term }}<span v-if="mark.basis" class="hidden sm:inline">{{ ` ${mark.basis}` }}</span><br>{{ mark.value }}</template>

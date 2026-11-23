@@ -5,9 +5,10 @@
 
   A `<dl>` in the caller's `prose-flow`, each term the answer itself
   (docs/decisions.md, „A method text is the credit line in full sentences").
-  „voll" and „kurz" are said here because the bar prints neither word; where
-  a tag does (`frist-voll`, `frist-kurz` in `app/utils/terms.ts`), it opens
-  its own definition.
+  „voll" and „kurz" are said here because the bar prints them at the edges
+  (`fristClassLineDe`) and this is where they are defined; where a tag does
+  (`frist-voll`, `frist-kurz` in `app/utils/terms.ts`), it opens its own
+  definition.
 -->
 <template>
   <dl>
