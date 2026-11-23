@@ -613,6 +613,41 @@ describe('where one § ends and the next begins, as the ministries set it (21.11
     expect(six.proposed.startsWith('Förderungszeitraum § 6.')).toBe(true)
   })
 
+  // Mindestbesteuerungsgesetz (RIS ED6B5BCB): „§ 56b (1)" and „§ 56c (1)",
+  // new §§ without their full stop, were read into § 56a.
+  it('opens a § printed without its full stop, with its first Absatz', () => {
+    const rows = read([
+      at(444, 790, '§ 56a. (1) Der Ergänzungssteuerbetrag ist zu ermitteln.', 720),
+      ...filler(778),
+      at(R0, 628, 'Steuerhoheitsgebieten erzielten Einkünfte weniger als 15 % unterliegen.', 700),
+      at(548, 616, 'UPE-Safe-Harbour', 629),
+      at(R0, 604, '§ 56b (1) Für Geschäftsjahre, die nach dem 31. Dezember 2025 beginnen, wird', RE),
+      at(R0, 592, 'der Ergänzungssteuerbetrag auf null reduziert.', 640),
+      at(470, 580, 'Safe-Harbour für substanzbasierte Steuerbegünstigungen', 708),
+      at(R0, 568, '§ 56c (1) Für Geschäftsjahre, die nach dem 31.12.2025 beginnen, wird der', RE),
+      at(R0, 556, 'Ergänzungssteuerbetrag auf null reduziert.', 620),
+    ])
+    expect(rows.find((r) => r.gld === '§ 56a.')!.proposed.endsWith('weniger als 15 % unterliegen.')).toBe(true)
+    expect(rows.find((r) => r.gld === '§ 56b')!.proposed.startsWith('UPE-Safe-Harbour § 56b (1) Für')).toBe(true)
+    expect(rows.find((r) => r.gld === '§ 56c')!.proposed.startsWith('Safe-Harbour für substanzbasierte Steuerbegünstigungen § 56c (1)')).toBe(true)
+  })
+
+  it.each([
+    ['under a line that runs on', 'die Voraussetzungen sind nach Maßgabe von', '§ 56b (1) Für die Zwecke'],
+    ['naming an Absatz list', 'Die Behörde hat das zu prüfen.', '§ 56b (1) und (2) gelten sinngemäß.'],
+    ['naming a Ziffer', 'Die Behörde hat das zu prüfen.', '§ 56b (1) Z 3 gilt sinngemäß.'],
+    ['at another Absatz', 'Die Behörde hat das zu prüfen.', '§ 56b (2) Für die Zwecke'],
+  ])('reads a citation at the head of a line as text: %s', (_, above, citation) => {
+    const rows = read([
+      at(444, 790, '§ 56a. (1) Der Ergänzungssteuerbetrag ist zu ermitteln.', 720),
+      ...filler(778),
+      at(R0, 628, above, 640),
+      at(R0, 616, citation, 640),
+    ])
+    expect(rows.some((r) => r.gld === '§ 56b')).toBe(false)
+    expect(rows.find((r) => r.gld === '§ 56a.')!.proposed).toContain(citation)
+  })
+
   // A RIS print sets its headings flush: under a heading line handed on that
   // starts at the margin, a line at the margin is the heading's too
   // (Verbraucherzahlungskontogesetz, RIS F36AA3A2).

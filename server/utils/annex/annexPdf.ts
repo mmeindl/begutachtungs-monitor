@@ -1257,7 +1257,31 @@ function markerOf(text: string): RegExpExecArray | null {
  */
 const UNDOTTED_PARAGRAPH_RE = /^(§\s*\d+[a-z]*)(?=\s+\p{Lu}\p{Ll})/u
 
+/**
+ * „§ 56b (1) Für Geschäftsjahre …": a § printed without its full stop, with
+ * its first Absatz. The Mindestbesteuerungsgesetz (RIS ED6B5BCB) sets its new
+ * §§ 56b and 56c so, at the body margin, and both were read into § 56a. Only
+ * „(1)", and only before what opens an Absatz or leaves it out: a capitalised
+ * word, a citation's „§", „bis (5)". „§ 5 (1) und (2) gelten" or „§ 5 (1) Z 3"
+ * is a citation, and so is any such line under a line that runs on.
+ */
+const UNDOTTED_FIRST_ABSATZ_RE = /^(§\s*\d+[a-z]*)(?=\s+\(1\)\s+(?:\p{Lu}\p{Ll}|§|bis\s+\())/u
+
+function undottedFirstAbsatz(line: ColumnLine, parts: readonly ColumnLine[]): RegExpExecArray | null {
+  const text = line.text.trim()
+  const marker = UNDOTTED_FIRST_ABSATZ_RE.exec(text)
+  if (!marker) return null
+  const tail = text.slice(marker[0].length).replace(/^\s+\(1\)\s+/, '')
+  if (!/^(?:bis\s+\(|§)/.test(tail) && CITATION_TAIL_RE.test(tail)) return null
+  const above = parts.at(-1)
+  if (!above || SENTENCE_END.test(above.text.trim())) return marker
+  const before = parts.at(-2)
+  return above.centred && !above.wrapped && before && SENTENCE_END.test(before.text.trim()) ? marker : null
+}
+
 function undottedParagraph(line: ColumnLine, parts: readonly ColumnLine[]): RegExpExecArray | null {
+  const withAbsatz = undottedFirstAbsatz(line, parts)
+  if (withAbsatz) return withAbsatz
   const heading = parts.at(-1)
   const before = parts.at(-2)
   if (line.flush !== true || !heading?.centred || heading.wrapped || SENTENCE_END.test(heading.text.trim())) return null
