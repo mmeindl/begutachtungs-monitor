@@ -1677,6 +1677,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   lautet Satz 7:", only with the verb right beside it. A figure that names a
   place („In § 6 Abs. 6 1. Satz wird das Wort …") stays a place. Two of the 9,089
   distinct lines of GP XXVIII change; no § moves.
+- **A quotation right behind „lautet die Überschrift" is the new heading**
+  (23.11.2026, `WRITES_PART_RE`), and one behind „Im Inhaltsverzeichnis lautet
+  die Eintragung zu § 3" says what the table of contents prints: no wording of
+  the §, which it does not account for. Both shapes had no role, so the § stayed
+  „nicht geprüft" (Landarbeitsgesetz 2021 § 3, now held and read).
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a

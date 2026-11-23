@@ -194,6 +194,14 @@ describe('quoteRoles', () => {
   })
 })
 
+describe('a quotation right behind the part a line writes anew (23.11.2026)', () => {
+  it('takes the heading a line quotes behind „lautet die Überschrift“ as new, and a table of contents\' entry as no wording of the §', () => {
+    expect(quoteRoles('2. In § 3 lautet die Überschrift „Freie Dienstnehmer“, der erste Satz erhält die Absatzbezeichnung „(1)“ und es werden folgende Abs. 2 und 3 angefügt:').map((q) => q.role)).toEqual(['new', 'new'])
+    expect(quoteRoles('1. Im Inhaltsverzeichnis lautet die Eintragung zu § 3 „Freie Dienstnehmer“.')[0]!.role).toBe('anchor')
+    expect(quoteRoles('1. Im Inhaltsverzeichnis lautet der Eintrag zu § 48 „Zugang zu Informationen“.')[0]!.role).toBe('anchor')
+  })
+})
+
 describe('draftWording', () => {
   it('gives the designations a quoted range leaves between its ends, held as designations', () => {
     const range = [...draftWording([{ kind: 'novao', cls: 'absatz/novao1', text: '1. In § 7 entfällt Abs. 1; die Abs. 2 bis 5 erhalten die Absatzbezeichnungen „(1)“ bis „(4)“.', gld: null }]).values()][0]!
