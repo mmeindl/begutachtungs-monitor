@@ -101,6 +101,8 @@ const doorClass = computed(() =>
         external
         color="neutral"
         variant="outline"
+        icon="i-lucide-calendar-plus"
+        :ui="{ leadingIcon: 'size-4 text-ink-muted' }"
         class="min-h-target"
       >
         Frist in den Kalender (.ics)
