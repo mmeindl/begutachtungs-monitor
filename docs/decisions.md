@@ -2015,6 +2015,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   sentence of the left column lost 60 %, another §'s sentence in the right
   column 65 % (old text) and 75 % (proposed text), the lower of the two
   paths' measured shares, rounded down to five.
+- **„Lücke" stays below the floor's 20 tries on the PDF path, and a round
+  says so** (23.11.2026). It has one site per § with a skipped unit, 14 §§
+  of GP XXVIII. Trying every skipped unit gives 38 tries, all caught, in the
+  same 14 §§: the count would clear the floor with no more evidence. So a
+  try stays one per §, and a round is written with
+  `--erlaube-ungehalten=Lücke`.
 - **`markedParas` is what the page marks, `uncheckedParas` every unchecked
   verdict** (21.11.2026, annex records): a figure about the mark reads the
   first.

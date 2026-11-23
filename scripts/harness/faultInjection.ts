@@ -1278,6 +1278,11 @@ function withoutAbsatz(node: LawNode, id: string): LawNode {
  * could be lost then. Each miss is also judged without the reading: a miss
  * both share is not the reading's.
  *
+ * ONE TRY PER § (23.11.2026). The PDF path has 14 such §§, below the 20 tries
+ * a floor needs, so a round names this class as not held. Trying every
+ * skipped unit gives 38 tries, all caught, in the same 14 §§: that would
+ * clear the floor by counting the same §§ again, with no more evidence.
+ *
  * 14.11.2026, GP XXVIII, PDF path: Lücke 16 of 16 caught (all by check 3),
  * Lücke-beide 3 of 16 — the 13 misses are confirmed without the reading too:
  * the annex names nothing between its two markers, and RIS without the unit
