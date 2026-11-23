@@ -184,6 +184,9 @@ gets an entry of its own only where it carries a reason the rule does not.
   lasts through the parliamentary procedure (§ 23b GOG-NR): for a law the
   Bundesrat does not object to, until its Beschluss. Whether it opens again
   after an Einspruch is not documented (14.11.2026).
+- **Statements open newest first** (23.11.2026, maintainer's decision). A
+  first row ranked by Zustimmungen puts the best-mobilised on top and reads
+  as a vote. „Meiste Zustimmungen" stays one click away.
 - **„Bisher keine Regierungsvorlage" only when proven.** An unread chain, a
   missing `preconst` pointer or an exhausted fetch budget shows the weakest
   state the evidence supports. Silence can be repaired, a false accusation

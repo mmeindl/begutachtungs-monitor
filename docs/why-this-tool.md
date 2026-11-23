@@ -51,7 +51,7 @@ the reason.
 
 Parliament lists statements as a paginated list; one draft had 707 entries.
 The monitor counts them, separates organisations from private persons and
-non-public statements, and sorts by endorsements. Private persons appear only
+non-public statements, and sorts by date or endorsements. Private persons appear only
 as a count, never by name. Statement texts stay where they are: linked, never
 copied.
 

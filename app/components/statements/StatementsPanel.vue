@@ -62,8 +62,7 @@ const SEARCH_MIN = STATEMENT_SEARCH_MIN
  * second fold with the anonymous half — three row shapes and two disclosures
  * for what is one set of Stellungnahmen. The segments below are the groups
  * the legend above counts, so the filter needs no explaining, and the old
- * ranked/folded split collapses into a sort: the top of the organisation list
- * IS "die meisten Zustimmungen".
+ * ranked/folded split collapses into a sort.
  */
 const filterLabels: Record<StatementFilter, string> = {
   organisations: 'Organisationen',
@@ -115,23 +114,23 @@ const showSort = computed(() => props.summary.total > 1)
 
 /**
  * Sort is its own axis, independent of the filter: the two orders answer
- * different questions — "who mobilized" and "what came in last" — and neither
- * is the right default for every reader. Zustimmungen leads because it is the
- * only key that ranks an anonymous row, and because it is the order the
- * segments had before this control existed.
+ * different questions — "who mobilized" and "what came in last". Neueste
+ * leads since 23.11.2026: a first row ranked by Zustimmungen puts the
+ * best-mobilised on top and reads as a vote, which a Stellungnahme is not.
+ * The date ranks nobody (`docs/decisions.md`, „Statements open newest first").
  *
  * ISO dates sort lexicographically, and a missing date ends up last, where it
  * belongs: it carries no position in a chronology. The two keys themselves
  * are in `app/utils/statementRows.ts`, with the rows they order.
  */
 const sortOptions: { value: string; label: string }[] = [
-  { value: 'endorsements', label: 'Meiste Zustimmungen' },
-  { value: reversedOption('endorsements'), label: 'Wenigste Zustimmungen' },
   { value: 'date', label: 'Neueste' },
   { value: reversedOption('date'), label: 'Älteste' },
+  { value: 'endorsements', label: 'Meiste Zustimmungen' },
+  { value: reversedOption('endorsements'), label: 'Wenigste Zustimmungen' },
 ]
 
-const sort = ref<StatementSort>('endorsements')
+const sort = ref<StatementSort>('date')
 /* Either order turned round (`SortHeader`, 06.11.2026); the phone's select offers both ways. */
 const sortReversed = ref(false)
 const { selectValue: sortSelect } = useReversibleSort(sort, sortReversed)
