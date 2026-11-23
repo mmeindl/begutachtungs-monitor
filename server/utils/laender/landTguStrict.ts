@@ -2217,16 +2217,21 @@ function struckAccount(
     // Where neither the column nor an elided row names a unit of a level the line names around the place, which unit it is cannot
     // be told, and the place is not refused; it is refused where another one stands there.
     // A wording that opens with a designation („„(3) Das …“", printed inside Abs. 2) stands in the unit of the word before it.
-    const inPlace = (at: number, width: number) => !units.length || units.some((u) => [...u.path, u].every((part) => {
+    const inPlace = (at: number, width: number, count: 'printed' | 'new') => !units.length || units.some((u) => [...u.path, u].every((part) => {
       if (part.level === 0) return part.ids.some((id) => ids.has(id))
       // A place named in the new count is not refused: the column need not print the old and the new number side by side.
       if (part.fresh) return true
       const around = unitAround(at, part.level)
-      return around === null || (part.ids.includes(around.id) && at + width <= around.end)
+      return around === null || (part.ids.includes(count === 'new' && around.at >= 0 ? newIdAt(around.at) : around.id) && at + width <= around.end)
     }))
     named.push({ tokens, law })
+    // A line that follows a renumbering may count by the new numbers without saying so („§ 5 Abs. 2 und 3 entfällt; die Abs. 4 bis 9
+    // erhalten …" and then „In § 5 Abs. 5 entfällt die Zeichenfolge „Abs. 1“", which stands in the old Abs. 7). Only where the unit
+    // of the number the column prints does not carry the wording at all: there the line means that one.
     for (const form of parted.length === tokens.length ? [tokens] : [tokens, parted]) {
-      for (const a of placesOf(words, form).filter((x) => inPlace(x, form.length))) for (let k = a; k < a + form.length; k++) mark(left[k]!.p, 'named')
+      const places = placesOf(words, form)
+      const printedCount = places.filter((x) => inPlace(x, form.length, 'printed'))
+      for (const a of printedCount.length ? printedCount : places.filter((x) => inPlace(x, form.length, 'new'))) for (let k = a; k < a + form.length; k++) mark(left[k]!.p, 'named')
     }
   }
   // …and a struck stretch that stands in such a wording, though the wording does not stand whole in the column: „Der Leiter der

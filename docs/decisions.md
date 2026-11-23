@@ -1696,6 +1696,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   payload. Not for a quoted wording's place, where a place in the new count is
   still not refused: the column need not print both numbers side by side, and
   asking it to marked five sound §§. BFA-VG § 34 holds, read.
+- **A line that follows a renumbering may count by the new numbers without
+  saying so** (23.11.2026, `inPlace`): „§ 5 Abs. 2 und 3 entfällt; die Abs. 4 bis 9
+  erhalten …", then „In § 5 Abs. 5 entfällt die Zeichenfolge „Abs. 1“", which
+  stands in the old Abs. 7. A quoted wording is looked for in the unit of the
+  printed number first, and in the unit the column renumbers to it only where
+  the printed one does not carry the wording. Apothekenbetriebsordnung §§ 5 and
+  60a hold, read.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a

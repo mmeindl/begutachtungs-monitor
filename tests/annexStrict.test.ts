@@ -433,6 +433,19 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
       // The same line for another number of the new count repeals nothing in this one.
       expect(check(blocksWith(lines[0]!, '2. In § 5 Abs. 2 (neu) entfallen die Z 1 und die Ziffernbezeichnung „2.“.'), renumbered, CURRENT).state).toBe('differs')
     })
+
+    it('reads a line that counts by the new numbers without saying so, only where the printed number\'s unit lacks the wording (Apothekenbetriebsordnung § 5)', () => {
+      const rows = (second: string) => [
+        row({ law: LAW, gld: '§ 5.', para: '§ 5.', current: '(1) Die Behörde ist zuständig.', proposed: '(1) Die Behörde ist zuständig.', change: 'unchanged' }),
+        row({ law: LAW, para: '§ 5.', current: second, proposed: '', change: 'removed' }),
+        row({ law: LAW, para: '§ 5.', current: '(3) Die Frist gemäß Abs. 1 beträgt vier Wochen.', proposed: '(2) Die Frist beträgt vier Wochen.' }),
+      ]
+      const held = (lines: string[], second: string) => annexStrictChecks(rows(second), { ...draft, blocks: blocksWith(...lines) }).get(`${LAW}#§ 5.`)!
+      const lines = ['1. § 5 Abs. 2 entfällt; Abs. 3 erhält die Absatzbezeichnung „(2)“.', '2. In § 5 Abs. 2 entfällt die Zeichenfolge „gemäß Abs. 1“.']
+      expect(held(lines, '(2) Der Antrag ist schriftlich.').state).toBe('holds')
+      // The printed Abs. 2 carries the wording: the line means that one, and the same words struck in the unit renumbered to 2 are the column's own.
+      expect(held(lines, '(2) Der Antrag gemäß Abs. 1 ist schriftlich.')).toMatchObject({ state: 'differs', struckNotInDraft: ['gemäfl', 'abs', '1'] })
+    })
   })
 
   it('repeals no unit by a verb that has an object of its own, and reads „Art." as an address (22.11.2026)', () => {
