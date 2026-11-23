@@ -1671,9 +1671,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   in** (23.11.2026, `elidedDesignations`, `unitAround`). „(1) …" over a struck
   „6. …" makes that Ziffer Abs. 1's: an address that names the Absatz finds it,
   and a quoted wording under another Absatz is refused there. Read from a row
-  that prints designations and nothing else; of a chain („(1) bis (3) …") the
-  last, which runs to the next designation of its level or higher, printed or
-  elided, or to a list that restarts at a row's start. It also ends a printed
+  that prints designations; of a chain („(1) bis (3) …") the last, which runs
+  to the next designation of its level or higher, printed or elided, or to a
+  list that restarts at a row's start. A row that has named an Absatz counts up
+  to its first piece that cannot be read: „(2) (Grundsatzbestimmung) …" is
+  Abs. 2, and read as nothing it left a Z 6 behind it in Abs. 1, where a repeal
+  of Abs. 1 Z 6 accounted for it (a reader's attack on the rule, 23.11.2026).
+  Where the row runs on past that piece („(1) bis (xx) …"), the unit behind it
+  is one no address names. It also ends a printed
   unit: a repeal of Abs. 2 takes no Ziffer behind an elided „(3) …". Until then
   this was the largest class of false objections. Seven §§ of the table path go
   from „differs" to „holds", each read against the draft (RAO § 36,

@@ -401,9 +401,15 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
       expect(elidedDesignations('(1) ...')).toEqual([{ level: 1, id: '1' }])
       expect(elidedDesignations('1.bis 5. ...')).toEqual([{ level: 2, id: '1' }, { level: 2, id: '5' }])
       expect(elidedDesignations('(1) Z 1 bis 18 …')).toEqual([{ level: 1, id: '1' }, { level: 2, id: '1' }, { level: 2, id: '18' }])
+      // Up to the first piece that cannot be read; a row that runs on past it ends in a unit no address names.
+      expect(elidedDesignations('(2) (Grundsatzbestimmung) …')).toEqual([{ level: 1, id: '2' }])
+      expect(elidedDesignations('(28) ... (vgl. RV 539 d. B. XXVIII. GP)')).toEqual([{ level: 1, id: '28' }])
+      expect(elidedDesignations('(1) bis (xx) …')).toEqual([{ level: 1, id: '1' }, { level: 1, id: '?' }])
+      expect(elidedDesignations('(5) uns (6) …')).toEqual([{ level: 1, id: '5' }, { level: 1, id: '?' }])
+      expect(elidedDesignations('1. Abschnitt …')).toEqual([])
       expect(elidedDesignations('a) und b) …')).toEqual([{ level: 3, id: 'a' }, { level: 3, id: 'b' }])
       expect(elidedDesignations('§ 9b Abs. 1 bis 5 …')).toEqual([{ level: 1, id: '1' }, { level: 1, id: '5' }])
-      for (const other of ['...', '[...]', '2.3 bis 3.3 …', 'Nachweis der Befugnis § 81. (1) und (2) ...', '(1) bis (xx) ...']) expect(elidedDesignations(other)).toEqual([])
+      for (const other of ['...', '[...]', '2.3 bis 3.3 …', 'Nachweis der Befugnis § 81. (1) und (2) ...']) expect(elidedDesignations(other)).toEqual([])
     })
   })
 

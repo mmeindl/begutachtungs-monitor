@@ -1318,9 +1318,19 @@ export interface ElidedRow { at: number; text: string }
 /** One piece of an elided row: a § designation, an Absatz, a Ziffer, a Litera, a joiner, the mark, or a bare number a joiner carries on („Z 1 bis 18"). */
 const ELIDED_PIECE_RE = /\s*(?:(§\s*\d+[a-z]*\.?)|\(\s*(\d+[a-z]*)\s*\)|(?:Absatz|Abs\.?)\s*(\d+[a-z]*)|(?:Ziffer|Z)\s*(\d+[a-z]*)|lit\.?\s*([a-z]{1,2})(?![\p{L}])|(\d+[a-z]{0,2})\.(?!\d)|([a-z]{1,2})\)|(bis|und|sowie|,|-)(?![\p{L}])|(\[\s*[.…]+\s*\]|\(\s*[.…]+\s*\)|[.…]+)|(\d+[a-z]{0,2})(?![\p{L}\d.]))/uy
 
+/** The id of a unit an elided row runs on to without a number that can be read („(1) bis (xx) …"): no address names it. */
+const UNREAD_ID = '?'
+/** What an elided row still goes on to behind the piece it could not be read at: a joiner or another Absatz. */
+const RUNS_ON_PAST_RE = /(?<![\p{L}])(?:bis|und|sowie)(?![\p{L}])|\(\s*\d/u
+
 /**
  * The designations an elided row prints, in order, each with its level (1 the Absatz, 2 the Ziffer, 3 the Litera, 4 the
  * Sublitera). None where the row prints anything else: a heading, a decimal numbering („2.3 bis 3.3 …"), a word of the text.
+ *
+ * A row that has named an Absatz counts up to its first piece that cannot be read (23.11.2026): „(2) (Grundsatzbestimmung) …"
+ * is Abs. 2, and read as nothing it left the rows behind it in the Absatz before, where a repeal of that Absatz's Z 6 accounted
+ * for a Z 6 of Abs. 2. Where the row runs on past that piece („(1) bis (xx) …", „(5) uns (6) …"), the unit behind it is one
+ * no address names (`UNREAD_ID`). Not a row that opens with a Ziffer's figure: „1. Abschnitt …" is a heading.
  */
 export function elidedDesignations(text: string): { level: number; id: string }[] {
   const out: { level: number; id: string }[] = []
@@ -1330,7 +1340,11 @@ export function elidedDesignations(text: string): { level: number; id: string }[
   while (at < flat.length) {
     ELIDED_PIECE_RE.lastIndex = at
     const m = ELIDED_PIECE_RE.exec(flat)
-    if (!m || m[0].length === 0) return []
+    if (!m || m[0].length === 0) {
+      if (!out.some((d) => d.level === 1)) return []
+      if (joined || RUNS_ON_PAST_RE.test(flat.slice(at))) out.push({ level: out.at(-1)!.level, id: UNREAD_ID })
+      return out
+    }
     at += m[0].length
     const letter = m[5] ?? m[7]
     if (m[8]) joined = true
