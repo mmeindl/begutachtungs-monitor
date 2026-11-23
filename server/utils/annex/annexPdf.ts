@@ -1405,6 +1405,25 @@ function sameAbsatzBeside(own: string, other: string): string | null {
   return opened && absatz && opened[2] === absatz[1] ? normalizeText(opened[1]!) : null
 }
 
+/** „§ 80a. (1) …." on a line of its own: a § that leaves out what stands before the Absatz below it. */
+const OPENS_ELIDED_RE = new RegExp(String.raw`^(§\s*${PARAGRAPH_NUMBER}\.)\s*\(\d+[a-z]*\)(?:\s*(?:bis|und)\s*\(\d+[a-z]*\))?\s*(?:\.{3,}|…)\.?$`)
+
+/**
+ * The same where the other column opens the § on the line above, with an
+ * Absatz left out, and this one prints nothing there: „§ 80a. (1) …." over
+ * „(2) Unbeschadet …" on the left, „(2) Unbeschadet …" alone on the right
+ * (Bewertungsgesetz in the Abgabenänderungsgesetz 2026, RIS ED6B5BCB). The
+ * right column's Abs. 2 ran into § 30, the § it printed before.
+ */
+function openedAboveBeside(own: string, other: string, ownAbove: string | undefined, otherAbove: string | undefined): string | null {
+  if (ownAbove === undefined || otherAbove === undefined || ownAbove.trim() !== '') return null
+  const opened = OPENS_ELIDED_RE.exec(otherAbove.trim())
+  if (!opened) return null
+  const absatz = ABSATZ_FIRST_RE.exec(own.trim())
+  const beside = ABSATZ_FIRST_RE.exec(other.trim())
+  return absatz && beside && absatz[1] === beside[1] ? normalizeText(opened[1]!) : null
+}
+
 /**
  * Does the § named beside this line open here? Only behind the shape
  * `undottedParagraph` asks for: a centred heading that ends no sentence, under
@@ -1674,7 +1693,8 @@ function nextWithText(lines: readonly ColumnLine[], from: number): number {
 function moveSharedHeadings<T extends ColumnLine>(left: T[], right: T[], contents: { left: ContentsLines; right: ContentsLines }): void {
   const prints = (lines: readonly ColumnLine[], skip: ContentsLines) => new Set(lines.flatMap((line, k) => {
     const marker = skip.lines.has(k) ? null : markerOf(line.text)
-    const id = marker?.[1]?.startsWith('§') ? idOfMarker(normalizeText(marker[1])) : null
+    // A § the column opens without printing its designation prints it all the same (`openedAboveBeside`).
+    const id = marker?.[1]?.startsWith('§') ? idOfMarker(normalizeText(marker[1])) : line.besideOpens ? idOfMarker(line.besideOpens) : null
     return id ? [id] : []
   }))
   const inLeft = prints(left, contents.left)
@@ -2563,14 +2583,14 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       inset: margin.start === null ? null : start - margin.start,
       axis: margin.start === null || margin.end === null ? null : (margin.start + margin.end) / 2,
     })
-    const leftLines = section.lines.map((l) => {
-      const besideOpens = sameAbsatzBeside(l.left, l.right)
+    const leftLines = section.lines.map((l, n) => {
+      const besideOpens = sameAbsatzBeside(l.left, l.right) ?? openedAboveBeside(l.left, l.right, section.lines[n - 1]?.left, section.lines[n - 1]?.right)
       const frame = frameOf.get(l) ?? { edges, margins }
       return { text: l.left, wrapped: reachedEdge(l.leftEnd, frame.edges.left), centred: isCentred(l.leftStart, l.leftEnd, frame.margins.left), flush: isFlush(l.leftStart, frame.margins.left), ...at(l.leftStart, l.leftEnd, frame.margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(besideOpens ? { besideOpens } : {}) }
     })
-    const rightLines = section.lines.map((l) => {
+    const rightLines = section.lines.map((l, n) => {
       const repealOf = repealedBeside(l.left, l.right)
-      const besideOpens = sameAbsatzBeside(l.right, l.left)
+      const besideOpens = sameAbsatzBeside(l.right, l.left) ?? openedAboveBeside(l.right, l.left, section.lines[n - 1]?.right, section.lines[n - 1]?.left)
       const frame = frameOf.get(l) ?? { edges, margins }
       return { text: l.right, wrapped: reachedEdge(l.rightEnd, frame.edges.right), centred: isCentred(l.rightStart, l.rightEnd, frame.margins.right), flush: isFlush(l.rightStart, frame.margins.right), ...at(l.rightStart, l.rightEnd, frame.margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}), ...(repealOf ? { repealOf } : {}), ...(besideOpens ? { besideOpens } : {}) }
     })

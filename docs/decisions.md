@@ -1840,6 +1840,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   front of the leftmost column (it cut words off the pages set further
   right), and moving a page into the document's frame (the margins of a
   moved page then decide what counts as a heading on the others).
+- **A column that opens a § without printing its designation opens it
+  beside the other column's** (`sameAbsatzBeside`, and since 23.11.2026
+  `openedAboveBeside`): at the same Absatz on one line, or under the other
+  column's „§ 80a. (1) …." where this one leaves that line empty and both go
+  on with the same Absatz. Only under the heading shape `opensBeside` asks
+  for, and the shared heading then stays that §'s (BewG § 80a in the AbgÄG
+  2026, whose „(2)" had run into § 30).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

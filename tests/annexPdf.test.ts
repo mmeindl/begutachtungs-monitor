@@ -645,6 +645,24 @@ describe('where one § ends and the next begins, as the ministries set it (21.11
     expect(eight.proposed.startsWith('Vollziehung § 8. (1)')).toBe(true)
   })
 
+  // Bewertungsgesetz in the Abgabenänderungsgesetz 2026 (RIS ED6B5BCB): the left
+  // column prints „§ 80a. (1) …." over its „(2)", the right column the „(2)"
+  // alone, and that Absatz ran into § 30, the § the right column had open.
+  it('opens the § the other column opens one line up, with an Absatz left out', () => {
+    const rows = read([
+      at(108, 780, '§ 30. (1) Das landwirtschaftliche Vermögen ist zu bewerten.', 380), at(444, 780, '§ 30. (1) Das landwirtschaftliche Vermögen ist zu bewerten.', 716),
+      ...filler(766),
+      at(108, 640, '(8) bis (12) …', 166), at(444, 640, '(8) bis (12) …', 502),
+      at(223, 628, 'Zuständigkeit', 283), at(559, 628, 'Zuständigkeit', 619),
+      at(108, 616, '§ 80a. (1) ….', 163),
+      at(108, 604, '(2) Unbeschadet der Zuständigkeit des Finanzamtes kann der Bundesminister', 417.4), at(444, 604, '(2) Unbeschadet der Zuständigkeit des Finanzamtes kann der Bundesminister', 753.3),
+    ])
+    expect(rows.find((r) => r.gld === '§ 30.')!.proposed).not.toContain('Unbeschadet')
+    const opened = rows.find((r) => r.gld === '§ 80a.')!
+    expect(opened.current).toContain('(2) Unbeschadet')
+    expect(opened.proposed).toBe('Zuständigkeit § 80a. (2) Unbeschadet der Zuständigkeit des Finanzamtes kann der Bundesminister')
+  })
+
   // Bundesabgabenordnung in the Abgabenänderungsgesetz 2025 (RIS 24E5B4AA):
   // „§ 86." on a line of its own, and its „(1)" beside the left's „§ 86a. (1)".
   it('leaves an Absatz with the § its column has open, whatever the other column opens beside it', () => {
