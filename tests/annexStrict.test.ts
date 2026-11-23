@@ -423,6 +423,18 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „nach §§ 4b oder 5“.'), proposed, current).state).toBe('differs')
   })
 
+  describe('a unit named in the new numbering (23.11.2026)', () => {
+    const CURRENT = '(1) Die Behörde ist zuständig. (2) Ein Auftrag ist zu widerrufen, wenn 1. das Verfahren eingestellt wurde oder 2. der Fremde sich meldet. (3) Die Frist beträgt vier Wochen.'
+    const renumbered = '(1) Die Behörde ist zuständig. (1a) Ein Auftrag ist zu widerrufen, wenn der Fremde sich meldet. (2) Die Frist beträgt vier Wochen.'
+
+    it('takes „Abs. 7 (neu)“ for the Absatz the column renumbers to 7, and for no other (BFA-VG § 34)', () => {
+      const lines = ['1. In § 5 erhalten die Abs. 2 und 3 die Absatzbezeichnungen „(1a)“ und „(2)“.', '2. In § 5 Abs. 1a (neu) entfallen die Z 1 und die Ziffernbezeichnung „2.“.']
+      expect(check(blocksWith(...lines), renumbered, CURRENT)).toMatchObject({ state: 'holds', notInDraft: [], notShown: [] })
+      // The same line for another number of the new count repeals nothing in this one.
+      expect(check(blocksWith(lines[0]!, '2. In § 5 Abs. 2 (neu) entfallen die Z 1 und die Ziffernbezeichnung „2.“.'), renumbered, CURRENT).state).toBe('differs')
+    })
+  })
+
   it('repeals no unit by a verb that has an object of its own, and reads „Art." as an address (22.11.2026)', () => {
     // B-VG Art. 11, SchUG § 42: „entfällt die Wortfolge „…““ was read as a repeal of the Absatz the line names as its place.
     const current = '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet und andere. Sie ist an Weisungen nicht gebunden.'

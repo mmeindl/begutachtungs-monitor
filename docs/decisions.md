@@ -1638,8 +1638,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   inserted § dropped, a § designation printed without a full stop, a
   schedule's last item lost), none of the five shown without a Vermerk. A
   round's figures are taken on the list as it stands that day.
-- **What the struck-text check does not do, measured** (22.11.2026). It does
-  not map a unit named in the new numbering back („Abs. 7 (neu)"). It counts a quoted wording at every place of its unit (once
+- **What the struck-text check does not do, measured** (22.11.2026). It counts a quoted wording at every place of its unit (once
   without „jeweils" would have marked 5 sound §§) and a piece of a §'s own
   quote wherever it stands (its place: 11). A last list item on the PDF path
   runs to the next designation (the first sentence end: 9 moves, 5 sound §§
@@ -1691,6 +1690,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   (23.11.2026), where the same column prints that word joined at another
   place: „§§ 4a" and „§§ 4 a" in one Absatz (Fremdenpolizeigesetz § 61). A
   matter of spacing, the way `respace` reads it for new text.
+- **„Abs. 7 (neu)" names the unit the column renumbers to 7** (23.11.2026,
+  `newIdAt`): the designation it strikes at the unit's start and prints beside
+  it. Held for a repeal, a unit written anew, a sentence and the reach of a
+  payload. Not for a quoted wording's place, where a place in the new count is
+  still not refused: the column need not print both numbers side by side, and
+  asking it to marked five sound §§. BFA-VG § 34 holds, read.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a

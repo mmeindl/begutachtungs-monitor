@@ -2087,6 +2087,18 @@ function struckAccount(
     const renumbered = numbered(unit.fromId ?? unit.id)
     return newNumbers(line).some((id) => renumbered.has(id)) ? renumbered : numbered(unit.id)
   }
+  /** A unit the left column opens, or an elided row names (`at` -1). */
+  interface UnitAt { id: string; end: number; at: number }
+  /**
+   * The number a unit has after the draft, as the column prints it: the designation it strikes at the unit's start and prints
+   * beside it („[(8)] {(7)}"), else its own. What „Abs. 7 (neu)" names (23.11.2026, BFA-VG § 34).
+   */
+  const newIdAt = (k: number): string => {
+    const next = diff[left[k]!.p + 1]
+    return struck.has(left[k]!.p) && next?.kind === 'inserted' && DESIGNATION_WORD_RE.test(next.word) ? next.word : words[k]!
+  }
+  /** Whether a unit is the one an address part names: by the number the left column prints, or, for a part marked „(neu)", the one it has after the draft. */
+  const holdsId = (part: AddressPart, u: UnitAt | null): boolean => u !== null && (part.fresh ? u.at >= 0 && part.ids.includes(newIdAt(u.at)) : part.ids.includes(u.id))
   /**
    * Whether the left column's word at `k` stands inside the parts an address names above its unit (22.11.2026): the §
    * this group's, each Absatz, Ziffer or Litera a unit the left column opens with that designation and `k` runs in. A
@@ -2094,26 +2106,26 @@ function struckAccount(
    */
   const within = (k: number, path: readonly AddressPart[] | undefined, ids: ReadonlySet<string>): boolean => (path ?? []).every((part) => (part.level === 0
     ? part.ids.some((id) => ids.has(id))
-    : part.ids.includes(unitAround(k, part.level)?.id ?? '')))
+    : holdsId(part, unitAround(k, part.level))))
   /**
    * The unit of a level that `k` runs in, opened before it: the nearest designation of that level before `k`, printed or named
    * by a row the annex leaves out, where `k` stands before its end. An elided row's unit runs to the next designation of its
    * level or higher, printed or elided; a chain („(1) bis (3) …") leaves its last. Null where none. Kept per level.
    */
-  const enclosed = new Map<number, ({ id: string; end: number } | null)[]>()
-  const unitAround = (k: number, level: number): { id: string; end: number } | null => {
+  const enclosed = new Map<number, (UnitAt | null)[]>()
+  const unitAround = (k: number, level: number): UnitAt | null => {
     let at = enclosed.get(level)
     if (!at) {
-      at = new Array<{ id: string; end: number } | null>(left.length).fill(null)
-      let open: { id: string; end: number } | null = null
+      at = new Array<UnitAt | null>(left.length).fill(null)
+      let open: UnitAt | null = null
       for (let x = 0; x < left.length; x++) {
         for (const n of elidedBefore.get(x) ?? []) {
-          if (n.level === level) open = { id: n.id, end: endFrom(x, level, x) }
+          if (n.level === level) open = { id: n.id, end: endFrom(x, level, x), at: -1 }
           else if (n.level < level) open = null
         }
         if (open && x >= open.end) open = null
         at[x] = open
-        if (opensAt(x) && levelAt(x) === level) open = { id: words[x]!, end: unitEnd(x) }
+        if (opensAt(x) && levelAt(x) === level) open = { id: words[x]!, end: unitEnd(x), at: x }
         else if (opensAt(x) && levelAt(x) < level) open = null
       }
       enclosed.set(level, at)
@@ -2207,6 +2219,7 @@ function struckAccount(
     // A wording that opens with a designation („„(3) Das …“", printed inside Abs. 2) stands in the unit of the word before it.
     const inPlace = (at: number, width: number) => !units.length || units.some((u) => [...u.path, u].every((part) => {
       if (part.level === 0) return part.ids.some((id) => ids.has(id))
+      // A place named in the new count is not refused: the column need not print the old and the new number side by side.
       if (part.fresh) return true
       const around = unitAround(at, part.level)
       return around === null || (part.ids.includes(around.id) && at + width <= around.end)
@@ -2253,7 +2266,7 @@ function struckAccount(
       // …or a designation the word diff keeps while it strikes what follows („wenn 1. [dessen Antrag … 2. …]").
       const unaccounted = (x: number) => struck.has(x) && !cls.has(x)
       const opens = opensAt(k) || (read[k]!.shape !== undefined && ((struck.has(left[k]!.p) && !unaccounted(left[k - 1]?.p ?? -1)) || (!struck.has(left[k]!.p) && struck.has(left[k + 1]?.p ?? -1))))
-      if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(words[k]!) && within(k, r.path, ids)) markUnit(k, c)
+      if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(r.fresh ? newIdAt(k) : words[k]!) && within(k, r.path, ids)) markUnit(k, c)
     })
   }
   // A § the annex prints under its old number while a line of the draft gives it another (22.11.2026: „§ 44f erhält die
@@ -2291,7 +2304,7 @@ function struckAccount(
         ranges.push([at < 0 ? 0 : at + 2, left.length, 0])
       }
     } else for (const u of x.sentences.in) for (const id of u.ids) {
-      const k = u.fresh ? -1 : left.findIndex((_, j) => opensAt(j) && levelAt(j) === u.level && words[j] === id && within(j, u.path, ids))
+      const k = left.findIndex((_, j) => opensAt(j) && levelAt(j) === u.level && (u.fresh ? newIdAt(j) : words[j]) === id && within(j, u.path, ids))
       if (k < 0) readable = false
       else ranges.push([k, unitEnd(k), u.level])
     }
@@ -2336,7 +2349,7 @@ function struckAccount(
     const ids = ownFor(line)
     let out: Set<number> | null = units.length ? new Set<number>() : null
     for (const u of units) {
-      const at = u.fresh ? [] : left.flatMap((_, j) => (opensAt(j) && levelAt(j) === u.level && namedId(u.ids, words[j]!) && within(j, u.path, ids) ? [j] : []))
+      const at = left.flatMap((_, j) => (opensAt(j) && levelAt(j) === u.level && namedId(u.ids, u.fresh ? newIdAt(j) : words[j]!) && within(j, u.path, ids) ? [j] : []))
       if (!at.length || at.length < u.ids.length) out = null
       for (const k of at) {
         let e = k + 1
@@ -2522,8 +2535,8 @@ function struckAccount(
   const leftAt = new Map(left.map((l, k) => [l.p, k]))
   const inPlace = (x: (typeof positional)[number], q: number) => !x.places.length || x.places.some((u) => {
     const at = leftAt.get(q)!
-    const id = opensAt(at) && levelAt(at) === u.level ? words[at]! : unitAround(at, u.level)?.id
-    return id !== undefined && u.ids.includes(id) && within(at, u.path, ownFor(x.line))
+    const unitHere = opensAt(at) && levelAt(at) === u.level ? { id: words[at]!, end: at + 1, at } : unitAround(at, u.level)
+    return holdsId(u, unitHere) && within(at, u.path, ownFor(x.line))
   })
   // The sentence each left word stands in.
   const sentence: number[] = []
