@@ -57,7 +57,7 @@ import type { KonsLawAtDate, KonsParagraphRef } from '../ris/konsLaw'
 import type { ComparisonRow } from './comparisonRows'
 import type { AnnexWithheldCause } from '../../../shared/types'
 import { annexParagraphKey, designationKey } from './annexText'
-import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange, type Coverage } from './coverage'
+import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange, unchangedRowsNotStanding, type Coverage } from './coverage'
 import { MIN_NEW_WORDS, draftBags, draftReference, insertedStretches, rightColumnCheck, type RightColumnCheck, type StandingText, type WordBag } from './rightColumn'
 import { divisionPath, divisionsOf, draftRepeals, noRepeals, repealsParagraph, showsRepeal, type DraftRepeals } from './repeals'
 
@@ -364,6 +364,12 @@ export interface AnnexVerification {
    */
   uncheckedReasons: Record<string, string>
   /**
+   * §§ with a row both columns print alike that the standing § does not
+   * account for (`unchangedRowsNotStanding`, 23.11.2026). No verdict moves:
+   * the table of marks reads it (`annexMark.ts`). Absent where nothing ran.
+   */
+  unchangedNotStanding?: Record<string, true>
+  /**
    * Laws where enough §§ failed to doubt the whole annex for that law. Named
    * on the page; their §§ are withheld only where each failed on its own.
    *
@@ -647,6 +653,7 @@ export async function verifyAnnex(
 
   const coverage = new Map<string | null, Map<string, Coverage>>()
   const rightColumn = new Map<string, RightColumnCheck>()
+  const unchangedNotStanding: Record<string, true> = {}
   /**
    * §§ with no standing text by nature — a § the draft inserts, one RIS does
    * not hold, every § of a draft that amends no law — and why (20.11.2026).
@@ -707,6 +714,7 @@ export async function verifyAnnex(
     const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()
     byPara.set(group.para, coverageOfParagraph(group.rows, standing.text))
     coverage.set(group.law, byPara)
+    if (unchangedRowsNotStanding(group.rows, standing.text).length > 0) unchangedNotStanding[annexParagraphKey(group.law, group.para)] = true
     rightColumn.set(annexParagraphKey(group.law, group.para), rightColumnCheck(group.rows, standing, paragraphReference(group, draftWords)))
   }, { failFast: true })
 
@@ -832,5 +840,5 @@ export async function verifyAnnex(
   const verified = Object.values(verdicts).filter((v) => v === 'verified').length
   // A reason for a § that is no longer unchecked (the repeal rule above) is no reason of its own.
   const stillUnchecked = Object.fromEntries(Object.entries(uncheckedReasons).filter(([key]) => verdicts[key] !== 'withheld'))
-  return { ran: compared > 0, reasons: [...reasons], verdicts, withheldCauses, uncheckedReasons: stillUnchecked, doubtfulLaws, judged, verified }
+  return { ran: compared > 0, reasons: [...reasons], verdicts, withheldCauses, uncheckedReasons: stillUnchecked, unchangedNotStanding, doubtfulLaws, judged, verified }
 }

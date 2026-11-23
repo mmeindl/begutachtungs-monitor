@@ -14,7 +14,13 @@ export const DRAFT_CHECK_REASON_DE: Record<LandDraftUncheckedReason, string> = {
   wording: 'eine Anordnung des Entwurfs konnte der Monitor nicht Wort für Wort lesen',
   long: 'für den wortweisen Abgleich ist der Text zu lang',
   draftUnread: 'den Gesetzestext des Entwurfs fand der Monitor nicht oder konnte ihn nicht lesen',
+  // The two a Land's § alone can carry (23.11.2026): `struck` is about what the column strikes and has a lead of its own (`DRAFT_CHECK_STRUCK_DE`).
+  struck: 'was hier gestrichen ist, nennt der Gesetzestext des Entwurfs nicht so, dass es sich Wort für Wort bestätigen lässt',
+  noDraftCheck: 'Kärnten druckt in der rechten Spalte die Änderungsanordnungen der Novelle, und diese Spalte hält der Monitor nicht gegen den Entwurf',
 }
 
 /** The line's opening: what was not checked. */
 export const DRAFT_CHECK_LEAD_DE = 'Nicht geprüft, ob der neue Text Wort für Wort im Entwurf steht'
+
+/** The same for what a § strikes: such a § may have no new text the lead above could speak of. */
+export const DRAFT_CHECK_STRUCK_DE = 'Nicht geprüft, ob der Entwurf streicht, was hier gestrichen ist'

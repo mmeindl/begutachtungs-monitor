@@ -150,6 +150,30 @@ export function coverageOfParagraph(rows: readonly ComparisonRow[], standing: st
 }
 
 /**
+ * How many words of an unchanged row the standing § must lack before the row
+ * counts as foreign. A row is short, so one word moves its share by up to a
+ * fifth: on 23.11.2026 „Widerspruchsstelle" against RIS's „Widerspruchstelle"
+ * alone put ASVG § 31d under the line. A sentence from elsewhere lacks many.
+ */
+export const MIN_UNCHANGED_MISSING = 3
+
+/**
+ * The rows that print one text in both columns and that the standing § does
+ * not account for (23.11.2026), each row by itself: the shape of a sentence
+ * filed under the wrong §. Not a reason to withhold: the rule rejected above
+ * (11.09.2026) would have taken 43 §§ off the page, nearly all of them sound.
+ * Since a § can carry a mark, such a row costs it „nicht bestätigt"
+ * (`annexMark.ts`), and headings are lifted out of the rows before this runs.
+ */
+export function unchangedRowsNotStanding(rows: readonly ComparisonRow[], standing: string): ComparisonRow[] {
+  return rows.filter((row) => {
+    if (row.kind !== 'pair' || row.elided || row.change !== 'unchanged' || row.current.length === 0) return false
+    const cover = coverageOf(provisionText(row), standing)
+    return cover.prose && cover.ratio < PARAGRAPH_THRESHOLD && cover.missing.length >= MIN_UNCHANGED_MISSING
+  })
+}
+
+/**
  * A row's left column from the provision's own designation on.
  *
  * A PDF row is one whole provision, and the annex prints over it whatever

@@ -12,7 +12,7 @@
  */
 import type { LandDraftUncheckedReason, LandLawDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
-import { DRAFT_CHECK_LEAD_DE, DRAFT_CHECK_REASON_DE } from '#shared/utils/draftCheckReasons'
+import { DRAFT_CHECK_LEAD_DE, DRAFT_CHECK_REASON_DE, DRAFT_CHECK_STRUCK_DE } from '#shared/utils/draftCheckReasons'
 
 /** The marks by the unit they stand at (`diffUnitKey`): a removed § of the same number is another unit. */
 export function landUncheckedMarks(marks: LandLawDiffResponse['draftUnchecked']): Map<string, LandDraftUncheckedReason> {
@@ -22,5 +22,10 @@ export function landUncheckedMarks(marks: LandLawDiffResponse['draftUnchecked'])
 /** The line under a law's „nicht geprüft" pill, or null where none of its §§ carries the mark. */
 export function landUncheckedNote(reasons: readonly LandDraftUncheckedReason[]): string | null {
   const distinct = [...new Set(reasons)]
-  return distinct.length ? `${DRAFT_CHECK_LEAD_DE}: ${distinct.map((r) => DRAFT_CHECK_REASON_DE[r]).join('; ')}.` : null
+  const aboutNewText = distinct.filter((r) => r !== 'struck')
+  const lines = [
+    ...(aboutNewText.length ? [`${DRAFT_CHECK_LEAD_DE}: ${aboutNewText.map((r) => DRAFT_CHECK_REASON_DE[r]).join('; ')}.`] : []),
+    ...(distinct.includes('struck') ? [`${DRAFT_CHECK_STRUCK_DE}: ${DRAFT_CHECK_REASON_DE.struck}.`] : []),
+  ]
+  return lines.length ? lines.join(' ') : null
 }
