@@ -849,9 +849,9 @@ export function newNumbers(raw: string): string[] {
 export interface UnitRenumbering { level: number; from: string; to: string; path: AddressPart[] }
 
 /** The noun of a line that speaks of a unit's designation. The § has its own reading (`movedOf`). */
-const UNIT_DESIGNATION_RE = /(?:Absatz|Ziffern?|Litera|Unterabsatz)bezeichn?ung(?:en)?|(?<![\p{L}])Bezeichn?ung(?:en)?(?=\s*[„»]\s*(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.?|[a-z]{1,2}\)?)\s*[“”«])|[Nn]ummerierung/gu
+const UNIT_DESIGNATION_RE = /(?:Absatz|Ziffern?|Litera|Buchstaben|Unterabsatz)bezeichn?ung(?:en)?|(?<![\p{L}])Bezeichn?ung(?:en)?(?=\s*[„»]\s*(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.?|[a-z]{1,2}\)?)\s*[“”«])|[Nn]ummerierung/gu
 /** Right behind „erhält": an optional subject, then the designation it receives: „erhält Abs. 9 die Absatzbezeichnung", „erhalten die Abs. 3 bis 6 die …". */
-const RECEIVES_RE = new RegExp(String.raw`^\s*(?:(?:jeweils|nunmehr)\s+)?(?:(?:die|der|das)\s+(?:bisherigen?\s+)?)?(?<subject>${ADDRESS_SOURCE})?\s*(?:die|den)\s+(?=(?:Absatz|Ziffern?|Litera|Unterabsatz)?[Bb]ezeichn?ung)(?<noun>\p{L}+)\s*`, 'u')
+const RECEIVES_RE = new RegExp(String.raw`^\s*(?:(?:jeweils|nunmehr)\s+)?(?:(?:die|der|das)\s+(?:bisherigen?\s+)?)?(?<subject>${ADDRESS_SOURCE})?\s*(?:die|den)\s+(?=(?:Absatz|Ziffern?|Litera|Buchstaben|Unterabsatz)?[Bb]ezeichn?ung)(?<noun>\p{L}+)\s*`, 'u')
 
 /** What a quoted designation says: its level and its id. */
 function designationGiven(text: string): { level: number; id: string } | null {

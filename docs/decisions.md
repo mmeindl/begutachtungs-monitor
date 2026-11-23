@@ -1751,7 +1751,8 @@ gets an entry of its own only where it carries a reason the rule does not.
   wording.
 - **A renumbering line gives credit only where it can be read whole**
   (23.11.2026, `unitRenumberingsOf`): „X erhält die Bezeichnung „Y“" with X an
-  address and as many numbers on both sides, each of X's level. Of the 9,088
+  address and as many numbers on both sides, each of X's level; the noun may be
+  Tirol's „Buchstabenbezeichnung" too. Of the 9,088
   distinct lines of GP XXVIII it reads 119 with 298 pairs. The 78 it cannot read
   (a subject in words, „der letzte Absatz", numbers unquoted) give no number,
   and in their § a unit no line renumbers no longer counts as keeping its number

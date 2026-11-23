@@ -492,6 +492,7 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
       expect(pairs('In § 2 erhalten die Abs. 1b (alt) bis 1c (alt) die Absatzbezeichnungen „(1c)“ und „(1d)“.')).toEqual(['1:1b>1c', '1:1c>1d'])
       expect(pairs('In § 12 entfällt Abs. 2 und Abs. 3 erhält die Absatzbezeichnung „(2)“ .')).toEqual(['1:3>2'])
       expect(pairs('In § 4 Abs. 1 erhalten die Z 4 bis 7 die Bezeichnungen „5.“ bis „8.“ .')).toEqual(['2:4>5', '2:5>6', '2:6>7', '2:7>8'])
+      expect(pairs('§ 108 Abs. 1 lit. c wird aufgehoben; die bisherigen lit. d, e und f erhalten die Buchstabenbezeichnungen „c)“, „d)“ und „e)“.')).toEqual(['3:d>c', '3:e>d', '3:f>e'])
       // The § itself takes a designation: no unit of it moves, and nothing is left unread.
       expect(unitRenumberingsOf('Der bisherige Text des § 4 erhält die Absatzbezeichnung „(1)“ und es wird folgender Abs. 2 angefügt:')).toEqual({ renumberings: [], unread: false })
       // Unequal counts, a designation of another level, a subject that is no address: no number, and unread.
