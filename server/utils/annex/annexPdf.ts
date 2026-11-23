@@ -1214,6 +1214,12 @@ interface ColumnLine {
  * 0F9A8F06) under § 6 — each a § „changing" by a table it does not hold.
  */
 const SCHEDULE_ALONE_RE = /^((?:Anlage|Anhang)(?:\s+[A-Z])?)$/
+/**
+ * RIS's own lines over a schedule of a printed law: „Anlagen" over each
+ * designation (Seeschifffahrts-Verordnung, RIS 4D9E1224; Schiffstechnikverordnung)
+ * and the note „Beachte für folgende Bestimmung". They go with the schedule below.
+ */
+const OVER_A_SCHEDULE_RE = /^(?:Anlagen|Anhänge|Beachte für folgende Bestimmung)$/
 
 /**
  * The line's unit marker, or null — where it has none, and where what reads
@@ -1727,6 +1733,12 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
       // A repeal word alone is the cell of a § the column repeals, never a
       // heading of a § it prints (`repealedBeside`).
       if (marker && REPEALED_RE.test(last.text.trim())) break
+      // A schedule names itself under its designation, so a line above one
+      // is the end of what stands before it unless it is set as a heading or
+      // is RIS's own line over a schedule (`OVER_A_SCHEDULE_RE`). The
+      // Standortabsicherungsgesetz's Anhang 1 (RIS C9752AEE) lost its last
+      // item, „23.99.19.1 Hüttenwolle, Steinwolle …", to Anhang 2 as a heading.
+      if (marker && /^(?:Anlage|Anhang)/.test(marker[1] ?? marker[0]) && !last.centred && !OVER_A_SCHEDULE_RE.test(last.text.trim())) break
       // A word broken over two lines is one text: the line whose word the
       // carried line goes on with („Einzel-" over „handelsnutzungen …") goes
       // too, though it ran to the edge — the heading of § 39 of Salzburg's

@@ -648,6 +648,40 @@ describe('where one § ends and the next begins, as the ministries set it (21.11
     expect(rows.find((r) => r.gld === '§ 56a.')!.proposed).toContain(citation)
   })
 
+  // Standortabsicherungsgesetz (RIS C9752AEE): the right column's last item
+  // of Anhang 1, three short lines, stood at the head of Anhang 2.
+  it('leaves the last item of a schedule with that schedule', () => {
+    const rows = read([
+      at(372, 790, 'Anhang 1', 417.5), at(708, 790, 'Anhang 1', 753.3),
+      at(L0, 778, 'Die Liste beruht auf den Leitlinien.', 300),
+      ...filler(766),
+      at(430, 640, '35. Folgender Teilsektor innerhalb des Sektors der', 709),
+      at(520, 628, 'a. n. g. (23.99):', 582),
+      at(464, 616, '23.99.19.1 Hüttenwolle, Steinwolle und ähnliche mineralische', 724),
+      at(464, 604, '0 Wollen (ohne Glaswolle), auch miteinander gemischt,', 736),
+      at(L0, 592, 'Die Ergänzung des Anhangs wird festgelegt.', 300), at(520, 592, 'lose, in Platten oder in Rollen', 640),
+      at(372, 580, 'Anhang 2', 417.5), at(708, 580, 'Anhang 2', 753.3),
+      at(107, 568, 'Formeln zur Berechnung der Höhe der Förderung', 399), at(443, 568, 'Formeln zur Berechnung der Höhe der Förderung', 735),
+    ])
+    expect(rows.find((r) => r.gld === 'Anhang 1')!.proposed.endsWith('23.99.19.1 Hüttenwolle, Steinwolle und ähnliche mineralische 0 Wollen (ohne Glaswolle), auch miteinander gemischt, lose, in Platten oder in Rollen')).toBe(true)
+    expect(rows.find((r) => r.gld === 'Anhang 2')!.proposed).toBe('Anhang 2 Formeln zur Berechnung der Höhe der Förderung')
+  })
+
+  // Seeschifffahrts-Verordnung (RIS 4D9E1224): „Anlagen", RIS's line over a
+  // designation, is no item of the schedule above it.
+  it('hands RIS’s „Anlagen" to the schedule below it', () => {
+    const rows = read([
+      at(366, 790, 'Anlage 18', 412),
+      at(L0, 778, 'Die Ausrüstung umfasst ein Verbandtuch.', 330),
+      ...filler(766),
+      at(123, 640, 'Verbandpäckchen verschiedener Größen', 286),
+      at(L0, 628, 'Anlagen', 123),
+      at(366, 616, 'Anlage 19', 412),
+    ])
+    expect(rows.find((r) => r.gld === 'Anlage 18')!.current.endsWith('Verbandpäckchen verschiedener Größen')).toBe(true)
+    expect(rows.find((r) => r.gld === 'Anlage 19')!.current).toBe('Anlagen Anlage 19')
+  })
+
   // A RIS print sets its headings flush: under a heading line handed on that
   // starts at the margin, a line at the margin is the heading's too
   // (Verbraucherzahlungskontogesetz, RIS F36AA3A2).
