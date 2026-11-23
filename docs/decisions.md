@@ -361,7 +361,9 @@ gets an entry of its own only where it carries a reason the rule does not.
   Art. 16 bis 26:" is no address, so its text stayed in the passage above: 8 of
   633 Vorlagen of GP XXVI to XXVIII, six of them read from HTML, showed the
   reasoning for other laws under one § (408 d.B. XXVII: the pension laws' under
-  § 6 BMSVG). The reasoning comparison still reads it inside the passage.
+  § 6 BMSVG). A heading typed onto the end of a paragraph is taken off it the
+  same way (462 d.B. XXVII, the only such document). The reasoning comparison
+  still reads both inside the passage.
 - **Salzburg, the one Land with a statement, in this order of evidence:** a
   draft of the register joined to the law (the Land's record or the title
   search) — consulted; the Regierungsvorlage's Erläuterungen carry

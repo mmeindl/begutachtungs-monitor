@@ -259,12 +259,28 @@ export interface ExplanationsParseOptions {
    */
   generalAsHeaded?: boolean
   /**
-   * End the passage at a heading over a group of Artikel (`isArticleGroupHeading`),
-   * where the reasoning is shown under its §. Off for the reasoning comparison,
-   * which reads such a heading inside the passage on purpose
+   * The reading for the page, where a passage's reasoning is shown under its
+   * §: a heading over a group of Artikel ends the passage before it
+   * (`isArticleGroupHeading`), and a heading typed onto the end of a paragraph
+   * is taken off it (`withGluedAddressApart`). Off for the reasoning
+   * comparison, which reads such a heading inside the passage on purpose
    * (`reasoningDiff.test.ts`, „Zu den Art. 8 bis 10").
    */
-  articleGroups?: boolean
+  atParagraph?: boolean
+}
+
+const GLUED_ADDRESS_RE = /^([\s\S]*[.;!?)“"])\s+(Zu\s+(?:den\s+)?(?:§§?\s*\d|Z\s*\d|Art(?:ikel|\.)?\s*\d|Abs\.?\s*\d)[^.:]{0,140}(?:\([^)]{0,120}\))?\s*:)\s*$/
+
+/**
+ * „… wird verwiesen. Zu Z 22 (§ 11):" — an address the ressort typed onto the
+ * end of a paragraph, so that what follows it stood under the § before it
+ * (462 d.B. XXVII, §§ 9 and 10 and § 32a; the only two among the 592 Vorlagen
+ * of GP XXVI to XXVIII with an HTML, 23.11.2026).
+ */
+function withGluedAddressApart(block: TextBlock): TextBlock[] {
+  if (!block.text.trimEnd().endsWith(':')) return [block]
+  const m = GLUED_ADDRESS_RE.exec(block.text)
+  return m && isAddressHeading(m[2]!) ? [{ ...block, text: m[1]! }, { ...block, text: m[2]! }] : [block]
 }
 
 /**
@@ -302,7 +318,7 @@ export function parseExplanationBlocks(blocks: readonly TextBlock[], options: Ex
   /** The law it named — see `HtmlPassage.law`. */
   let law: string | null = null
 
-  for (const block of blocks) {
+  for (const block of options.atParagraph ? blocks.flatMap(withGluedAddressApart) : blocks) {
     const text = normalizeText(block.text.replace(DEGREE_AS_SPACE_RE, ' ')).trim()
     if (!text) continue
 
@@ -332,7 +348,7 @@ export function parseExplanationBlocks(blocks: readonly TextBlock[], options: Ex
 
     // Its reasoning belongs to several laws, so to no one §, and the mark above
     // it no longer says which law follows.
-    if (options.articleGroups && inSpecial && isArticleGroupHeading(text)) {
+    if (options.atParagraph && inSpecial && isArticleGroupHeading(text)) {
       mark = null
       section = null
       law = null

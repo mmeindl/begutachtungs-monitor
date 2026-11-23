@@ -142,14 +142,14 @@ describe('a heading over a group of Artikel', () => {
   const doc = (group: string) => [block('Besonderer Teil'), block('Zu Z 1 (§ 6 Abs. 4 BMSVG):'), block('Der Satz zu § 6.'), block(group), block('Die Pensionen werden angepasst.')]
 
   it.each(['Zu den Art. 16 bis 26:', 'Zu den Art. 2, 3 und 4 (Änderung des Arbeitsverfassungsgesetzes):', 'Zu den Art. 35, 36 und 40 (§ 5 ASVG):'])('keeps the reasoning of %s from the § before it', (group) => {
-    const { special } = parseExplanationBlocks(doc(group), { generalAsHeaded: true, articleGroups: true })
+    const { special } = parseExplanationBlocks(doc(group), { generalAsHeaded: true, atParagraph: true })
     expect(special[0]!.text).toEqual(['Der Satz zu § 6.'])
     expect(special[1]).toMatchObject({ heading: group, paragraphs: [], article: null, text: ['Die Pensionen werden angepasst.'] })
   })
 
   it('leaves a sentence that opens the same way in its passage', () => {
     const sentence = 'Zu den Art. 16 bis 26 ist Folgendes festzuhalten:'
-    const { special } = parseExplanationBlocks(doc(sentence), { generalAsHeaded: true, articleGroups: true })
+    const { special } = parseExplanationBlocks(doc(sentence), { generalAsHeaded: true, atParagraph: true })
     expect(special).toHaveLength(1)
     expect(special[0]!.text).toContain(sentence)
   })
@@ -157,5 +157,16 @@ describe('a heading over a group of Artikel', () => {
   it('stays in the passage for the reasoning comparison', () => {
     const { special } = parseExplanationBlocks(doc('Zu den Art. 16 bis 26:'))
     expect(special).toHaveLength(1)
+  })
+
+  it('takes a heading typed onto the end of a paragraph off it', () => {
+    const blocks = [block('Besonderer Teil'), block('Zu Z 17 (§ 9):'), block('Der Satz zu § 9. Zu Z 22 (§ 11):'), block('Der Satz zu § 11.')]
+    const { special } = parseExplanationBlocks(blocks, { generalAsHeaded: true, atParagraph: true })
+    expect(special.map((s) => [s.heading, s.paragraphs, s.text])).toEqual([['Zu Z 17 (§ 9):', ['§ 9'], ['Der Satz zu § 9.']], ['Zu Z 22 (§ 11):', ['§ 11'], ['Der Satz zu § 11.']]])
+  })
+
+  it('leaves a paragraph that ends in a colon but in no address', () => {
+    const blocks = [block('Besonderer Teil'), block('Zu Z 17 (§ 9):'), block('Es gilt Folgendes. Zu beachten ist:'), block('Der Satz.')]
+    expect(parseExplanationBlocks(blocks, { generalAsHeaded: true, atParagraph: true }).special).toHaveLength(1)
   })
 })
