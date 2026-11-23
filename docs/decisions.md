@@ -3888,6 +3888,37 @@ the reasoning in full stands in that component's header comment.
 - **The contact address is configuration**
   (`runtimeConfig.public.contactEmail`, `useContact`), as the site's
   address is: no page writes it out.
+- **A pause line stands on the plain 404 and says nothing about a draft**
+  (maintainer, 23.11.2026; `app/utils/pauseLines.ts`, `app/error.vue`). One
+  sentence, a little funny, that reminds the reader of a break. It is the
+  one exception to „no decoration that carries no information", and it is
+  kept to one place so that it stays one. It is the sentence under the
+  title „Seite nicht gefunden": the title says what happened, the header
+  and the button are the ways on, and „Die angeforderte Seite existiert
+  nicht oder wurde verschoben" said the title again. Not on a 410, a
+  refusal („Kein Gegenstand, den der Monitor verfolgt") or a failure:
+  those carry information about an item. A line's subject is the reader,
+  the page or the outdoors, never a draft, its deadline or its state, and
+  it uses no word the monitor uses as information („Frist", „Beschluss",
+  „kundgemacht", „Stellungnahme"; a test holds the lines to it): on the
+  address of a draft that does not exist, „nie kundgemacht" would be read
+  as a fact. It addresses nobody: where the site addresses its reader it
+  says „Sie" (the start page's title), so a „du" here would be a second
+  form on one site, and a „Sie" in an aside is stiff. The line is chosen
+  by the page's path, which server and browser share: a date differs
+  between the two around midnight, a random number always. A second
+  language writes its own lines.
+- **A missing page keeps the site around it; a failure stands alone**
+  (maintainer, 23.11.2026; `app/error.vue`). A 404, a 410 and a refusal
+  render in the site's layout: the header with its lists and the search,
+  the footer, the column and title of every other page. Until then a
+  centred card stood on an empty page and the only way on was the start
+  page, for a reader who had followed an old link to a draft. `error.vue`
+  replaces `app.vue`, so it builds the same shell; header and footer fetch
+  nothing, and the router clears the error when a link is followed
+  (checked in a browser). A failure keeps the card and depends on nothing
+  but itself: there the layout may be what failed. No illustration and no
+  large „404": the status stands as the small label above the title.
 
 ### Feeds and calendars
 
@@ -4517,6 +4548,24 @@ mark sound §§ or risk a wrong clearance.
   under the EU fact instead.
 - **A sentence under the state card's heading** (15.11.2026). It made the
   reader read two lines before the answer and repeated the rows.
+- **A random funny sentence in the footer of every page** (23.11.2026). It
+  would stand under a draft on assisted dying as under any other, it wears
+  out for readers who come weekly, and a screen reader says it at the end
+  of every page. The pause line stands on the plain 404, where no draft
+  is near.
+- **A pause line at the end of a long Textgegenüberstellung** (built and
+  taken back on 23.11.2026). Under the comparison of a draft, once 30
+  Paragraphen were open on screen, after the credit line. There the line
+  stands directly under a ministry's text, where the monitor must read as
+  an instrument: beside the source line it looked like a remark of the
+  monitor's on the draft, and it could read as unprofessional. An image
+  can also meet a draft's subject by chance („der Himmel" under a draft
+  on assisted dying), and no list of sensitive drafts is ever complete.
+- **The pause line as an aside under the 404's button, with a sentence of
+  help above it** (23.11.2026). Tried in two forms the same evening: the
+  aside under the section mark, whose bar promised a section and
+  outweighed the one sentence under it, and set apart by space alone. The
+  line took the place of the sentence under the title instead.
 - **Renaming the path word `/entwuerfe` now.** The address was renamed once
   already (from `/begutachtungen`), and a restructure with a country segment
   is planned: rename at most once, then. Candidate for that day:
