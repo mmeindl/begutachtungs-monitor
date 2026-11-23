@@ -339,6 +339,8 @@ export interface Struck {
   renumbers?: boolean
   /** The §§ a line gives another number („§ 44f erhält die Paragraphenbezeichnung „§ 44g.“", „die §§ 81 und 82 erhalten die Paragraphenbezeichnungen …"): their old text moves away from the number. */
   moves?: string[]
+  /** Every line for the §, in the draft's order, with the units it gives another number (`renumberingsOf`): what a number of the new count stands for at that line. */
+  numbering?: { line: string; renumberings: Renumbering[]; unread: boolean }[]
 }
 
 const OPEN = '„»'
@@ -710,6 +712,7 @@ const UNIT_ID = String.raw`(?:\d+(?:\.\d+)*[a-z]*|(?:aa|bb|cc|dd|ee|ff|gg|hh|ii|
 const UNIT_IDS = String.raw`${UNIT_ID}(?:\s*(?:,|und|bis|sowie)\s*${UNIT_ID})*`
 /** An address part a repeal names: „§ 9", „§§ 24 bis 28", „Abs. 2 und 3 sowie 14 bis 16", „Z 4", „lit. c und d", „sublit. cc". */
 const UNIT_PART = String.raw`(§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])\s*(${UNIT_IDS})(?![\p{L}\d])`
+const ADDRESS_SOURCE = String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie|bis)\s*(?=(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`
 const UNIT_LEVEL: Record<string, number> = { '§': 0, '§§': 0, art: 0, artikel: 0, anlage: 0, anlagen: 0, anhang: 0, anhänge: 0, abs: 1, absatz: 1, absätze: 1, z: 2, ziffer: 2, ziffern: 2, lit: 3, litera: 3, sublit: 4 }
 /** The verbs that open or close a clause of an instruction line. */
 const ANY_VERB_RE = new RegExp(`(?<![\\p{L}])(?:${REMOVING}|${ADDING}|ersetzt|lautet|lauten|erhält|erhalten|tritt|treten)(?![\\p{L}])|;`, 'gu')
@@ -821,6 +824,84 @@ export function newNumbers(raw: string): string[] {
   return out
 }
 
+/** A unit a line gives another number: „die Abs. 5 bis 9 erhalten die Absatzbezeichnungen „(4)“ bis „(8)“" is five of these. */
+export interface Renumbering { level: number; from: string; to: string; path: AddressPart[] }
+
+/** The noun of a line that speaks of a unit's designation. The § has its own reading (`movedOf`). */
+const UNIT_DESIGNATION_RE = /(?:Absatz|Ziffern?|Litera|Unterabsatz)bezeichn?ung(?:en)?|(?<![\p{L}])Bezeichn?ung(?:en)?(?=\s*[„»]\s*(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.?|[a-z]{1,2}\)?)\s*[“”«])|[Nn]ummerierung/gu
+/** Right behind „erhält": an optional subject, then the designation it receives: „erhält Abs. 9 die Absatzbezeichnung", „erhalten die Abs. 3 bis 6 die …". */
+const RECEIVES_RE = new RegExp(String.raw`^\s*(?:(?:jeweils|nunmehr)\s+)?(?:(?:die|der|das)\s+(?:bisherigen?\s+)?)?(?<subject>${ADDRESS_SOURCE})?\s*(?:die|den)\s+(?=(?:Absatz|Ziffern?|Litera|Unterabsatz)?[Bb]ezeichn?ung)(?<noun>\p{L}+)\s*`, 'u')
+
+/** What a quoted designation says: its level and its id. */
+function designationGiven(text: string): { level: number; id: string } | null {
+  const m = /^\s*(?:\(\s*(\d+[a-z]*)\s*\)|(\d+[a-z]*)\.?|([a-z]{1,2})\)?)\s*$/u.exec(text.toLowerCase())
+  if (!m) return null
+  if (m[1]) return { level: 1, id: m[1] }
+  if (m[2]) return { level: 2, id: m[2] }
+  return { level: /^([a-z])\1$/.test(m[3]!) ? 4 : 3, id: m[3]! }
+}
+
+/**
+ * The units a line gives another number, each old number paired with its new one, and whether it speaks of designations it
+ * could not be read for (`unread`). Read only as „X erhält die Bezeichnung „Y“" with X an address and as many numbers on
+ * both sides, each of the level X is; anything else gives no number, so nothing is credited by it. A line that gives the text
+ * of a § its first Absatz („Der bisherige Text des § 4 erhält die Absatzbezeichnung „(1)“") renumbers no unit.
+ */
+export function renumberingsOf(raw: string): { renumberings: Renumbering[]; unread: boolean } {
+  const line = withoutResidue(raw)
+  // The quotations blanked where they stand: an address inside one is wording, and every offset stays the line's.
+  // „die Abs. 2, 3, und 4" and „die Abs. 1b (alt) bis 1e (alt)": set off so the address reads as one list.
+  const flat = line.replace(QUOTE_RE, (m) => `${m[0]}${' '.repeat(m.length - 2)}${m.at(-1)}`).replace(/(?<=\d),(?=\s+und\s)/gu, ' ').replace(/\(alt\)/gu, '     ')
+  const quotes = [...line.matchAll(QUOTE_RE)]
+  const renumberings: Renumbering[] = []
+  /** The nouns a clause was read for. */
+  const read = new Set<number>()
+  for (const verb of flat.matchAll(/(?<![\p{L}])(?:erhält|erhalten)(?![\p{L}])/gu)) {
+    const after = verb.index + verb[0].length
+    const clause = RECEIVES_RE.exec(flat.slice(after))
+    if (!clause) continue
+    const { subject: named, noun } = clause.groups!
+    const nounAt = after + clause[0].lastIndexOf(noun!)
+    const subject = named !== undefined
+      ? addressUnits(named, contextAt(flat, after + clause[0].indexOf(named)))
+      : (() => {
+          const last = [...flat.slice(0, verb.index).matchAll(ADDRESS_RE)].at(-1)
+          return last && /^\s*$/u.test(flat.slice(last.index + last[0].length, verb.index)) ? addressUnits(last[0], contextAt(flat, last.index)) : null
+        })()
+    // „Der bisherige Text des § 4", „§ 99e": the § itself takes a designation, no unit of it moves.
+    if (subject?.every((u) => u.level === 0) || (!subject && /(?<![\p{L}])(?:Text|Inhalt)(?![\p{L}])/u.test(flat.slice(0, verb.index)))) {
+      read.add(nounAt)
+      continue
+    }
+    if (!subject?.length) continue
+    // The address may open a clause before this one („entfällt Abs. 2 und Abs. 3 erhält …"): its last unit, or all of them.
+    const level = subject.at(-1)!.level
+    // The designations it gives: quotations right behind the noun, joined by nothing but „bis", „und", „sowie" or a comma.
+    let q = quotes.findIndex((x) => x.index === after + clause[0].length)
+    if (q < 0) continue
+    let list = ''
+    let readable = true
+    for (let first = true; q < quotes.length; q++, first = false) {
+      const joiner = first ? '' : line.slice(quotes[q - 1]!.index + quotes[q - 1]![0].length, quotes[q]!.index)
+      if (!first && !/^\s*(?:,|und|sowie|bis)\s*$/u.test(joiner)) break
+      const given = designationGiven(quotes[q]![1]!)
+      if (given?.level !== level) {
+        readable = false
+        break
+      }
+      list += `${joiner.trim() ? ` ${joiner.trim()} ` : ''}${given.id}`
+    }
+    const to = readable ? unitIds(list) : []
+    const units = [subject, subject.slice(-1)].find((c) => c.every((u) => u.level === level && JSON.stringify(u.path) === JSON.stringify(c[0]!.path)) && c.flatMap((u) => u.ids).length === to.length)
+    if (!units) continue
+    read.add(nounAt)
+    units.flatMap((u) => u.ids).forEach((id, i) => renumberings.push({ level, from: id, to: to[i]!, path: units[0]!.path }))
+  }
+  // A noun no clause was read for. A first „(1)" set before a §'s text moves no unit („Dem Text des § 27 wird die Absatzbezeichnung „(1)“ vorangestellt").
+  const unread = [...flat.matchAll(UNIT_DESIGNATION_RE)].some((m) => !read.has(m.index) && !/^\s*[„»]\s*\(\s*1\s*\)\s*[“”«]\s*vorangestellt(?![\p{L}])/u.test(line.slice(m.index + m[0].length)))
+  return { renumberings, unread }
+}
+
 /** One part of an address: its level (0 the § or the Anlage, 1 the Absatz, 2 the Ziffer, 3 the Litera, 4 the Sublitera) and its ids. */
 interface AddressPart { level: number; ids: string[]; fresh?: true }
 /** A unit an address names, with the parts above it the address names too (`path`, from the § down): „§ 5 Abs. 2 Z 3" is the Ziffer 3 of Abs. 2 of § 5. */
@@ -925,7 +1006,7 @@ const WRITTEN_AFTER_RE = /^\s*(?:\(neu\)\s*)?(?:(?:jeweils|nunmehr|künftig|neu|
 const REPLACED_HEAD_RE = new RegExp(String.raw`(?:${HEAD}|(?<![\p{L}])(?:wird|werden)\s+)${OWN_ARTICLE}${ABOVE}$`, 'u')
 /** Where the clause of a removing verb ends: the next one opens with its auxiliary („entfällt § 16b und wird folgender § 23 … eingefügt"). */
 const NEXT_CLAUSE_RE = /(?:(?<![\p{L}])(?:und|sowie)|,)\s+(?:es\s+)?(?:wird|werden)(?![\p{L}])/u
-const ADDRESS_RE = new RegExp(String.raw`(?:${UNIT_PART}\s*(?:(?:,|und|sowie|bis)\s*(?=(?:§§?|Art\.?|Artikel|Anlagen?|Anhang|Anhänge|Absätze|Absatz|Abs\.?|Ziffern|Ziffer|Z|litera|lit\.?|sublit\.?)(?![\p{L}])))?)+`, 'gu')
+const ADDRESS_RE = new RegExp(ADDRESS_SOURCE, 'gu')
 
 /** An address that ends with a part of its own after „und" or a comma: „Abs. 2 und Abs. 3", „Abs. 2, Abs. 3", not „Abs. 2 und 3". */
 const JOINED_LAST_RE = /(?:und|sowie|,)\s*(?:die\s+|der\s+)?(?:§§?|Absatz|Abs\.?|Ziffer|Z|litera|lit\.?)\s*\S+\s*$/u
@@ -1260,6 +1341,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const roles = run.line === null ? [] : quoteRoles(run.line)
       if (run.line !== null) {
         const struck = struckOf(run)
+        const numbering = renumberingsOf(run.line)
         for (const key of keys) {
           const into = (at(draft.law, key).struck ??= { named: [], repealed: [], byPosition: [] })
           into.named.push(...struck.named)
@@ -1267,6 +1349,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
           into.byPosition.push(...struck.byPosition)
           ;(into.replaced ??= []).push(...(struck.replaced ?? []))
           if (struck.renumbers) into.renumbers = true
+          ;(into.numbering ??= []).push({ line: run.line, ...numbering })
           if (struck.moves) (into.moves ??= []).push(...struck.moves)
         }
       }
@@ -2111,24 +2194,40 @@ function struckAccount(
   }
   /** A unit the left column opens, or an elided row names (`at` -1). */
   interface UnitAt { id: string; end: number; at: number }
-  /**
-   * The number a unit has after the draft, as the column prints it: the designation it strikes at the unit's start and prints
-   * beside it („[(8)] {(7)}"), else its own. What „Abs. 7 (neu)" names (23.11.2026, BFA-VG § 34).
-   */
+  /** The number the column prints for a unit after the draft: the designation it strikes at the unit's start and prints beside it („[(8)] {(7)}"), else its own. */
   const newIdAt = (k: number): string => {
     const next = diff[left[k]!.p + 1]
     return struck.has(left[k]!.p) && next?.kind === 'inserted' && DESIGNATION_WORD_RE.test(next.word) ? next.word : words[k]!
   }
-  /** Whether a unit is the one an address part names: by the number the left column prints, or, for a part marked „(neu)", the one it has after the draft. */
-  const holdsId = (part: AddressPart, u: UnitAt | null): boolean => u !== null && (part.fresh ? u.at >= 0 && part.ids.includes(newIdAt(u.at)) : part.ids.includes(u.id))
+  /**
+   * Whether the draft has given the unit the left column prints as `id`, around `k`, one of the numbers `named` by `line`
+   * (23.11.2026): the number the lines at or before it give that old number, one after the other. The column's own number
+   * beside it vouches for nothing: a column that renumbers the wrong Absatz would vouch for itself, and a line standing before
+   * the renumbering still counts by the old numbers. A unit no line renumbers keeps its number, unless a line gave that number
+   * to another one or speaks of designations that could not be read: then which unit it is cannot be told, and it gets no credit.
+   */
+  const numberedAs = (level: number, id: string, named: readonly string[], k: number, line: string): boolean => {
+    const steps = found.flatMap((f) => {
+      const all = f.struck?.numbering ?? []
+      const at = all.findIndex((x) => x.line === line)
+      return at < 0 ? [] : all.slice(0, at + 1)
+    })
+    const inPlace = (r: Renumbering) => r.level === level && within(k, r.path, ownFor(line), line)
+    let now = id
+    for (const step of steps) now = step.renumberings.find((r) => r.from === now && inPlace(r))?.to ?? now
+    if (!named.includes(now)) return false
+    return now !== id || !steps.some((x) => x.unread || x.renumberings.some((r) => r.to === now && r.from !== id && inPlace(r)))
+  }
+  /** Whether a unit is the one an address part names: by the number the left column prints, or, for a part marked „(neu)", the one both the column and the draft give it. */
+  const holdsId = (part: AddressPart, u: UnitAt | null, k: number, line: string): boolean => u !== null && (part.fresh ? u.at >= 0 && part.ids.includes(newIdAt(u.at)) && numberedAs(part.level, u.id, part.ids, k, line) : part.ids.includes(u.id))
   /**
    * Whether the left column's word at `k` stands inside the parts an address names above its unit (22.11.2026): the §
    * this group's, each Absatz, Ziffer or Litera a unit the left column opens with that designation and `k` runs in. A
    * part the column prints no designation for is not located, and nothing in it is the instruction's.
    */
-  const within = (k: number, path: readonly AddressPart[] | undefined, ids: ReadonlySet<string>): boolean => (path ?? []).every((part) => (part.level === 0
+  const within = (k: number, path: readonly AddressPart[] | undefined, ids: ReadonlySet<string>, line: string): boolean => (path ?? []).every((part) => (part.level === 0
     ? part.ids.some((id) => ids.has(id))
-    : holdsId(part, unitAround(k, part.level))))
+    : holdsId(part, unitAround(k, part.level), k, line)))
   /**
    * The unit of a level that `k` runs in, opened before it: the nearest designation of that level before `k`, printed or named
    * by a row the annex leaves out, where `k` stands before its end. An elided row's unit runs to the next designation of its
@@ -2239,7 +2338,7 @@ function struckAccount(
     const units = (law || mine.some((u) => u.level === 0) ? [] : mine).flatMap((u) => {
       const parent = u.path.at(-1)
       if (!parent || parent.level !== u.level - 1 || u.ids.length < 2) return [u]
-      const at = parent.ids.length === 1 ? left.findIndex((_, j) => opensAt(j) && levelAt(j) === parent.level && words[j] === parent.ids[0] && within(j, u.path.slice(0, -1), ids)) : -1
+      const at = parent.ids.length === 1 ? left.findIndex((_, j) => opensAt(j) && levelAt(j) === parent.level && words[j] === parent.ids[0] && within(j, u.path.slice(0, -1), ids, n.line)) : -1
       const inside = at < 0 || notText?.slice(at, unitEnd(at)).some(Boolean) ? [] : left.slice(at, unitEnd(at)).flatMap((_, i) => (opensAt(at + i) && levelAt(at + i) === u.level && /^\d+$/.test(words[at + i]!) ? [Number(words[at + i])] : []))
       const up = inside.length ? u.ids.slice(1).filter((id) => /^\d+$/.test(id) && Number(id) > Math.max(...inside) && !printed(u.level, id) && printed(parent.level, id)) : []
       if (!up.length) return [u]
@@ -2250,10 +2349,13 @@ function struckAccount(
     // A wording that opens with a designation („„(3) Das …“", printed inside Abs. 2) stands in the unit of the word before it.
     const inPlace = (at: number, width: number, count: 'printed' | 'new') => !units.length || units.some((u) => [...u.path, u].every((part) => {
       if (part.level === 0) return part.ids.some((id) => ids.has(id))
-      // A place named in the new count is not refused: the column need not print the old and the new number side by side.
-      if (part.fresh) return true
       const around = unitAround(at, part.level)
-      return around === null || (part.ids.includes(count === 'new' && around.at >= 0 ? newIdAt(around.at) : around.id) && at + width <= around.end)
+      if (around === null) return true
+      // A place marked „(neu)": the column need not print the old and the new number side by side, the draft's count decides.
+      if (part.fresh) return numberedAs(part.level, around.id, part.ids, at, n.line) && at + width <= around.end
+      // A line that counts by the new numbers unmarked: only where the column prints that number too.
+      if (count === 'new') return part.ids.includes(around.at >= 0 ? newIdAt(around.at) : around.id) && numberedAs(part.level, around.id, part.ids, at, n.line) && at + width <= around.end
+      return part.ids.includes(around.id) && at + width <= around.end
     }))
     named.push({ tokens, law })
     // A line that follows a renumbering may count by the new numbers without saying so („§ 5 Abs. 2 und 3 entfällt; die Abs. 4 bis 9
@@ -2294,7 +2396,7 @@ function struckAccount(
   for (const [r, c] of [...found.flatMap((f) => f.struck?.repealed ?? []).map((x) => [x, 'repealed'] as const), ...found.flatMap((f) => f.struck?.replaced ?? []).map((x) => [x, 'rewritten'] as const)]) {
     const ids = ownFor(r.line)
     if (r.level === 0) {
-      if (r.ids.some((id) => ids.has(id)) && within(0, r.path, ids)) for (let q = 0; q < diff.length; q++) mark(q, c)
+      if (r.ids.some((id) => ids.has(id)) && within(0, r.path, ids, r.line)) for (let q = 0; q < diff.length; q++) mark(q, c)
       continue
     }
     left.forEach((_, k) => {
@@ -2302,7 +2404,7 @@ function struckAccount(
       // …or a designation the word diff keeps while it strikes what follows („wenn 1. [dessen Antrag … 2. …]").
       const unaccounted = (x: number) => struck.has(x) && !cls.has(x)
       const opens = opensAt(k) || (read[k]!.shape !== undefined && ((struck.has(left[k]!.p) && !unaccounted(left[k - 1]?.p ?? -1)) || (!struck.has(left[k]!.p) && struck.has(left[k + 1]?.p ?? -1))))
-      if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && r.ids.includes(r.fresh ? newIdAt(k) : words[k]!) && within(k, r.path, ids)) markUnit(k, c)
+      if (opens && levelOf(words[k]!, read[k]!.shape ?? '.') === r.level && (r.fresh ? r.ids.includes(newIdAt(k)) && numberedAs(r.level, words[k]!, r.ids, k, r.line) : r.ids.includes(words[k]!)) && within(k, r.path, ids, r.line)) markUnit(k, c)
     })
   }
   // A § the annex prints under its old number while a line of the draft gives it another (22.11.2026: „§ 44f erhält die
@@ -2346,7 +2448,7 @@ function struckAccount(
         ranges.push([at < 0 ? 0 : at + 2, left.length, 0])
       }
     } else for (const u of x.sentences.in) for (const id of u.ids) {
-      const k = left.findIndex((_, j) => opensAt(j) && levelAt(j) === u.level && (u.fresh ? newIdAt(j) : words[j]) === id && within(j, u.path, ids))
+      const k = left.findIndex((_, j) => opensAt(j) && levelAt(j) === u.level && (u.fresh ? newIdAt(j) === id && numberedAs(u.level, words[j]!, [id], j, x.line) : words[j] === id) && within(j, u.path, ids, x.line))
       if (k < 0) readable = false
       else ranges.push([k, unitEnd(k), u.level])
     }
@@ -2392,7 +2494,7 @@ function struckAccount(
     const ids = ownFor(line)
     let out: Set<number> | null = units.length ? new Set<number>() : null
     for (const u of units) {
-      const at = left.flatMap((_, j) => (opensAt(j) && levelAt(j) === u.level && namedId(u.ids, u.fresh ? newIdAt(j) : words[j]!) && within(j, u.path, ids) ? [j] : []))
+      const at = left.flatMap((_, j) => (opensAt(j) && levelAt(j) === u.level && (u.fresh ? namedId(u.ids, newIdAt(j)) && numberedAs(u.level, words[j]!, [newIdAt(j)], j, line) : namedId(u.ids, words[j]!)) && within(j, u.path, ids, line) ? [j] : []))
       if (!at.length || at.length < u.ids.length) out = null
       for (const k of at) {
         let e = k + 1
@@ -2579,7 +2681,7 @@ function struckAccount(
   const inPlace = (x: (typeof positional)[number], q: number) => !x.places.length || x.places.some((u) => {
     const at = leftAt.get(q)!
     const unitHere = opensAt(at) && levelAt(at) === u.level ? { id: words[at]!, end: at + 1, at } : unitAround(at, u.level)
-    return holdsId(u, unitHere) && within(at, u.path, ownFor(x.line))
+    return holdsId(u, unitHere, at, x.line) && within(at, u.path, ownFor(x.line), x.line)
   })
   // The sentence each left word stands in.
   const sentence: number[] = []

@@ -3,7 +3,7 @@ import { DRAFT_UNREAD, annexStrictChecks } from '../server/utils/annex/annexStri
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { insertedStretches } from '../server/utils/annex/rightColumn'
 import { REASON_CUT } from '../server/utils/annex/verdict'
-import { STRICT_UNCHECKED, elidedDesignations, strictTokens } from '../server/utils/laender/landTguStrict'
+import { STRICT_UNCHECKED, elidedDesignations, renumberingsOf, strictTokens } from '../server/utils/laender/landTguStrict'
 import type { TextBlock } from '../server/utils/lawtext/lawUnits'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { comparisonRow as row, draftArticle as article } from './helpers/builders'
@@ -440,6 +440,35 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
       expect(check(blocksWith(...lines), renumbered, CURRENT)).toMatchObject({ state: 'holds', notInDraft: [], notShown: [] })
       // The same line for another number of the new count repeals nothing in this one.
       expect(check(blocksWith(lines[0]!, '2. In § 5 Abs. 2 (neu) entfallen die Z 1 und die Ziffernbezeichnung „2.“.'), renumbered, CURRENT).state).toBe('differs')
+    })
+
+    it('credits a number of the new count only where a line at or before it maps this old number to it', () => {
+      const current = '(7) Die Behörde ist zuständig. (8) Die Frist ist nicht verlängerbar. (9) Der Antrag ist schriftlich.'
+      const proposed = '(6) Die Behörde ist zuständig. (7) Die Frist ist verlängerbar. (8) Der Antrag ist schriftlich.'
+      const gives = (from: string) => `1. In § 5 erhalten die Abs. ${from} die Absatzbezeichnungen „(6)“, „(7)“ und „(8)“.`
+      const strike = '2. In § 5 Abs. 7 (neu) entfällt das Wort „nicht“.'
+      expect(check(blocksWith(gives('7, 8 und 9'), strike), proposed, current).state).toBe('holds')
+      // The same new numbers on other units: the column renumbers 8 to 7, the draft 9.
+      expect(check(blocksWith(gives('7, 9 und 8'), strike), proposed, current).state).toBe('differs')
+      // Unmarked, a line behind the renumbering counts by the new numbers; one in front of it by the old ones.
+      const bare = '2. In § 5 Abs. 7 entfällt das Wort „nicht“.'
+      expect(check(blocksWith(gives('7, 8 und 9'), bare), proposed, current).state).toBe('holds')
+      expect(check(blocksWith(bare.replace('2.', '1.'), gives('7, 8 und 9').replace('1.', '2.')), proposed, current).state).toBe('differs')
+    })
+
+    it('reads a renumbering only as an address and as many numbers, and gives no credit for one it cannot read', () => {
+      const pairs = (line: string) => renumberingsOf(line).renumberings.map((r) => `${r.level}:${r.from}>${r.to}`)
+      expect(pairs('In § 34 entfällt Abs. 4; die Abs. 5 bis 9 erhalten die Absatzbezeichnungen „(4)“ bis „(8)“ .')).toEqual(['1:5>4', '1:6>5', '1:7>6', '1:8>7', '1:9>8'])
+      expect(pairs('In § 60a erhalten die Abs. 2, 3, 5 und 6 die Absatzbezeichnungen „(1)“ bis „(4)“.')).toEqual(['1:2>1', '1:3>2', '1:5>3', '1:6>4'])
+      expect(pairs('In § 2 erhalten die Abs. 1b (alt) bis 1c (alt) die Absatzbezeichnungen „(1c)“ und „(1d)“.')).toEqual(['1:1b>1c', '1:1c>1d'])
+      expect(pairs('In § 12 entfällt Abs. 2 und Abs. 3 erhält die Absatzbezeichnung „(2)“ .')).toEqual(['1:3>2'])
+      expect(pairs('In § 4 Abs. 1 erhalten die Z 4 bis 7 die Bezeichnungen „5.“ bis „8.“ .')).toEqual(['2:4>5', '2:5>6', '2:6>7', '2:7>8'])
+      // The § itself takes a designation: no unit of it moves, and nothing is left unread.
+      expect(renumberingsOf('Der bisherige Text des § 4 erhält die Absatzbezeichnung „(1)“ und es wird folgender Abs. 2 angefügt:')).toEqual({ renumberings: [], unread: false })
+      // Unequal counts, a designation of another level, a subject that is no address: no number, and unread.
+      for (const line of ['In § 5 erhalten die Abs. 2 bis 4 die Absatzbezeichnungen „(1)“ und „(2)“.', 'In § 5 erhält Abs. 2 die Absatzbezeichnung „3.“.', 'In § 103 erhält der letzte Absatz die Absatzbezeichnung „(14)“.']) {
+        expect(renumberingsOf(line)).toEqual({ renumberings: [], unread: true })
+      }
     })
 
     it('reads a line that counts by the new numbers without saying so, only where the printed number\'s unit lacks the wording (Apothekenbetriebsordnung § 5)', () => {

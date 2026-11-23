@@ -1713,19 +1713,31 @@ gets an entry of its own only where it carries a reason the rule does not.
   (23.11.2026), where the same column prints that word joined at another
   place: „§§ 4a" and „§§ 4 a" in one Absatz (Fremdenpolizeigesetz § 61). A
   matter of spacing, the way `respace` reads it for new text.
-- **„Abs. 7 (neu)" names the unit the column renumbers to 7** (23.11.2026,
-  `newIdAt`): the designation it strikes at the unit's start and prints beside
-  it. Held for a repeal, a unit written anew, a sentence and the reach of a
-  payload. Not for a quoted wording's place, where a place in the new count is
-  still not refused: the column need not print both numbers side by side, and
-  asking it to marked five sound §§. BFA-VG § 34 holds, read.
-- **A line that follows a renumbering may count by the new numbers without
-  saying so** (23.11.2026, `inPlace`): „§ 5 Abs. 2 und 3 entfällt; die Abs. 4 bis 9
-  erhalten …", then „In § 5 Abs. 5 entfällt die Zeichenfolge „Abs. 1“", which
-  stands in the old Abs. 7. A quoted wording is looked for in the unit of the
-  printed number first, and in the unit the column renumbers to it only where
-  the printed one does not carry the wording. Apothekenbetriebsordnung §§ 5 and
-  60a hold, read.
+- **A number of the new count stands for the unit a line at or before it
+  renumbered to it** (23.11.2026, `renumberingsOf`, `numberedAs`). „Abs. 7 (neu)"
+  and a line that counts by the new numbers without saying so („§ 5 Abs. 2 und 3
+  entfällt; die Abs. 4 bis 9 erhalten …", then „In § 5 Abs. 5 entfällt die
+  Zeichenfolge „Abs. 1“", which stands in the old Abs. 7) are read through what
+  the draft says: old number to new, line by line, up to the line at hand. The
+  number the column prints beside a unit vouches for nothing on its own: a
+  column that renumbers the wrong Absatz would clear itself, and a line in
+  front of the renumbering still counts by the old numbers (a reader's attack,
+  on BFA-VG § 34 and Apothekenbetriebsordnung § 5). For a repeal, a unit written
+  anew, a sentence, a payload's reach and an unmarked line the column must print
+  the number too; for a quoted wording under „(neu)" the draft's count is enough,
+  since the column need not print both numbers side by side and asking it to
+  marked five sound §§. An unmarked line is looked for in the unit of the printed
+  number first, and in the renumbered one only where the printed one lacks the
+  wording.
+- **A renumbering line gives credit only where it can be read whole**
+  (23.11.2026, `renumberingsOf`): „X erhält die Bezeichnung „Y“" with X an
+  address and as many numbers on both sides, each of X's level. Of the 9,088
+  distinct lines of GP XXVIII it reads 119 with 298 pairs. The 78 it cannot read
+  (a subject in words, „der letzte Absatz", numbers unquoted) give no number,
+  and in their § a unit no line renumbers no longer counts as keeping its number
+  under „(neu)". Two §§ that already differ name more struck words for it
+  (Konfitürenverordnung Anlage 1, AEV pflanzliche Nahrungs- und Futtermittel
+  § 1); no § changes its verdict.
 - **A repeal word alone in brackets is the annex's notation** (23.11.2026):
   „(entfällt)" in the right column, also where the draft says „ersetzt" and no
   repealing verb stands (Zivildienstgesetz 1986 §§ 23c, 60 and 63, each read).
