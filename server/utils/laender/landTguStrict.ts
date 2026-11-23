@@ -1704,6 +1704,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   // A new stretch between two equal words can be cut one word earlier or
   // later („zu [tätigen; 3. … zu] tätigen."): where it is the draft's as one
   // stretch at either cut, it is the draft's.
+  const ownStart = words.findIndex((_, k) => ownAt(words, k))
   for (let i = 0; i < shown.length; i++) {
     if (!shown[i]!.marked) continue
     let j = i
@@ -1722,7 +1723,11 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     const designation = stretch.length === 1 && shown[i]!.designation === true
     const partOfQuote = !designation && quoted.some((q) => q.length > stretch.length && contains(q, stretch))
     const figure = stretch.length === 1 && /^\d+(?:,\d+)?$/.test(stretch[0]!) && !designation
-    if (!accounted.slice(i, j).every(Boolean) && !partOfQuote && !figure && (stretch.length > 1 ? own : found.flatMap((f) => f.written)).some((t) => contains(t, stretch))) for (let k = i; k < j; k++) accounted[k] = true
+    // A single word of the text counts only where the payloads leave one of its kind free: the one they print is aligned at its
+    // own place, and a second in the column is a word the draft does not write („hat [nicht] zu entscheiden, wenn er nicht
+    // verspätet …", 23.11.2026). Not asked of a word no payload holds, nor of a heading above the § designation.
+    const free = stretch.length > 1 || designation || i < ownStart || !draft.includes(stretch[0]!) || draft.some((w, q) => w === stretch[0] && !aligned.draft[q])
+    if (!accounted.slice(i, j).every(Boolean) && !partOfQuote && !figure && free && (stretch.length > 1 ? own : found.flatMap((f) => f.written)).some((t) => contains(t, stretch))) for (let k = i; k < j; k++) accounted[k] = true
     if (!accounted.slice(i, j).every(Boolean)) {
       for (let shift = -(j - i); shift <= j - i; shift++) {
         if (shift === 0 || i + shift < 0 || j + shift > shown.length) continue

@@ -50,7 +50,7 @@ const ask = (...units: LawDiffUnit[]) => {
   return { strict: guard.strict.get(0)!, bag: guard.checks.get(0)!, off: undrafted(guard).get(0) }
 }
 
-describe('a decimal figure (23.11.2026)', () => {
+describe('a word or a figure the payload prints at another place (23.11.2026)', () => {
   const draftOf = (payload: string) => lawBlocksFromPdfPages([[
     'Gesetz vom ……, mit dem das Fischereigesetz 2002 geändert wird',
     'Der Salzburger Landtag hat beschlossen:',
@@ -59,6 +59,12 @@ describe('a decimal figure (23.11.2026)', () => {
     `„${payload}“`,
   ].join('\n')])!
   const state = (payload: string, marked: string) => guardTguUnits([changed('§5', marked)], draftOf(payload)).strict.get(0)!.state
+
+  it('does not take an inserted „nicht“ for the one the payload prints further on', () => {
+    const payload = '(2) Die Behörde hat binnen 14 Tagen über den Antrag zu entscheiden, wenn er nicht verspätet und begründet ist.'
+    expect(state(payload, '(2) Die Behörde hat [binnen 14 Tagen] über den Antrag [nicht] zu entscheiden, wenn er [nicht verspätet und] begründet ist.')).toBe('differs')
+    expect(state(payload, '(2) Die Behörde hat [binnen 14 Tagen] über den Antrag zu entscheiden, wenn er [nicht verspätet und] begründet ist.')).toBe('holds')
+  })
 
   it('keeps a decimal comma: „2,5“ is not „25“, in either direction', () => {
     expect(state('(2) Der Satz beträgt 2,5 % des Betrags.', '(2) Der Satz beträgt {3} [25] % des Betrags.')).toBe('differs')
