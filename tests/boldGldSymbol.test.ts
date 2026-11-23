@@ -59,3 +59,17 @@ describe('a § symbol set bold behind the opening quote (19.11.2026)', () => {
     expect(block.text).toContain('§ 15. Dauer')
   })
 })
+
+describe('a paragraph Word left unclosed (152/ME XXVIII, Z 9)', () => {
+  const row = (entry: string, title: string): string => `<tr><td><p class=32InhaltEintrag>${entry}</p></td><td><p class=32InhaltEintrag>${title}</p></td><td width=0><p class='MsoNormal'>&nbsp;</td></tr>`
+
+  it('ends at the end of its cell and takes nothing from the next row', () => {
+    const blocks = parseParliamentHtml(`<html><body><table>${row('&sect;&nbsp;15.', 'Zielgruppe')}${row('&sect;&nbsp;16.', 'Antragsteller')}</table></body></html>`)
+    expect(blocks.map((b) => [b.kind, b.text])).toEqual([['toc', '§ 15.'], ['toc', 'Zielgruppe'], ['toc', '§ 16.'], ['toc', 'Antragsteller']])
+  })
+
+  it('keeps the text of an unclosed paragraph, up to the next one', () => {
+    const blocks = parseParliamentHtml('<html><body><p class=51Abs>(1) Erster Satz.<p class=51Abs>(2) Zweiter Satz.</p></body></html>')
+    expect(blocks.map((b) => b.text)).toEqual(['(1) Erster Satz.', '(2) Zweiter Satz.'])
+  })
+})

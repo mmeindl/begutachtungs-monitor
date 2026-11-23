@@ -33,7 +33,15 @@ function kindOf(cls: string, text: string): BlockKind {
   return 'other'
 }
 
-const P_RE = /<p\s+class=["']?([\w-]+)["']?[^>]*>([\s\S]*?)<\/p\s*>/gi
+/**
+ * A paragraph ends at its `</p>`, or where HTML ends it without one: at the
+ * next `<p>` or at the end of its cell. Word's filter leaves an empty
+ * „<p class='MsoNormal'>&nbsp;</td>" in a table's spacer column; read up to the
+ * next `</p>`, it swallowed the first paragraph of the following row and gave
+ * it its own class. So „§ 16." of a new table of contents was body text in
+ * Parliament's HTML and a contents entry in RIS's XML (152/ME XXVIII, Z 9).
+ */
+const P_RE = /<p\s+class=["']?([\w-]+)["']?[^>]*>([\s\S]*?)(?:<\/p\s*>|(?=<p[\s>]|<\/t[dh]\s*>))/gi
 const GLD_RE = /<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/i
 /**
  * A § symbol set in bold right behind the opening quote of a quoted §:

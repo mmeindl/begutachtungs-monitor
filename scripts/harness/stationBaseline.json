@@ -10,8 +10,7 @@
   "html-xml 47/ME html>xml changed Änderungen des Rechtsanwaltstarifgesetzes · Z2→Z2": "Quellen verschieden: das RIS-XML schreibt „kommt,.\" (Tippfehler der Quelle)",
   "html-xml 101/ME html>xml changed (redaktionell) Bundesgesetz über die Errichtung eines Unterstützungsfonds f · §7→§7": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
   "parlament-bgbl 116/ME plenum>bgbl changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)",
-  "html-xml 116/ME html>xml changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)",
-  "html-xml 152/ME html>xml changed Änderung des Integrationsgesetzes · Z9→Z9": "Leser: die Einträge „§ 16.\" und „§ 17.\" eines neuen Inhaltsverzeichnisses stehen im Parlaments-HTML als Text der Ziffer; in der aus dem RIS-XML gelesenen Ziffer fehlen sie, obwohl dessen Blöcke sie tragen — offen"
+  "html-xml 116/ME html>xml changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)"
  },
  "residues": [
   {
@@ -6808,19 +6807,6 @@
     "pieces": [
      "…weit ausgedehnten ländlichen Gebiet ⟦-liegt.⟧ …",
      "… ⟦+liegt⟧ 4,85 Euro.\"…"
-    ],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "html-xml",
-   "pair": "152/ME html>xml",
-   "residue": {
-    "unit": "Änderung des Integrationsgesetzes · Z9→Z9",
-    "change": "changed",
-    "editorial": false,
-    "pieces": [
-     "…durch folgende Einträge ersetzt: ⟦-§ 16. § 17.⟧ …"
     ],
     "ceiling": false
    }
