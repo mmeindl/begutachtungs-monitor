@@ -107,6 +107,35 @@ export interface FetchCache {
   served: ServedRequest[]
 }
 
+/**
+ * The file that holds a request's answer.
+ *
+ * THE BODY IS PART OF THE KEY, since the SSR smoke test
+ * (`scripts/ci/ssrSmoke.ts`) records Parliament traffic too: its Filter
+ * API is one POST URL per list, and which rows come back is decided
+ * entirely by the JSON body — `…/data/81` for GP XXVII and for GP XXVIII
+ * is the same address. Keyed by URL alone the second period would have
+ * been served the first one's rows, silently.
+ *
+ * A request WITHOUT a body hashes exactly as before, so every RIS entry
+ * already on disk keeps its name and the drift alarm's cache
+ * (`annex-drift.yml`, warmed since 16.09.2026) stays warm. What does get
+ * new names is the Parliament traffic of `corpus/bgblStation.ts`, the one
+ * other script that installs this cache and POSTs: those entries are
+ * fetched once more, and they are exactly the ones that could collide
+ * before.
+ */
+function cacheFile(dir: string, url: string, body: string | null): string {
+  const hasher = createHash('sha1').update(url)
+  if (body !== null) hasher.update('\u0000').update(body)
+  return join(dir, `${hasher.digest('hex')}.bin`)
+}
+
+/** Whether the disk holds the answer to a GET of this address: a harness can choose its population without a request. */
+export function isCached(dir: string, url: string): boolean {
+  return existsSync(cacheFile(dir, url, null))
+}
+
 export function installFetchCache(dir: string, options: FetchCacheOptions = {}): FetchCache {
   mkdirSync(dir, { recursive: true })
   const real = globalThis.fetch
@@ -114,29 +143,11 @@ export function installFetchCache(dir: string, options: FetchCacheOptions = {}):
   globalThis.fetch = (async (input: any, init?: any) => {
     const url = typeof input === 'string' ? input : String(input?.url ?? input)
     const tracked = options.fresh?.(url) ?? false
-    // THE BODY IS PART OF THE KEY, since the SSR smoke test
-    // (`scripts/ci/ssrSmoke.ts`) records Parliament traffic too: its Filter
-    // API is one POST URL per list, and which rows come back is decided
-    // entirely by the JSON body — `…/data/81` for GP XXVII and for GP XXVIII
-    // is the same address. Keyed by URL alone the second period would have
-    // been served the first one's rows, silently.
-    //
-    // A request WITHOUT a body hashes exactly as before, so every RIS entry
-    // already on disk keeps its name and the drift alarm's cache
-    // (`annex-drift.yml`, warmed since 16.09.2026) stays warm. What does get
-    // new names is the Parliament traffic of `corpus/bgblStation.ts`, the one
-    // other script that installs this cache and POSTs: those entries are
-    // fetched once more, and they are exactly the ones that could collide
-    // before.
-    const hasher = createHash('sha1').update(url)
-    const body = typeof init?.body === 'string' ? init.body : null
-    if (body !== null) hasher.update('\u0000').update(body)
-    const hash = hasher.digest('hex')
     // Bodies are stored as bytes, not as a string. Round-tripping a PDF
     // through `res.text()` and back through utf8 corrupts every deflate
     // stream in it — pdf.js then reports "Bad FCHECK in flate stream" and
     // the document parses as empty (2026-09-09).
-    const file = join(dir, `${hash}.bin`)
+    const file = cacheFile(dir, url, typeof init?.body === 'string' ? init.body : null)
     // A fresh request goes upstream even when the disk holds it, and a failure
     // there fails the run: an old list served in place of a failed one would
     // be the stale window again, unsaid.

@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, rmSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { installFetchCache, isBegutSearch, isRisSearch } from '../scripts/lib/harnessCache'
+import { installFetchCache, isBegutSearch, isCached, isRisSearch } from '../scripts/lib/harnessCache'
 
 /**
  * The harness cache and the one request it must not answer from disk
@@ -69,6 +69,27 @@ describe('isBegutSearch', () => {
     // about the window.
     expect(isBegutSearch(KONS)).toBe(false)
     expect(isBegutSearch(DOCUMENT)).toBe(false)
+  })
+})
+
+describe('isCached', () => {
+  it('finds what a GET stored, and asks nothing upstream', async () => {
+    answers = ['Dokument']
+    fakeUpstream()
+    installFetchCache(dir)
+    expect(isCached(dir, DOCUMENT)).toBe(false)
+    await fetch(DOCUMENT)
+    expect(calls).toHaveLength(1)
+    expect(isCached(dir, DOCUMENT)).toBe(true)
+    expect(calls).toHaveLength(1)
+  })
+
+  it('does not take a POST to the same address for its GET', async () => {
+    answers = ['Zeilen']
+    fakeUpstream()
+    installFetchCache(dir)
+    await fetch(DOCUMENT, { method: 'POST', body: '{"GP":"XXVIII"}' })
+    expect(isCached(dir, DOCUMENT)).toBe(false)
   })
 })
 

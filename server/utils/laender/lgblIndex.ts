@@ -64,9 +64,13 @@ const totalOf = (result: any) => Number(result?.OgdDocumentResults?.Hits?.['#tex
  * to nineteen pages a Land took that many of RIS's 24 slots in one go, and
  * the prewarm reads every Land's.
  */
-async function readIndex(land: LandCode): Promise<LgblEntry[]> {
+async function readIndexPages(land: LandCode): Promise<any[]> {
   const pages = await readPages((page) => risJson<any>(indexUrl(land, page), INDEX_POLICY), (first) => risPageCount(totalOf(first)), MAX_PAGES)
-  const read = await Promise.all(Array.from({ length: pages.prefetched }, (_, i) => pages.get(i + 1)))
+  return Promise.all(Array.from({ length: pages.prefetched }, (_, i) => pages.get(i + 1)))
+}
+
+async function readIndex(land: LandCode): Promise<LgblEntry[]> {
+  const read = await readIndexPages(land)
   const total = totalOf(read[0])
   const entries = read.flatMap(entriesOf)
   // A short read must not pass for the Land's whole gazette: a miss would
@@ -148,6 +152,12 @@ export async function lgblRecord(land: LandCode, nr: string): Promise<LgblRecord
     if (rec?.nr === nr.replace(/LGBI/, 'LGBl')) return rec
   }
   return null
+}
+
+/** Every Landesgesetzblatt of a Land with its document addresses, from the index's own pages: for a harness that must know them without one search per number. */
+export async function lgblIndexRecords(land: LandCode): Promise<LgblRecord[]> {
+  const read = await readIndexPages(land)
+  return read.flatMap((page) => asArray<any>(page?.OgdDocumentResults?.OgdDocumentReference)).map(recordOf).filter((r): r is LgblRecord => r !== null)
 }
 
 /** The Landesgesetzblätter whose text contains `phrase` — RIS's full-text search, first hundred hits. */

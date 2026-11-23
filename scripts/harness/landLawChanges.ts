@@ -5,7 +5,7 @@
  * Landesrecht (`landLawChangesService.ts`) — over N Landesgesetzblätter per
  * Land, with one invariant that fails the run (20.11.2026).
  *
- *   npx vite-node -c vitest.config.ts scripts/harness/landLawChanges.ts -- --out <dir> [--n 10] [--land sbg] [--cached-only] [--against <dir> [--erwartet 'a→b,c→d']]
+ *   npx vite-node -c vitest.config.ts scripts/harness/landLawChanges.ts -- --out <dir> [--n 10 | --umnummeriert] [--land sbg] [--cached-only] [--against <dir> [--erwartet 'a→b,c→d']]
  *
  * Until this file nothing measured it: the per-Land figures of
  * `docs/decisions.md` (20 laws per Land, five read by hand, 12.11.2026)
@@ -22,6 +22,15 @@
  * Kundmachung, N of them evenly spaced from the oldest to the newest (the
  * newest always in). A law whose record holds no XML is one the page does
  * not offer the comparison for: counted, not run.
+ *
+ * `--umnummeriert` (23.11.2026) takes another population: every such law
+ * whose own XML the cache already holds and in which the product's detector
+ * (`lgblRenumbered`) finds a renumbering. Finding them costs no request (the
+ * index names each XML); the run then fetches the consolidated records they
+ * lack, once, and writes them through, so that the same flag with
+ * `--cached-only` replays these laws offline. A renumbering in a law whose
+ * XML was never fetched, or in a phrasing the detector does not read, is not
+ * in this population.
  *
  * NETWORK: RIS only (`data.bka.gv.at`, `ris.bka.gv.at`; any other host
  * throws), through the harness fetch cache (`HARNESS_CACHE`, default
@@ -60,7 +69,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LandCode, LandLawDiffResponse } from '../../shared/types'
-import { installFetchCache } from '../lib/harnessCache'
+import { installFetchCache, isCached } from '../lib/harnessCache'
 import { corpusReach, harnessStamp } from '../lib/harnessRecord'
 import { argFlag, argPair } from '../lib/args'
 import { DERIVED_CACHE } from '../../server/utils/cache/base'
@@ -72,8 +81,10 @@ const onlyLand = argPair('land') as LandCode | null
 const against = argPair('against')
 const expected = new Set((argPair('erwartet') ?? '').split(',').map((s) => s.trim()).filter(Boolean))
 const cachedOnly = argFlag('cached-only')
+const renumberedOnly = argFlag('umnummeriert')
+const CACHE_DIR = process.env.HARNESS_CACHE ?? '.harness-cache'
 if (!outDir || !Number.isInteger(n) || n < 1) {
-  console.error('Usage: npx vite-node -c vitest.config.ts scripts/harness/landLawChanges.ts -- --out <dir> [--n 10] [--land <code>] [--cached-only] [--against <dir> [--erwartet a→b,…]]')
+  console.error('Usage: npx vite-node -c vitest.config.ts scripts/harness/landLawChanges.ts -- --out <dir> [--n 10 | --umnummeriert] [--land <code>] [--cached-only] [--against <dir> [--erwartet a→b,…]]')
   process.exit(1)
 }
 mkdirSync(outDir, { recursive: true })
@@ -96,7 +107,7 @@ globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: RequestInit) => 
   queue = next.catch(() => undefined)
   return next
 }) as typeof fetch
-installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
+installFetchCache(CACHE_DIR)
 
 // The services define their Nitro caches at load: the identity stands in, so what runs is the function itself.
 Object.assign(globalThis, {
@@ -105,10 +116,10 @@ Object.assign(globalThis, {
   createError: (input: { statusCode?: number; statusMessage?: string }) => Object.assign(new Error(input.statusMessage ?? 'upstream'), input),
 })
 const { compareLandLawChanges, NOT_CONSOLIDATED_YET_DE } = await import('../../server/utils/laender/landLawChangesService')
-const { fetchLgblIndex, lgblRecord } = await import('../../server/utils/laender/lgblIndex')
+const { fetchLgblIndex, lgblIndexRecords, lgblRecord } = await import('../../server/utils/laender/lgblIndex')
 const { isLawEntry } = await import('../../server/utils/laender/landLaws')
 const { konsRefsOfLgbl, lgblNummer } = await import('../../server/utils/laender/landKonsLaws')
-const { instructionLawsOf, konsVersionOf, lautetMissing, lgblNamedParagraphs, namesAsLast, repealedBy, subInstructionHeads } = await import('../../server/utils/laender/landLawChanges')
+const { instructionLawsOf, konsVersionOf, lautetMissing, lgblNamedParagraphs, lgblRenumbered, namesAsLast, repealedBy, subInstructionHeads } = await import('../../server/utils/laender/landLawChanges')
 const { lgblUnits } = await import('../../server/utils/laender/landLawDiff')
 const { upstreamText } = await import('../../server/utils/upstream/fetch')
 const { TEXT_POLICY } = await import('../../server/utils/laender/texts/read')
@@ -246,6 +257,21 @@ function lautetCensus(land: LandCode, nr: string, lgblXml: string, paragraphs: r
   }
 }
 
+/** `--umnummeriert`: the laws whose XML the cache holds and whose instructions renumber a §. */
+const renumberedScan = { scanned: 0, found: 0 }
+async function withRenumbering<T extends { nr: string }>(land: LandCode, laws: readonly T[]): Promise<T[]> {
+  const wanted = new Set(laws.map((e) => e.nr))
+  const held = (await lgblIndexRecords(land)).filter((r) => wanted.has(r.nr) && !!r.xmlUrl && isCached(CACHE_DIR, r.xmlUrl))
+  const found = new Set<string>()
+  for (const r of held) {
+    const renumbered = lgblRenumbered(lgblUnits(await upstreamText(r.xmlUrl!, TEXT_POLICY)))
+    if ([...renumbered.values()].some((keys) => keys.size)) found.add(r.nr)
+  }
+  renumberedScan.scanned += held.length
+  renumberedScan.found += found.size
+  return laws.filter((e) => found.has(e.nr))
+}
+
 // --- The run -------------------------------------------------------------
 const lines: LgblLine[] = []
 const unreached: { id: string; cause: string }[] = []
@@ -261,7 +287,7 @@ for (const land of LANDS.filter((l) => !onlyLand || l === onlyLand)) {
     continue
   }
   const laws = entries.filter(isLawEntry).filter((e) => e.datum >= '2016-01-01').sort((a, b) => a.datum.localeCompare(b.datum) || a.nr.localeCompare(b.nr, 'de', { numeric: true }))
-  const chosen = spread(laws, n)
+  const chosen = renumberedOnly ? await withRenumbering(land, laws) : spread(laws, n)
   requested += chosen.length
   for (const e of chosen) {
     const line: LgblLine = { land, nr: e.nr, title: e.titel, datum: e.datum.slice(0, 10), offered: false, error: null, available: null, reason: null, complete: null, paragraphs: [], instructedOnly: [] }
@@ -296,7 +322,8 @@ for (const land of LANDS.filter((l) => !onlyLand || l === onlyLand)) {
 // --- Report --------------------------------------------------------------
 writeFileSync(join(outDir, 'lgbl.jsonl'), lines.map((l) => JSON.stringify(l)).join('\n') + '\n')
 const count = (xs: readonly string[]) => [...xs.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])
-const md: string[] = ['# „Was das Gesetz geändert hat" — Landesgesetzblätter', '', `${harnessStamp().commit} · ${new Date().toISOString()} · N = ${n} je Land · ${requests} Anfragen ans RIS`, '']
+const populationDe = renumberedOnly ? `mit Umnummerierung: ${renumberedScan.found} von ${renumberedScan.scanned} im Cache gelesenen Gesetzen` : `N = ${n} je Land`
+const md: string[] = ['# „Was das Gesetz geändert hat" — Landesgesetzblätter', '', `${harnessStamp().commit} · ${new Date().toISOString()} · ${populationDe} · ${requests} Anfragen ans RIS`, '']
 const perLand: Record<string, { lgbl: number; offered: number; compared: number; paragraphs: number; outcomes: Record<string, number>; off: Record<string, number> }> = {}
 for (const land of LANDS) {
   const own = lines.filter((l) => l.land === land)
@@ -395,7 +422,8 @@ if (against) {
 writeFileSync(join(outDir, 'summary.md'), md.join('\n'))
 writeFileSync(join(outDir, 'record.json'), JSON.stringify({
   ...harnessStamp(),
-  n,
+  n: renumberedOnly ? null : n,
+  ...(renumberedOnly ? { renumberedScan } : {}),
   reach: corpusReach(requested, unreached),
   requests,
   violations: violations.length,
