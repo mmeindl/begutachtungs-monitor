@@ -1690,6 +1690,15 @@ gets an entry of its own only where it carries a reason the rule does not.
   lautet Satz 7:", only with the verb right beside it. A figure that names a
   place („In § 6 Abs. 6 1. Satz wird das Wort …") stays a place. Two of the 9,089
   distinct lines of GP XXVIII change; no § moves.
+- **A sentence number past the end of a unit with no list pays for nothing**
+  (23.11.2026, `pastEnd`), in figures or in words. „5. Satz entfällt" over an
+  Absatz of three sentences names none of them, and read as „one stretch" it
+  paid for whichever the column struck. In a unit with a list the count stays a
+  number of stretches, since a draft counts a list's end as a sentence or not
+  (KFG § 57a). A payload under such a line still accounts for what its own words
+  enclose: „im dritten Satz wird der Beistrich durch einen Punkt ersetzt. Der
+  vierte Satz lautet:" counts a sentence its first half makes
+  (Strafvollzugsgesetz § 17, which an empty reach marked for nothing). No § moves.
 - **A quotation right behind „lautet die Überschrift" is the new heading**
   (23.11.2026, `WRITES_PART_RE`), and one behind „Im Inhaltsverzeichnis lautet
   die Eintragung zu § 3" says what the table of contents prints: no wording of

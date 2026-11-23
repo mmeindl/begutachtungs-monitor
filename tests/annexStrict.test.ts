@@ -419,6 +419,8 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     for (const line of ['1. § 5 Abs. 1 2. Satz entfällt.', '1. In § 5 Abs. 1 entfällt Satz 2.']) expect(check(blocksWith(line), proposed, current)).toMatchObject({ state: 'holds', struck: { byPosition: 3 } })
     // Another sentence than the one it numbers, and a figure that only says where a wording stands.
     expect(check(blocksWith('1. § 5 Abs. 1 3. Satz entfällt.'), proposed, current).state).toBe('differs')
+    // A number past the end of a unit with no list names no sentence: its count pays for none, in figures or in words.
+    for (const line of ['1. § 5 Abs. 1 5. Satz entfällt.', '1. In § 5 Abs. 1 entfällt der fünfte Satz.']) expect(check(blocksWith(line), proposed, current).state).toBe('differs')
     expect(check(blocksWith('1. In § 5 Abs. 1 2. Satz wird das Wort „nie“ durch das Wort „oft“ ersetzt.'), proposed, current).state).toBe('differs')
   })
 

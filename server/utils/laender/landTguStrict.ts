@@ -2324,7 +2324,13 @@ function struckAccount(
   // The sentences a line names by their ordinal (`Struck.byPosition[].sentences`; 22.11.2026), counted in each unit its first
   // address names as the left column ends them (`Marked.stop`): the left words they hold. None where they cannot be counted —
   // a unit the column does not print, prints with an elision in it or the line names by its new number, a § named whole whose
-  // column prints Absätze, an ordinal past the unit's last sentence: the line then counts as a number of stretches (below).
+  // column prints Absätze: the line then counts as a number of stretches (below). Nor where a unit with a list in it ends
+  // before the ordinal, since a draft counts a list's end as a sentence or not. A number past the end of a unit with no list
+  // names no sentence the column prints, and its count pays for nothing (`pastEnd`, 23.11.2026): read as a number of stretches,
+  // „5. Satz entfällt" paid for any one sentence of an Absatz of three. A payload under such a line still accounts for what its
+  // own words enclose: „im dritten Satz wird der Beistrich durch einen Punkt ersetzt. Der vierte Satz lautet:" counts a sentence
+  // the line's first half makes (Strafvollzugsgesetz § 17).
+  const pastEnd = new Set<object>()
   const sentenceWords = new Map<object, Set<number> | null>()
   const namedSentences = (x: Struck['byPosition'][number]): Set<number> | null => {
     if (!x.sentences) return null
@@ -2361,6 +2367,7 @@ function struckAccount(
       for (const o of x.sentences.at) {
         const t = o > 0 ? o : n + 1 + o
         const span = of.flatMap((v, i) => (v === t ? [i] : []))
+        if (readable && t > n && !deep.some(Boolean)) pastEnd.add(x)
         if (t < 1 || t > n || deep.some((d, i) => d && (o > 0 ? i <= span.at(-1)! : i >= span[0]!))) readable = false
         for (const i of span) out.add(a + i)
       }
@@ -2611,7 +2618,7 @@ function struckAccount(
   // file order on a crumb („Schluß") left the sentence the line means unpaid (FinStrG § 134). Only a stretch that lies in one
   // sentence charges it: one that runs across a sentence end is paid for as a stretch and frees nothing beside it (a third
   // review: reaching one word back into the sentence before, it had freed every other struck stretch of that kept sentence).
-  const free = positional.map((x) => (namedSentences(x) ? 0 : x.count))
+  const free = positional.map((x) => (namedSentences(x) || pastEnd.has(x) ? 0 : x.count))
   const charged = positional.map(() => new Set<number>())
   const sentencesOf = (st: readonly number[]) => new Set(st.map((q) => sentence[leftAt.get(q)!]!))
   for (const st of [...stretches].sort((a, b) => b.length - a.length)) {
