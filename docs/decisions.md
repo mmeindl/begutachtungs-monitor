@@ -4298,6 +4298,13 @@ mark sound §§ or risk a wrong clearance.
 - **An invented group number at a §'s foot** passes 41.7 % of the time on the
   PDF path and 9.6 % on the table; the first words of the next § 3.8 % and
   7.8 %. `/genauigkeit` says so in words, because no round records these rates.
+- **An elision inside a joined PDF row hides the payload it stands for.** 97
+  d.B. XXVIII § 45: the draft writes Abs. 3 to 5 anew, the annex prints „(4)
+  ...". The table path marks the § for the words of Abs. 4 it does not show;
+  the PDF path, whose row is one joined text, holds it. The column shows
+  nothing false, and the rule would sit in the shared draft check.
+- **Three §§ the PDF reader files differently from the HTML** among 517
+  compared: 625 d.B. XXVIII §§ 90b and 96a, 1493 d.B. XXVII § 27.
 - **`normalizeText` turns an en dash into a hyphen** on every path, so a column
   shows „-" where the document prints „–". It is one sign and no word.
 
