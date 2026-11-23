@@ -33,6 +33,7 @@ import { elisionOpens, isElidedPair, isElisionRangeOnly } from './elision'
 import { compareKey } from '../lawtext/normalize'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 import { cellText, headingOnly, paraHeading, stripGld, stripParaHeading, HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
+import { wordTemplateAsRis } from './wordTemplate'
 import { COLSPAN_RE, columnSpans, columnsOf, coversTheWidth, headerPairSpans, itemsInOrder, liftTables, outermost, type ComparisonItem } from './tableElements'
 
 /** A column heading and nothing else in its cell. */
@@ -166,7 +167,24 @@ const STRIP = [
  * Same shape of bug as `<schlussteil>` against `<schluss typ="…">`: two names
  * for one thing, one of them unknown to one of the two modules that need it.
  */
-const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/
+const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/g
+
+/**
+ * The column's first Gliederungssymbol that says something. The Word template
+ * leaves an empty one where a column opens no § (`<span class=991GldSymbol>
+ * &nbsp;</span>`), and read as the row's designation it was the empty string:
+ * not null, so the row filed under a § called nothing, and the new Abs. 1a of
+ * SchUG § 37 and Abs. 2a of the Pflegefondsgesetz § 2a were gone from their §§
+ * (XXVII 862 and 2303 d.B.).
+ */
+function designationMatch(html: string): RegExpExecArray | null {
+  GLD_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = GLD_RE.exec(html)) !== null) {
+    if (cellText(m[1] ?? m[2] ?? '') !== '') return m
+  }
+  return null
+}
 
 /**
  * „§ 22." at the head of a column's text — a § designation with its full
@@ -340,9 +358,9 @@ function straddlingArticle(cells: readonly { html: string; span: number }[], spa
   return candidate !== null && candidate.numeral !== null && candidate.title !== null ? text : null
 }
 
-/** The removals of `STRIP`, applied to one document. */
+/** The removals of `STRIP`, applied to one document, in RIS's spelling (`wordTemplateAsRis`). */
 function strip(part: string): string {
-  let body = part
+  let body = wordTemplateAsRis(part)
   for (const re of STRIP) body = body.replace(re, '')
   return body
 }
@@ -594,8 +612,8 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     const lift = ownHeading !== null && ownHeading === paraHeading(raw.proposedHtml)
     const currentHtml = lift ? stripParaHeading(raw.currentHtml) : raw.currentHtml
     const proposedHtml = lift ? stripParaHeading(raw.proposedHtml) : raw.proposedHtml
-    const leftMatch = GLD_RE.exec(currentHtml)
-    const rightMatch = GLD_RE.exec(proposedHtml)
+    const leftMatch = designationMatch(currentHtml)
+    const rightMatch = designationMatch(proposedHtml)
     const gldMatch = leftMatch ?? rightMatch
     // Group 1 is RIS's `<gldsym>`, group 2 the Word template's span; exactly
     // one of them is set. Reading group 1 alone gave `undefined` for every

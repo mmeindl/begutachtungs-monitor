@@ -7,7 +7,14 @@
  */
 import { cellText, HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
 
-export const COLSPAN_RE = /colspan="(\d+)"/i
+/**
+ * RIS quotes the attribute; the Word template Parliament publishes writes
+ * `colspan=2`. Read with the quotes only, every cell of a Parliament annex
+ * spanned one column: an empty left cell of two grid columns passed for the
+ * template's spacer and was taken off, and the new Absatz (48) of § 55 stood
+ * in the left column as text the draft removes (XXVII 353 d.B.).
+ */
+export const COLSPAN_RE = /colspan=["']?(\d+)/i
 
 /**
  * Elements of one kind at the outermost nesting level, as their inner HTML.

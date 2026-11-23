@@ -1816,6 +1816,18 @@ gets an entry of its own only where it carries a reason the rule does not.
   Lesefassung's outcome lives once (`shared/utils/annexOutcomes.ts`), for
   the page's placement and for the server's mark, and a § counts as
   confirmed only where every printed row of it is.
+- **Parliament's copy of an annex is translated into RIS's spelling at the
+  door** (23.11.2026, `annex/wordTemplate.ts`). It is the ressort's Word file:
+  `<p class=45UeberschrPara>` for `<ueberschrift typ="para">`, `61TabText` for
+  `typ="tabtext"`, and a grid whose column numbers mean nothing, since one
+  annex sets the same pair `2+1+2` and `1+3+1`. A cell therefore belongs to
+  the column its middle stands in, by the widths Word states against the
+  header pair. Taught element by element, the reader hung § headings on the §
+  above, read a table of the law as a comparison and put a new Absatz in the
+  left column. A class counts only for what it says: the ressorts also set
+  notes in the schedule class („IKT rückwirkend 5.5.2023"), and such a line
+  opens no schedule. A document without the template's classes is returned
+  unchanged, so the RIS path cannot move through this code.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
