@@ -1282,6 +1282,45 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
   return out
 }
 
+/**
+ * A row the annex leaves out („(1) …", „1. bis 5. …"), and where it stands: before the segment `at` of the §'s word diff. It
+ * carries no word of the §, but its designations say which unit the rows behind it stand in (`elidedDesignations`).
+ */
+export interface ElidedRow { at: number; text: string }
+
+/** One piece of an elided row: a § designation, an Absatz, a Ziffer, a Litera, a joiner, the mark, or a bare number a joiner carries on („Z 1 bis 18"). */
+const ELIDED_PIECE_RE = /\s*(?:(§\s*\d+[a-z]*\.?)|\(\s*(\d+[a-z]*)\s*\)|(?:Absatz|Abs\.?)\s*(\d+[a-z]*)|(?:Ziffer|Z)\s*(\d+[a-z]*)|lit\.?\s*([a-z]{1,2})(?![\p{L}])|(\d+[a-z]{0,2})\.(?!\d)|([a-z]{1,2})\)|(bis|und|sowie|,|-)(?![\p{L}])|(\[\s*[.…]+\s*\]|\(\s*[.…]+\s*\)|[.…]+)|(\d+[a-z]{0,2})(?![\p{L}\d.]))/uy
+
+/**
+ * The designations an elided row prints, in order, each with its level (1 the Absatz, 2 the Ziffer, 3 the Litera, 4 the
+ * Sublitera). None where the row prints anything else: a heading, a decimal numbering („2.3 bis 3.3 …"), a word of the text.
+ */
+export function elidedDesignations(text: string): { level: number; id: string }[] {
+  const out: { level: number; id: string }[] = []
+  const flat = normalizeText(text)
+  let at = 0
+  let joined = false
+  while (at < flat.length) {
+    ELIDED_PIECE_RE.lastIndex = at
+    const m = ELIDED_PIECE_RE.exec(flat)
+    if (!m || m[0].length === 0) return []
+    at += m[0].length
+    const letter = m[5] ?? m[7]
+    if (m[8]) joined = true
+    else if (m[1] || m[9]) joined = false
+    else if (m[10]) {
+      if (!joined || !out.length) return []
+      out.push({ level: out.at(-1)!.level, id: m[10].toLowerCase() })
+      joined = false
+    } else {
+      const level = m[2] || m[3] ? 1 : m[4] || m[6] ? 2 : /^([a-z])\1$/.test(letter!) ? 4 : 3
+      out.push({ level, id: (m[2] ?? m[3] ?? m[4] ?? m[6] ?? letter)!.toLowerCase() })
+      joined = false
+    }
+  }
+  return out
+}
+
 // ---------------------------------------------------------------------------
 // The alignment
 // ---------------------------------------------------------------------------
@@ -1648,6 +1687,8 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
    * not, and read `struckNotInDraft` only in the harness.
    */
   struck?: boolean
+  /** The rows the annex leaves out, where they stand (`ElidedRow`): what they name locates the rows behind them for `struckAccount`. */
+  elidedRows?: readonly ElidedRow[]
 } = { general: [], elsewhere: [] }, flip: ReadonlySet<number> | null = null): StrictCheck {
   const shown = shownTokens(unit, flip ?? undefined)
   if (!shown) return unchecked(unit.change === 'changed' ? STRICT_UNCHECKED.undiffed : STRICT_UNCHECKED.nothingNew)
@@ -1820,7 +1861,7 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
     }
     if (foreign) return unchecked(STRICT_UNCHECKED.elsewhere)
   }
-  const struck = struckAccount(unit, flip, found, law.generalStruck ?? [], law.layout, own, shown, { at: aligned.at, pieces, optional }, all.some((w) => w.designation), bridging)
+  const struck = struckAccount(unit, flip, found, law.generalStruck ?? [], law.layout, own, shown, { at: aligned.at, pieces, optional }, all.some((w) => w.designation), bridging, law.elidedRows ?? [])
   return {
     state: notInDraft.length || notShown.length || (law.struck && struck.notInDraft.length) ? 'differs' : 'holds',
     reason: null,
@@ -1908,6 +1949,7 @@ function struckAccount(
   draft: { at: readonly number[]; pieces: readonly { from: number; to: number; adds: boolean; whole: boolean; line?: string }[]; optional: readonly boolean[] },
   designations: boolean,
   quoted: readonly (readonly string[])[],
+  elidedRows: readonly ElidedRow[],
 ): { notInDraft: string[]; by: StruckBy } {
   const by: StruckBy = { named: 0, rewritten: 0, repealed: 0, byPosition: 0, notation: 0 }
   if (unit.change !== 'changed' || !unit.segments) return { notInDraft: [], by }
@@ -1962,6 +2004,15 @@ function struckAccount(
     }
     return false
   }
+  // What the rows the annex leaves out name, at the left word they stand before: „(1) …" over a row „6. …" says that row is Abs. 1's.
+  const startOf: number[] = []
+  segments.reduce((n, s, i) => (startOf[i] = n) + markedTokens(s.text).length, 0)
+  const elidedBefore = new Map<number, { level: number; id: string }[]>()
+  for (const r of elidedRows) {
+    const names = elidedDesignations(r.text)
+    const k = names.length && r.at < segments.length ? left.findIndex((l) => l.p >= startOf[r.at]!) : -1
+    if (k >= 0) elidedBefore.set(k, [...(elidedBefore.get(k) ?? []), ...names])
+  }
   const ends = new Map<number, number>()
   // A row that opens a list item of a lower number than the list's last („… 4. …" then a row „2. …") stands in another unit, whose
   // designation the column prints only in an elided row the check does not see (22.11.2026: Abs. 2 Z 2 read as Abs. 1's, StVG
@@ -1976,21 +2027,29 @@ function struckAccount(
   const unitEnd = (k: number): number => {
     const known = ends.get(k)
     if (known !== undefined) return known
-    const level = levelAt(k)
-    let e = k + 1
+    const e = endFrom(k + 1, levelAt(k), k)
+    ends.set(k, e)
+    return e
+  }
+  /**
+   * Where a unit of a level ends, read from `start`: at the next designation of its level or higher, printed or named by an
+   * elided row, or at a list that restarts at a row's start (`below`). `from` is the word it opens at — for a unit an elided
+   * row names, the first word behind that row, whose own entry does not end it.
+   */
+  const endFrom = (start: number, level: number, from: number): number => {
+    let e = start
     let deeper = false
     const last = new Map<number, string>()
-    while (e < left.length && !(opensAt(e) && levelAt(e) <= level)) {
+    while (e < left.length && !(opensAt(e) && levelAt(e) <= level) && !(e > from && elidedBefore.get(e)?.some((n) => n.level <= level))) {
       if (opensAt(e)) {
         const previous = last.get(levelAt(e))
         if (previous !== undefined && below(words[e]!, previous) && left[e]!.row !== left[e - 1]!.row) break
         last.set(levelAt(e), words[e]!)
         for (const l of last.keys()) if (l > levelAt(e)) last.delete(l)
         deeper = true
-      } else if (level >= 2 && !deeper && left[e]!.row !== left[e - 1]!.row && !runsOn(k, level)) break
+      } else if (level >= 2 && !deeper && e > from && left[e]!.row !== left[e - 1]!.row && !runsOn(from, level)) break
       e++
     }
-    ends.set(k, e)
     return e
   }
   const markUnit = (k: number, c: keyof StruckBy) => {
@@ -2011,24 +2070,31 @@ function struckAccount(
    */
   const within = (k: number, path: readonly AddressPart[] | undefined, ids: ReadonlySet<string>): boolean => (path ?? []).every((part) => (part.level === 0
     ? part.ids.some((id) => ids.has(id))
-    : enclosingOf(k, part.level) >= 0 && part.ids.includes(words[enclosingOf(k, part.level)]!)))
+    : part.ids.includes(unitAround(k, part.level)?.id ?? '')))
   /**
-   * The unit of a level that `k` runs in, opened before it: the nearest designation of that level before `k`, where `k` stands
-   * before its end — an earlier one of the level ends before that one opens. -1 where none. Kept per level.
+   * The unit of a level that `k` runs in, opened before it: the nearest designation of that level before `k`, printed or named
+   * by a row the annex leaves out, where `k` stands before its end. An elided row's unit runs to the next designation of its
+   * level or higher, printed or elided; a chain („(1) bis (3) …") leaves its last. Null where none. Kept per level.
    */
-  const enclosed = new Map<number, Int32Array>()
-  const enclosingOf = (k: number, level: number): number => {
+  const enclosed = new Map<number, ({ id: string; end: number } | null)[]>()
+  const unitAround = (k: number, level: number): { id: string; end: number } | null => {
     let at = enclosed.get(level)
     if (!at) {
-      at = new Int32Array(left.length).fill(-1)
-      let j = -1
+      at = new Array<{ id: string; end: number } | null>(left.length).fill(null)
+      let open: { id: string; end: number } | null = null
       for (let x = 0; x < left.length; x++) {
-        if (j >= 0 && x < unitEnd(j)) at[x] = j
-        if (opensAt(x) && levelAt(x) === level) j = x
+        for (const n of elidedBefore.get(x) ?? []) {
+          if (n.level === level) open = { id: n.id, end: endFrom(x, level, x) }
+          else if (n.level < level) open = null
+        }
+        if (open && x >= open.end) open = null
+        at[x] = open
+        if (opensAt(x) && levelAt(x) === level) open = { id: words[x]!, end: unitEnd(x) }
+        else if (opensAt(x) && levelAt(x) < level) open = null
       }
       enclosed.set(level, at)
     }
-    return k >= 0 && k < left.length ? at[k]! : -1
+    return k >= 0 && k < left.length ? at[k]! : null
   }
   // Notation. What the left column prints ahead of the §'s designation, where the right column prints nothing new there:
   // a heading printed shorter or not at all, a division's heading, a line of the page above (`keptDeletion` in
@@ -2109,15 +2175,14 @@ function struckAccount(
       if (!up.length) return [u]
       return [{ ...u, ids: u.ids.filter((id) => !up.includes(id)) }, { level: parent.level, ids: up, path: u.path.slice(0, -1) }]
     })
-    // Where the column prints no unit of a level the line names around the place (the annex elides the Absatz: „(1) …"), which
-    // unit it is cannot be told, and the place is not refused; it is refused where the column prints another one there.
+    // Where neither the column nor an elided row names a unit of a level the line names around the place, which unit it is cannot
+    // be told, and the place is not refused; it is refused where another one stands there.
     // A wording that opens with a designation („„(3) Das …“", printed inside Abs. 2) stands in the unit of the word before it.
-    const enclosing = enclosingOf
     const inPlace = (at: number, width: number) => !units.length || units.some((u) => [...u.path, u].every((part) => {
       if (part.level === 0) return part.ids.some((id) => ids.has(id))
       if (part.fresh) return true
-      const j = enclosing(at, part.level)
-      return j < 0 || (part.ids.includes(words[j]!) && at + width <= unitEnd(j))
+      const around = unitAround(at, part.level)
+      return around === null || (part.ids.includes(around.id) && at + width <= around.end)
     }))
     named.push({ tokens, law })
     for (const a of placesOf(words, tokens).filter((x) => inPlace(x, tokens.length))) for (let k = a; k < a + tokens.length; k++) mark(left[k]!.p, 'named')
@@ -2229,7 +2294,7 @@ function struckAccount(
   // Where a payload's line reaches (`payloadUnits`; 22.11.2026): inside the units it names, each located with its parents as
   // `within` locates them and running to the next designation of its level or higher — not into another Absatz, a sibling
   // Ziffer or the lead-in of the unit above a Ziffer it names. A § heading too where the line writes it („samt Überschrift").
-  // Where a unit it names is not located (an elided parent row, a number of the new count), the payload is not held to it:
+  // Where a unit it names is not located (a parent no row names, a number of the new count), the payload is not held to it:
   // held there, it left 72 PDF and 33 table §§ of GP XXVIII without the payload's words, most of them sound. Nor where an
   // instruction for the § gives designations: its address may count by the new numbers („erhält die bisherige lit. b die
   // Bezeichnung „a)“, die neue lit. a lautet:", FinStrG § 127).
@@ -2428,8 +2493,8 @@ function struckAccount(
   const leftAt = new Map(left.map((l, k) => [l.p, k]))
   const inPlace = (x: (typeof positional)[number], q: number) => !x.places.length || x.places.some((u) => {
     const at = leftAt.get(q)!
-    const k = opensAt(at) && levelAt(at) === u.level ? at : enclosingOf(at, u.level)
-    return k >= 0 && u.ids.includes(words[k]!) && within(k, u.path, ownFor(x.line))
+    const id = opensAt(at) && levelAt(at) === u.level ? words[at]! : unitAround(at, u.level)?.id
+    return id !== undefined && u.ids.includes(id) && within(at, u.path, ownFor(x.line))
   })
   // The sentence each left word stands in.
   const sentence: number[] = []

@@ -3,7 +3,7 @@ import { DRAFT_UNREAD, annexStrictChecks } from '../server/utils/annex/annexStri
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { insertedStretches } from '../server/utils/annex/rightColumn'
 import { REASON_CUT } from '../server/utils/annex/verdict'
-import { STRICT_UNCHECKED, strictTokens } from '../server/utils/laender/landTguStrict'
+import { STRICT_UNCHECKED, elidedDesignations, strictTokens } from '../server/utils/laender/landTguStrict'
 import type { TextBlock } from '../server/utils/lawtext/lawUnits'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { comparisonRow as row, draftArticle as article } from './helpers/builders'
@@ -359,6 +359,52 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     const list = blocksWith('1. § 4 Abs. 3 und § 5 Abs. 2 entfallen.')
     expect(check(list, '(1) Die Behörde ist zuständig. (3) Die Frist beträgt vier Wochen.', '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'holds', struck: { repealed: 4 } })
     expect(check(list, '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet.', '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet. (3) Die Frist beträgt vier Wochen.')).toMatchObject({ state: 'differs', struckNotInDraft: ['3', 'die', 'frist', 'beträgt', 'vier', 'wochen'] })
+  })
+
+  describe('a parent unit the column prints only in an elided row (23.11.2026)', () => {
+    const elided = (text: string) => row({ law: LAW, para: '§ 5.', current: text, proposed: text, change: 'unchanged', elided: true })
+    const struckRow = (text: string) => row({ law: LAW, para: '§ 5.', current: text, proposed: '', change: 'removed' })
+    const keptRow = (text: string) => row({ law: LAW, para: '§ 5.', current: text, proposed: text, change: 'unchanged' })
+    const held = (line: string, rows: ComparisonRow[]) => annexStrictChecks([row({ law: LAW, gld: '§ 5.', para: '§ 5.', current: '§ 5.', proposed: '§ 5.', change: 'unchanged' }), ...rows], { ...draft, blocks: blocksWith(line) }).get(`${LAW}#§ 5.`)!
+
+    it('reads the Ziffer a line repeals inside the Absatz the elided row names, and no other (RAO § 36)', () => {
+      const rows = [elided('(1) ...'), elided('1. bis 2. ...'), struckRow('3. den Wohnsitz;'), elided('(2) ...')]
+      expect(held('1. § 5 Abs. 1 Z 3 entfällt.', rows)).toMatchObject({ state: 'holds', struck: { repealed: 3 } })
+      expect(held('1. § 5 Abs. 2 Z 3 entfällt.', rows)).toMatchObject({ state: 'differs', struckNotInDraft: ['3', 'den', 'wohnsitz'] })
+    })
+
+    it('takes the last designation of a chain as the unit the next row stands in', () => {
+      const rows = [elided('(1) bis (3) ...'), struckRow('4. den Wohnsitz;')]
+      expect(held('1. § 5 Abs. 3 Z 4 entfällt.', rows).state).toBe('holds')
+      expect(held('1. § 5 Abs. 1 Z 4 entfällt.', rows).state).toBe('differs')
+      expect(held('1. § 5 Abs. 3 Z 4 entfällt.', [elided('(1) Z 1 bis 3 ...'), struckRow('4. den Wohnsitz;')]).state).toBe('differs')
+      expect(held('1. § 5 Abs. 1 Z 4 entfällt.', [elided('(1) Z 1 bis 3 ...'), struckRow('4. den Wohnsitz;')]).state).toBe('holds')
+    })
+
+    it('holds a quoted wording to the Absatz an elided row names, where the column printed another before it (Energieausweis-Vorlage-Gesetz § 9)', () => {
+      const rows = [row({ law: LAW, para: '§ 5.', current: '(1) Die Behörde ist zuständig.', proposed: '(1) Die Behörde ist zuständig.', change: 'unchanged' }), elided('(2) ...'), elided('1. ...'), row({ law: LAW, para: '§ 5.', current: '2. einen Ausweis oder eine Kopie auszuhändigen,', proposed: '2. einen Ausweis auszuhändigen,' })]
+      expect(held('1. In § 5 Abs. 2 entfällt in Z 2 die Wortfolge „oder eine Kopie“.', rows).state).toBe('holds')
+      expect(held('1. In § 5 Abs. 1 entfällt die Wortfolge „oder eine Kopie“.', rows).state).toBe('differs')
+    })
+
+    it('ends a printed unit at the next unit an elided row names: a repeal of Abs. 2 takes no Ziffer of Abs. 3', () => {
+      const rows = [struckRow('(2) Die Behörde entscheidet.'), elided('(3) ...'), struckRow('1. den Wohnsitz;')]
+      expect(held('1. § 5 Abs. 2 entfällt.', rows)).toMatchObject({ state: 'differs', struckNotInDraft: ['1', 'den', 'wohnsitz'] })
+    })
+
+    it('ends the elided unit where a list restarts at a row\'s start, as a printed one ends', () => {
+      const rows = [elided('(1) ...'), keptRow('1. den Namen,'), keptRow('2. die Anschrift,'), keptRow('1. das Datum,'), struckRow('3. den Wohnsitz;')]
+      expect(held('1. § 5 Abs. 1 Z 3 entfällt.', rows).state).toBe('differs')
+    })
+
+    it('reads no designation out of a row that prints anything else', () => {
+      expect(elidedDesignations('(1) ...')).toEqual([{ level: 1, id: '1' }])
+      expect(elidedDesignations('1.bis 5. ...')).toEqual([{ level: 2, id: '1' }, { level: 2, id: '5' }])
+      expect(elidedDesignations('(1) Z 1 bis 18 …')).toEqual([{ level: 1, id: '1' }, { level: 2, id: '1' }, { level: 2, id: '18' }])
+      expect(elidedDesignations('a) und b) …')).toEqual([{ level: 3, id: 'a' }, { level: 3, id: 'b' }])
+      expect(elidedDesignations('§ 9b Abs. 1 bis 5 …')).toEqual([{ level: 1, id: '1' }, { level: 1, id: '5' }])
+      for (const other of ['...', '[...]', '2.3 bis 3.3 …', 'Nachweis der Befugnis § 81. (1) und (2) ...', '(1) bis (xx) ...']) expect(elidedDesignations(other)).toEqual([])
+    })
   })
 
   it('repeals no unit by a verb that has an object of its own, and reads „Art." as an address (22.11.2026)', () => {

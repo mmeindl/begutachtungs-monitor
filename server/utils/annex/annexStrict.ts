@@ -50,7 +50,7 @@ import { printedQuotes, segmentUnits, type TextBlock } from '../lawtext/lawUnits
 import { draftUnits } from './annexDraft'
 import { REASON_CUT, REASON_UNREADABLE_DESIGNATION, type AnnexDraft } from './verdict'
 import { refusedAddress } from '../laender/landTguGuard'
-import { STRICT_UNCHECKED, newNumbers, draftWording, strictCheck, strictTokens, writesAnew, type DraftWording, type StrictCheck, type Wording } from '../laender/landTguStrict'
+import { STRICT_UNCHECKED, newNumbers, draftWording, strictCheck, strictTokens, writesAnew, type DraftWording, type ElidedRow, type StrictCheck, type Wording } from '../laender/landTguStrict'
 
 /** Why a § was not held, beside `STRICT_UNCHECKED`: the draft's Gesetzestext could not be read at all. */
 export const DRAFT_UNREAD = 'der Gesetzestext des Entwurfs ließ sich nicht lesen'
@@ -272,11 +272,17 @@ const VERSION_LABEL_RE = /^\s*Ab\s+\d{1,2}\.\s?\d{1,2}\.\s?\d{4}(?:\s+bzw\.\s[^:
  * changed row carries no word diff (`MAX_DP_CELLS`): what it shows as new is
  * then not marked, and nothing can be held.
  */
-function shownUnit(group: Group, key: string, afters: readonly string[]): LawDiffUnit | null {
+function shownUnit(group: Group, key: string, afters: readonly string[]): { unit: LawDiffUnit; elidedRows: ElidedRow[] } | null {
   const rows = group.rows.filter((r) => !r.elided)
   const allNew = rows.every((r) => r.change === 'inserted')
   const segments: LawDiffSegment[] = []
-  for (const row of rows) {
+  const elidedRows: ElidedRow[] = []
+  for (const row of group.rows) {
+    // An elided row carries no word, but its designations locate what follows: „(1) …" over „6. …" (`elidedDesignations`).
+    if (row.elided) {
+      elidedRows.push({ at: segments.length, text: row.current || row.proposed })
+      continue
+    }
     if (row.change === 'removed' && VERSION_LABEL_RE.test(row.current)) continue
     if (segments.length) segments.push({ type: 'equal', text: ' ' })
     if (row.change === 'unchanged') segments.push({ type: 'equal', text: row.proposed })
@@ -288,18 +294,21 @@ function shownUnit(group: Group, key: string, afters: readonly string[]): LawDif
   // The annex's elision marks, as a word of their own the layout reads (`elisionChains`).
   const shown = segments.map((s) => ({ ...s, text: s.text.replace(ELISION_RUN_RE, ` ${ELISION_WORD} `) }))
   return {
-    article: group.law,
-    articleKey: null,
-    fromArticleKey: null,
-    id: key,
-    fromId: afters[0] ?? key,
-    heading: null,
-    quotedHeading: null,
-    change: allNew ? 'inserted' : 'changed',
-    editorial: false,
-    fromText: rows.map((r) => r.current).join(' '),
-    toText: shown.filter((s) => s.type !== 'removed').map((s) => s.text).join(''),
-    segments: allNew ? null : shown,
+    elidedRows,
+    unit: {
+      article: group.law,
+      articleKey: null,
+      fromArticleKey: null,
+      id: key,
+      fromId: afters[0] ?? key,
+      heading: null,
+      quotedHeading: null,
+      change: allNew ? 'inserted' : 'changed',
+      editorial: false,
+      fromText: rows.map((r) => r.current).join(' '),
+      toText: shown.filter((s) => s.type !== 'removed').map((s) => s.text).join(''),
+      segments: allNew ? null : shown,
+    },
   }
 }
 
@@ -361,8 +370,8 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
       out.set(groupKey, unchecked(REASON_CUT))
       continue
     }
-    const unit = shownUnit(group, own, afters)
-    if (!unit) {
+    const held = shownUnit(group, own, afters)
+    if (!held) {
       out.set(groupKey, unchecked(STRICT_UNCHECKED.undiffed))
       continue
     }
@@ -391,7 +400,7 @@ export function annexStrictChecks(rows: readonly ComparisonRow[], draft: Pick<An
       return { notText: words.map((_, i) => stack[i]! || elided[i]! || chains[i]!), elided }
     }
     const general = [...(law?.general ?? []), ...(headings.get(lawKey) ?? [])]
-    out.set(groupKey, strictCheck(unit, wordings, { general, generalStruck: law?.generalStruck, elsewhere, placeholders: bgblPlaceholders, layout, struck: true }))
+    out.set(groupKey, strictCheck(held.unit, wordings, { general, generalStruck: law?.generalStruck, elsewhere, placeholders: bgblPlaceholders, layout, struck: true, elidedRows: held.elidedRows }))
   }
   return out
 }

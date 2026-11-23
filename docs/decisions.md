@@ -1639,10 +1639,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   schedule's last item lost), none of the five shown without a Vermerk. A
   round's figures are taken on the list as it stands that day.
 - **What the struck-text check does not do, measured** (22.11.2026). It does
-  not map a unit named in the new numbering back („Abs. 7 (neu)"). It
-  locates a parent the column prints only in an elided row („(1) …") only
-  where a list restarts at a row's start, still the largest class of false
-  objections. It counts a quoted wording at every place of its unit (once
+  not map a unit named in the new numbering back („Abs. 7 (neu)"). It counts a quoted wording at every place of its unit (once
   without „jeweils" would have marked 5 sound §§) and a piece of a §'s own
   quote wherever it stands (its place: 11). A last list item on the PDF path
   runs to the next designation (the first sentence end: 9 moves, 5 sound §§
@@ -1662,6 +1659,19 @@ gets an entry of its own only where it carries a reason the rule does not.
   (51 candidates, most of them places the check cannot read). The Länder do
   not ask for struck text: there a § that differs is withheld, and 28 shown
   §§ would newly differ.
+- **A row the annex leaves out still says which unit the rows behind it stand
+  in** (23.11.2026, `elidedDesignations`, `unitAround`). „(1) …" over a struck
+  „6. …" makes that Ziffer Abs. 1's: an address that names the Absatz finds it,
+  and a quoted wording under another Absatz is refused there. Read from a row
+  that prints designations and nothing else; of a chain („(1) bis (3) …") the
+  last, which runs to the next designation of its level or higher, printed or
+  elided, or to a list that restarts at a row's start. It also ends a printed
+  unit: a repeal of Abs. 2 takes no Ziffer behind an elided „(3) …". Until then
+  this was the largest class of false objections. Seven §§ of the table path go
+  from „differs" to „holds", each read against the draft (RAO § 36,
+  Energieausweis-Vorlage-Gesetz § 9, ÄAO 2015 §§ 3 and 19, Mediengesetz § 27,
+  Bäderhygieneverordnung §§ 42 and 47); none moves the other way, and the PDF
+  path, which prints such rows inside its text, does not move.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a
