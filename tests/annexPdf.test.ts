@@ -663,6 +663,29 @@ describe('where one § ends and the next begins, as the ministries set it (21.11
     expect(opened.proposed).toBe('Zuständigkeit § 80a. (2) Unbeschadet der Zuständigkeit des Finanzamtes kann der Bundesminister')
   })
 
+  // Weinrecht-Sammelverordnung (RIS 215AB69F): the right column prints the
+  // draft's instruction, then the new § inside its quotation marks.
+  it('opens a § the right column restates in quotation marks under its instruction', () => {
+    const rows = read([
+      at(108, 780, '§ 3. Die Aufnahme einer Rebsorte bedarf einer Prüfung.', 380), at(444, 780, '§ 3. Die Aufnahme einer Rebsorte bedarf einer Prüfung.', 716),
+      ...filler(766),
+      at(108, 628, '§ 4. (1) Wer eine Genehmigung nicht nutzt, begeht eine Übertretung.', 417), at(424, 628, '§ 4 lautet:', 466),
+      at(424, 616, '„§ 4. (1) Im Falle einer Sanktion gilt Folgendes.', 700),
+    ])
+    expect(rows.find((r) => r.gld === '§ 3.')!.proposed).not.toContain('lautet')
+    expect(rows.find((r) => r.gld === '§ 4.')!.proposed).toBe('"§ 4. (1) Im Falle einer Sanktion gilt Folgendes.')
+  })
+
+  it('reads a quoted designation as a citation where no instruction names it', () => {
+    const rows = read([
+      at(108, 780, '§ 3. Die Aufnahme einer Rebsorte bedarf einer Prüfung.', 380), at(444, 780, '§ 3. Die Aufnahme einer Rebsorte bedarf einer Prüfung.', 716),
+      ...filler(766),
+      at(424, 628, '§ 5 lautet:', 466),
+      at(424, 616, '„§ 4. (1) gilt sinngemäß.', 700),
+    ])
+    expect(rows.some((r) => r.gld === '§ 4.')).toBe(false)
+  })
+
   // Bundesabgabenordnung in the Abgabenänderungsgesetz 2025 (RIS 24E5B4AA):
   // „§ 86." on a line of its own, and its „(1)" beside the left's „§ 86a. (1)".
   it('leaves an Absatz with the § its column has open, whatever the other column opens beside it', () => {

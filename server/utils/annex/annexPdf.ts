@@ -1424,6 +1424,26 @@ function openedAboveBeside(own: string, other: string, ownAbove: string | undefi
   return absatz && beside && absatz[1] === beside[1] ? normalizeText(opened[1]!) : null
 }
 
+/** „§ 4 lautet:" alone on a line: the draft's instruction, printed in the column over the § it restates. */
+const RESTATES_RE = new RegExp(String.raw`^§\s*(${PARAGRAPH_NUMBER})\s+lautet:$`)
+/** The § it restates, inside the quotation mark that opens the new wording. */
+const QUOTED_OPENER_RE = new RegExp(String.raw`^[„"»]\s*(§\s*(${PARAGRAPH_NUMBER})\.)`)
+
+/**
+ * „§ 4 lautet:" over „„§ 4. (1) …": a right column that prints the draft's
+ * instruction and then the new § in its quotation marks (the
+ * Weinrecht-Sammelverordnung's two Verordnungen, RIS 215AB69F). Behind the
+ * mark `markerOf` does not read the designation, so §§ 2 and 4 ran into the §
+ * above them and each lost its right half. The designation counts only under
+ * an instruction naming the same §: a quoted „§ 4." anywhere else is a citation.
+ */
+function restatedParagraph(line: ColumnLine, parts: readonly ColumnLine[]): RegExpExecArray | null {
+  const quoted = QUOTED_OPENER_RE.exec(line.text.trim())
+  if (!quoted) return null
+  const instruction = RESTATES_RE.exec(parts.at(-1)?.text.trim() ?? '')
+  return instruction && instruction[1] === quoted[2] ? quoted : null
+}
+
 /**
  * Does the § named beside this line open here? Only behind the shape
  * `undottedParagraph` asks for: a centred heading that ends no sentence, under
@@ -1799,7 +1819,10 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
       current = { gld: null, context: null, parts: [], opener: null }
       continue
     }
-    const marker = markerOf(line.text) ?? undottedParagraph(line, current.parts)
+    const restated = markerOf(line.text) ? null : restatedParagraph(line, current.parts)
+    // The instruction is no text of either §: not the end of the one above, not the heading of this one.
+    if (restated) current.parts.pop()
+    const marker = restated ?? markerOf(line.text) ?? undottedParagraph(line, current.parts)
     // „… eines ausländischen Kreditinstituts gemäß" over „§ 19b.", „… die
     // in" over „Anlage C festgelegten …": a citation the line above runs on
     // into, wrapped to the head of a line. Read as a marker it opened a
@@ -1816,7 +1839,7 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
     // word diff shows a § number that stands in both as new.
     const beside = marker || repealOf ? null : opensBeside(line, current.gld, current.parts)
     const above = current.parts.at(-1)?.text.trim()
-    if ((!marker && !repealOf && !beside) || (above !== undefined && !SENTENCE_END.test(above) && CONTINUED_RE.test(above))) {
+    if ((!marker && !repealOf && !beside) || (!restated && above !== undefined && !SENTENCE_END.test(above) && CONTINUED_RE.test(above))) {
       current.parts.push(line)
       continue
     }

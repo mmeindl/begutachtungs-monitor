@@ -1847,6 +1847,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   on with the same Absatz. Only under the heading shape `opensBeside` asks
   for, and the shared heading then stays that §'s (BewG § 80a in the AbgÄG
   2026, whose „(2)" had run into § 30).
+- **„§ 4 lautet:" over „„§ 4. (1) …" opens § 4, and the instruction is no
+  text of either §** (23.11.2026, `restatedParagraph`). Some right columns
+  print the draft's instruction above the new wording. A designation behind
+  a quotation mark counts only under an instruction naming the same §.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
