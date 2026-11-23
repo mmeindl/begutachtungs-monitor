@@ -141,7 +141,7 @@ describe('compareTgu — nothing shown, everything named (25.10.2026)', () => {
     ktnTguParagraphs.mockReturnValue([para('3', { unread: true, because: 'wording' }), para('14b', { unread: true }), para('3', { unread: true, because: 'wording' })])
     const r = (await compareTgu('ktn', detail())).value
     expect(r.available).toBe(false)
-    expect(r.unavailableReason).toMatch(/^Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen/)
+    expect(r.unavailableReason).toMatch(/^Nicht lesbar: Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen/)
     expect(r.withheld).toEqual([{ law: LAW, id: '§3', reason: 'wording' }, { law: LAW, id: '§14b', reason: 'unread' }])
     expect(lawInForce).not.toHaveBeenCalled()
   })

@@ -485,7 +485,7 @@ const NO_TGU = gapDe('unreadable', 'Unter den Dokumenten zu diesem Entwurf fand 
 const NO_TGU_IN_DRAFT = gapDe('unreadable', 'Im Entwurf fand der Monitor keine Textgegenüberstellung.')
 
 /** Where §§ were read and none can be shown. The page names every one under it, with why (`LandWithheldNotes`). */
-const NONE_SHOWN = 'Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen. Welche Paragraphen die Novelle ändert und warum sie hier fehlen, steht darunter; die Textgegenüberstellung selbst steht unter den Dokumenten.'
+const NONE_SHOWN = gapDe('unreadable', 'Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen. Welche Paragraphen die Novelle ändert und warum sie hier fehlen, steht darunter; die Textgegenüberstellung selbst steht unter den Dokumenten.')
 
 /** Whether a Land's Textgegenüberstellung is there to read: its own document, or for Wien inside the draft's PDF (the server says when there is none). */
 export function hasTgu(land: LandCode, documents: readonly LandDocument[]): boolean {
