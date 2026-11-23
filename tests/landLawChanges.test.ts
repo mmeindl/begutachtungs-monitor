@@ -151,6 +151,14 @@ describe('lgblRenumberedParagraphs (22.11.2026)', () => {
     expect(keys('Der bisherige § 17b erhält die Paragraphenbezeichnung „ 17c “ und lautet:')).toEqual(new Set(['§17b', '§17c']))
     expect(keys('Der bisherige § 14 erhält die Paragraphenbezeichnung „§ 33.“')).toEqual(new Set(['§14', '§33']))
   })
+  it('reads a designation given with its Absatz (Wien LGBl. Nr. 40/2023) and a § marked „(alt)“ whose designation is written anew (Salzburg LGBl. Nr. 64/2018)', () => {
+    expect(keys('Der bisherige § 12 erhält die Paragraphen- und Absatzbezeichnung „§ 34. (1)“.')).toEqual(new Set(['§12', '§34']))
+    expect(keys('Im § 18a (alt) werden folgende Änderungen vorgenommen: 15.1. Die Überschrift und die Bezeichnung lauten: Erweiterte Teilrechtsfähigkeit § 18c 15.2. Im Abs 1 wird das Wort')).toEqual(new Set(['§18a', '§18c']))
+  })
+  it('takes no Absatz in quotes for a § without its sign, and no „(alt)“ line that gives no designation', () => {
+    expect(lgblRenumberedParagraphs('Im § 25 erhält der bisherige Abs. 3 die Bezeichnung „3 (1)“.')).toEqual([])
+    expect(lgblRenumberedParagraphs('Im § 18a (alt) werden folgende Änderungen vorgenommen: 15.1. Die Überschrift lautet: Erweiterte Teilrechtsfähigkeit')).toEqual([])
+  })
   it('is no renumbering of a §: an Absatz or a Ziffer renamed, a citation replaced, §§ inserted', () => {
     expect(lgblRenumberedParagraphs('Im § 12 wird der bisherige Text als Abs. 1 bezeichnet und folgender Abs. 2 angefügt:')).toEqual([])
     expect(lgblRenumberedParagraphs('Im § 25 Abs 1 erhalten die Z 3 und 4 die Bezeichnungen „2.“ und „3.“')).toEqual([])

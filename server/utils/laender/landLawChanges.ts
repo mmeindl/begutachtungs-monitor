@@ -252,15 +252,18 @@ export function isNamed(named: ReadonlySet<string> | undefined, key: string): bo
   })
 }
 
-/** A new designation an instruction gives in quotes: „§ 19“, „ § 7. “, „ 17c “. */
-const QUOTED_DESIGNATION_RE = /[„"“]\s*(§\s*)?(\d+[a-z]*)\.?\s*[“”"]/gu
+/** A new designation an instruction gives in quotes: „§ 19“, „ § 7. “, „ 17c “, and with the Absatz it opens, „§ 34. (1)“. */
+const QUOTED_DESIGNATION_RE = /[„"“]\s*(§\s*)?(\d+[a-z]*)\.?\s*(\(\d+[a-z]*\)\s*)?[“”"]/gu
+/** „Im § 18a (alt) werden folgende Änderungen vorgenommen: 15.1. Die Überschrift und die Bezeichnung lauten: Erweiterte Teilrechtsfähigkeit § 18c" (Salzburg LGBl. Nr. 64/2018). */
+const OLD_NUMBER_GIVEN_RE = /§\s*(\d+[a-z]*)\s*\(alt\)[^:;]*:\s*(?:\d+(?:\.\d+)*\.\s*)?(?:Die\s+Überschrift\s+und\s+)?[Dd]ie\s+Bezeichnung\s+lauten?:[^§:;]{0,120}§\s*(\d+[a-z]*)/gu
 /** The designations a renumbering gives, as `renumberingText` marks them (U+E003 around each; U+E002 where another quoted wording stood), one by one, listed or as a range. */
-const NEW_DESIGNATIONS_RE = /^([^:;\uE002\uE003]*?)\bdie\s+(Paragraphen|Paragrafen-?)?[Bb]ezeichnung(?:en)?\s*((?:\uE003[^\uE003]*\uE003)(?:\s*(?:,|und|sowie|bis)\s*\uE003[^\uE003]*\uE003)*)/u
+const NEW_DESIGNATIONS_RE = /^([^:;\uE002\uE003]*?)\bdie\s+(Paragraphen(?:-\s*und\s+Absatz)?|Paragrafen-?)?[Bb]ezeichnung(?:en)?\s*((?:\uE003[^\uE003]*\uE003)(?:\s*(?:,|und|sowie|bis)\s*\uE003[^\uE003]*\uE003)*)/u
 
 /** An instruction's text with every quoted wording out, the quoted new designations kept as marks; a quote never closed ends the reading (`subInstructionHeads`). */
 function renumberingText(text: string): string {
   return text
-    .replace(QUOTED_DESIGNATION_RE, (_, sign: string | undefined, n: string) => `\uE003${sign ? '§' : ''}${n}\uE003`)
+    // An Absatz in the quotes counts only behind a § sign: „3 (1)“ designates no §.
+    .replace(QUOTED_DESIGNATION_RE, (whole: string, sign: string | undefined, n: string, absatz: string | undefined) => (absatz && !sign ? whole : `\uE003${sign ? '§' : ''}${n}\uE003`))
     .replace(/„[^“”]*[“”]|"[^"]*"/g, '\uE002')
     .split(/[„"]/)[0]!
 }
@@ -283,7 +286,10 @@ const clauseBefore = (text: string, at: number) => text.slice(0, at).split(/[:;\
  * they read as a change the Landesgesetzblatt did not make.
  *
  * The phrasings are the ones the cached Landesgesetzblätter use: 21 of 721
- * documents, 42 lines, these two verbs. Not a renumbering: an Absatz or a
+ * documents, 42 lines, these two verbs; since 23.11.2026 also a designation
+ * given with its Absatz („die Paragraphen- und Absatzbezeichnung „§ 34. (1)“",
+ * Wien) and a § marked „(alt)" whose designation is written anew (Salzburg).
+ * Not a renumbering: an Absatz or a
  * Ziffer given another designation („wird der bisherige Text als Abs. 1
  * bezeichnet", „erhalten die Z 3 und 4 die Bezeichnungen „2.“ und „3.“" —
  * told by „Paragraphenbezeichnung" or a § inside the quotes), a citation
@@ -309,6 +315,10 @@ export function lgblRenumberedParagraphs(instruction: string): string[] {
       out.add(`§${x[2]}${x[3]}`)
       if (x[4] === 'bis' && marks[i + 1]) out.add(`§${x[2]}-${marks[i + 1]![2]}`)
     })
+  }
+  for (const m of text.matchAll(OLD_NUMBER_GIVEN_RE)) {
+    out.add(`§${m[1]}`)
+    out.add(`§${m[2]}`)
   }
   return [...out]
 }
