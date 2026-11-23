@@ -1300,6 +1300,36 @@ gets an entry of its own only where it carries a reason the rule does not.
   title of one Verordnung above an elided „§ 1. bis § 15. …" is shown
   nowhere now (Tierarzneimittel-Anpassungsverordnung). BWG's division line
   „XIII. …" stays at § 64 (rejected alternatives).
+- **A line that opens with the Absatz the other column opens a § with opens
+  that § too, under a centred heading below a finished sentence**
+  (23.11.2026, `opensBeside` in `annex/annexPdf.ts`). The Fluorierte
+  Treibhausgase-Gesetz's left column prints no „§ 8." at its first row, and
+  the row ran on as struck text of § 7. The designation goes on the line, or
+  the word diff shows a number both columns share as new. An Absatz alone is
+  no evidence: BAO § 86's „(1)" stands beside the other column's „§ 86a. (1)".
+- **A heading both columns print over a § only one of them prints is the
+  row's context** (23.11.2026, `moveSharedHeadings`), in neither column's
+  text: the draft inserts FLAG § 39p under the law's „Aufbringung der
+  Mittel", and each column on its own gave those words to a different §. Only
+  where the other column prints that § nowhere in the section.
+- **Page furniture does not count towards the ten lines a column's edge
+  needs** (23.11.2026, `columnEdge`). Six headers and five lines of text put
+  the edge on a short heading, and no heading was handed to its §. The
+  furniture stays in the measure: taken out, it moved real edges and joined
+  words across table cells.
+- **A § without its full stop opens at „(1)" only before a capitalised word,
+  a „§" or „bis (", under a finished sentence or a centred heading**
+  (23.11.2026, `undottedFirstAbsatz`). All six lines of the form „§ N (k)" at
+  a line's head in GP XXVIII's PDF annexes are §§; „§ 5 (1) und (2) gelten"
+  and „§ 5 (1) Z 3" stay citations.
+- **A line above a schedule's designation stays with the schedule before it**
+  unless it is centred or RIS's own „Anlagen" or „Beachte für folgende
+  Bestimmung" (23.11.2026, `unitsOfColumn`). A schedule names itself under
+  its designation; what stood above was the last item of the one before
+  (Standortabsicherungsgesetz Anhang 1). Its cost, read: five schedules of the
+  Wasserstraßen-Verkehrsordnung, which print only „Siehe …pdf" and showed a
+  neighbour's pointer as „nicht geprüft", now show their own and are withheld,
+  because that pointer is no text of the law in RIS.
 - **The left column of a Bund annex is held by containment alone**
   (21.11.2026, measured, no rule). The gate's left check and the oracle's
   check 1 both ask whether the column's text stands in the standing §. They
