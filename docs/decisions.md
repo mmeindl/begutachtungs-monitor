@@ -2613,7 +2613,15 @@ The code names the EU rules D1 to D7; this is where they are defined
     carries exactly the COM number. „Not found in the portal", „older
     than the portal", „no number to search by" and „not read" are four
     sentences, and none says „keine Konsultation". Rejected: the prewarm
-    of every act of the map.
+    of every act of the map. Not asked (23.11.2026, revising 14.11.): the
+    Commission, whether a documented interface exists. `data.europa.eu`
+    holds no dataset of the portal and none of the register of the
+    European Citizens' Initiative, no documentation of either was found
+    (`docs/research/eu-zyklus.md`, 1.2 and 1.3), a functional mailbox
+    announces no change, and every request names the site in its
+    User-Agent. A break is noticed by the uptime check's EU canary
+    (`.github/workflows/uptime.yml`) and repaired here; the maintainer
+    writes when a break leaves a question.
   - **Who gave feedback on the Commission's portal: organisations named,
     persons counted** (15.11.2026, step 4, rule decided by the maintainer;
     `server/utils/eu/portalFeedback.ts`, `namedOrganisationOf`). A row of

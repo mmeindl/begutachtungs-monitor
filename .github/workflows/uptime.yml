@@ -25,6 +25,22 @@
 # 90 s apart, because a failed read is not cached and a single slow answer
 # from a Land's server is not a broken parser.
 #
+# Fourth probe, the EU canary (23.11.2026): /api/eu-recht/fenster and
+# /api/eu-recht/buergerinitiativen answer `initiatives: null` where the
+# Commission's portal „Ihre Meinung zählt" or the register of the European
+# Citizens' Initiative could not be read. Both are read through interfaces
+# that nobody documents and whose changes nobody announces, and the
+# Commission is not asked to warn us (docs/decisions.md): this probe is how
+# a break is noticed. It opens its OWN issue, labelled `eu-quelle` — the
+# site is up, and the page already tells its readers that the source could
+# not be read. Judged twice, 90 s apart, like the Länder. A break shows only
+# once the last good answer has aged out: after a day at most for the
+# portal, two for the register (`DERIVED_ANALYSIS_TTL_S`,
+# `ECI_REGISTER_STALE_S`). The two lists stand for their sources; a change
+# that breaks only one initiative's record or the list of contributions is
+# not caught here. The job's time limit is 8 minutes since then: the Länder
+# and the EU probe can each wait 90 s in the same run.
+#
 # Known trap: GitHub disables scheduled workflows in repositories without
 # commits for 60 days and sends a mail when it does. Re-enable it in the
 # Actions tab, or make any commit.
@@ -58,11 +74,12 @@ env:
   LABEL: downtime
   LAENDER_API: https://begutachtungs-monitor.at/api/laender
   LAND_LABEL: land-quelle
+  EU_LABEL: eu-quelle
 
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Probe the start page
         id: probe
@@ -187,4 +204,68 @@ jobs:
           elif [ -n "$open" ]; then
             gh issue close "$open" --repo "$GITHUB_REPOSITORY" \
               --comment "Every Land reads again at $now. Probe: $RUN_URL"
+          fi
+
+      - name: Probe the EU sources
+        id: eu
+        if: steps.probe.outputs.reason == ''
+        run: |
+          set +e
+          # One name per source whose list answers `initiatives: null`; `api`
+          # where our own endpoint gave no such answer at all. The addresses
+          # are built from $SITE, so the host stands in this file once.
+          unreadable() {
+            out=""
+            for pair in "Ihre Meinung zählt=api/eu-recht/fenster" "Bürgerinitiative=api/eu-recht/buergerinitiativen"; do
+              name=${pair%%=*}
+              path=${pair#*=}
+              state=$(curl -sS -L --max-time 60 --retry 2 --retry-delay 15 --retry-all-errors "$SITE$path" \
+                        | jq -r 'if type != "object" or (has("initiatives") | not) then "api" elif .initiatives == null then "unreadable" else "ok" end' 2>/dev/null)
+              case "$state" in
+                ok) ;;
+                unreadable) out="${out:+$out,}$name" ;;
+                *) case ",$out," in *",api,"*) ;; *) out="${out:+$out,}api" ;; esac ;;
+              esac
+            done
+            printf '%s' "$out"
+          }
+          first=$(unreadable)
+          if [ -n "$first" ]; then
+            sleep 90
+            second=$(unreadable)
+          else
+            second=""
+          fi
+          echo "sources=$second" >> "$GITHUB_OUTPUT"
+          if [ -n "$second" ]; then echo "::warning::EU-Quellen nicht lesbar: $second"; else echo "alle EU-Quellen lesbar"; fi
+
+      - name: Open or close the EU issue
+        if: steps.probe.outputs.reason == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCES: ${{ steps.eu.outputs.sources }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          now=$(date -u '+%Y-%m-%d %H:%M UTC')
+          gh label create "$EU_LABEL" --repo "$GITHUB_REPOSITORY" --force \
+            --color D93F0B --description "An EU source cannot be read; opened and closed by the Uptime workflow" >/dev/null
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$EU_LABEL" --state open \
+                   --json number --jq '.[0].number // empty')
+          if [ -n "$SOURCES" ]; then
+            if [ -z "$open" ]; then
+              body=$(printf '%s\n\n%s\n%s\n\n%s' \
+                "@$OWNER — an EU source could not be read at $now (twice, 90 s apart)." \
+                "**Quellen:** $SOURCES (\`api\` = our own endpoint under /api/eu-recht did not answer)" \
+                "**Probe:** $RUN_URL" \
+                "The site tells its readers meanwhile that the source could not be read. Neither interface is documented and nobody announces a change: open the portal or the register in a browser, see which addresses its pages load now, and hold them against the reader in \`server/utils/eu/\` (\`haveYourSay.ts\`, \`eciRegister.ts\`). Closes itself when both read again.")
+              gh issue create --repo "$GITHUB_REPOSITORY" --label "$EU_LABEL" \
+                --title "EU-Quelle nicht lesbar: $SOURCES" --body "$body"
+            else
+              echo "still unreadable, issue #$open already open"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --repo "$GITHUB_REPOSITORY" \
+              --comment "Both EU sources read again at $now. Probe: $RUN_URL"
           fi

@@ -115,8 +115,11 @@ ihre Daten von drei Adressen, die alle ohne Schlüssel mit JSON antworten:
 Anwendung. Das Skript der Anwendung und ihre englische Textdatei
 (`…/better-regulation/assets/i18n/en.json`, 1.167 Schlüssel) enthalten kein
 Wort zu API, Weiterverwendung oder Lizenz. Eine Websuche fand nur Werkzeuge
-Dritter, die dieselben Adressen abgreifen. Ob auf `data.europa.eu` ein
-Datensatz des Portals liegt: nicht belegt. Die `robots.txt` von
+Dritter, die dieselben Adressen abgreifen. Auf `data.europa.eu` liegt kein
+Datensatz des Portals (geprüft 23.11.2026: Der Katalog des
+Generalsekretariats, `sg`, führt neun Datensätze, keinen zum Portal; die
+Phrasensuche nach „have your say" über alle Kataloge trifft sieben
+Datensätze, keinen einer EU-Stelle). Die `robots.txt` von
 `ec.europa.eu` enthält im Block für alle Clients keine Regel zu
 `/info/law/` oder zu den Schnittstellen.
 
@@ -196,7 +199,11 @@ nennt:
 (Liste; Kopf am 14.11.2026: 162 Anträge, 136 registriert, 15 erfolgreich, 13
 laufend, 14 beantwortet) und
 `…/core/api/register/details/<Jahr>/<Nummer>` (eine Initiative, 124 KB für
-ECI(2022)000002). Eine Dokumentation: nicht gefunden.
+ECI(2022)000002). Eine Dokumentation: nicht gefunden. Geprüft am 23.11.2026:
+Sechs übliche Pfade für eine OpenAPI-Beschreibung unter `/core` antworten mit
+404, auf `data.europa.eu` liegt kein Datensatz des Registers, und die
+Verordnung (EU) 2019/788 enthält kein Wort zu offenen Daten oder zur
+Weiterverwendung.
 
 **Bedingungen.** Die Seite der Bürgerinitiative
 (`https://citizens-initiative.europa.eu`) verlinkt in der Fußzeile den

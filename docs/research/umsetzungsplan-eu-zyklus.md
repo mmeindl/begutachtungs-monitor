@@ -98,6 +98,9 @@ the three split procedures above, which may be why).
 7. The portal's undocumented interface is used. The Commission is asked in
    parallel whether a documented one exists; the question is a dated task of
    the maintainer and does not block the build.
+   Revised 23.11.2026: the Commission is not asked. The reasons, and what
+   notices a break instead, stand in `docs/decisions.md`, in the entry on
+   reading the Commission's portal narrowly and gently.
 8. The Impressum is adjusted. Each wording ships in the commit that starts
    using the source it names, never ahead of the site (the drafts are
    below).
