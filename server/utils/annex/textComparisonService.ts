@@ -266,7 +266,7 @@ export const getTextComparison = defineCachedFunction(
             ? (READ_PARLIAMENT_COPY
                 ? gapDe('unreadable', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht; auslesen ließ sie sich nicht.')
                 : gapDe('outOfScope', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht. Aus dem Dokument des Parlaments lesen wir sie nicht aus: Das Parlament nimmt die Daten des Begutachtungsverfahrens von der Weiterverwendung aus, und solange das ungeklärt ist, verlinken wir sie, statt sie abzudrucken.'))
-            : gapDe('outOfScope', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht, und dort nur als PDF; ein PDF des Parlaments liest der Monitor nicht aus.'),
+            : gapDe('outOfScope', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht, und dort nur als PDF; das PDF eines Ministerialentwurfs beim Parlament liest der Monitor nicht aus.'),
           null,
           atParliament,
         )

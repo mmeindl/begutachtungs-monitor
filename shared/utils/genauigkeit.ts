@@ -407,6 +407,8 @@ function annexArt(r: GenauigkeitRecord): GenauigkeitArt {
       'Eine falsche Absatz- oder Ziffernbezeichnung fällt nicht auf, wenn der Entwurf dieselbe Bezeichnung an einer anderen Stelle des Paragraphen nennt.',
       'Ein Satz, der bleibt und als gestrichen gezeigt ist, fällt nicht auf, wenn der Entwurf an dieser Stelle selbst streicht, ohne den Wortlaut zu nennen („der letzte Satz entfällt“), oder den Absatz neu fasst.',
       'Fehlt ein Satz in der linken Spalte, steht er rechts als neu. Schreibt der Entwurf diesen Satz selbst, etwa weil er den Absatz neu fasst, geht der Abgleich mit dem Gesetzestext trotzdem auf.',
+      // What still passes at the foot of a § (23.11.2026): in words, because a one-off probe measured it and no round records it.
+      'Steht am Ende des neuen Textes eine Abschnittsnummer, die es nicht gibt, fällt das oft nicht auf. Stehen dort die ersten Wörter des folgenden Paragraphen, bleibt das selten unbemerkt.',
       'Wie oft ein Vermerk zu Unrecht steht, zeigt dieser Test nicht: Er baut Fehler ein und zählt, wie viele auffallen.',
     ],
   }

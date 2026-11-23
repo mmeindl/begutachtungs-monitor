@@ -154,6 +154,11 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
               weitere Entwürfe erlassen nur Neues oder ändern nichts, was
               sich zusammensetzen ließe.</template>
           </p>
+          <p>
+            Nicht mitgezählt sind die Textgegenüberstellungen von
+            Regierungsvorlagen, die der Monitor aus dem PDF des Parlaments
+            liest: Die Zahlen dieser Seite sind an Entwürfen gemessen.
+          </p>
         </div>
       </Disclosure>
     </ProseSection>

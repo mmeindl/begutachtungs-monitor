@@ -81,7 +81,7 @@ export const getVorlageTextComparison = defineCachedFunction(
       return emptyComparison(
         who,
         annex.pdf
-          ? gapDe('outOfScope', `Die Textgegenüberstellung ${what} liegt beim Parlament nur als PDF vor; ein PDF des Parlaments liest der Monitor nicht aus.`)
+          ? gapDe('outOfScope', `Die Textgegenüberstellung ${what} liegt beim Parlament nur als PDF vor; das PDF eines Antrags liest der Monitor nicht aus.`)
           : gapDe('unreadable', `Unter den Dokumenten des Parlaments ${what} fand der Monitor keine Textgegenüberstellung.`),
         null,
         annex.pdf,
