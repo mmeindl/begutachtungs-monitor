@@ -65,8 +65,11 @@ const ariaLabel = computed(
 <template>
   <!-- One line box whatever the state — matching the citation beside it — so
        a row with several statements keeps citation n and tag n on one line,
-       and so the column does not reflow when the answers arrive. -->
-  <span ref="root" class="flex min-h-6 w-12 shrink-0 items-center">
+       and so the column does not reflow when the answers arrive.
+       The zero-width character gives the empty slot a text baseline. Without
+       it the row's baseline alignment takes the slot's bottom edge and pushes
+       every cell of a row without a PDF 7px down. -->
+  <span ref="root" class="flex min-h-6 w-12 shrink-0 items-center before:content-['\200b']">
     <!-- A plain standalone link, as the citation beside it — the same
          form as DocumentList's format links. -->
     <ExternalLink
