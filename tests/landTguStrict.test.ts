@@ -200,6 +200,13 @@ describe('a quotation right behind the part a line writes anew (23.11.2026)', ()
     expect(quoteRoles('1. Im Inhaltsverzeichnis lautet die Eintragung zu § 3 „Freie Dienstnehmer“.')[0]!.role).toBe('anchor')
     expect(quoteRoles('1. Im Inhaltsverzeichnis lautet der Eintrag zu § 48 „Zugang zu Informationen“.')[0]!.role).toBe('anchor')
   })
+
+  it('reads the old wording in front of a place that stands before its „durch“, and only with nothing else between', () => {
+    expect(quoteRoles('In § 61 wird das Zitat „§§ 4a oder 5“ nach der Wortfolge „Schutz gemäß“ durch das Zitat „§ 4“ ersetzt.').map((q) => q.role)).toEqual(['old', 'anchor', 'new'])
+    expect(quoteRoles('In § 114b wird das Wort „und“ vor „Geburtsdatum“ durch einen Beistrich ersetzt.').map((q) => q.role)).toEqual(['old', 'anchor'])
+    // A verb between: the wording is the one the first clause inserts, and the place belongs to the next.
+    expect(quoteRoles('In § 9 wird nach „A“ das Wort „sonstigen“ eingefügt und nach „B“ durch die Wendung „C“ ersetzt.')[1]!.role).toBe('new')
+  })
 })
 
 describe('draftWording', () => {

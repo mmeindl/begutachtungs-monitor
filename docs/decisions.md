@@ -1682,6 +1682,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   die Eintragung zu § 3" says what the table of contents prints: no wording of
   the §, which it does not account for. Both shapes had no role, so the § stayed
   „nicht geprüft" (Landarbeitsgesetz 2021 § 3, now held and read).
+- **The old wording may stand in front of the place that says where it is**
+  (23.11.2026, `PLACE_BEHIND_RE`): „wird das Zitat „X“ nach der Wortfolge „Y“
+  durch das Zitat „Z“ ersetzt", „das Wort „und“ vor „Geburtsdatum“ durch einen
+  Beistrich". Only with nothing but the place between the quotation and its
+  „durch". The §§ such a line named stayed „nicht geprüft".
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a

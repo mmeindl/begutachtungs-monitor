@@ -353,6 +353,8 @@ const UNIT_WORD = '(?:Wort(?:e|es|folge|folgen|laut|lautes|gruppe)?|Wörter|Wör
  * the old wording the quotation accounted for its own words struck (22.11.2026, a review of the grammar).
  */
 const ANCHOR_RE = new RegExp(`(?<![\\p{L}])(?:[Nn]ach|[Vv]or|[Hh]inter)\\s+(?:(?:de[mnr]\\s+|die\\s+|das\\s+)?(?:\\p{L}+\\s+)?${UNIT_WORD}\\s*)?$`, 'u')
+/** Between an old wording and the quotation that says where it stands, nothing else: „das Zitat „X“ nach der Wortfolge „Y“ durch …". */
+const PLACE_BEHIND_RE = new RegExp(`^\\s*(?:[Nn]ach|[Vv]or|[Hh]inter)\\s+(?:(?:de[mnr]\\s+|die\\s+|das\\s+)?(?:\\p{L}+\\s+)?${UNIT_WORD}\\s*)?$`, 'u')
 const NEW_AFTER_RE = /:\s*$|(?<![\p{L}])(?:lautet|lauten|eingefügt|angefügt|vorangestellt|\p{L}*[Bb]ezeichn?ung(?:en)?|folgende[rnms]?(?:\s+\p{L}+){0,3})\s*$/u
 
 type Role = 'new' | 'old' | 'anchor' | null
@@ -453,6 +455,8 @@ export function quoteRoles(raw: string): { text: string; role: Role; designation
   }
   // „an die Stelle der Wortfolge „X“ die Wortfolge „Y“": the quotation after the replaced one.
   for (let i = 1; i < out.length; i++) if (out[i]!.role === null && out[i - 1]!.role === 'old' && IN_PLACE_OF_RE.test(out[i - 1]!.before) && IN_PLACE_NEW_RE.test(out[i]!.before)) out[i]!.role = 'new'
+  // „das Zitat „X“ nach der Wortfolge „Y“ durch das Zitat „Z“ ersetzt": the place stands between the old wording and its „durch".
+  for (let i = 0; i + 1 < out.length; i++) if (out[i]!.role === null && out[i + 1]!.role === 'anchor' && PLACE_BEHIND_RE.test(out[i]!.after) && /^\s*(?:(?:wird|werden)\s+)?(?:jeweils\s+)?durch(?![\p{L}])/u.test(out[i + 1]!.after)) out[i]!.role = 'old'
   lists()
   // „die Abs. 2 bis 4 erhalten die Absatzbezeichnungen „(1)“ bis „(3)“": the range's second end is a designation the line gives too,
   // not the old wording of an „entfällt" before it („Abs. 1 entfällt; die Abs. 2 bis 4 erhalten …"; 21.11.2026). Never one the
