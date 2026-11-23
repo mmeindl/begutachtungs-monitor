@@ -1280,6 +1280,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   renumbered into its number is marked (`REASON_RENUMBERED`). The whole
   draft, not the instructions for the §: the per-§ reference withheld 12
   such §§, 5 of them sound.
+- **Parliament's margin stamps come off its PDF before the geometry reads
+  it** (23.11.2026, `annex/parliamentPdfStamps.ts`). Every page of its copy
+  carries three runs turned against the text at the outer edge: the page
+  count, the Beilage and the address. Left on, they stand in the columns as
+  words of the law and refuse short pages at the frame check. A run goes
+  only if its text is exactly a stamp's and it stands in the margin, and
+  the frame check then counts what is left.
 - **A Bund PDF annex is cut at an unread page**, as a Land's is, and a cut
   § stays unchecked (`REASON_CUT`, 21.11.2026). No § of GP XXVIII is
   affected.
@@ -3561,10 +3568,12 @@ the reasoning in full stands in that component's header comment.
   proves no absence: a missing Erläuterungen document is „Nicht lesbar",
   never „Nicht veröffentlicht". A kind of document the monitor does not
   read at a source is its scope and no failed reading: „Nicht im Monitor: …
-  ein PDF des Parlaments liest der Monitor nicht aus", and so every
-  sentence about a Bund text held as a PDF only (a Gesetzestext, the
-  Erläuterungen, a Textgegenüberstellung; 22.11.2026, „Nicht lesbar" until
-  then). A scan without a text layer stays „Nicht lesbar": that is one
+  liest der Monitor nicht aus", and so every sentence about a Bund text
+  held as a PDF only that is not read (a Gesetzestext, the Erläuterungen, a
+  draft's or an Antrag's Textgegenüberstellung; 22.11.2026, „Nicht lesbar"
+  until then). A Regierungsvorlage's Textgegenüberstellung is read from
+  Parliament's PDF since 23.11.2026; one that yields nothing is „Nicht
+  lesbar", because there a reading failed. A scan without a text layer stays „Nicht lesbar": that is one
   document's property. Kept apart on purpose: the verification
   check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the Lesefassung's
   per-§ reasons, and the
@@ -3827,7 +3836,10 @@ circular of 10.12.2015).
 |---|---|---|
 | Bund laws „ohne Begutachtung" + „Ausschussbegutachtung" | XXVIII 57 + 8, XXVII 320 + 8 | 205 and 923 federal laws · 12.11.2026 |
 | Bund Initiativanträge with a readable ParlDion Textgegenüberstellung | XXVIII 23 of 44 (11 unreadable, 10 none), XXVII 127 of 293 (73, 93) | enacted laws without a Ministerialentwurf · 12.11.2026 |
-| Bund Vorlagen with a readable Textgegenüberstellung | XXVIII 8 of 21 (12 PDF only, 1 none), XXVII 13 of 35 (13, 9) | same |
+| Bund Vorlagen with a readable Textgegenüberstellung | XXVIII 20 of 21 (8 from HTML, 12 from Parliament's PDF, 1 none), XXVII 25 of 36 (13, 12, one PDF that yields no row, 10 none); 8 of 21 and 13 of 35 on 12.11.2026, before the PDF was read | enacted laws without a Ministerialentwurf, `pnpm corpus:vorlage-pdf` and the built endpoint · 23.11.2026 |
+| The Vorlagen read from Parliament's PDF: §§ shown / withheld | XXVIII 333 / 11, XXVII 215 / 34. Of those shown, without a mark 160 and 51, „nicht bestätigt" 141 and 36, „nicht geprüft" 32 and 128; 118 of the 128 stand in two Sammelgesetze (2310 and 2432 d.B.) whose law boundaries the reader refuses. Not part of the figures on /genauigkeit, which are measured on drafts | 25 documents, 465 pages, none refused · 23.11.2026 |
+| The same with Parliament's margin stamps left on | 18 of the 465 pages refused, §§ shown 484, withheld 94, the stamps' words inside the columns | same |
+| Heap for the largest of them (2310 d.B., 2.0 MB, 125 pages) | 65 MB on top of the process while pdf.js and the parse run; all 25 read in a row on a built server under `--max-old-space-size=320` | same |
 | Salzburg „ohne Begutachtung" | 41 of 452 laws, all Initiativanträge | GP XXV–XXVIII · 10.11.2026 |
 | Salzburg Vorlagen joined by title that carry the heading | 264 of 264 | laws since 2016 · 10.11.2026 |
 | Land laws with ≥ 1 law at its geltende Fassung in RIS | 98.0 % of amending laws (2,720 of 2,776), 97.5 % of all | all nine Länder since 2016 · 10.11.2026 |

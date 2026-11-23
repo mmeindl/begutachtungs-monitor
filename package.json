@@ -36,6 +36,7 @@
     "corpus:novao-forms": "vite-node scripts/corpus/novaoForms.ts --",
     "corpus:skipped": "vite-node scripts/corpus/begutachtungSkipped.ts --",
     "corpus:ohne-begutachtung": "vite-node scripts/corpus/ohneBegutachtung.ts --",
+    "corpus:vorlage-pdf": "vite-node -c vitest.config.ts scripts/corpus/vorlagePdf.ts --",
     "corpus:antraege": "vite-node scripts/corpus/antraege.ts --",
     "corpus:anliegen": "vite-node scripts/corpus/anliegen.ts --",
     "corpus:staatsvertraege": "vite-node scripts/corpus/staatsvertraege.ts --",
