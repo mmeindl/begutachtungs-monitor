@@ -456,6 +456,14 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(blocksWith('1. In § 5 wird das Wort „Behörde“ durch das Wort „Stelle“ ersetzt.'), '§ 5. (entfällt)', current).state).toBe('differs')
   })
 
+  it('reads RIS\'s own note in the left column as no word of the law, also where the word diff cuts it in two (EStG § 42, BWG § 2)', () => {
+    const line = '1. In § 5 Abs. 1 wird das Wort „Behörde“ durch das Wort „Stelle“ ersetzt.'
+    const current = '(1) Die Behörde ist zuständig (Anm. 1). Sie prüft. (Anm.: Z 2 aufgehoben durch BGBl. I Nr. 41/2019)'
+    expect(check(blocksWith(line), '(1) Die Stelle ist zuständig. Sie prüft.', current).state).toBe('holds')
+    // A bracket of the law's own is struck text like any other.
+    expect(check(blocksWith(line), '(1) Die Stelle ist zuständig. Sie prüft.', '(1) Die Behörde ist zuständig (siehe Anm. 1). Sie prüft.').state).toBe('differs')
+  })
+
   it('repeals no unit by a verb that has an object of its own, and reads „Art." as an address (22.11.2026)', () => {
     // B-VG Art. 11, SchUG § 42: „entfällt die Wortfolge „…““ was read as a repeal of the Absatz the line names as its place.
     const current = '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet und andere. Sie ist an Weisungen nicht gebunden.'

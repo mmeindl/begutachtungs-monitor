@@ -1708,6 +1708,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   repealing verb stands (Zivildienstgesetz 1986 §§ 23c, 60 and 63, each read).
   Outside brackets it stays a word, and what the column strikes beside it is
   held as any struck text.
+- **RIS's own note in the left column is no struck text** (23.11.2026,
+  `RIS_NOTE_RE`): „(Anm. 1)" and „(Anm.: Z 2 aufgehoben durch BGBl. …)", whole in
+  their brackets, also where the word diff keeps a figure of the note and cuts it
+  in two. The consolidated text carries them, the ministry's right column does
+  not. EStG § 42 and BWG § 2 hold, each read; nine §§ that differ for another
+  reason lose those words from the objection.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a

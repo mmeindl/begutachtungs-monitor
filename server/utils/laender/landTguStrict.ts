@@ -1667,6 +1667,8 @@ function respace(shown: Marked[], wordings: readonly Wording[]): void {
 }
 
 const REPEALING = new Set(['entfallen', 'entfällt', 'aufgehoben'])
+/** RIS's apparatus inside a § of the consolidated text: a numbered note, or a whole note in brackets. */
+const RIS_NOTE_RE = /\(\s*Anm\.\s*(?:\d+\s*|:[^()]*)\)/gu
 
 /** Whether `needle` stands in `hay` as one stretch. */
 function contains(hay: readonly string[], needle: readonly string[]): boolean {
@@ -1919,7 +1921,8 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
  *    the previous §'s tail, a heading the row cut, or a division heading the
  *    annex prints on the left only); what the caller's
  *    layout reads as no text (the Bund's elision marks and the designations
- *    that introduce them); the words a new stretch keeps of the removed one
+ *    that introduce them); RIS's own notes in the consolidated text („(Anm. 1)",
+ *    `RIS_NOTE_RE`); the words a new stretch keeps of the removed one
  *    beside it; and a designation, where an instruction for the § gives
  *    designations or speaks of them („erhält die Absatzbezeichnung", „als
  *    Abs. 9 bezeichnet"), struck with nothing unaccounted beside it;
@@ -2151,6 +2154,15 @@ function struckAccount(
   left.forEach((l, k) => {
     if (l.p < head || designatedAt(k) || designatedAt(k - 1) || (designations && opensAt(k)) || notText?.[k]) mark(l.p, 'notation')
   })
+  // RIS's own note in the consolidated text („(Anm. 1)", „(Anm.: Z 2 aufgehoben durch BGBl. I Nr. 41/2019)"): no word of the law,
+  // read in the left column as a whole, since the word diff may keep a figure of it and cut the note in two.
+  if (whole.length === left.length) {
+    const text = segments.filter((s) => s.type !== 'inserted').map((s) => s.text).join(' ')
+    for (const note of text.matchAll(RIS_NOTE_RE)) {
+      const from = markedTokens(text.slice(0, note.index)).length
+      for (let k = 0; k < markedTokens(note[0]).length; k++) if (left[from + k]) mark(left[from + k]!.p, 'notation')
+    }
+  }
   let p = 0
   segments.forEach((s, i) => {
     const tokens = markedTokens(s.text)
