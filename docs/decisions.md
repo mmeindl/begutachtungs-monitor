@@ -1734,7 +1734,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   a word the column prints whole is not parted, since „indem" accounted for a
   struck „in dem" (a reader's attack on ORF-G § 31).
 - **A number of the new count stands for the unit a line at or before it
-  renumbered to it** (23.11.2026, `renumberingsOf`, `numberedAs`). „Abs. 7 (neu)"
+  renumbered to it** (23.11.2026, `unitRenumberingsOf`, `numberedAs`). „Abs. 7 (neu)"
   and a line that counts by the new numbers without saying so („§ 5 Abs. 2 und 3
   entfällt; die Abs. 4 bis 9 erhalten …", then „In § 5 Abs. 5 entfällt die
   Zeichenfolge „Abs. 1“", which stands in the old Abs. 7) are read through what
@@ -1750,7 +1750,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   number first, and in the renumbered one only where the printed one lacks the
   wording.
 - **A renumbering line gives credit only where it can be read whole**
-  (23.11.2026, `renumberingsOf`): „X erhält die Bezeichnung „Y“" with X an
+  (23.11.2026, `unitRenumberingsOf`): „X erhält die Bezeichnung „Y“" with X an
   address and as many numbers on both sides, each of X's level. Of the 9,088
   distinct lines of GP XXVIII it reads 119 with 298 pairs. The 78 it cannot read
   (a subject in words, „der letzte Absatz", numbers unquoted) give no number,

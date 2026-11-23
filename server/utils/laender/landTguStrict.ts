@@ -344,8 +344,8 @@ export interface Struck {
   renumbers?: boolean
   /** The §§ a line gives another number („§ 44f erhält die Paragraphenbezeichnung „§ 44g.“", „die §§ 81 und 82 erhalten die Paragraphenbezeichnungen …"): their old text moves away from the number. */
   moves?: string[]
-  /** Every line for the §, in the draft's order, with the units it gives another number (`renumberingsOf`): what a number of the new count stands for at that line. */
-  numbering?: { line: string; renumberings: Renumbering[]; unread: boolean }[]
+  /** Every line for the §, in the draft's order, with the units it gives another number (`unitRenumberingsOf`): what a number of the new count stands for at that line. */
+  numbering?: { line: string; renumberings: UnitRenumbering[]; unread: boolean }[]
 }
 
 const OPEN = '„»'
@@ -846,7 +846,7 @@ export function newNumbers(raw: string): string[] {
 }
 
 /** A unit a line gives another number: „die Abs. 5 bis 9 erhalten die Absatzbezeichnungen „(4)“ bis „(8)“" is five of these. */
-export interface Renumbering { level: number; from: string; to: string; path: AddressPart[] }
+export interface UnitRenumbering { level: number; from: string; to: string; path: AddressPart[] }
 
 /** The noun of a line that speaks of a unit's designation. The § has its own reading (`movedOf`). */
 const UNIT_DESIGNATION_RE = /(?:Absatz|Ziffern?|Litera|Unterabsatz)bezeichn?ung(?:en)?|(?<![\p{L}])Bezeichn?ung(?:en)?(?=\s*[„»]\s*(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*\.?|[a-z]{1,2}\)?)\s*[“”«])|[Nn]ummerierung/gu
@@ -868,13 +868,13 @@ function designationGiven(text: string): { level: number; id: string } | null {
  * both sides, each of the level X is; anything else gives no number, so nothing is credited by it. A line that gives the text
  * of a § its first Absatz („Der bisherige Text des § 4 erhält die Absatzbezeichnung „(1)“") renumbers no unit.
  */
-export function renumberingsOf(raw: string): { renumberings: Renumbering[]; unread: boolean } {
+export function unitRenumberingsOf(raw: string): { renumberings: UnitRenumbering[]; unread: boolean } {
   const line = withoutResidue(raw)
   // The quotations blanked where they stand: an address inside one is wording, and every offset stays the line's.
   // „die Abs. 2, 3, und 4" and „die Abs. 1b (alt) bis 1e (alt)": set off so the address reads as one list.
   const flat = line.replace(QUOTE_RE, (m) => `${m[0]}${' '.repeat(m.length - 2)}${m.at(-1)}`).replace(/(?<=\d),(?=\s+und\s)/gu, ' ').replace(/\(alt\)/gu, '     ')
   const quotes = [...line.matchAll(QUOTE_RE)]
-  const renumberings: Renumbering[] = []
+  const renumberings: UnitRenumbering[] = []
   /** The nouns a clause was read for. */
   const read = new Set<number>()
   for (const verb of flat.matchAll(/(?<![\p{L}])(?:erhält|erhalten)(?![\p{L}])/gu)) {
@@ -1365,7 +1365,7 @@ export function draftWording(blocks: readonly TextBlock[], installed: (unit: Dra
       const roles = run.line === null ? [] : quoteRoles(run.line)
       if (run.line !== null) {
         const struck = struckOf(run)
-        const numbering = renumberingsOf(run.line)
+        const numbering = unitRenumberingsOf(run.line)
         for (const key of keys) {
           const into = (at(draft.law, key).struck ??= { named: [], repealed: [], byPosition: [] })
           into.named.push(...struck.named)
@@ -2268,7 +2268,7 @@ function struckAccount(
       const at = all.findIndex((x) => x.line === line)
       return at < 0 ? [] : all.slice(0, at + 1)
     })
-    const inPlace = (r: Renumbering) => r.level === level && within(k, r.path, ownFor(line), line)
+    const inPlace = (r: UnitRenumbering) => r.level === level && within(k, r.path, ownFor(line), line)
     let now = id
     for (const step of steps) now = step.renumberings.find((r) => r.from === now && inPlace(r))?.to ?? now
     if (!named.includes(now)) return false
