@@ -3856,9 +3856,13 @@ the reasoning in full stands in that component's header comment.
   deletes files past 32 days. It saves the document fetches after a deploy,
   not the cold wait of a comparison: that wait is RIS's query answers, which
   stay in memory.
-- **Memory:** `--max-old-space-size=320`, `MemoryMax=512M`,
-  `MemorySwapMax=0`, so a leak hits V8's clean limit and restarts instead of
-  swapping. Measured peak of the deploy sequence: 217 MB (26.10.2026).
+- **Memory:** `--max-old-space-size=320`, `MemoryMax=704M` (512M until
+  14.11.2026), `MemorySwapMax=0`, so a leak hits V8's clean limit and restarts
+  instead of swapping. Measured on the built server under that heap limit,
+  through the deploy sequence and then every draft's comparison (22./23.11.2026):
+  at most 288 MB of heap before a collection, at most 234 MB live after a full
+  one, no run died. The process's total on a Mac is not production's figure, so
+  compare two revisions on the same machine rather than read one alone.
 - **Measure bundle size only after a clean install.** `node_modules` keeps
   orphaned packages and Nitro's trace picks them up (13.8 MB against
   5.26 MB for one commit).
