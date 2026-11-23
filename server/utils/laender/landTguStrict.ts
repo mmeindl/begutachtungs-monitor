@@ -2169,11 +2169,14 @@ function struckAccount(
         }
       }
     }
-    for (let i = 0; i < tokens.length; i++) {
-      if (vocabulary.has(tokens[i]!)) continue
-      for (let k = 1; k < tokens[i]!.length; k++) {
-        if (!pairs.has(`${tokens[i]!.slice(0, k)} ${tokens[i]!.slice(k)}`)) continue
-        tokens.splice(i, 1, tokens[i]!.slice(0, k), tokens[i]!.slice(k))
+    // …and where the column spells the word both ways („§§ 4a" at one place, „§§ 4 a" at another), the parted form too: the
+    // quoted wording stands at the place that prints it apart (Fremdenpolizeigesetz § 61, 23.11.2026).
+    const parted = [...tokens]
+    for (const list of [tokens, parted]) for (let i = 0; i < list.length; i++) {
+      if (list === tokens && vocabulary.has(list[i]!)) continue
+      for (let k = 1; k < list[i]!.length; k++) {
+        if (!pairs.has(`${list[i]!.slice(0, k)} ${list[i]!.slice(k)}`)) continue
+        list.splice(i, 1, list[i]!.slice(0, k), list[i]!.slice(k))
         break
       }
     }
@@ -2209,7 +2212,9 @@ function struckAccount(
       return around === null || (part.ids.includes(around.id) && at + width <= around.end)
     }))
     named.push({ tokens, law })
-    for (const a of placesOf(words, tokens).filter((x) => inPlace(x, tokens.length))) for (let k = a; k < a + tokens.length; k++) mark(left[k]!.p, 'named')
+    for (const form of parted.length === tokens.length ? [tokens] : [tokens, parted]) {
+      for (const a of placesOf(words, form).filter((x) => inPlace(x, form.length))) for (let k = a; k < a + form.length; k++) mark(left[k]!.p, 'named')
+    }
   }
   // …and a struck stretch that stands in such a wording, though the wording does not stand whole in the column: „Der Leiter der
   // internen Revision [hat.]" where the draft replaces „Der Leiter der internen Revision hat die Anforderungen … zu erfüllen.".

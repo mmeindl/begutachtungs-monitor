@@ -1687,6 +1687,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   durch das Zitat „Z“ ersetzt", „das Wort „und“ vor „Geburtsdatum“ durch einen
   Beistrich". Only with nothing but the place between the quotation and its
   „durch". The §§ such a line named stayed „nicht geprüft".
+- **A quoted wording is also found with a word the column prints apart**
+  (23.11.2026), where the same column prints that word joined at another
+  place: „§§ 4a" and „§§ 4 a" in one Absatz (Fremdenpolizeigesetz § 61). A
+  matter of spacing, the way `respace` reads it for new text.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a

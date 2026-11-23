@@ -416,6 +416,13 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     expect(check(blocksWith('1. In § 5 Abs. 1 2. Satz wird das Wort „nie“ durch das Wort „oft“ ersetzt.'), proposed, current).state).toBe('differs')
   })
 
+  it('finds a quoted wording at the place that prints a word of it apart, though the column prints it joined elsewhere (Fremdenpolizeigesetz § 61)', () => {
+    const current = '(1) Nach §§ 4a oder 5 und nach §§ 4 a oder 5 sowie weiter.'
+    const proposed = '(1) Nach §§ 4a oder 5 und sowie weiter.'
+    expect(check(blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „nach §§ 4a oder 5“.'), proposed, current).state).toBe('holds')
+    expect(check(blocksWith('1. In § 5 Abs. 1 entfällt die Wortfolge „nach §§ 4b oder 5“.'), proposed, current).state).toBe('differs')
+  })
+
   it('repeals no unit by a verb that has an object of its own, and reads „Art." as an address (22.11.2026)', () => {
     // B-VG Art. 11, SchUG § 42: „entfällt die Wortfolge „…““ was read as a repeal of the Absatz the line names as its place.
     const current = '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet und andere. Sie ist an Weisungen nicht gebunden.'
