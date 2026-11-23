@@ -39,6 +39,8 @@
  * today.
  */
 
+import type { PeriodScope } from './harnessRecord'
+
 /**
  * Which drafts a run measured: the span of their `BeginnBegutachtungsfrist`
  * and where the list came from.
@@ -194,6 +196,8 @@ export interface AnnexReport {
   requested?: number
   reached?: number
   unreached?: { id: string; cause: string }[]
+  /** `--nur-periode`: the period the run was cut to (23.11.2026); absent where it read the whole window, as the weekly drift alarm does. */
+  period?: PeriodScope | null
   drafts: AnnexDraftReport[]
 }
 

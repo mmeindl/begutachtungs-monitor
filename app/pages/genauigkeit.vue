@@ -35,6 +35,7 @@ import {
   genauigkeitArten,
   genauigkeitKurz,
   measuredLineDe,
+  partDe,
   shareDe,
   wegFunnel,
   type GenauigkeitArt,
@@ -53,6 +54,7 @@ const drafts = GENAUIGKEIT.lesefassung.funnel.drafts
 const risOnly = GENAUIGKEIT.lesefassung.risOnly
 const annex = GENAUIGKEIT.annex
 const annexShown = annex.marks.shown
+const notMatched = GENAUIGKEIT.lesefassung.funnel.notRun.zuordnung ?? 0
 
 /** The sentences of one kind, under „Im Einzelnen". */
 function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; lines: string[] }[] {
@@ -72,7 +74,7 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
     <p class="mt-3 leading-relaxed text-ink-secondary">
       Der Monitor vergleicht Gesetzestexte und prüft seine Vergleiche: an
       amtlichen Texten, wo es einen dritten Text gibt, sonst mit festen
-      Regeln. Diese Seite sagt, woran er prüft, wie oft er richtig liegt,
+      Regeln. Diese Seite sagt, woran er prüft, was dabei herauskommt,
       welche Fehler die Prüfung übersieht und was nicht gemessen ist.
     </p>
     <p class="mt-2 text-sm text-ink-secondary">
@@ -99,11 +101,13 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
            (20.11.2026): two totals in one sentence is where a reader with
            no legal training stopped. -->
       <p>
-        Bei {{ formatNumberDe(annex.drafts) }} Entwürfen für Gesetze und
-        Verordnungen kann der Monitor die Textgegenüberstellung lesen. Sie
-        enthalten {{ formatNumberDe(annexShown + annex.withheld) }}
-        Paragraphen, {{ formatNumberDe(annexShown) }} davon zeigt der
-        Monitor.
+        Im RIS stehen {{ formatNumberDe(annex.population.listed) }} Entwürfe
+        dieser Gesetzgebungsperiode für Gesetze und Verordnungen.
+        {{ formatNumberDe(annex.population.withAnnex) }} haben eine
+        Textgegenüberstellung, {{ formatNumberDe(annex.drafts) }} davon kann
+        der Monitor lesen und prüfen. Sie enthalten
+        {{ formatNumberDe(annexShown + annex.withheld) }} Paragraphen,
+        {{ formatNumberDe(annexShown) }} davon zeigt der Monitor.
       </p>
       <p>
         Bei den {{ formatNumberDe(drafts) }} Ministerialentwürfen, den
@@ -113,7 +117,7 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         {{ formatNumberDe(funnel.total) }} Paragraphen. Den ganzen
         Paragraphen zeigt der Monitor nur, wenn er ihn bestätigen konnte:
         bei {{ formatNumberDe(funnel.shown) }}, das sind
-        {{ shareDe(funnel.shown, funnel.total) }}&nbsp;%.
+        {{ partDe(funnel.shown, funnel.total) }}&nbsp;%.
       </p>
       <p>
         Fehlt der ganze Paragraph, heißt das nicht, dass etwas falsch ist:
@@ -132,6 +136,22 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
       <Disclosure size="sm" tone="secondary" class="mt-4">
         <template #summary>Was hier nicht mitgezählt ist</template>
         <div class="mt-1 space-y-2 text-sm">
+          <!-- The drafts that drop out before any § is counted (23.11.2026): said, or the totals above read as all of them. -->
+          <p>
+            {{ formatNumberDe(annex.population.listed - annex.population.withAnnex) }}
+            Entwürfe haben keine Textgegenüberstellung. Bei
+            {{ formatNumberDe(annex.population.noClause) }} erkennt der Monitor
+            keine Änderung eines bestehenden Gesetzes, bei
+            {{ formatNumberDe(annex.population.unreadable) }} zeigt er die
+            Gegenüberstellung mit dem Hinweis, dass er ihre Paragraphen keinem
+            einzelnen Gesetz zuordnen kann. Diese Entwürfe sind in den Zahlen
+            oben nicht enthalten.
+          </p>
+          <p v-if="notMatched">
+            {{ formatNumberDe(notMatched) }} Ministerialentwürfe kann der Monitor
+            keinem Eintrag im RIS sicher zuordnen. Ihre Paragraphen sind in den
+            Zahlen oben nicht enthalten.
+          </p>
           <p v-if="funnel.outside">
             {{ formatNumberDe(funnel.outside) }} Paragraphen sind nicht
             mitgezählt: Ein Entwurf streicht sie ganz, dann gibt es keinen
@@ -150,9 +170,9 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
             geänderten Paragraphen ganz, in
             {{ formatNumberDe(risOnly.composing ?? risOnly.drafts) }}
             Entwürfen.<template v-if="risOnly.composing !== undefined && risOnly.drafts > risOnly.composing">
-              {{ formatNumberDe(risOnly.drafts - risOnly.composing) }}
-              weitere Entwürfe erlassen nur Neues oder ändern nichts, was
-              sich zusammensetzen ließe.</template>
+              Bei {{ formatNumberDe(risOnly.drafts - risOnly.composing) }}
+              weiteren erkennt der Monitor keine Änderung, die sich
+              zusammensetzen ließe.</template>
           </p>
           <p>
             Nicht mitgezählt sind die Textgegenüberstellungen von
@@ -170,8 +190,10 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         oder einen Absatz und zählen, wie viele dieser Fehler die Prüfung
         bemerkt. Das zeigen die Balken. Sie sagen nicht, wie oft der Monitor
         falsch liegt: Was die Prüfung bemerkt, wird nicht
-        gezeigt oder trägt einen Vermerk. Nur beim Vergleich der Fassungen ist
-        es umgekehrt: Dort soll jede eingebaute Änderung als Änderung erscheinen.
+        gezeigt oder trägt einen Vermerk. Ein Paragraph kann mehrere dieser
+        Fehler abbekommen, die Versuche sind also nicht lauter verschiedene
+        Paragraphen. Nur beim Vergleich der Fassungen ist es umgekehrt: Dort
+        soll jede eingebaute Änderung als Änderung erscheinen.
       </p>
       <div class="mt-6 space-y-10">
         <section

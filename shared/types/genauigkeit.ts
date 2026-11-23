@@ -81,6 +81,28 @@ export interface GenauigkeitRecord {
        * before 20.11.2026; no sentence reads it yet.
        */
       witnessed?: { shown: number; identical: number }
+      /**
+       * The same laws on the path a reader meets (`kons.ts --entwurf`,
+       * 23.11.2026): the page's own composition of each draft, held against
+       * the enacted law where the draft's instructions went into it unchanged
+       * on the same text in force. The figures above apply the ENACTED
+       * instructions, which no page does.
+       */
+      draftPath: {
+        drafts: number
+        failed: number
+        shown: number
+        /** §§ with one right answer: same instruction, same text in force. */
+        comparable: number
+        /** Of those, word for word the enacted law. */
+        identical: number
+        /** The comparable §§ that are not, by name. */
+        differs: { me: string; law: string; id: string }[]
+        instructionChanged: number
+        stockMoved: number
+        noInstructionLine: number
+        notAmended: number
+      }
     }
     /** Faults injected into confirmed results (`faultInjection.ts`, its result classes). */
     faults: GenauigkeitPaths<GenauigkeitFault[]>
@@ -92,6 +114,8 @@ export interface GenauigkeitRecord {
       causes: Partial<Record<ConsolidatedWithheldCause, number>>
       /** Of `shown`, those shown on the draft's own text where the annex did not confirm them (`draftWitness`); absent in rounds before 20.11.2026. */
       witnessed?: number
+      /** Drafts the engine did not run on, per reason: they have no §§ in `changed` (23.11.2026). */
+      notRun: Record<string, number>
     }
     /**
      * The same for the drafts that stand in RIS only (`accounting.ts --ris`).
@@ -99,13 +123,19 @@ export interface GenauigkeitRecord {
      * a law enacted anew); `composing`: the drafts with at least one § that
      * can be composed. Both absent in rounds before 21.11.2026.
      */
-    risOnly: { drafts: number; changed: number; shown: number; outside?: number; composing?: number; witnessed?: number }
+    risOnly: { drafts: number; changed: number; shown: number; outside?: number; composing?: number; witnessed?: number; notRun: Record<string, number> }
   }
 
   /** „Was ändert der Entwurf?": the ministry's Textgegenüberstellung, checked against RIS and the draft. */
   annex: {
     /** Drafts of the period with a readable annex (`annexPdf.ts`, both paths). */
     drafts: number
+    /**
+     * The whole of which `drafts` is a part (23.11.2026): the period's drafts
+     * in RIS, those with an annex, those read, those with no amending clause
+     * (mostly new laws), and those whose annex the reader refuses.
+     */
+    population: { listed: number; withAnnex: number; readable: number; noClause: number; unreadable: number }
     confirmed: number
     withheld: number
     /** Of the withheld, because the annex's text in force is not RIS's. */
@@ -160,6 +190,8 @@ export interface GenauigkeitRecord {
   }
 
   laender: {
+    /** When the Länder's list was fetched: their harnesses read it from the cache, so it can be older than `date`. */
+    listFetchedAt: string | null
     /** A Land's Textgegenüberstellung, its right column against the draft (`landGuard.ts`). */
     tgu: {
       lands: string[]
@@ -168,14 +200,26 @@ export interface GenauigkeitRecord {
       compared: number
       /** Of those, the §§ the page shows. */
       shown: number
+      /** §§ of the same documents withheld by any check, the earlier ones included (`compared` only holds what passed them). */
+      withheldAll: number
+      /** Kärnten's §§ shown without the draft rules, which it is not asked of: each carries „nicht geprüft". */
+      kaernten: { shown: number }
       /**
        * The right column word for word against the wording the draft
        * quotes for the § (`landTguStrict.ts`, 20.11.2026): `held` are
        * shown, `differs` withheld, `unchecked` shown on the older rule
        * alone (the new words occur in the draft).
        */
-      /** `onlyStruck`: of `held`, §§ that add no word: nothing new to hold, and the Länder's check does not read what they strike. */
-      strict: { held: number; differs: number; unchecked: number; onlyStruck: number }
+      /**
+       * `onlyStruck`: of `held`, §§ that add no word: nothing new to hold, and the Länder's check does not read what they strike.
+       * `noWordCompared`: of `held`, §§ with no new word compared, those and the ones whose new text is a bare designation.
+       * `markedHeld`: of `held`, §§ shown with „nicht geprüft" because what they strike could not be confirmed (`struckNotHeld`).
+       */
+      strict: { held: number; differs: number; unchecked: number; onlyStruck: number; noWordCompared: number; markedHeld: number }
+      /** A word, figure or citation misread in the left column, over the §§ without a mark: caught where the § is withheld or marked. */
+      left: GenauigkeitFault[]
+      /** A sentence the draft keeps, shown as struck: caught where the § is withheld or carries „nicht geprüft". */
+      struckKept: GenauigkeitFault
       /** §§ with enough new words for the older rule to judge. */
       judged: number
       /** Of those, whose new text the draft carries. */
@@ -188,8 +232,16 @@ export interface GenauigkeitRecord {
       compared: number
       /** Invariant hits not accounted for; must be 0. */
       hits: number
-      /** Hits that are the documents' own, each with its reason (`landStationsAccepted.json`). */
+      /** Hits read and accepted, each with its reason (`landStationsAccepted.json`). */
       accepted: number
+      /** Of those, an open fault of our reader rather than the documents' own. */
+      acceptedReader: number
+      /** Pairs that could not be compared at all (`pairs - compared`). */
+      notCompared: number
+      /** The Länder with at least one pair compared. */
+      lands: string[]
+      /** Oberösterreich's committee text against its Landesgesetzblatt, the Länder's one null comparison. */
+      nullComparison: { units: number; residues: number; substantive: number }
       /** Instructions withheld because one side did not read the text they announce. */
       withheld: number
       withheldPairs: number

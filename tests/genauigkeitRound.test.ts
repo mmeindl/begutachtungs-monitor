@@ -13,10 +13,11 @@ const AT = '2026-11-20T12:00:00.000Z'
 const COMMIT = 'a147acce'
 const stamp = { at: AT, commit: COMMIT }
 const reach = (n: number) => ({ requested: n, reached: n, unreached: [] })
+const period = { gp: 'XXVIII', from: '2024-10-24', to: null, listed: 120, complete: true }
 
 function faultRecord(path: 'pdf' | 'table') {
   return {
-    ...stamp, ...reach(120), path, drafts: 100,
+    ...stamp, ...reach(120), path, period, drafts: 100,
     annex: [{ key: 'L', tried: 50, caught: 30 }],
     result: [
       { key: 'E', tried: 100, caught: 100, floored: true },
@@ -40,19 +41,34 @@ function round(): Record<string, any> {
       gate: { 'plausibel|bestätigt|identisch|ohne Verweigerung|XML': 459, 'plausibel|bestätigt|unvollständig|ohne Verweigerung|PDF': 1 },
       markers: { 'gleich|bestätigt|plausibel': 459, 'abweichend|widersprochen|plausibel': 2, 'abweichend|kein Orakel|unplausibel': 5 },
       witness: { 'gezeigt|identisch': 152, 'gezeigt|unvollständig': 1, 'pruefung|identisch': 95, 'kein PDF|identisch': 4 },
+      draftPath: { drafts: 3, failed: 0, shown: 20, comparable: 10, identical: 10, differs: [], instructionChanged: 8, stockMoved: 1, noInstructionLine: 0, notAmended: 1 },
     },
     'fi-pdf.json': faultRecord('pdf'),
     'fi-xml.json': faultRecord('table'),
     'acc.json': { ...stamp, ...reach(2), reports: [{ citation: '1/ME', touched: 3, shown: 2, causes: { verweigert: 1 }, failures: [] }, { citation: '2/ME', touched: 1, shown: 1, causes: {}, failures: [] }] },
     'acc-ris.json': { ...stamp, ...reach(1), reports: [{ citation: '4D9E1224', touched: 1, shown: 0, causes: { 'kein-anhang': 1 }, failures: [] }] },
-    'annex-pdf.json': { ...stamp, drafts: [{ note: null, verifiedParas: 5, withheldParas: 1, withheldStanding: 0, uncheckedParas: 0, shownParas: 5, unconfirmedParas: 1, markedParas: 0, markedWordParas: 1 }] },
-    'annex-xml.json': { ...stamp, drafts: [] },
+    'annex-pdf.json': { ...stamp, period, drafts: [{ note: null, verifiedParas: 5, withheldParas: 1, withheldStanding: 0, uncheckedParas: 0, shownParas: 5, unconfirmedParas: 1, markedParas: 0, markedWordParas: 1 }] },
+    'annex-xml.json': { ...stamp, period, drafts: [] },
     'station.json': {
       ...stamp, ...reach(91), drafts: 91, pairs: 453, breaches: [], residues: [], nullUnits: { 'parlament-bgbl': 10, 'html-xml': 5 },
       mutations: { units: 50, classes: { ziffer: { tried: 40, änderung: 40, redaktionell: 0, unverändert: 0, unsichtbar: 0, ungepaart: 0 }, minus: { tried: 30, änderung: 28, redaktionell: 1, unverändert: 1, unsichtbar: 0, ungepaart: 0 } } },
     },
-    'land-guard/summary.json': { ...stamp, lands: ['Wien'], documents: 1, compared: 2, shown: 2, judged: 1, found: 1, faults: [], strict: { held: 2, differs: 0, unchecked: 0, onlyStruck: 1 } },
-    'land-st/summary.json': { ...stamp, pairs: 1, compared: 1, hits: 0, accepted: 0, withheld: 0, withheldPairs: 0, unread: 0, unreadPairs: 0, stale: 0 },
+    'land-guard/summary.json': { ...stamp, lands: ['Wien'], documents: 1, compared: 2, shown: 2, judged: 1, found: 1, faults: [], strict: { held: 2, differs: 0, unchecked: 0, onlyStruck: 1, noWordCompared: 1, markedHeld: 1 },
+      leftColumn: { faults: [{ key: 'Zahl links', beforeUnmarked: { tried: 10, unmarked: 4 } }] },
+      struck: { keptSentenceStruck: { beforeUnmarked: 10, caught: 1 } },
+      windows: { w: { listFetchedAt: '2026-11-04T14:24:46.791Z' } },
+      reach: { w: { requested: 1, answered: 1, incomplete: 0, noDetail: 0, noTgu: 0, pdfMissing: 0, failed: 0 } },
+      floor: { pct: 95, minTries: 20, classes: [{ key: 'Wort', verdict: 'gehalten' }] },
+      baseline: { file: 'b.json', at: AT, findings: 0 },
+      accounting: { documents: 2, compared: 3, shown: 3, withheld: 2, both: 0, neither: 0, unknownShown: 0 },
+      kaernten: { shownChangedOrNew: 1, withheld: 1 },
+    },
+    'land-st/summary.json': {
+      ...stamp, pairs: 1, compared: 1, hits: 0, accepted: 0, acceptedReader: 0, withheld: 0, withheldPairs: 0, unread: 0, unreadPairs: 0, stale: 0, breaches: 0,
+      lands: { w: { requested: 1, compared: 1, unavailable: 0, missing: 0, errored: 0 } },
+      mutations: { misses: [] },
+      nullComparison: { units: 5, residues: 1, substantive: 0, came: 0, went: 0 },
+    },
   }
 }
 
@@ -233,7 +249,7 @@ describe('the bench\'s designations and its second witness', () => {
   it('refuses a bench where a § the oracle confirmed carries other designations than the enacted text', () => {
     const r = round()
     r['kons.json'].markers['abweichend|bestätigt|unplausibel'] = 1
-    expect(refusals(r)).toEqual(['kons.json: 1 § the oracle confirmed deviates from the enacted text in its designations („(2)", „3.", „b)"): the page would show the law under the wrong numbers'])
+    expect(refusals(r)).toEqual(['kons.json: 1 § the page would show deviates from the enacted text in its designations („(2)", „3.", „b)"): the page would show the law under the wrong numbers'])
   })
 
   it('refuses a bench record written before the designations were counted', () => {
@@ -328,7 +344,7 @@ describe('what the figures count', () => {
     ]
     records['acc-ris.json'].requested = 3
     records['acc-ris.json'].reached = 3
-    expect(build(records).lesefassung.risOnly).toEqual({ drafts: 3, changed: 8, shown: 2, outside: 5, composing: 1, witnessed: 0 })
+    expect(build(records).lesefassung.risOnly).toEqual({ drafts: 3, changed: 8, shown: 2, outside: 5, composing: 1, witnessed: 0, notRun: {} })
   })
 
   it('carries the changes injected into the station comparison, caught where the page shows a change', () => {
@@ -340,5 +356,77 @@ describe('what the figures count', () => {
     const records = round()
     delete records['station.json'].mutations
     expect(refusals(records)).toEqual([expect.stringMatching(/station\.json.*--mutationen/)])
+  })
+})
+
+describe('what the audit of 23.11.2026 found the builder let through', () => {
+  it('refuses a record that read the whole list instead of the period', () => {
+    const records = round()
+    records['annex-pdf.json'].period = null
+    expect(refusals(records)).toEqual([expect.stringMatching(/annex-pdf\.json.*--nur-periode/)])
+  })
+
+  it('refuses a list that ends inside the period', () => {
+    const records = round()
+    records['fi-xml.json'].period = { ...period, complete: false }
+    expect(refusals(records)).toEqual([expect.stringMatching(/fi-xml\.json.*--limit/)])
+  })
+
+  it('refuses two annex records over different lists', () => {
+    const records = round()
+    records['annex-xml.json'].period = { ...period, listed: 119 }
+    expect(refusals(records)).toEqual([expect.stringMatching(/different lists/)])
+  })
+
+  it('refuses a bench without the draft path, and one that could not compose a draft', () => {
+    const without = round()
+    delete without['kons.json'].draftPath
+    expect(refusals(without)).toEqual([expect.stringMatching(/--entwurf/)])
+    const failed = round()
+    failed['kons.json'].draftPath.failed = 1
+    expect(refusals(failed)).toEqual([expect.stringMatching(/could not be composed/)])
+  })
+
+  it('refuses a § the second witness shows under designations the law does not carry', () => {
+    const records = round()
+    records['kons.json'].markers['abweichend|widersprochen|plausibel|gezeigt'] = 1
+    expect(refusals(records)).toEqual([expect.stringMatching(/kons\.json.*designations/)])
+  })
+
+  it('refuses a Land run over part of its corpus', () => {
+    const stations = round()
+    stations['land-st/summary.json'].lands.w = { requested: 10, compared: 1, unavailable: 0, missing: 9, errored: 0 }
+    expect(refusals(stations)).toEqual([expect.stringMatching(/land-st.*compared 1 of 10/)])
+    const guard = round()
+    guard['land-guard/summary.json'].reach.w.pdfMissing = 3
+    expect(refusals(guard)).toEqual([expect.stringMatching(/land-guard.*did not reach every document/)])
+  })
+
+  it('refuses a Land run with breaches, missed changes, a failed floor or baseline findings', () => {
+    const cases: [(r: Record<string, any>) => void, RegExp][] = [
+      [(r) => { r['land-st/summary.json'].breaches = 2 }, /land-st.*breaches/],
+      [(r) => { r['land-st/summary.json'].mutations.misses = ['x'] }, /land-st.*not shown as a change/],
+      [(r) => { r['land-st/summary.json'].nullComparison.came = 1 }, /land-st.*null comparison/],
+      [(r) => { r['land-guard/summary.json'].floor = null }, /land-guard.*no floor/],
+      [(r) => { r['land-guard/summary.json'].floor.classes[0].verdict = 'verfehlt' }, /land-guard.*below its floor/],
+      [(r) => { r['land-guard/summary.json'].baseline = null }, /land-guard.*baseline/],
+      [(r) => { r['land-guard/summary.json'].baseline.findings = 2 }, /land-guard.*against the baseline/],
+      [(r) => { r['land-guard/summary.json'].accounting.neither = 1 }, /land-guard.*does not balance/],
+    ]
+    for (const [breakIt, reason] of cases) {
+      const records = round()
+      breakIt(records)
+      expect(refusals(records)).toEqual([expect.stringMatching(reason)])
+    }
+  })
+
+  it('counts the period\'s drafts by where they ended, and the Länder\'s withheld without Kärnten', () => {
+    const records = round()
+    records['annex-pdf.json'].drafts.push({ note: 'keine Promulgationsklausel — Stammgesetz oder unlesbar', verifiedParas: 0, withheldParas: 0, withheldStanding: 0, uncheckedParas: 0 }, { note: 'verweigert: x', verifiedParas: 0, withheldParas: 0, withheldStanding: 0, uncheckedParas: 0 })
+    const r = build(records)
+    expect(r.annex.population).toEqual({ listed: 120, withAnnex: 3, readable: 1, noClause: 1, unreadable: 1 })
+    expect(r.laender.tgu.withheldAll).toBe(1)
+    expect(r.laender.tgu.left).toEqual([{ key: 'Zahl links', tried: 10, caught: 6 }])
+    expect(r.laender.listFetchedAt).toBe('2026-11-04T14:24:46.791Z')
   })
 })

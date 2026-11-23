@@ -25,7 +25,7 @@
  * a hairline frame, the box grammar's „to consult".
  */
 import { formatNumberDe } from '#shared/utils/format'
-import { FUNNEL_GROUP_WHY_DE, GENAUIGKEIT_WEG, WEG_BEISPIEL, wegFunnel } from '#shared/utils/genauigkeit'
+import { FUNNEL_GROUP_WHY_DE, GENAUIGKEIT_WEG, WEG_BEISPIEL, partDe, wegFunnel } from '#shared/utils/genauigkeit'
 import { risSource } from '#shared/utils/provenance'
 import { lesefassungCauseText } from '~/utils/lesefassung'
 
@@ -40,7 +40,7 @@ const sources = [risSource('Geltender Text'), risSource('Entwurf'), risSource('T
  * for a catch rate: these are parts of one whole, and rounded down they
  * added up to 99,8 %.
  */
-const figure = (count: number) => `${formatNumberDe(count)} Paragraphen (${((100 * count) / funnel.total).toFixed(1).replace('.', ',')}\u00a0%)`
+const figure = (count: number) => `${formatNumberDe(count)} Paragraphen (${partDe(count, funnel.total)}\u00a0%)`
 </script>
 
 <template>

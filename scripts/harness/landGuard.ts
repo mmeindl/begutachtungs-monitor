@@ -220,6 +220,8 @@ interface UnitRecord {
   notInDraft: boolean
   /** The strict check (`landTguStrict.ts`): held word for word, differing, or not held this way — with why, and the words either side lacks. */
   strict: 'holds' | 'differs' | 'unchecked'
+  /** New words the strict check compared: 0 on a § that holds only because it had none to compare (23.11.2026). */
+  strictNewWords: number
   strictReason: string | null
   strictNotInDraft: string[]
   strictNotShown: string[]
@@ -452,6 +454,7 @@ for (const item of items) {
         wholeDraft: guard.wholeDraft.has(i),
         notInDraft: check.notInDraft,
         strict: strict?.state ?? 'unchecked',
+        strictNewWords: strict?.newWords ?? 0,
         strictReason: strict?.reason ?? (guard.read ? null : 'der Entwurf wurde nicht gelesen'),
         strictNotInDraft: strict?.notInDraft ?? [],
         strictNotShown: strict?.notShown ?? [],
@@ -1056,6 +1059,10 @@ writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify({
   strict: {
     held: units.filter((u) => u.strict === 'holds').length,
     onlyStruck: units.filter((u) => u.strict === 'holds' && !/[\p{L}\p{N}]/u.test(u.inserted ?? '')).length,
+    // Of `held`, §§ with no new word compared: those that only strike, and those whose new text is a bare designation.
+    noWordCompared: units.filter((u) => u.strict === 'holds' && u.strictNewWords === 0).length,
+    // Of `held`, §§ shown with „nicht geprüft" for what they strike (`struckNotHeld`, 23.11.2026).
+    markedHeld: units.filter((u) => u.shown && u.strict === 'holds' && u.marked).length,
     differs: units.filter((u) => u.strict === 'differs').length,
     unchecked: units.filter((u) => u.strict === 'unchecked').length,
     faultsWhereHeld: FAULTS.map((fault) => {

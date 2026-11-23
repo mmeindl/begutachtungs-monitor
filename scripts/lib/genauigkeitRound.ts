@@ -16,10 +16,15 @@
  * went onto the page as a figure.
  */
 import type { ConsolidatedWithheldCause, GenauigkeitFault, GenauigkeitRecord } from '../../shared/types'
-import { DIRTY, FLOOR_MIN_TRIES, UNKNOWN_COMMIT } from './harnessRecord'
+import { misnumberedShown } from '../harness/konsJudge'
+import { DIRTY, FLOOR_MIN_TRIES, UNKNOWN_COMMIT, type PeriodScope } from './harnessRecord'
+import type { DraftPathRecord } from './konsDraftPath'
 
 /** The floor the fault records have to have been held to (`faultInjection.ts --mindestens`). */
 export const FLOOR_PERCENT = 95
+
+/** The period the page names; every record that reads the Begut list has to have been cut to it (`--nur-periode`). */
+const ROUND_GP = 'XXVIII'
 
 export interface RoundOptions {
   /** `--erlaube-ungehalten=<Klasse,…>`: floored classes that may stand with fewer than 20 tries, written into the record. */
@@ -59,6 +64,8 @@ interface KonsRecord extends Stamped {
   markers?: Record<string, number>
   /** The second witness over the plausible §§ the oracle contradicts: `Ausgang|Ergebnis`. */
   witness?: Record<string, number>
+  /** `--entwurf`: the page's own composition of the drafts, against the law. */
+  draftPath?: DraftPathRecord
 }
 
 /** `floor` on a floored class: „gehalten", „verfehlt", „nicht gehalten" (tried too seldom), or „nicht anwendbar" where the class cannot occur on the path. */
@@ -67,6 +74,7 @@ interface FaultClass extends GenauigkeitFault { floored?: boolean; floor?: strin
 interface AnnexFaultClass extends GenauigkeitFault { alreadyWithheld?: number }
 interface FaultRecord extends Stamped {
   path: 'pdf' | 'table'
+  period?: PeriodScope | null
   drafts: number
   annex: AnnexFaultClass[]
   result: FaultClass[]
@@ -83,10 +91,11 @@ interface FaultRecord extends Stamped {
 }
 
 interface AccountingRecord extends Stamped {
-  reports: { citation: string; touched: number; shown: number; witnessed?: number; causes: Record<string, number>; failures?: string[] }[]
+  reports: { citation: string; touched: number; shown: number; witnessed?: number; notRun?: string | null; causes: Record<string, number>; failures?: string[] }[]
 }
 
 interface AnnexRecord extends Stamped {
+  period?: PeriodScope | null
   drafts: {
     note: string | null
     verifiedParas: number
@@ -111,8 +120,34 @@ interface StationRecord extends Stamped {
   mutations?: { units: number; classes: Record<string, { tried: number; änderung: number }> }
 }
 
-type LandGuardRecord = Stamped & { lands: string[]; documents: number; compared: number; shown: number; judged: number; found: number; faults: GenauigkeitFault[]; strict: { held: number; differs: number; unchecked: number; onlyStruck: number } }
-type LandStationsRecord = Stamped & GenauigkeitRecord['laender']['stations'] & { stale: number }
+type LandGuardRecord = Stamped & {
+  lands: string[]
+  documents: number
+  compared: number
+  shown: number
+  judged: number
+  found: number
+  faults: GenauigkeitFault[]
+  strict: { held: number; differs: number; unchecked: number; onlyStruck: number; noWordCompared?: number; markedHeld?: number }
+  leftColumn?: { faults: { key: string; beforeUnmarked: { tried: number; unmarked: number } }[] }
+  struck?: { keptSentenceStruck: { beforeUnmarked: number; caught: number } }
+  windows?: Record<string, { listFetchedAt: string }>
+  /** Per Land, where each document of the list ended. */
+  reach?: Record<string, { incomplete: number; noDetail: number; pdfMissing: number; failed: number }>
+  floor?: { classes: { key: string; verdict: string }[] } | null
+  baseline?: { findings: number } | null
+  accounting?: { withheld: number; both: number; neither: number; unknownShown: number }
+  /** Kärnten stands apart: its comparison is shown without the draft rules. */
+  kaernten?: { shownChangedOrNew: number; withheld: number }
+}
+type LandStationsRecord = Stamped & Omit<GenauigkeitRecord['laender']['stations'], 'lands' | 'notCompared' | 'acceptedReader' | 'nullComparison'> & {
+  stale: number
+  breaches?: number
+  acceptedReader?: number
+  lands?: Record<string, { requested: number; compared: number; unavailable: number; missing: number; errored: number }>
+  mutations?: { misses?: unknown[] }
+  nullComparison?: { units: number; residues: number; substantive: number; came: number; went: number }
+}
 
 /** The records a round reads, and the ones that read a corpus and must say how much of it they reached. */
 const CORPUS_RECORDS = ['kons.json', 'fi-pdf.json', 'fi-xml.json', 'station.json', 'acc.json', 'acc-ris.json'] as const
@@ -191,14 +226,27 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
   const tallied = (tally: Record<string, number>, pred: (p: string[]) => boolean): number =>
     Object.entries(tally).filter(([k]) => pred(k.split('|'))).reduce((n, [, v]) => n + v, 0)
 
-  // „identisch" compares the text without its designations: a confirmed §
-  // under the wrong „(2)" would count as the law and be shown (19.11.2026).
+  // „identisch" compares the text without its designations: a shown § under
+  // the wrong „(2)" would count as the law (19.11.2026). Shown means confirmed
+  // by the oracle or released by the second witness (23.11.2026: only the
+  // first were asked here, though the page shows both).
   if (!kons.markers) refusals.push('kons.json was written before the designations were counted (no "markers")')
   else {
-    const misnumbered = tallied(kons.markers, (p) => p[0] === 'abweichend' && p[1] === 'bestätigt')
-    const which = misnumbered === 1 ? '1 § the oracle confirmed deviates from the enacted text in its' : `${misnumbered} §§ the oracle confirmed deviate from the enacted text in their`
+    const misnumbered = misnumberedShown(kons.markers)
+    const which = misnumbered === 1 ? '1 § the page would show deviates from the enacted text in its' : `${misnumbered} §§ the page would show deviate from the enacted text in their`
     if (misnumbered) refusals.push(`kons.json: ${which} designations („(2)", „3.", „b)"): the page would show the law under the wrong numbers`)
   }
+  // The bench applies the enacted instructions; a reader meets the draft's (23.11.2026, `lib/konsDraftPath.ts`).
+  if (!kons.draftPath) refusals.push('kons.json does not score the draft path (no "draftPath"): run kons.ts with --entwurf')
+  else if (kons.draftPath.failed) refusals.push(`kons.json: ${kons.draftPath.failed} draft(s) could not be composed on the draft path`)
+
+  // One period (23.11.2026): RIS ignores the period filter, and the list's 400 newest reached into the one before.
+  for (const [name, r] of [['fi-pdf.json', faults.pdf], ['fi-xml.json', faults.table], ['annex-pdf.json', annexPdf], ['annex-xml.json', annexXml]] as const) {
+    if (!r.period) refusals.push(`${name} was not cut to the period: run it with --nur-periode`)
+    else if (r.period.gp !== ROUND_GP) refusals.push(`${name} measured GP ${r.period.gp}, the page names ${ROUND_GP}`)
+    else if (!r.period.complete) refusals.push(`${name}: the list ends inside GP ${ROUND_GP}, so drafts of the period lie beyond it: raise --limit`)
+  }
+  if (annexPdf.period && annexXml.period && annexPdf.period.listed !== annexXml.period.listed) refusals.push(`the two annex records read different lists (${annexPdf.period.listed} and ${annexXml.period.listed} drafts of the period)`)
 
   for (const [path, record] of Object.entries(faults)) {
     const name = `fi-${path === 'table' ? 'xml' : 'pdf'}.json`
@@ -265,7 +313,10 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
     const outsideOf = (r: AccountingRecord['reports'][number]): number => (r.causes.entfaellt ?? 0) + (r.causes['neu-erlassen'] ?? 0)
     const outside = record.reports.reduce((n, r) => n + outsideOf(r), 0)
     const composing = record.reports.filter((r) => r.touched - outsideOf(r) > 0).length
-    return { drafts: record.reports.length, changed, shown: shownCount, causes: sorted, witnessed, outside, composing }
+    // A draft the engine did not run on has no §§ in `changed`: said per reason, or it would drop out of the figure unseen (23.11.2026).
+    const notRun: Record<string, number> = {}
+    for (const r of record.reports) if (r.notRun) notRun[r.notRun] = (notRun[r.notRun] ?? 0) + 1
+    return { drafts: record.reports.length, changed, shown: shownCount, causes: sorted, witnessed, outside, composing, notRun }
   }
   const accounted = funnel('acc.json', acc)
   const risOnly = funnel('acc-ris.json', accRis)
@@ -293,6 +344,10 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
     unconfirmed: annexSum((d) => d.unconfirmedParas ?? 0),
     unchecked: annexSum((d) => (d.markedParas ?? 0) + (d.markedWordParas ?? 0)),
   }
+  /** The period's drafts on the two annex paths, and where each ended (23.11.2026): a share of „the drafts we can read" says nothing without the rest. */
+  const withAnnex = [...annexPdf.drafts, ...annexXml.drafts]
+  const noClause = withAnnex.filter((d) => d.note?.startsWith('keine Promulgationsklausel')).length
+  const population = { listed: annexPdf.period?.listed ?? 0, withAnnex: withAnnex.length, readable: gated.length, noClause, unreadable: withAnnex.length - gated.length - noClause }
   const chainOf = (record: FaultRecord) => (record.chain ?? []).map((c) => ({ key: c.key, tried: c.tried, caught: c.withheld + c.marked, withheld: c.withheld, ...(c.floored && c.floor === 'gehalten' ? { held: true } : {}) }))
 
   /* --- The Bund's stations and the Länder ------------------------------- */
@@ -302,6 +357,27 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
   if (!station.mutations) refusals.push('station.json was not held to faults: run station.ts with --mutationen')
   if (landStations.hits) refusals.push(`land-st/summary.json records ${landStations.hits} invariant hits not accounted for`)
   if (landStations.stale) refusals.push(`land-st/summary.json holds ${landStations.stale} stale accepted hits`)
+  // The Länder records carry no requested/reached (23.11.2026): what they say instead is held here, or a run over a tenth of the corpus went through.
+  if (landStations.breaches) refusals.push(`land-st/summary.json records ${landStations.breaches} invariant breaches`)
+  if (landStations.mutations?.misses?.length) refusals.push(`land-st/summary.json: ${landStations.mutations.misses.length} injected changes were not shown as a change`)
+  if (landStations.nullComparison?.came || landStations.nullComparison?.went) refusals.push('land-st/summary.json: the null comparison moved against its baseline')
+  if (!landStations.lands) refusals.push('land-st/summary.json does not say what it compared per Land (no "lands")')
+  for (const [land, c] of Object.entries(landStations.lands ?? {})) {
+    if (c.missing || c.errored || c.compared + c.unavailable !== c.requested) refusals.push(`land-st/summary.json: ${land} compared ${c.compared} of ${c.requested} pairs (${c.unavailable} not readable, ${c.missing} missing, ${c.errored} failed)`)
+  }
+  if (landGuard.strict?.noWordCompared === undefined) refusals.push('land-guard/summary.json does not count the §§ held with no word compared (no "noWordCompared")')
+  if (landGuard.strict?.markedHeld === undefined) refusals.push('land-guard/summary.json does not count the §§ marked for what they strike (no "markedHeld")')
+  if (!landGuard.leftColumn || !landGuard.struck) refusals.push('land-guard/summary.json does not measure the left column and struck text')
+  if (!landGuard.reach) refusals.push('land-guard/summary.json does not say what it reached (no "reach")')
+  for (const [land, c] of Object.entries(landGuard.reach ?? {})) {
+    if (c.incomplete || c.noDetail || c.pdfMissing || c.failed) refusals.push(`land-guard/summary.json: ${land} did not reach every document (${c.noDetail} without detail, ${c.pdfMissing} PDFs missing, ${c.incomplete} incomplete, ${c.failed} failed)`)
+  }
+  if (!landGuard.floor) refusals.push('land-guard/summary.json carries no floor result: run landGuard.ts with --mindestens=95')
+  for (const c of landGuard.floor?.classes ?? []) if (c.verdict === 'verfehlt') refusals.push(`land-guard/summary.json: the class „${c.key}" fell below its floor`)
+  if (!landGuard.baseline) refusals.push('land-guard/summary.json was not compared against its baseline: run landGuard.ts with --baseline')
+  else if (landGuard.baseline.findings) refusals.push(`land-guard/summary.json: ${landGuard.baseline.findings} findings against the baseline`)
+  if (!landGuard.accounting || !landGuard.kaernten) refusals.push('land-guard/summary.json does not carry the page accounting')
+  else if (landGuard.accounting.both || landGuard.accounting.neither || landGuard.accounting.unknownShown) refusals.push('land-guard/summary.json: the page accounting does not balance')
 
   if (refusals.length) throw new RoundRefused(refusals)
 
@@ -325,13 +401,15 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
         // ones included, which no state of the page would have shown.
         ungated: { shown: gate((p) => p[0] === 'plausibel'), identical: gate((p) => p[0] === 'plausibel' && p[2] === 'identisch') },
         ...(kons.witness ? { witnessed: { shown: tallied(kons.witness, (p) => p[0] === 'gezeigt'), identical: tallied(kons.witness, (p) => p[0] === 'gezeigt' && p[1] === 'identisch') } } : {}),
+        draftPath: kons.draftPath!,
       },
       faults: { pdf: classes(faults.pdf.result), table: classes(faults.table.result) },
-      funnel: { drafts: accounted.drafts, changed: accounted.changed, shown: accounted.shown, causes: accounted.causes, witnessed: accounted.witnessed },
-      risOnly: { drafts: risOnly.drafts, changed: risOnly.changed, shown: risOnly.shown, outside: risOnly.outside, composing: risOnly.composing, witnessed: risOnly.witnessed },
+      funnel: { drafts: accounted.drafts, changed: accounted.changed, shown: accounted.shown, causes: accounted.causes, witnessed: accounted.witnessed, notRun: accounted.notRun },
+      risOnly: { drafts: risOnly.drafts, changed: risOnly.changed, shown: risOnly.shown, outside: risOnly.outside, composing: risOnly.composing, witnessed: risOnly.witnessed, notRun: risOnly.notRun },
     },
     annex: {
       drafts: gated.length,
+      population,
       confirmed: annexSum((d) => d.verifiedParas),
       withheld: annexSum((d) => d.withheldParas),
       withheldStanding: annexSum((d) => d.withheldStanding),
@@ -351,12 +429,17 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
       faults: Object.entries(station.mutations!.classes).map(([key, c]) => ({ key, tried: c.tried, caught: c.änderung })),
     },
     laender: {
-      tgu: { lands: landGuard.lands, documents: landGuard.documents, compared: landGuard.compared, shown: landGuard.shown, strict: { held: landGuard.strict.held, differs: landGuard.strict.differs, unchecked: landGuard.strict.unchecked, onlyStruck: landGuard.strict.onlyStruck }, judged: landGuard.judged, found: landGuard.found, faults: landGuard.faults },
+      listFetchedAt: Object.values(landGuard.windows ?? {}).map((w) => w.listFetchedAt).sort()[0] ?? null,
+      tgu: { withheldAll: landGuard.accounting!.withheld - landGuard.kaernten!.withheld, kaernten: { shown: landGuard.kaernten!.shownChangedOrNew }, left: landGuard.leftColumn!.faults.map((f) => ({ key: f.key, tried: f.beforeUnmarked.tried, caught: f.beforeUnmarked.tried - f.beforeUnmarked.unmarked })), struckKept: { key: 'Satz gestrichen', tried: landGuard.struck!.keptSentenceStruck.beforeUnmarked, caught: landGuard.struck!.keptSentenceStruck.caught }, lands: landGuard.lands, documents: landGuard.documents, compared: landGuard.compared, shown: landGuard.shown, strict: { held: landGuard.strict.held, differs: landGuard.strict.differs, unchecked: landGuard.strict.unchecked, onlyStruck: landGuard.strict.onlyStruck, noWordCompared: landGuard.strict.noWordCompared!, markedHeld: landGuard.strict.markedHeld! }, judged: landGuard.judged, found: landGuard.found, faults: landGuard.faults },
       stations: {
         pairs: landStations.pairs,
         compared: landStations.compared,
         hits: landStations.hits,
         accepted: landStations.accepted,
+        acceptedReader: landStations.acceptedReader ?? 0,
+        notCompared: landStations.pairs - landStations.compared,
+        lands: Object.entries(landStations.lands!).filter(([, c]) => c.compared > 0).map(([land]) => land),
+        nullComparison: { units: landStations.nullComparison?.units ?? 0, residues: landStations.nullComparison?.residues ?? 0, substantive: landStations.nullComparison?.substantive ?? 0 },
         withheld: landStations.withheld,
         withheldPairs: landStations.withheldPairs,
         unread: landStations.unread,

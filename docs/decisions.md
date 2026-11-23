@@ -1984,6 +1984,60 @@ gets an entry of its own only where it carries a reason the rule does not.
   missing file, an unbalanced funnel, station breaches and Länder hits, and
   stamped the commit checked out while it wrote: the record of 20.11.2026
   names one commit for parts measured across three.
+- **The figure for the whole § is measured on the path a reader meets**
+  (23.11.2026, `kons.ts --entwurf`, `scripts/lib/konsDraftPath.ts`). The BGBl
+  bench applies the enacted law's instructions, gated by the draft's annex,
+  which no page does: its 461 of 461 says the engine and the gate reproduce
+  RIS from the law's own instructions. The page's first figure is now
+  `consolidate` on the 33 drafts behind that bench, scored only where the
+  draft's instruction and the text in force went into the law unchanged, the
+  one case with a single right answer: 349 of 351. Both others were read: the
+  law changes Tabakgesetz § 11 Abs. 5, which the draft's annex prints as
+  unchanged, and closes a hyphen in FinStrG § 99 that no instruction names.
+  A new case makes `DRAFT_PATH_DIFFERS_READ` fail until someone has read it.
+  The second witness's 150 of 150 stays beside it and is no evidence for
+  drafts: on the bench it reads a Bundesgesetzblatt against itself.
+- **A round names one period, and the builder holds it** (23.11.2026,
+  `--nur-periode`, `inPeriod`). RIS ignores the period filter, so „the 400
+  newest" held seven drafts (179 §§) of the period before under the label
+  „XXVIII". The weekly drift alarm keeps the whole window. The page also says
+  the whole the readable annexes are a part of: 385 drafts in RIS, 267 with
+  an annex, 251 read, 9 without an amending clause, 7 refused.
+- **The Länder's records are held like the Bund's** (23.11.2026). They carry
+  no requested/reached, and a tampered round of 40 of 372 pairs built without
+  refusal. The builder now refuses a Land that did not reach its documents,
+  breaches, missed mutations, a failed floor, baseline findings and an
+  unbalanced page accounting.
+- **A bar names its weakest class, and a catch rate is not an accuracy**
+  (23.11.2026). A sum over classes hid a 74.9 % behind 84 %; `weakestOf`
+  prints it under the bar. Fault U is read on the table path alone, because
+  the PDF path prints no separate mirrored row among the §§ it passes; the
+  shape it can produce is `U-Zeile`, a foreign sentence inside a changed row.
+  (Superseded the same day for U: see the next rule.)
+  A part of a whole is rounded to the nearest tenth (`partDe`), a catch rate
+  down (`shareDe`): the same share stood on the page as 63,1 and 63,2.
+- **An unchanged annex row is held against RIS, and a hit costs a mark, never
+  the §** (the maintainer's decision of 23.11.2026, `unchangedRowsNotStanding`
+  in `annex/coverage.ts`, `annexMark.ts`). The rule rejected on 11.09.2026
+  withheld; since a § can carry „nicht bestätigt", a false alarm costs a pill.
+  Per row, not per §, at 95 %, and at least three words missing: one word
+  moves a short row by a fifth („Widerspruchsstelle" against RIS's
+  „Widerspruchstelle" flagged ASVG § 31d). Only §§ that show a change. Over the
+  round three §§ newly carry the mark, all read and all a real mismatch of the
+  ministry's document with RIS: KSchG § 13a (a drafting note in the row), GTelG
+  § 23 (an Absatz RIS lacks), an Anlage 4 (a Teil RIS lacks). The fault moves
+  from 0 to 279 of 282 on the table path. A foreign sentence inside a changed
+  row stays under the left check's 95 % where it is short against its row, and
+  the page says so.
+- **What a Land's § strikes is held against the draft, and sets the mark**
+  (the maintainer's decision of 23.11.2026, `struckNotHeld`,
+  `landTguGuard.ts`). „Nicht geprüft" where struck words have no instruction,
+  or where a § with no new word strikes what the draft does not name. Nothing
+  is withheld, so the 16 sound §§ the open question feared to lose stay on the
+  page: 37 §§ newly carry the mark, and a kept sentence shown as struck goes
+  from 103 of 847 to 799 of 812 caught. Kärnten's §§ shown as changed or new
+  all carry „nicht geprüft" (`withoutDraftRules`): no draft rule is asked of
+  them, and until then they stood as if checked.
 - **The record says what the page shows of the ministry's annex, and what
   catching did with a §** (22.11.2026). Since the mark stands on the gate,
   the gate's verdicts are not what a reader sees: `annex.marks` counts the
@@ -4527,11 +4581,6 @@ mark sound §§ or risk a wrong clearance.
 
 ## 4. Open questions
 
-- **Struck text on the Länder** (23.11.2026). The Bund's check of struck text
-  is not applied to a Land, where a § that differs is withheld, not marked. It
-  would catch 819 of 859 injected faults instead of 108, and 28 shown §§ would
-  newly differ: 11 real differences of the documents, 16 limits of the check,
-  1 our reading. It stays off for now, since it would withhold the 16 sound §§.
 - **Licence.** Whether Parliament's „die Dokumente selbst sind freie Werke"
   holds for a Ministerialentwurf's documents too, and what covers the
   metadata of the Begutachtung lists. Until answered, the source order of the

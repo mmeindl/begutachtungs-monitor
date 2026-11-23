@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest'
 import type { GenauigkeitRecord } from '../shared/types'
 import { formatNumberDe } from '../shared/utils/format'
 import {
-  ANNEX_BLIND,
   ANNEX_GATE_ALONE,
   CHAIN_LABEL,
+  CHAIN_IN_ROW,
   CHAIN_LOST,
+  CHAIN_MIRRORED,
   CHAIN_MISFILED,
   CHAIN_STRUCK,
   CHAIN_WORDING,
+  DRAFT_PATH_DIFFERS_READ,
   FUNNEL_GROUP_OF,
   GENAUIGKEIT,
   GENAUIGKEIT_GRENZEN,
@@ -16,6 +18,7 @@ import {
   LAND_WORDING,
   LAND_OTHER_DRAFT,
   LAND_OWN_DRAFT,
+  NULL_RESIDUES_READ,
   RESULT_BLIND,
   RESULT_BLIND_COMMA,
   RESULT_BLIND_EDGE,
@@ -28,6 +31,7 @@ import {
   genauigkeitArten,
   genauigkeitKurz,
   measuredLineDe,
+  partDe,
   rangeDe,
   shareDe,
   wegFunnel,
@@ -58,6 +62,8 @@ function withMarks(): GenauigkeitRecord {
     { key: 'links', tried: 60, caught: 48, withheld: 40 },
     { key: 'ralt', tried: 30, caught: 30, withheld: 30 },
     { key: 'rneu', tried: 30, caught: 27, withheld: 20 },
+    { key: 'u', tried: 40, caught: 39, withheld: 0, held: true as const },
+    { key: 'uzeile', tried: 50, caught: 40, withheld: 35 },
   ]
   r.annex.chain = { pdf: chain, table: structuredClone(chain) }
   return r
@@ -91,6 +97,14 @@ describe('shareDe', () => {
   })
 })
 
+describe('partDe', () => {
+  it('rounds a part of a whole to the nearest tenth, the one figure both the sentence and the bar print', () => {
+    expect(partDe(2966, 4694)).toBe('63,2')
+    expect(partDe(1, 3)).toBe('33,3')
+    expect(partDe(5, 5)).toBe('100,0')
+  })
+})
+
 describe('rangeDe', () => {
   it('names the lowest and the highest share, and one figure where they agree', () => {
     expect(rangeDe([{ key: 'a', tried: 100, caught: 99 }, { key: 'b', tried: 10, caught: 10 }])).toBe('99,0 bis 100\u00a0%')
@@ -105,9 +119,9 @@ describe('rangeDe', () => {
 describe('the fault classes', () => {
   it('places every class the record carries in exactly one group, so a new one needs a decision', () => {
     const result = [...RESULT_WORDS, ...RESULT_STRUCTURE, ...RESULT_BLIND, ...RESULT_BLIND_COMMA, ...RESULT_BLIND_EDGE, ...RESULT_WITNESS] as string[]
-    const annex = [...ANNEX_BLIND, ...ANNEX_GATE_ALONE] as string[]
+    const annex = [...ANNEX_GATE_ALONE] as string[]
     const land = [...LAND_OWN_DRAFT, ...LAND_OTHER_DRAFT, ...LAND_WORDING] as string[]
-    const chain = [...CHAIN_WORDING, ...CHAIN_LABEL, ...CHAIN_STRUCK, ...CHAIN_LOST, ...CHAIN_MISFILED] as string[]
+    const chain = [...CHAIN_WORDING, ...CHAIN_LABEL, ...CHAIN_STRUCK, ...CHAIN_LOST, ...CHAIN_MISFILED, ...CHAIN_MIRRORED, ...CHAIN_IN_ROW] as string[]
     for (const [groups, keys] of [
       [result, [...GENAUIGKEIT.lesefassung.faults.pdf, ...GENAUIGKEIT.lesefassung.faults.table].map((f) => f.key)],
       [annex, [...GENAUIGKEIT.annex.faults.pdf, ...GENAUIGKEIT.annex.faults.table].map((f) => f.key)],
@@ -132,7 +146,7 @@ describe('funnelRows', () => {
   })
 
   it('orders the groups and their causes by size', () => {
-    const rows = funnelRows({ drafts: 2, changed: 10, shown: 1, causes: { verweigert: 2, 'anhang-fremd': 3, 'anhang-schweigt': 4 } })
+    const rows = funnelRows({ drafts: 2, changed: 10, shown: 1, notRun: {}, causes: { verweigert: 2, 'anhang-fremd': 3, 'anhang-schweigt': 4 } })
     expect(rows.map((r) => [r.key, r.count])).toEqual([['gezeigt', 1], ['beilage', 7], ['anweisung', 2]])
     expect(rows[1]!.causes.map((c) => c.cause)).toEqual(['anhang-schweigt', 'anhang-fremd'])
   })
@@ -140,12 +154,12 @@ describe('funnelRows', () => {
 
 describe('wegFunnel', () => {
   it('carries the §§ shown on the draft\'s own text apart, and none in a round before them', () => {
-    expect(wegFunnel({ drafts: 1, changed: 10, shown: 5, witnessed: 2, causes: { verweigert: 5 } }).witnessed).toBe(2)
-    expect(wegFunnel({ drafts: 1, changed: 10, shown: 5, causes: { verweigert: 5 } }).witnessed).toBe(0)
+    expect(wegFunnel({ drafts: 1, changed: 10, shown: 5, witnessed: 2, notRun: {}, causes: { verweigert: 5 } }).witnessed).toBe(2)
+    expect(wegFunnel({ drafts: 1, changed: 10, shown: 5, notRun: {}, causes: { verweigert: 5 } }).witnessed).toBe(0)
   })
 
   it('counts only the §§ with a proposed version to compose, and names the others beside the figure', () => {
-    const f = wegFunnel({ drafts: 1, changed: 20, shown: 8, causes: { verweigert: 4, unplausibel: 2, 'anhang-schweigt': 3, entfaellt: 2, 'neu-erlassen': 1 } })
+    const f = wegFunnel({ drafts: 1, changed: 20, shown: 8, notRun: {}, causes: { verweigert: 4, unplausibel: 2, 'anhang-schweigt': 3, entfaellt: 2, 'neu-erlassen': 1 } })
     expect(f.total).toBe(17)
     expect(f.outside).toBe(3)
     expect(f.shown).toBe(8)
@@ -193,7 +207,7 @@ describe('genauigkeitArten', () => {
   it('names what is not the law in force, by kind', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
     r.lesefassung.bench = { ...r.lesefassung.bench, shown: 10, identical: 7, invented: 1, incomplete: 1, otherwise: 1 }
-    const measured = genauigkeitArten(r)[0]!.measured[0]!
+    const measured = genauigkeitArten(r)[0]!.measured[1]!
     expect(measured).toContain('sind 7 Wort für Wort das Gesetz. Einem fehlt ein Teil, einer ist aus einem anderen Grund nicht das Gesetz. Ein Wort, das nicht im Gesetz steht, hat einer.')
   })
 
@@ -201,12 +215,11 @@ describe('genauigkeitArten', () => {
     const [lesefassung, annex, , land] = genauigkeitArten()
     const tries = (faults: { tried: number }[]) => faults.reduce((n, f) => n + f.tried, 0)
     expect(tries(lesefassung!.faults)).toBe(tries([...GENAUIGKEIT.lesefassung.faults.pdf, ...GENAUIGKEIT.lesefassung.faults.table]))
-    // The ministry's annex: the chain's classes, and of the gate's only the blind one beside them.
-    const gate = [...GENAUIGKEIT.annex.faults.pdf, ...GENAUIGKEIT.annex.faults.table]
+    // The ministry's annex: every class as the whole chain judges it (23.11.2026).
     const chain = GENAUIGKEIT.annex.chain
-    expect(tries(annex!.faults)).toBe(tries([...chain.pdf, ...chain.table, ...gate.filter((f) => (ANNEX_BLIND as readonly string[]).includes(f.key))]))
+    expect(tries(annex!.faults)).toBe(tries([...chain.pdf, ...chain.table]))
     for (const art of genauigkeitArten()) for (const fault of art.faults) expect(fault.tried).toBeGreaterThan(0)
-    expect(tries(land!.faults)).toBe(tries(GENAUIGKEIT.laender.tgu.faults))
+    expect(tries(land!.faults)).toBe(tries([...GENAUIGKEIT.laender.tgu.faults, ...GENAUIGKEIT.laender.tgu.left, GENAUIGKEIT.laender.tgu.struckKept]))
   })
 
   it('sets a comma lost in text the draft leaves unchanged apart as a blind spot, and counts one at a changed place with the words (21.11.2026)', () => {
@@ -227,14 +240,14 @@ describe('genauigkeitArten', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
     r.stations.faults = [{ key: 'ziffer', tried: 40, caught: 40 }, { key: 'minus', tried: 30, caught: 28 }]
     const art = genauigkeitArten(r)[2]!
-    expect(art.faults).toEqual([{ label: expect.stringContaining('in einem der beiden Texte geändert'), tried: 70, caught: 68, shownAsChange: true }])
+    expect(art.faults).toEqual([{ label: expect.stringContaining('in einem der beiden Texte geändert'), tried: 70, caught: 68, shownAsChange: true, weakest: '93,3' }])
     // Caught there means shown as a change, the opposite of what the page's other bars count (23.11.2026).
-    expect(faultNoteDe(art.faults[0]!)).toBe('68 von 70 eingebauten Änderungen als Änderung gezeigt')
+    expect(faultNoteDe(art.faults[0]!)).toBe('68 von 70 eingebauten Änderungen als Änderung gezeigt · schwächster Fall 93,3\u00a0%')
     expect(art.faultsHeading).toBe('Test mit eingebauten Änderungen: Das zeigt der Vergleich')
     expect(art.missed.join(' ')).toContain('Wie oft das vorkommt, misst dieser Test nicht.')
     expect(art.measured.join(' ')).toContain('70 eingebaute Änderungen')
     expect(art.measured.join(' ')).toContain('Der Vergleich zeigt 68 als Änderung.')
-    expect(art.rule).toContain('Dazu ändern wir in echten Texten je eine Stelle')
+    expect(art.rule).toContain('Dazu ändern wir in echten Texten je die erste passende Stelle')
     r.stations.faults = [{ key: 'ziffer', tried: 40, caught: 40 }]
     expect(genauigkeitArten(r)[2]!.measured.join(' ')).toContain('Der Vergleich zeigt jede als Änderung.')
   })
@@ -245,18 +258,60 @@ describe('genauigkeitArten', () => {
       r.lesefassung.faults[path] = [...r.lesefassung.faults[path].filter((f) => !(RESULT_BLIND_EDGE as readonly string[]).includes(f.key)), { key: 'Rand-weg', tried: 60, caught: 40 }, { key: 'Mehrfach-weg', tried: 40, caught: 36 }]
     }
     const art = genauigkeitArten(r)[0]!
-    expect(art.faults).toContainEqual({ label: 'Ein Wort fehlt am Rand einer gedruckten Passage oder in einer Wortfolge, die mehrfach steht', tried: 200, caught: 152, blind: true })
+    expect(art.faults).toContainEqual({ label: 'Ein Wort fehlt am Rand einer gedruckten Passage oder in einer Wortfolge, die mehrfach steht', tried: 200, caught: 152, blind: true, weakest: '66,6' })
     expect(art.missed.join(' ')).toContain('fällt das seltener auf: 152 von 200 Versuchen gefangen.')
   })
 
   it('says the null comparison whole: every difference found, and how many of them read as a change', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
-    r.stations = { ...r.stations, nullUnits: 9542, nullResidues: 458, nullSubstantive: 4, nullPlaceholders: 450 }
+    r.stations = { ...r.stations, nullUnits: 9542, nullResidues: 458, nullSubstantive: 4, nullPlaceholders: 458 - NULL_RESIDUES_READ }
     const result = genauigkeitArten(r)[2]!.result.join(' ')
-    expect(result).toContain('in 9.542 Textteilen 458 Unterschiede: 450 sind die im Entwurf noch offene Nummer des Bundesgesetzblatts, 4 nur Schreibweise oder Satzzeichen, beides als „redaktionell“ markiert, 4 als Änderung.')
+    expect(result).toContain(`in 9.542 Textteilen 458 Unterschiede. ${458 - NULL_RESIDUES_READ} sind die Nummer des Bundesgesetzblatts, die vor der Kundmachung noch offen ist. Die übrigen ${NULL_RESIDUES_READ} haben wir einzeln gelesen`)
+    expect(result).toContain('4 davon zeigt der Monitor als Änderung, die anderen als „redaktionell“.')
     expect(result).not.toContain('fälschlich')
     r.stations.nullSubstantive = 0
-    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('8 nur Schreibweise oder Satzzeichen, beides als „redaktionell“ markiert, keiner als Änderung.')
+    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('Keinen davon zeigt der Monitor als Änderung')
+  })
+
+  it('claims to have read the null residues only while they are the ones that were read (23.11.2026)', () => {
+    expect(GENAUIGKEIT.stations.nullResidues - GENAUIGKEIT.stations.nullPlaceholders).toBe(NULL_RESIDUES_READ)
+    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+    r.stations.nullPlaceholders -= 1
+    const result = genauigkeitArten(r)[2]!.result.join(' ')
+    expect(result).toContain('sind noch nicht einzeln gelesen.')
+    expect(result).not.toContain('einzeln gelesen:')
+  })
+
+  it('names why a composed § is not the law only for the cases that were read (23.11.2026)', () => {
+    const { differs } = GENAUIGKEIT.lesefassung.bench.draftPath
+    expect(differs.map((d) => `${d.me} § ${d.id}`).sort()).toEqual([...DRAFT_PATH_DIFFERS_READ].sort())
+    expect(genauigkeitArten()[0]!.result[0]).toContain('steht im Gesetz etwas, das keine Anweisung des Entwurfs anordnet.')
+    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+    r.lesefassung.bench.draftPath.differs = [...differs, { me: '9/ME', law: 'Gesetz', id: '1' }]
+    r.lesefassung.bench.draftPath.identical -= 1
+    expect(genauigkeitArten(r)[0]!.result[0]).toContain('weicht unser Ergebnis vom Gesetz ab.')
+  })
+
+  it('scores the page on the draft path, not on the enacted law\'s instructions (23.11.2026)', () => {
+    const { draftPath: dp } = GENAUIGKEIT.lesefassung.bench
+    expect(dp.comparable + dp.instructionChanged + dp.stockMoved + dp.noInstructionLine + dp.notAmended).toBe(dp.shown)
+    const first = genauigkeitArten()[0]!.result[0]!
+    expect(first).toContain(`Bei ${formatNumberDe(dp.comparable)} ging die Anweisung unverändert ins Gesetz`)
+    expect(first).toContain(`${formatNumberDe(dp.identical)} stimmen Wort für Wort`)
+    expect(genauigkeitKurz().shows[1]).toContain(`Bei ${formatNumberDe(dp.comparable)} Paragraphen ging die Anweisung des Entwurfs unverändert ins Gesetz`)
+    // „gültig" claimed force for texts that enter into force later.
+    expect([...genauigkeitArten()[0]!.result, ...genauigkeitKurz().shows].join(' ')).not.toMatch(/gültig/)
+  })
+
+  it('accounts for every draft of the period and every shown § of a Land (23.11.2026)', () => {
+    const p = GENAUIGKEIT.annex.population
+    expect(p.readable).toBe(GENAUIGKEIT.annex.drafts)
+    expect(p.readable + p.noClause + p.unreadable).toBe(p.withAnnex)
+    expect(p.withAnnex).toBeLessThanOrEqual(p.listed)
+    const t = GENAUIGKEIT.laender.tgu
+    expect(t.strict.held + t.strict.unchecked).toBe(t.shown)
+    expect(t.strict.onlyStruck).toBeLessThanOrEqual(t.strict.noWordCompared)
+    expect(t.strict.markedHeld).toBeLessThanOrEqual(t.strict.held)
   })
 
   it('says of the ministry\'s annex what a reader sees of a §: no mark, either mark, not shown — the four adding up to the whole (22.11.2026)', () => {
@@ -277,21 +332,21 @@ describe('genauigkeitArten', () => {
   it('draws a fault of the ministry\'s annex as the whole chain judges it, and says under the bar what catching did with the §', () => {
     const r = withMarks()
     const bars = genauigkeitArten(r)[1]!.faults
-    const blind = [...r.annex.faults.pdf, ...r.annex.faults.table].filter((f) => f.key === 'U')
     expect(bars.map((b) => [b.tried, b.caught, b.withheld])).toEqual([
       [500, 492, 0],
       [80, 72, 0],
       [160, 140, 4],
       [120, 114, 100],
       [120, 96, 80],
-      [blind.reduce((n, f) => n + f.tried, 0), blind.reduce((n, f) => n + f.caught, 0), undefined],
+      [80, 78, 0],
+      [100, 80, 70],
     ])
-    expect(bars.map((b) => b.blind ?? false)).toEqual([false, false, false, false, false, true])
+    expect(bars.map((b) => b.blind ?? false)).toEqual([false, false, false, false, false, false, true])
     expect(bars.slice(0, 5).map(faultNoteDe)).toEqual([
-      '492 von 500 eingebauten Fehlern gefangen: alle mit Vermerk gezeigt',
+      '492 von 500 eingebauten Fehlern gefangen: alle mit Vermerk gezeigt · schwächster Fall 98,0\u00a0%',
       '72 von 80 eingebauten Fehlern gefangen: alle mit Vermerk gezeigt',
       '140 von 160 eingebauten Fehlern gefangen: 4 nicht mehr gezeigt, 136 mit Vermerk gezeigt',
-      '114 von 120 eingebauten Fehlern gefangen: 100 nicht mehr gezeigt, 14 mit Vermerk gezeigt',
+      '114 von 120 eingebauten Fehlern gefangen: 100 nicht mehr gezeigt, 14 mit Vermerk gezeigt · schwächster Fall 90,0\u00a0%',
       '96 von 120 eingebauten Fehlern gefangen: 80 nicht mehr gezeigt, 16 mit Vermerk gezeigt',
     ])
   })
@@ -309,9 +364,9 @@ describe('genauigkeitArten', () => {
   it('names the §§ the second reading would have shown on the bench, once a round counts them', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
     r.lesefassung.bench.witnessed = { shown: 152, identical: 152 }
-    expect(genauigkeitArten(r)[0]!.measured.join(' ')).toContain('in dieser Probe 152 weitere, alle Wort für Wort das Gesetz.')
+    expect(genauigkeitArten(r)[0]!.measured.join(' ')).toContain('gibt in dieser Probe 152 weitere frei, alle Wort für Wort das Gesetz.')
     r.lesefassung.bench.witnessed = { shown: 152, identical: 150 }
-    expect(genauigkeitArten(r)[0]!.measured.join(' ')).toContain('152 weitere, 150 davon Wort für Wort das Gesetz.')
+    expect(genauigkeitArten(r)[0]!.measured.join(' ')).toContain('152 weitere frei, 150 davon Wort für Wort das Gesetz.')
   })
 
   it('says what a check does not catch in words, where no fault can be injected', () => {
@@ -339,7 +394,7 @@ describe('the record', () => {
   it('is dated and names the commit it measured', () => {
     expect(GENAUIGKEIT.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(GENAUIGKEIT.commit).toMatch(/^[0-9a-f]{7,40}$/)
-    expect(measuredLineDe()).toMatch(/^Gemessen am \d{2}\.\d{2}\.\d{4} an den Entwürfen der [IVXL]+\. Gesetzgebungsperiode\.$/)
+    expect(measuredLineDe()).toMatch(/^Gemessen am \d{2}\.\d{2}\.\d{4} an den Entwürfen der [IVXL]+\. Gesetzgebungsperiode\. Die Entwürfe der Bundesländer haben den Stand vom \d{2}\.\d{2}\.\d{4}\.$/)
   })
 
   it('says what the figures do not', () => {
@@ -354,18 +409,23 @@ describe('in short', () => {
       expect(line).toMatch(/\.$/)
       expect(line).not.toMatch(/undefined|NaN|Paragraf(?!h)/)
     }
-    expect(kurz.shows[1]).toContain(`${GENAUIGKEIT.lesefassung.bench.shown} ganze Paragraphen gezeigt, ${GENAUIGKEIT.lesefassung.bench.identical} davon`)
+    const { draftPath } = GENAUIGKEIT.lesefassung.bench
+    expect(kurz.shows[1]).toContain(`Bei ${formatNumberDe(draftPath.comparable)} Paragraphen ging die Anweisung des Entwurfs unverändert ins Gesetz, ${formatNumberDe(draftPath.identical)} davon`)
   })
 
   it('says of the Länder how many shown §§ were held word for word, from the record', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
-    r.laender.tgu = { ...r.laender.tgu, shown: 20, strict: { held: 17, differs: 2, unchecked: 3, onlyStruck: 2 } }
-    // Held with no new word is nothing held word for word (23.11.2026).
-    expect(genauigkeitKurz(r).check[1]).toContain('bei 15 von 20 gezeigten Paragraphen Wort für Wort am Entwurf geprüft, bei den übrigen nicht: 2 streichen nur')
+    r.laender.tgu = { ...r.laender.tgu, shown: 20, strict: { held: 17, differs: 2, unchecked: 3, onlyStruck: 1, noWordCompared: 2, markedHeld: 2 } }
+    // Held with no new word is nothing held word for word (23.11.2026), and every one of the rest is named.
+    expect(genauigkeitKurz(r).check[2]).toContain('sind 15 von 20 gezeigten Paragraphen Wort für Wort am Entwurf geprüft, die übrigen 5 tragen „nicht geprüft“. In Kärnten gibt es diese Prüfung nicht, dort trägt jeder geänderte Paragraph den Vermerk.')
   })
 
   it('names both marks: either one is shown and not vouched for', () => {
     expect(genauigkeitKurz().check[0]).toBe('Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.')
+  })
+
+  it('says that no mark is no guarantee (23.11.2026)', () => {
+    expect(genauigkeitKurz().check[1]).toBe('Kein Vermerk heißt: Die Prüfungen haben nichts gefunden. Es heißt nicht, dass der Text sicher stimmt.')
   })
 
   it('sets every blind spot apart, with what it means for a reader', () => {
@@ -373,9 +433,9 @@ describe('in short', () => {
       for (const art of genauigkeitArten(r)) {
         const blind = art.faults.filter((f) => f.blind)
         // The ministry's annex has a class no check can see, the Lesefassung three.
-        // A Land's Textgegenüberstellung has none since 20.11.2026: its blind spot is the §§ not held word for word, a count in the sentence.
+        // A Land's Textgegenüberstellung one since 23.11.2026: what it misreads in the old text.
         // Nor has a comparison of stations: what it cannot see — one word misread alike in both texts — no fault can be injected for.
-        expect(blind).toHaveLength(art.id === 'lesefassung' ? 3 : art.id === 'gegenueberstellung' ? 1 : 0)
+        expect(blind).toHaveLength(art.id === 'lesefassung' ? 3 : art.id === 'gegenueberstellung' ? 1 : art.id === 'land-gegenueberstellung' ? 1 : 0)
         if (blind.length || art.id === 'land-gegenueberstellung') expect(art.consequence).toMatch(/\.$/)
         else expect(art.consequence).toBeNull()
         // What the page prints under „Was die Prüfung übersieht": the consequence, or the first thing the check misses.
