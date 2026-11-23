@@ -102,31 +102,20 @@ describe('compareLandLawChanges — RIS’s two versions of one § are one unit 
 describe('compareLandLawChanges — a Landesgesetzblatt RIS has not consolidated (20.11.2026)', () => {
   const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
 
-  it('says „noch nicht eingearbeitet“ within the window the list says it for, and keeps nothing', async () => {
+  it('says „noch nicht eingearbeitet“ within the window the list says it for, and holds it only briefly', async () => {
     konsRefsOfLgbl.mockResolvedValue({ refs: [], complete: true })
-    const { value, complete } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(31))
+    const { value, complete, pending } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(31))
     expect(value.available).toBe(false)
     expect(value.unavailableReason).toMatch(/^Im RIS noch nicht eingearbeitet: /)
     expect(complete).toBe(false)
+    expect(pending).toBe(true)
   })
 
-  it('says „Nicht veröffentlicht“ only after it, and holds that', async () => {
-    konsRefsOfLgbl.mockResolvedValue({ refs: [], complete: true })
-    const { value, complete } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(61))
-    expect(value.unavailableReason).toMatch(/^Nicht veröffentlicht: /)
-    expect(complete).toBe(true)
-  })
-})
-
-describe('compareLandLawChanges — a Landesgesetzblatt RIS has not consolidated (20.11.2026)', () => {
-  const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
-
-  it('says „noch nicht eingearbeitet“ within the window the list says it for, and keeps nothing', async () => {
-    konsRefsOfLgbl.mockResolvedValue({ refs: [], complete: true })
-    const { value, complete } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(31))
-    expect(value.available).toBe(false)
-    expect(value.unavailableReason).toMatch(/^Im RIS noch nicht eingearbeitet: /)
+  it('holds nothing where the search itself came back incomplete', async () => {
+    konsRefsOfLgbl.mockResolvedValue({ refs: [], complete: false })
+    const { complete, pending } = await compareLandLawChanges('ktn', 'LGBl. Nr. 67/2026', 'lgbl.xml', null, daysAgo(31))
     expect(complete).toBe(false)
+    expect(pending).toBe(false)
   })
 
   it('says „Nicht veröffentlicht“ only after it, and holds that', async () => {

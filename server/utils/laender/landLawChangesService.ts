@@ -17,7 +17,7 @@ import { gapDe } from '#shared/utils/gaps'
 import { LAND_CONSOLIDATION_DAYS } from '#shared/utils/laender'
 import type { LandCode, LandLawDiffResponse } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
-import { onlyComplete, type Gathered } from '../cache/gathered'
+import { keepIncompleteFor, type Gathered } from '../cache/gathered'
 import { SETTLED_TTL_S } from '../cache/ttl'
 import { diffKnownPairs, summarizeDiff } from '../diff/lawDiff'
 import type { LawUnit } from '../lawtext/lawUnits'
@@ -57,11 +57,17 @@ function off(reason: string): Gathered<LandLawDiffResponse> {
  * Where RIS ties no consolidated version to a Landesgesetzblatt kundgemacht
  * within `LAND_CONSOLIDATION_DAYS` (20.11.2026): the consolidation is late,
  * as the list above says in the same words (`NOT_CONSOLIDATED_YET`), and the
- * answer is not held. Until then „Nicht veröffentlicht" stood here, held a
+ * answer is held for an hour (`NOT_YET_HELD_MS`), not the week of a settled
+ * one: long enough that a page in this state does not repeat RIS's search
+ * and the gazette's XML on every view, short enough that the comparison
+ * follows the consolidation the same hour. Where the search itself came back
+ * incomplete nothing is held. Until then „Nicht veröffentlicht" stood here, held a
  * week, beside the list's „noch nicht eingearbeitet" (Kärnten LGBl. Nr.
  * 67/2026, 31 days after its Kundmachung).
  */
 export const NOT_CONSOLIDATED_YET_DE = 'Im RIS noch nicht eingearbeitet: Die konsolidierte Fassung, die dieser Vergleich liest, folgt der Kundmachung mit einigen Tagen Verzug.'
+
+const NOT_YET_HELD_MS = 3_600_000
 
 /** The § text of one version, from its XML; null where it could not be read or holds none. */
 async function unitOf(v: LandKonsVersion): Promise<LawUnit | null> {
@@ -84,7 +90,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   const repeals = versions.filter((v) => repealedBy(v.organ, nummer))
   if (!news.length && !repeals.length) {
     const young = promulgated !== null && Date.parse(todayIso()) - Date.parse(promulgated) <= LAND_CONSOLIDATION_DAYS * 86_400_000
-    if (young) return { ...off(NOT_CONSOLIDATED_YET_DE), complete: false }
+    if (young) return { ...off(NOT_CONSOLIDATED_YET_DE), complete: false, pending: searchComplete }
     return { ...off(gapDe('notPublished', 'Eine konsolidierte Fassung, die dieses Landesgesetzblatt nennt, verzeichnet das RIS nicht.')), complete: searchComplete }
   }
 
@@ -207,5 +213,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-13', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-13', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: keepIncompleteFor(0, NOT_YET_HELD_MS) },
 )
