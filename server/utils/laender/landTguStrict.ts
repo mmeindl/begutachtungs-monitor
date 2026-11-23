@@ -140,6 +140,8 @@ interface Marked {
   inline?: true
   /** A figure after the joiner that ends a list, behind a citation's bracket: „… (§ 9 AsylG 2005), oder 3. bei Fremden" — a unit opens. */
   listed?: true
+  /** The word alone in brackets: „(entfällt)", as a column prints a unit it repeals. */
+  bracketed?: true
 }
 
 /** How a designation is printed: „(5)", „5." or „e)". */
@@ -228,7 +230,8 @@ function markedTokens(text: string): Marked[] {
       const [before, after] = [flat.slice(Math.max(0, m.index - 4), m.index), flat.slice(m.index + m[0].length, m.index + m[0].length + 7)]
       const inline = /^\d+$/.test(word) && after.startsWith('.') && (/\(\s*$/u.test(before) || /\d\.$/.test(before) || (/\d\.\s+$/u.test(before) && /^\.\s*\d{4}(?!\d)/u.test(after)))
       const listed = !designation && /^\d+$/.test(word) && /^\.\s/u.test(after) && /[),;]\s*(?:und|oder|sowie)\s+$/u.test(flat.slice(Math.max(0, m.index - 12), m.index))
-      if (word) out.push({ word, marked: on, designation, ...(like ? { shape: shapeOf(flat, m.index, m[0].length) } : {}), ...(stop ? { stop: true as const } : {}), ...(inline ? { inline: true as const } : {}), ...(listed ? { listed: true as const } : {}) })
+      const bracketed = /\(\s*$/u.test(flat.slice(Math.max(0, m.index - 3), m.index)) && /^\s*\)/u.test(flat.slice(m.index + m[0].length, m.index + m[0].length + 3))
+      if (word) out.push({ word, marked: on, designation, ...(like ? { shape: shapeOf(flat, m.index, m[0].length) } : {}), ...(stop ? { stop: true as const } : {}), ...(inline ? { inline: true as const } : {}), ...(listed ? { listed: true as const } : {}), ...(bracketed ? { bracketed: true as const } : {}) })
     }
   }
   return out
@@ -1734,10 +1737,12 @@ export function strictCheck(unit: LawDiffUnit, wording: readonly (DraftWording |
   shown.forEach((t, i) => {
     if (ownAt(words, i) || layout?.notText[i]) t.marked = false
   })
-  // „(2) entfallen": how a column prints a repealed Absatz — the instruction's verb, not text of the law.
+  // „(2) entfallen": how a column prints a repealed Absatz — the instruction's verb, not text of the law. In brackets („(entfällt)")
+  // it is the annex's notation whatever verb the draft uses („Die §§ 60 bis 63 werden durch folgende §§ 61 und 62 ersetzt",
+  // Zivildienstgesetz 1986): what the column strikes beside it is held as any struck text.
   const repeals = found.some((f) => f.text.some((t) => t.some((w) => REPEALING.has(w))))
   shown.forEach((t) => {
-    if (repeals && REPEALING.has(t.word)) t.marked = false
+    if (REPEALING.has(t.word) && (repeals || t.bracketed)) t.marked = false
   })
   const draft: string[] = []
   const optional: boolean[] = []

@@ -1703,6 +1703,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   printed number first, and in the unit the column renumbers to it only where
   the printed one does not carry the wording. Apothekenbetriebsordnung §§ 5 and
   60a hold, read.
+- **A repeal word alone in brackets is the annex's notation** (23.11.2026):
+  „(entfällt)" in the right column, also where the draft says „ersetzt" and no
+  repealing verb stands (Zivildienstgesetz 1986 §§ 23c, 60 and 63, each read).
+  Outside brackets it stays a word, and what the column strikes beside it is
+  held as any struck text.
 - **A § that shows only deletions is unmarked where the draft names what it
   strikes** (22.11.2026, `markOf`): every struck word accounted for by a
   quotation, a repeal or a unit written anew, and one at least. Struck by a

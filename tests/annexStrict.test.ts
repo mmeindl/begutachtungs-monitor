@@ -448,6 +448,14 @@ describe('annexStrictChecks: what the right column strikes, the draft strikes (2
     })
   })
 
+  it('reads a repeal word alone in brackets as the annex\'s notation, whatever verb the draft uses (Zivildienstgesetz 1986 § 60)', () => {
+    const current = '§ 5. Die Behörde ist zuständig.'
+    expect(check(blocksWith('1. Die §§ 5 und 6 werden durch folgenden § 6 ersetzt:'), '§ 5. (entfällt)', current)).toMatchObject({ state: 'holds', notInDraft: [] })
+    // Not as a word of the text, and not where what it stands beside is struck without an instruction.
+    expect(check(blocksWith('1. In § 5 wird das Wort „Behörde“ durch das Wort „Stelle“ ersetzt.'), '§ 5. Die Stelle ist entfällt zuständig.', current).notInDraft).toEqual(['entfällt'])
+    expect(check(blocksWith('1. In § 5 wird das Wort „Behörde“ durch das Wort „Stelle“ ersetzt.'), '§ 5. (entfällt)', current).state).toBe('differs')
+  })
+
   it('repeals no unit by a verb that has an object of its own, and reads „Art." as an address (22.11.2026)', () => {
     // B-VG Art. 11, SchUG § 42: „entfällt die Wortfolge „…““ was read as a repeal of the Absatz the line names as its place.
     const current = '(1) Die Behörde ist zuständig. (2) Die Behörde entscheidet und andere. Sie ist an Weisungen nicht gebunden.'
