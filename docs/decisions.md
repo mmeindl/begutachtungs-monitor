@@ -2237,9 +2237,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   (Wien goes on behind it: „der bisherige § 143 erhält die Absatzbezeichnung
   „(1)"; diesem wird … angefügt"). One direction only: RIS's number, heading
   or division lines, which the Landesgesetzblatt prints outside the §, stay
-  a count. Known cost: a § whose unquoted wording is the document's last
-  instruction is withheld for the signatures that close it (Vorarlberg
-  LGBl. Nr. 45/2018 § 93).
+  a count. The two signatures that close a Landesgesetzblatt are not its
+  wording, where they stand as plain paragraphs behind its last
+  instruction (23.11.2026, `SIGNATURE_BLOCK_RE`: both offices in order, then
+  only the names; Vorarlberg LGBl. Nr. 45/2018 § 93, the one § of the
+  harness this moved).
 - **A § a Landesgesetzblatt renumbers is withheld** (22.11.2026,
   `lgblRenumberedParagraphs`, reason `renumbered`). RIS files a § under its
   number, and after „Die bisherigen §§ 2a, 3 und 4 werden als §§ 3, 4 und 5

@@ -185,6 +185,15 @@ describe('lautetMissing (22.11.2026)', () => {
     // An unquoted wording runs to the instruction's end, as before.
     expect(lautetMissing(z('Der § 93 lautet: § 93 Inkrafttreten (1) Art. VII tritt am 1. Jänner 2019 in Kraft.'), '§93', { id: '§93', heading: 'Inkrafttreten', text: '(1) Art. VII tritt in Kraft.' })).toEqual(['am', 'jänner', '2019'])
   })
+  it('leaves out the signatures that close the Landesgesetzblatt, and nothing else (Vorarlberg LGBl. Nr. 45/2018 § 93)', () => {
+    const closing = 'Der § 93 lautet: § 93 Inkrafttreten (1) Art. VII tritt am 1. Jänner 2019 in Kraft." Der Landtagspräsident: Der Landeshauptmann: Mag. Harald Sonderegger Mag. Markus Wallner'
+    const ris = { id: '§93', heading: 'Inkrafttreten', text: '(1) Art. VII tritt am 1. Jänner 2019 in Kraft.' }
+    expect(lautetMissing(z(closing), '§93', ris)).toEqual([])
+    expect(lautetMissing(z(closing.replace('Der Landeshauptmann:', 'Die Landeshauptfrau:')), '§93', ris)).toEqual([])
+    // One office named is the law's own text, and a word after the names is no signature.
+    expect(lautetMissing(z('Der § 93 lautet: § 93 Der Landeshauptmann: bestellt.'), '§93', { ...ris, text: 'x' })).toEqual(expect.arrayContaining(['landeshauptmann', 'bestellt']))
+    expect(lautetMissing(z('Der § 93 lautet: § 93 Der Landtagspräsident: Der Landeshauptmann: entscheidet: sofort'), '§93', { ...ris, text: 'x' })).toEqual(expect.arrayContaining(['landtagspräsident', 'entscheidet', 'sofort']))
+  })
   it('checks nothing it cannot hold to one § (null)', () => {
     expect(lautetMissing(instruction, '§16', { id: '§16', heading: null, text: 'x' })).toBeNull()
     expect(lautetMissing(z('In § 14 Abs. 6 wird das Wort "sechs" durch das Wort "sieben" ersetzt.'), '§14', { id: '§14', heading: null, text: 'x' })).toBeNull()

@@ -370,6 +370,17 @@ export function subInstructionHeads(text: string): string[] {
   return starts.map((at, i) => bare.slice(at, starts[i + 1] ?? bare.length).split('\u0000')[0]!.trim()).filter(Boolean)
 }
 
+/**
+ * The two signatures closing a Landesgesetzblatt, at the very end of its
+ * last instruction: „Der Landtagspräsident: Der Landeshauptmann: Mag. … Mag.
+ * …" (Vorarlberg), „Der Präsident des Landtages: Der Landeshauptmann: … …"
+ * (Burgenland) — set as plain paragraphs there, so the reader's signature
+ * table rule (`lgblUnits`) does not take them. Both offices, in this order,
+ * and nothing after them but the two names: the only shapes in the 529
+ * Landesgesetzblätter of the cache, nine units, one of them a „lautet:".
+ */
+const SIGNATURE_BLOCK_RE = /\s*D(?:er|ie)\s+(?:Landtagspräsident(?:in)?|Präsident(?:in)?\s+des\s+Landtages):\s*D(?:er|ie)\s+Landeshaupt(?:mann|frau):[^:„"“”]{0,120}$/u
+
 /** A text's words, lower case: what the „lautet:" check holds against each other. */
 const wordsOf = (s: string) => new Set(s.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [])
 
@@ -397,7 +408,9 @@ const wordsOf = (s: string) => new Set(s.toLowerCase().match(/[\p{L}\p{N}]+/gu) 
  * Run against RIS over the laws matched since (237 instructions checked),
  * that withheld § 143 of the Wiener Bedienstetengesetz and § 49 of the
  * Wiener Gleichbehandlungsgesetz (LGBl. Nr. 37/2026) for no missing word.
- * An unquoted wording runs to the instruction's end, as before.
+ * An unquoted wording runs to the instruction's end, as before, without the
+ * signatures that close the Landesgesetzblatt where this is its last
+ * instruction (`SIGNATURE_BLOCK_RE`, 23.11.2026).
  */
 export function lautetMissing(instruction: LawUnit, key: string, unit: Pick<LawUnit, 'id' | 'heading' | 'text'>): string[] | null {
   const at = /\blautet\b[^:„"]*:/.exec(instruction.text)
@@ -407,7 +420,7 @@ export function lautetMissing(instruction: LawUnit, key: string, unit: Pick<LawU
   if (keys.length !== 1 || keys[0] !== key || /Inhaltsverzeichnis|Anlage|Anhang/.test(head) || subInstructionHeads(instruction.text).length) return null
   const ris = wordsOf(`${unit.id} ${unit.heading ?? ''} ${unit.text}`)
   const rest = instruction.text.slice(at.index + at[0].length)
-  const wording = /^\s*[„"]/.test(rest) ? [...rest.matchAll(/„([^“”]*)[“”]|"([^"]*)"/g)].map((m) => m[1] ?? m[2]!).join(' ') : rest
+  const wording = /^\s*[„"]/.test(rest) ? [...rest.matchAll(/„([^“”]*)[“”]|"([^"]*)"/g)].map((m) => m[1] ?? m[2]!).join(' ') : rest.replace(SIGNATURE_BLOCK_RE, '')
   return [...wordsOf(wording)].filter((w) => !ris.has(w))
 }
 
