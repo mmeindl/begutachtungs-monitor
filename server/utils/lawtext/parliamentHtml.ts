@@ -42,7 +42,15 @@ function kindOf(cls: string, text: string): BlockKind {
  * Parliament's HTML and a contents entry in RIS's XML (152/ME XXVIII, Z 9).
  */
 const P_RE = /<p\s+class=["']?([\w-]+)["']?[^>]*>([\s\S]*?)(?:<\/p\s*>|(?=<p[\s>]|<\/t[dh]\s*>))/gi
-const GLD_RE = /<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/i
+/**
+ * The Gliederungssymbol: one span, or a run of them side by side. Word splits
+ * a designation across two now and then — „<span class=991GldSymbol>§&nbsp;</span>
+ * <span class=991GldSymbol>20a.</span> (1) …" in 121/ME XXVIII and its
+ * Ausschuss text. Read to the first span's end, „20a." stayed in the block's
+ * text, which the RIS XML of the same § does not carry, and Z 30 stood as
+ * changed between Ausschuss and Kundmachung (24.11.2026).
+ */
+const GLD_RE = /(?:<span\s+class=["']?991GldSymbol["']?[^>]*>[\s\S]*?<\/span>\s*)+/i
 /**
  * A § symbol set in bold right behind the opening quote of a quoted §:
  * „<b>§ 62a.</b> (1) …". The same position the Gliederungssymbol span takes
@@ -116,7 +124,7 @@ export function parseParliamentHtml(html: string): TextBlock[] {
       continue
     }
     const boldMatch = gldMatch ? null : BOLD_GLD_RE.exec(inner)
-    const gld = gldMatch ? stripTags(gldMatch[1]!) : boldMatch ? stripTags(boldMatch[2]!) : null
+    const gld = gldMatch ? stripTags(gldMatch[0]) : boldMatch ? stripTags(boldMatch[2]!) : null
     const text = stripTags(
       gldMatch
         ? inner.replace(gldMatch[0], ' ')

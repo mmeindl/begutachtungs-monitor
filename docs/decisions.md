@@ -2038,9 +2038,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   only by its long title, which shares no word with „ORF-Gesetz", and the
   page's resolver refused the only law its Stammnorm found (`konsLaw.ts`). It
   now takes a name equal to RIS's long title, word for word, and the bench
-  passes the clause as the page does. (4) The Referenzwerte-Vollzugsgesetz's
+  passes the clause as the page does; with the clause the bench also found
+  Artikel 65 of BGBl. I Nr. 25/2025, read that morning as a law RIS does not
+  consolidate. (4) The Referenzwerte-Vollzugsgesetz's
   versions of BGBl. I Nr. 5/2026 came into RIS later than a copy fetched past
-  the 60 days: an absence is now asked live before it counts. Considered and dropped the same
+  the 60 days: an absence is now asked live before it counts. The round
+  after these four showed a fifth, the page's: Word splits a § designation
+  across two spans now and then („§ " and „20a."), and Parliament's HTML
+  reader took the first alone and left „20a." in the text (121/ME Z 30,
+  Ausschuss against Kundmachung, shown as changed). The „lone full stops
+  after the § sign" open since 19.11. (32/ME, 101/ME) were the same split.
+  Considered and dropped the same
   day: a separate weekly job that froze the rules at a git tag to score only
   laws published after it. Its alarm would have watched the frozen code, not
   what runs, and the figure it guarded is the page's „bei den anderen kann

@@ -73,3 +73,26 @@ describe('a paragraph Word left unclosed (152/ME XXVIII, Z 9)', () => {
     expect(blocks.map((b) => b.text)).toEqual(['(1) Erster Satz.', '(2) Zweiter Satz.'])
   })
 })
+
+describe('a Gliederungssymbol Word split across two spans (24.11.2026)', () => {
+  // 121/ME XXVIII Z 30 and its Ausschuss text: „§ " and „20a." side by side.
+  const SPLIT = '<p class=51Abs>&#8222;<span class=991GldSymbol>&sect;&nbsp;</span><span class=991GldSymbol>62a.</span> (1) Stellt der Beklagte einen Antrag.&#8220;</p>'
+
+  it('is read as one symbol, and none of it stays in the text', () => {
+    const split = parseParliamentHtml(doc(SPLIT)).at(-1)!
+    const span = parseParliamentHtml(doc(SPAN)).at(-1)!
+    expect(split.gld).toBe(span.gld)
+    expect(split.text).toBe(span.text)
+  })
+
+  it('leaves the § unchanged against the same § in one span', () => {
+    const { units } = diffLawPackage(parseLawUnits(doc(SPLIT)), parseLawUnits(doc(SPAN)), { keepAddedLaws: true, keepDroppedLaws: true })
+    expect(summarizeDiff(units)).toMatchObject({ changed: 0, inserted: 0, removed: 0 })
+  })
+
+  it('takes only spans side by side: a symbol later in the paragraph stays where it is', () => {
+    const later = '<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;5.</span> (1) Text mit <span class=991GldSymbol>X</span> darin.</p>'
+    const block = parseParliamentHtml(doc(later)).at(-1)!
+    expect(block.gld).toBe(parseParliamentHtml(doc('<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;5.</span> (1) Text.</p>')).at(-1)!.gld)
+  })
+})
