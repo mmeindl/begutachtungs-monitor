@@ -129,17 +129,33 @@ const contact = useContact()
       </p>
     </ProseSection>
 
+    <!-- 24.11.2026: promise and aim are two sentences. The paragraph said
+         „zielt auf … AAA" with one named exception, which read as AAA held
+         everywhere else; it is not (line length, reading level). AA is
+         what a reader can hold the monitor to, AAA the direction. The
+         second paragraph says what nobody has tested and what lies outside
+         the monitor, so the section is the whole answer to „is it
+         accessible?" and a mail can link it. -->
     <ProseSection id="a11y" heading="Barrierefreiheit">
       <p>
-        Der Monitor zielt auf WCAG 2.2, Konformitätsstufe AAA: alle
-        Textfarben erreichen mindestens ein Kontrastverhältnis von 7:1,
+        Der Monitor sagt WCAG 2.2 auf Konformitätsstufe AA zu und zielt auf
+        AAA. Zugesagt heißt: Was Stufe AA nicht erfüllt, ist ein Fehler und
+        wird behoben. Stufe AAA erreicht er, wo es geht, etwa beim Kontrast:
+        Alle Textfarben haben ein Kontrastverhältnis von mindestens 7:1.
         Bedeutung hängt nie an Farbe allein, und die Seite ist vollständig
-        per Tastatur nutzbar. Eine bewusste Ausnahme ist die Größe der
-        Bedienelemente: auf Touch-Geräten mindestens 44 Pixel, mit der Maus
-        mindestens 36 – das erfüllt Stufe AA, nicht AAA.
-        Reduzierte Bewegung wird respektiert. Links auf fremde Seiten öffnen
-        durchgehend ein neues Fenster und sagen es an.
-        Wer dennoch auf eine Barriere
+        per Tastatur nutzbar. Bedienelemente sind auf Touch-Geräten
+        mindestens 44 Pixel groß, mit der Maus mindestens 36 – das erfüllt
+        Stufe AA, nicht AAA. Reduzierte Bewegung wird respektiert. In den
+        Textvergleichen werden gestrichene und neue Stellen auch für
+        Screenreader angesagt. Links auf fremde Seiten öffnen durchgehend ein
+        neues Fenster und sagen es an.
+      </p>
+      <p>
+        Unabhängig geprüft ist das noch nicht, und auch nicht mit Menschen
+        getestet, die Hilfstechnik nutzen. Die verlinkten amtlichen
+        Dokumente sind oft PDF; ihre Zugänglichkeit liegt bei der Stelle,
+        die sie veröffentlicht. Eine Fassung in einfacher oder Leichter
+        Sprache gibt es nicht. Wer auf eine Barriere
         stößt, hilft dem Projekt mit einem Hinweis an
         <a
           :href="contact.mailto"

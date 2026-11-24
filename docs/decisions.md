@@ -3941,6 +3941,14 @@ the reasoning in full stands in that component's header comment.
   you cannot act on.
 - **AAA contrast (7:1), computed, never judged by eye.** The gray hierarchy
   is therefore flat; hierarchy comes from size and weight.
+- **The site promises AA and aims for AAA** (maintainer, 24.11.2026).
+  `/ueber#a11y` says the two apart: WCAG 2.2 AA is what a reader can hold
+  the monitor to, and a miss there is a fault to fix; AAA is the direction,
+  named where it is met (contrast) and where it is not (target size). The
+  page claimed „zielt auf … AAA" with one exception, which read as AAA held
+  everywhere else. It also says what has not been tested: no independent
+  audit and no test with people who use assistive technology, until one has
+  happened.
 - **Target size is AA by decision:** 44 px for coarse pointers, 36 px for
   fine ones, because 44 px on desktop made controls taller than the rows they
   sit under. `/ueber` names the exception.
