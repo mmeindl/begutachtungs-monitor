@@ -33,7 +33,7 @@ import type { Publisher, TraceLink } from '#shared/types'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { mapDocuments } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
-import { pickTextComparisons, type RisDocumentUrls } from '../ris/risRecord'
+import { pickTextComparisons, rasterisedInRis, type RisDocumentUrls } from '../ris/risRecord'
 import { fetchDocument } from '../upstream/fetchDocument'
 import { annexFromPdf } from './annexPdfService'
 import { annexSection, parseTextComparison, type ComparisonParse } from './comparisonRows'
@@ -186,7 +186,13 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
   // Which format decides is still the FIRST part's, because the parts of one
   // annex are typeset together: RIS rasterises a document or it does not, and
   // no record in the corpus mixes the two within one annex.
-  const xml = annex.xml ? await fetchDocument(annex.xml) : null
+  //
+  // Where the listing already says RIS made the document from a PDF, its XML
+  // is a GIF series and is not fetched (`rasterisedInRis`, 24.11.2026). The
+  // PDF then answers, as it did after the fetch; were the listing ever
+  // wrong, the PDF reader and the gate still read the ministry's own text.
+  const listed = rasterisedInRis(annex)
+  const xml = annex.xml && listed !== true ? await fetchDocument(annex.xml) : null
   const rasterised = xml === null || isScanned(xml)
   if (!rasterised) {
     const rest = await Promise.all(parts.slice(1).map((p) => (p.xml ? fetchDocument(p.xml) : null)))
@@ -278,7 +284,7 @@ async function readOlder(candidates: readonly RisDocumentUrls[], articles: reado
  */
 async function readBundle(bundles: readonly RisDocumentUrls[], articles: readonly DraftArticle[]): Promise<AnnexSource | null> {
   for (const doc of bundles) {
-    if (!doc.xml) continue
+    if (!doc.xml || rasterisedInRis(doc) === true) continue
     const xml = await fetchDocument(doc.xml)
     if (isScanned(xml)) continue
     const section = annexSection(xml)

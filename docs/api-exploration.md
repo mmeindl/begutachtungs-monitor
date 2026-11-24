@@ -546,11 +546,24 @@ that made 109 of 132 annexes readable on 2026-09-09; current coverage is in
 
 **Why some annexes are images.** The ministry that drafts the law makes the
 annex and sends it to RIS, usually as DOCX and sometimes as PDF; the format
-is the ministry's choice, and ministries do not add alternative text (RIS,
-on request, 24.11.2026). That the image series are the PDF submissions,
-rendered one image per page, is inferred from that answer and the one image
-per PDF page in a sample of 20, and is not yet confirmed. Either way RIS
+is the ministry's choice, and ministries do not add alternative text. When
+RIS receives only a PDF, it generates the HTML from the PDF, and that HTML is
+one GIF per page with no text (RIS, on request, 24.11.2026; its examples were
+BEGUT_570160E7_BFF5_455F_8FA8_7413FB1C9B5F for a PDF and
+BEGUT_F2F0AF89_6E87_449F_A706_0D66F9C28E4A for a DOCX submission). RIS
 cannot be asked to change it; only a rule for the ministries could.
+
+The listing tells the two apart before any fetch: a document made from a
+DOCX carries an `Rtf` rendition in `Dokumentliste`, one made from a PDF
+offers only `Xml`, `Html` and `Pdf`. Of the 60 Textgegenüberstellungen with
+the latest Begutachtungsfrist on 24.11.2026, all 27 without `Rtf` were image
+series and all 33 with `Rtf` were text; the same held for every other
+document of the two examples (Erläuterungen, WFA, Begleitschreiben). Over
+the 1000 records with the latest Frist, all 263 annex documents without
+`Rtf` were scans by `isScanned` and all 353 with it were tables. The annex
+reader therefore goes straight to the PDF where `Rtf` is missing
+(`rasterisedInRis` in `ris/risRecord.ts`); a record cached without the
+field is fetched and looked at, as before.
 
 **Neither path is trusted on sight.** The left column claims to be the
 standing law, and holding it against RIS Bundesrecht is the check both paths

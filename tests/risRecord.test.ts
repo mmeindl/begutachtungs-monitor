@@ -6,6 +6,7 @@ import {
   flattenRisRecord,
   hasDocument,
   isOpenOn,
+  rasterisedInRis,
   risDocumentUrl,
   withRisActiveOn,
 } from '../server/utils/ris/risRecord'
@@ -70,7 +71,7 @@ describe('flattenRisRecord', () => {
               { DataType: 'Xml', Url: 'https://ogd.ris.bka.gv.at/x.xml' },
               { DataType: 'Html', Url: 'https://ogd.ris.bka.gv.at/x.html' },
               { DataType: 'Pdf', Url: 'https://ogd.ris.bka.gv.at/x.pdf' },
-              // Offered upstream, never read: nothing renders RTF.
+              // Never linked or read; only its presence is kept (`rtf`).
               { DataType: 'Rtf', Url: 'https://ogd.ris.bka.gv.at/x.rtf' },
             ],
           },
@@ -86,7 +87,28 @@ describe('flattenRisRecord', () => {
       xml: 'https://ogd.ris.bka.gv.at/x.xml',
       html: 'https://ogd.ris.bka.gv.at/x.html',
       pdf: 'https://ogd.ris.bka.gv.at/x.pdf',
+      rtf: true,
     })
+  })
+
+  it('keeps whether RIS offers an RTF, the mark of a document sent as Word', () => {
+    const flat = flattenRisRecord(
+      record([
+        {
+          ContentType: 'Material',
+          Name: 'Textgegenüberstellung',
+          Urls: {
+            ContentUrl: [
+              { DataType: 'Xml', Url: 'https://ogd.ris.bka.gv.at/t.xml' },
+              { DataType: 'Html', Url: 'https://ogd.ris.bka.gv.at/t.html' },
+              { DataType: 'Pdf', Url: 'https://ogd.ris.bka.gv.at/t.pdf' },
+            ],
+          },
+        },
+      ]),
+    )!
+    expect(flat.textComparison?.rtf).toBe(false)
+    expect(rasterisedInRis(flat.textComparison!)).toBe(true)
   })
 
   it('reads a ContentUrl off the upstream allowlist as a missing format, and upgrades http', () => {
@@ -105,7 +127,7 @@ describe('flattenRisRecord', () => {
         },
       ]),
     )!
-    expect(flat.mainDocument).toEqual({ xml: null, html: null, pdf: 'https://ogd.ris.bka.gv.at/x.pdf' })
+    expect(flat.mainDocument).toEqual({ xml: null, html: null, pdf: 'https://ogd.ris.bka.gv.at/x.pdf', rtf: false })
   })
 
   it('returns null without a technical ID — the only identity these records have', () => {
@@ -121,8 +143,8 @@ describe('flattenRisRecord', () => {
         { ...urls('Letter', 'Pdf', 'https://ogd.ris.bka.gv.at/brief.pdf'), Name: 'Begleitschreiben Begutachtungsentwurf' },
       ]),
     )!
-    expect(flat.explanations).toEqual({ html: 'https://ogd.ris.bka.gv.at/erl.html', xml: null, pdf: null })
-    expect(flat.coverLetter).toEqual({ html: null, xml: null, pdf: 'https://ogd.ris.bka.gv.at/brief.pdf' })
+    expect(flat.explanations).toEqual({ html: 'https://ogd.ris.bka.gv.at/erl.html', xml: null, pdf: null, rtf: false })
+    expect(flat.coverLetter).toEqual({ html: null, xml: null, pdf: 'https://ogd.ris.bka.gv.at/brief.pdf', rtf: false })
   })
 
   it('finds the Begleitschreiben by ContentType, not by its wording', () => {
@@ -434,5 +456,19 @@ describe('begutCollector: what paging loses (18.11.2026)', () => {
     expect(collected.takeRepeatedDays()).toEqual([])
     expect(collected.records('Ascending').map((r) => r.id)).toEqual(['N', 'A'])
     expect(collected.missing(5)).toBe(3)
+  })
+})
+
+describe('rasterisedInRis', () => {
+  const doc = { html: 'h', xml: 'x', pdf: 'p' }
+  it('reads a document with an RTF as text and one without as a scan', () => {
+    expect(rasterisedInRis({ ...doc, rtf: true })).toBe(false)
+    expect(rasterisedInRis({ ...doc, rtf: false })).toBe(true)
+  })
+  it('does not know where the listing does not say', () => {
+    // A record cached before the field existed: fetch and look, as before.
+    expect(rasterisedInRis(doc)).toBeNull()
+    // No XML at all: nothing to skip, and nothing the mark was measured on.
+    expect(rasterisedInRis({ ...doc, xml: null, rtf: false })).toBeNull()
   })
 })

@@ -18,6 +18,32 @@ export interface RisDocumentUrls {
   html: string | null
   xml: string | null
   pdf: string | null
+  /**
+   * Does RIS also offer the document as RTF? Never linked or read; it is
+   * the mark of what the ministry sent (`rasterisedInRis`). Optional because
+   * a record cached before 24.11.2026 does not carry it.
+   */
+  rtf?: boolean
+}
+
+/**
+ * Has RIS turned this document into one image per page — known from the
+ * listing alone, before anything is fetched?
+ *
+ * A ministry sends RIS a DOCX or a PDF. From a DOCX RIS builds a text
+ * document and also offers an RTF; from a PDF it builds the HTML and XML as
+ * a GIF per page, with no text and no RTF (RIS, on request, 24.11.2026).
+ * Measured the same day over the 1000 Begut records with the latest Frist:
+ * all 263 annex documents without RTF were scans (`isScanned`), all 353 with
+ * RTF were tables (docs/api-exploration.md, „Why some annexes are images").
+ *
+ * Null where the listing does not say: a record cached before the field
+ * existed, or a document RIS offers no XML for. The caller then fetches and
+ * looks, as before.
+ */
+export function rasterisedInRis(doc: RisDocumentUrls): boolean | null {
+  if (doc.rtf === undefined || doc.xml === null) return null
+  return !doc.rtf
 }
 
 /** RIS record plus the document URLs the UI needs. */
@@ -386,7 +412,7 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
     // server fetches these and the page links them. A refused URL reads as
     // a missing format.
     const of = (type: string) => safeExternalUrl(str(list.find((u) => u?.DataType === type)?.Url))
-    return { html: of('Html'), xml: of('Xml'), pdf: of('Pdf') }
+    return { html: of('Html'), xml: of('Xml'), pdf: of('Pdf'), rtf: list.some((u) => u?.DataType === 'Rtf') }
   }
   const nameOf = (c: any) => String(c?.Name ?? '')
   const main = references.find((c) => c?.ContentType === 'MainDocument')
