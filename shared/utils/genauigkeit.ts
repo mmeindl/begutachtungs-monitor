@@ -664,7 +664,7 @@ export function genauigkeitKurz(r: GenauigkeitRecord = GENAUIGKEIT): { shows: st
       // Two marks since 22.11.2026, and „nicht geprüft … aber nicht bestätigt" would read as the other one's name.
       'Ein Paragraph mit dem Vermerk „nicht geprüft“ oder „nicht bestätigt“ ist gezeigt, aber die Prüfung steht nicht hinter ihm. Was der Entwurf ändern will, sagt sein Gesetzestext.',
       'Kein Vermerk heißt: Die Prüfungen haben nichts gefunden. Es heißt nicht, dass der Text sicher stimmt.',
-      `Bei den Bundesländern ${landList(tgu.lands)} sind ${n(tgu.shown - tgu.strict.unchecked - tgu.strict.markedHeld)} von ${n(tgu.shown)} gezeigten Paragraphen Wort für Wort am Entwurf geprüft, die übrigen ${n(tgu.strict.unchecked + tgu.strict.markedHeld)} tragen „nicht geprüft“. In Kärnten gibt es diese Prüfung nicht, dort trägt jeder geänderte Paragraph den Vermerk. Geprüft ist bei den Ländern vor allem der neue Text: Vor dem Zitieren im Dokument des Bundeslandes nachsehen.`,
+      `Bei den Bundesländern ${landList(tgu.lands)} sind ${n(tgu.shown - tgu.strict.unchecked - tgu.strict.markedHeld)} von ${n(tgu.shown)} gezeigten Paragraphen Wort für Wort am Entwurf geprüft, die übrigen ${n(tgu.strict.unchecked + tgu.strict.markedHeld)} tragen „nicht geprüft“. In Kärnten gibt es diese Prüfung nicht, dort trägt jeder geänderte Paragraph den Vermerk. Bei den Ländern prüft der Monitor vor allem den neuen Text, den bisherigen nur teilweise. Wer den bisherigen Wortlaut zitiert, sieht im Dokument des Bundeslandes nach.`,
       'Der Monitor ist kein amtliches Angebot. Zitiert wird aus dem verlinkten Original.',
     ],
   }

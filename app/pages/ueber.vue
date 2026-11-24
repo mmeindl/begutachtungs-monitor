@@ -176,7 +176,9 @@ const contact = useContact()
       <p>
         Fristen, Zahlen und Dokumente übernimmt der Monitor aus den
         amtlichen Quellen und verlinkt jede Angabe auf ihr Original. Sie
-        sind so vollständig und so richtig wie die Quelle selbst.
+        sind so vollständig und so richtig wie die Quelle selbst. Nennt ein
+        Land keine Frist, rechnet der Monitor sie aus dem Schreiben des
+        Landes und sagt das dazu.
       </p>
       <p>
         Was der Monitor selbst ableitet, sagt er dazu: welche
