@@ -184,3 +184,15 @@ export function matchArticle(candidates: readonly DraftArticle[], article: Draft
   if (best && best.score >= 0.6 && best.score > runnerUp) return best.article
   return { reason: pool === candidates ? 'kein Artikel nennt das Gesetz, weder mit der Stammnorm noch im Titel' : `${pool.length} Artikel zitieren die Stammnorm, kein Titel passt eindeutig` }
 }
+
+/**
+ * Whether none of `candidates` amends the law of `article`: no Artikel cites
+ * its Stammnorm, and none has a heading `matchArticle` would take
+ * (24.11.2026). The proof that a draft's Artikel did not become law in a
+ * Bundesgesetzblatt, so it is the plainest refusal only: several Artikel
+ * citing the Stammnorm with no clear heading is a tie, not an absence.
+ */
+export function noArticleFor(candidates: readonly DraftArticle[], article: DraftArticle): boolean {
+  if (article.bgbl && candidates.some((c) => c.bgbl && sameStammnormCited(c.bgbl, article.bgbl!))) return false
+  return 'reason' in matchArticle(candidates, article)
+}

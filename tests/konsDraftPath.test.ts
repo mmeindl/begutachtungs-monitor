@@ -52,9 +52,16 @@ describe('draftPathOf', () => {
       { ...base, key: 'c', id: 'c', amended: false },
       { ...base, key: 'd', id: 'd', amended: 'unread' },
       { ...base, key: 'e', id: 'e', amended: 'noLaw' },
+      { ...base, key: 'f', id: 'f', amended: 'notEnacted' },
     ], 1, 0)
-    expect(r).toMatchObject({ shown: 5, enactedUnread: 1, noLawJoined: 1 })
-    expect(r.comparable + r.instructionChanged + r.stockMoved + r.noInstructionLine + r.notAmended + r.enactedUnread + r.noLawJoined).toBe(r.shown)
+    expect(r).toMatchObject({ shown: 6, enactedUnread: 1, noLawJoined: 1, notEnacted: 1 })
+    expect(r.comparable + r.instructionChanged + r.stockMoved + r.noInstructionLine + r.notAmended + r.enactedUnread + r.noLawJoined + r.notEnacted!).toBe(r.shown)
+  })
+
+  it('takes a proven absence over „no law", and any Bundesgesetzblatt that names the § over the absence', () => {
+    const base = { key: 'a', me: '1/ME', law: 'Gesetz', id: 'a' }
+    expect(draftPathOf([{ ...base, amended: 'noLaw' }, { ...base, amended: 'notEnacted' }], 1, 0)).toMatchObject({ notEnacted: 1, noLawJoined: 0 })
+    expect(draftPathOf([{ ...base, amended: 'notEnacted' }, { ...base, amended: false }], 1, 0)).toMatchObject({ notAmended: 1, notEnacted: 0 })
   })
 
   it('lets a law that was joined outrank a Bundesgesetzblatt that names no law for the §', () => {

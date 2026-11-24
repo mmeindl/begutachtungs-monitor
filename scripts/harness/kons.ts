@@ -64,6 +64,7 @@ import { absatzSequence, designatedUnitsOf, followingUnit, standingUnitsOf, orac
 import { installFetchCache, isLiveQuery } from '../lib/harnessCache'
 import { accountOf, bgblNumberOf, CONSOLIDATION_GRACE_DAYS, gapsIn, kindsOfLaw, type BgblListing } from '../lib/benchCensus'
 import { bgblRecordOf } from '../../server/utils/ris/bgblJoin'
+import { extractBgblLink, findRvLinks, parseStages } from '../../server/utils/parliament/detailJson'
 import { harnessStamp } from '../lib/harnessRecord'
 import { renditionOfPages, witnessVerdict, type DraftRendition } from '../../server/utils/kons/draftWitness'
 import { argAssigned, argFlag } from '../lib/args'
@@ -72,7 +73,7 @@ import { asArray } from '../lib/ris'
 import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 import { draftPathOf, type DraftPathCase, type DraftPathRecord } from '../lib/konsDraftPath'
-import { harnessKey, kindKey, matchArticle, misnumberedShown, removalVerdict, repealNoteOf, scoredKey, UNCHANGED_CLASSES, unchangedClass, type UnchangedClass } from './konsJudge'
+import { harnessKey, kindKey, matchArticle, misnumberedShown, noArticleFor, removalVerdict, repealNoteOf, scoredKey, UNCHANGED_CLASSES, unchangedClass, type UnchangedClass } from './konsJudge'
 
 interface Verdict {
   bgbl: string
@@ -632,7 +633,7 @@ const tally = (map: Map<string, number>, key: string): void => {
  * of the two Promulgationsklauseln, the same equality the law lookup runs
  * on; the Artikel heading only breaks a tie.
  */
-async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachung: string, article: DraftArticle | null): Promise<Oracle | { note: string }> {
+async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachung: string, article: DraftArticle, isPackage: boolean): Promise<Oracle | { note: string }> {
   // 1. BGBl → Regierungsvorlage, from the law's own amendment history.
   const list = await risJson({ Applikation: 'BrKons', Gesetzesnummer: gesetzesnummer, DokumenteProSeite: 'OneHundred', Seitennummer: '1' })
   const aenderungen = new Set<string>()
@@ -640,14 +641,52 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
     for (const line of String(ref?.Data?.Metadaten?.Bundesrecht?.BrKons?.Aenderung ?? '').split(/\r?\n/)) aenderungen.add(line.trim())
   }
   const escaped = bgblNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const origin = [...aenderungen].map((l) => new RegExp(`^${escaped} \\(NR: GP ([IVXL]+) (RV|IA|AB) (\\d+)`).exec(l)).find(Boolean)
+  // Any white space before the bracket: RIS writes „BGBl. I Nr. 8/2026  (NR: …" with two
+  // for the Bundesvergabegesetz Konzessionen 2018, and with one space required its 40
+  // §§ in 58/ME had no draft (24.11.2026).
+  const origin = [...aenderungen].map((l) => new RegExp(`^${escaped}\\s+\\(NR: GP ([IVXL]+) (RV|IA|AB) (\\d+)`).exec(l)).find(Boolean)
   if (!origin) return { note: 'Herkunft (RV/IA) nicht in der Änderungshistorie' }
   if (origin[2] !== 'RV') return { note: `kein Ministerialentwurf (${origin[2]})` }
   const gp = origin[1]!
   // 2. Regierungsvorlage → Ministerialentwurf.
   const rv = await risJson({ __url: `${PARLIAMENT}/gegenstand/${gp}/I/${origin[3]}?json=True` })
-  const me = asArray<any>(rv?.content?.preconst).find((p) => p?.ityp === 'ME')
-  if (!me?.inr) return { note: `Regierungsvorlage ohne Ministerialentwurf (RV ${origin[3]}, preconst: ${JSON.stringify(rv?.content?.preconst ?? null).slice(0, 80)})` }
+  const mes = asArray<any>(rv?.content?.preconst).filter((p) => p?.ityp === 'ME' && p?.inr)
+  if (mes.length === 0) return { note: `Regierungsvorlage ohne Ministerialentwurf (RV ${origin[3]}, preconst: ${JSON.stringify(rv?.content?.preconst ?? null).slice(0, 80)})` }
+  if (mes.length === 1) return oracleOfDraft(mes[0], gp, kundmachung, isPackage ? article : null)
+  // A Regierungsvorlage that merges drafts (24.11.2026): 129 d.B., the
+  // Informationsfreiheits-Anpassungsgesetz, carries Artikel of twelve. The
+  // first was taken for all, and every Artikel of the other eleven found no
+  // draft. The draft is the one with an Artikel for this law, and only one.
+  const found: Oracle[] = []
+  for (const me of mes) {
+    const draft = await oracleOfDraft(me, gp, kundmachung, article, false)
+    if (!('note' in draft)) found.push(draft)
+  }
+  if (found.length === 1) return found[0]!
+  return { note: found.length === 0 ? `kein Entwurf der vereinigten Regierungsvorlage nennt das Gesetz (RV ${origin[3]}, ${mes.length} Entwürfe)` : `${found.length} Entwürfe der vereinigten Regierungsvorlage nennen das Gesetz (RV ${origin[3]})` }
+}
+
+/** The Bundesgesetzblatt of every Regierungsvorlage a draft's record names, as „45/2025"; null for one without. */
+async function rvBgblsOf(meJson: any): Promise<(string | null)[]> {
+  let links: ReturnType<typeof findRvLinks>
+  try {
+    links = findRvLinks(parseStages(meJson?.content?.stages))
+  } catch {
+    return [null]
+  }
+  const out: (string | null)[] = []
+  for (const l of new Map(links.map((x) => [`${x.gp}/${x.inr}`, x])).values()) {
+    const rv = await risJson({ __url: `${PARLIAMENT}/gegenstand/${l.gp}/I/${l.inr}?json=True` })
+    out.push(bgblKey(extractBgblLink(rv?.content?.status?.bgbllinks)?.number ?? null))
+  }
+  return out
+}
+
+/** „BGBl. I Nr. 45/2025", „Bundesgesetzblatt I Nr. 45/2025" → „45/2025". */
+const bgblKey = (cite: string | null): string | null => /(\d+\/\d{4})/.exec(cite ?? '')?.[1] ?? null
+
+/** Steps 3 and 4 of `loadOracle` for one draft; with `article`, its Artikel for that law. */
+async function oracleOfDraft(me: any, gp: string, kundmachung: string, article: DraftArticle | null, logJoin = true): Promise<Oracle | { note: string }> {
   const meJson = await risJson({ __url: `${PARLIAMENT}/gegenstand/${me.gp_code ?? gp}/ME/${me.inr}?json=True` })
   const einlangen = /(\d{4})-(\d{2})-(\d{2})|(\d{2})\.(\d{2})\.(\d{4})/.exec(String(meJson?.content?.einlangen ?? ''))
   const arrived = einlangen ? (einlangen[1] ? `${einlangen[1]}-${einlangen[2]}-${einlangen[3]}` : `${einlangen[6]}-${einlangen[5]}-${einlangen[4]}`) : null
@@ -681,14 +720,14 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
   const rows = source.parsed.rows
   const path: AnnexPath = source.readFrom === 'pdf' ? 'PDF' : 'XML'
   const meId = String(me.zitation ?? `${me.inr}/ME`)
-  if (withDraftPath) draftRecords.set(flat.id, { flat, documents, draftBlocks, beginn: candidates[0]!.beginn, me: meId })
+  if (withDraftPath && !draftRecords.has(flat.id)) draftRecords.set(flat.id, { flat, documents, draftBlocks, beginn: candidates[0]!.beginn, me: meId, rvBgbls: await rvBgblsOf(meJson) })
   if (!article) return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(draftBlocks), lawKey: undefined, path, recordId: flat.id }
   const parts = articleBlocks(draftBlocks).filter((p) => p.article.amends)
   const match = matchArticle(parts.map((p) => p.article), article)
   if ('reason' in match) {
     // Both sides, so a failed join can be read and not only counted (19.11.2026).
     const cite = (a: DraftArticle) => `${a.number ?? '—'} „${(a.title ?? '').slice(0, 60)}" ${a.bgbl ? `${a.bgbl.organ} ${a.bgbl.nummer}` : 'ohne Stammnorm'}`
-    if (verbose) console.log(`        ↳ Orakel-Join: BGBl ${cite(article)} — Entwurf (${parts.length} Artikel): ${parts.map((p) => cite(p.article)).join(' | ').slice(0, 900)}`)
+    if (verbose && logJoin) console.log(`        ↳ Orakel-Join: BGBl ${cite(article)} — Entwurf (${parts.length} Artikel): ${parts.map((p) => cite(p.article)).join(' | ').slice(0, 900)}`)
     return { note: `Artikel des Entwurfs zu ${article.title ?? article.number ?? '?'} nicht gefunden — ${match.reason}` }
   }
   const part = parts.find((p) => p.article === match)!
@@ -696,7 +735,9 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
 }
 
 /** `--entwurf`: the drafts behind the bench, and each law of a Bundesgesetzblatt that came of one. */
-const draftRecords = new Map<string, { flat: NonNullable<ReturnType<typeof flattenRisRecord>>; documents: ReturnType<NonNullable<typeof annexDocumentsOf>>; draftBlocks: TextBlock[]; beginn: string; me: string }>()
+const draftRecords = new Map<string, { flat: NonNullable<ReturnType<typeof flattenRisRecord>>; documents: ReturnType<NonNullable<typeof annexDocumentsOf>>; draftBlocks: TextBlock[]; beginn: string; me: string; rvBgbls: (string | null)[] }>()
+/** Every Bundesgesetzblatt the run read, by „45/2025", with its amending Artikel — what a draft's Artikel is looked for in (`notEnacted`). */
+const bgblArticles = new Map<string, DraftArticle[]>()
 const enactedLaws: { recordId: string; kurztitel: string; article: DraftArticle; blocks: readonly TextBlock[]; pairs: Map<string, { before: KonsParagraphRef | null; afters: KonsParagraphRef[] }> }[] = []
 
 /**
@@ -747,6 +788,8 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict[]> {
     // RIS names the Bundesgesetzblatt's PDF by what it is: the authentic print.
     .find((u) => u.DataType === 'Authentisch' || u.DataType === 'Pdf')?.Url
   const parts = articleBlocks(blocks).filter((p) => p.article.amends)
+  const readKey = bgblKey(bgblNumber)
+  if (readKey) bgblArticles.set(readKey, parts.map((p) => p.article))
   if (parts.length === 0) return [{ ...blank('keine Promulgationsklausel — kein geändertes Gesetz'), bgbl: bgblNumber || bgblId }]
   const hint = parts.length === 1 ? titleHint : undefined
   let rendition: Promise<DraftRendition | null> | null = null
@@ -817,7 +860,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   const kurztitel = resolved.kurztitel || titleHint || article.title || ctx.fallback
   let oracle: Oracle | null = null
   if (withOracle) {
-    const loaded = await loadOracle(resolved.gesetzesnummer, bgblNumber, kundmachung, ctx.package ? article : null).catch((err) => ({ note: `Orakel nicht ladbar: ${String(err).slice(0, 80)}` }))
+    const loaded = await loadOracle(resolved.gesetzesnummer, bgblNumber, kundmachung, article, ctx.package).catch((err) => ({ note: `Orakel nicht ladbar: ${String(err).slice(0, 80)}` }))
     if ('note' in loaded) tally(oracleNotes, loaded.note)
     else {
       oracle = loaded
@@ -1530,16 +1573,23 @@ async function scoreDraftPath(): Promise<DraftPathRecord> {
         })
       }
     }
-    // A § of the page no enacted law was joined to stays in the count.
+    // A § of the page no enacted law was joined to stays in the count — as
+    // not enacted where that is proven (24.11.2026): every Regierungsvorlage
+    // of the draft has a Bundesgesetzblatt, the run read each, and none has
+    // an Artikel for the law (`noArticleFor`). Otherwise it is „no law".
     const reached = new Set(cases.map((c) => c.key))
+    const allRead = draft.rvBgbls.length > 0 && draft.rvBgbls.every((b) => b !== null && bgblArticles.has(b))
     for (const p of out.paragraphs) {
       const key = `${recordId}|${p.annexLaw}|${p.id}`
-      if (!reached.has(key)) cases.push({ key, me: draft.me, law: String(p.annexLaw ?? ''), id: p.id, amended: 'noLaw' })
+      if (reached.has(key)) continue
+      const own = parts.length === 1 ? parts[0]!.article : parts.find((x) => x.article.key === p.annexLaw)?.article
+      const notEnacted = !!own && allRead && draft.rvBgbls.every((b) => noArticleFor(bgblArticles.get(b!)!, own))
+      cases.push({ key, me: draft.me, law: String(p.annexLaw ?? ''), id: p.id, amended: notEnacted ? 'notEnacted' : 'noLaw' })
     }
   }
   const record = draftPathOf(cases, composed, failed)
   console.log(`\n  Entwurfspfad: ${record.drafts} Entwürfe, ${record.shown} gezeigte §§; gleiche Anweisung auf gleichem Text ${record.comparable}, davon Wort für Wort das Gesetz ${record.identical}`)
-  console.log(`    nicht bewertet: Anweisung geändert ${record.instructionChanged}, Text vorher geändert ${record.stockMoved}, ohne Anweisungszeile ${record.noInstructionLine}, vom Gesetz nicht geändert ${record.notAmended}, Gesetzestext nicht lesbar ${record.enactedUnread}, kein Gesetz zugeordnet ${record.noLawJoined}`)
+  console.log(`    nicht bewertet: Anweisung geändert ${record.instructionChanged}, Text vorher geändert ${record.stockMoved}, ohne Anweisungszeile ${record.noInstructionLine}, vom Gesetz nicht geändert ${record.notAmended}, Gesetzestext nicht lesbar ${record.enactedUnread}, nicht Gesetz geworden ${record.notEnacted ?? 0}, kein Gesetz zugeordnet ${record.noLawJoined}`)
   for (const d of record.differs) console.log(`    ✗ ${d.me} ${d.law} § ${d.id}`)
   return record
 }

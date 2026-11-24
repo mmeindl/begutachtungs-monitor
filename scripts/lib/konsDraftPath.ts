@@ -31,6 +31,13 @@ export type DraftPathCase = {
   | { amended: 'unread' }
   /** No law of the bench could be joined to the draft's Artikel for this §. */
   | { amended: 'noLaw' }
+  /**
+   * The draft's Artikel for this § became law in none of the Bundesgesetzblätter
+   * that came of its Regierungsvorlagen: every one is read, and none has an
+   * Artikel for the law (24.11.2026; 11/ME's StPO, ZPO and others, the StGB alone
+   * went into BGBl. I Nr. 45/2025).
+   */
+  | { amended: 'notEnacted' }
   | {
     amended: true
     /** Instruction lines the draft has for the §. */
@@ -69,14 +76,17 @@ export interface DraftPathRecord {
   enactedUnread: number
   /** Not scored: no law of the bench joins to the draft's Artikel. */
   noLawJoined: number
+  /** Not scored: the draft's Artikel became law in none of the Bundesgesetzblätter that came of it. Absent before 24.11.2026. */
+  notEnacted?: number
 }
 
-/** The stronger of two readings of one §: a law joined over none, an amending BGBl over that, then the law's own text, then the same instruction. */
+/** The stronger of two readings of one §: a law joined over none, a proven absence over that, an amending BGBl over that, then the law's own text, then the same instruction. */
 function rank(c: DraftPathCase): number {
   if (c.amended === 'noLaw') return 0
-  if (c.amended === false) return 1
-  if (c.amended === 'unread') return 2
-  return 3 + (c.sameInstruction && c.lines > 0 ? 2 : 0) + (c.identical ? 4 : 0)
+  if (c.amended === 'notEnacted') return 1
+  if (c.amended === false) return 2
+  if (c.amended === 'unread') return 3
+  return 4 + (c.sameInstruction && c.lines > 0 ? 2 : 0) + (c.identical ? 4 : 0)
 }
 
 export function draftPathOf(cases: readonly DraftPathCase[], drafts: number, failed: number): DraftPathRecord {
@@ -85,9 +95,10 @@ export function draftPathOf(cases: readonly DraftPathCase[], drafts: number, fai
     const held = best.get(c.key)
     if (!held || rank(c) > rank(held)) best.set(c.key, c)
   }
-  const out: DraftPathRecord = { drafts, failed, shown: best.size, comparable: 0, identical: 0, differs: [], instructionChanged: 0, stockMoved: 0, noInstructionLine: 0, notAmended: 0, enactedUnread: 0, noLawJoined: 0 }
+  const out: DraftPathRecord = { drafts, failed, shown: best.size, comparable: 0, identical: 0, differs: [], instructionChanged: 0, stockMoved: 0, noInstructionLine: 0, notAmended: 0, enactedUnread: 0, noLawJoined: 0, notEnacted: 0 }
   for (const c of best.values()) {
     if (c.amended === 'noLaw') out.noLawJoined++
+    else if (c.amended === 'notEnacted') out.notEnacted!++
     else if (c.amended === 'unread') out.enactedUnread++
     else if (!c.amended) out.notAmended++
     else if (!c.sameInstruction) out.instructionChanged++

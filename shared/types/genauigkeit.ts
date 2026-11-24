@@ -106,6 +106,8 @@ export interface GenauigkeitRecord {
         enactedUnread?: number
         /** No law of the bench joined to the draft's Artikel; absent in a record before 23.11.2026. */
         noLawJoined?: number
+        /** The draft's Artikel became law in none of the Bundesgesetzblätter that came of it; absent before 24.11.2026. */
+        notEnacted?: number
       }
     }
     /** Faults injected into confirmed results (`faultInjection.ts`, its result classes). */

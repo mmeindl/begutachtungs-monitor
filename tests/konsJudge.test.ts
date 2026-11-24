@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isRepealStub, kindKey, loadKey, matchArticle, misnumberedShown, removalVerdict, repealNoteOf, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
+import { isRepealStub, kindKey, loadKey, matchArticle, misnumberedShown, noArticleFor, removalVerdict, repealNoteOf, scoredKey, unchangedClass } from '../scripts/harness/konsJudge'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 
 // The BGBl bench's own bookkeeping (19.11.2026): what it got wrong is how a
@@ -72,6 +72,25 @@ describe('matchArticle: the draft Artikel of the same law', () => {
   it('a shared Stammnorm with no clear heading stays refused', () => {
     const got = matchArticle(fremdenrecht, art(0, 'Änderung des Bundesgesetzes über die Gewährung von Asyl', 'BGBl. I Nr.', '100/2005'))
     expect(got).toEqual({ reason: '3 Artikel zitieren die Stammnorm, kein Titel passt eindeutig' })
+  })
+})
+
+describe('noArticleFor: a draft Artikel that became law in no Bundesgesetzblatt (24.11.2026)', () => {
+  // 11/ME XXVIII: BGBl. I Nr. 45/2025 enacted the StGB alone, the StPO and the ZPO of the draft went nowhere.
+  const bgbl45 = [art(0, 'Änderung des Strafgesetzbuches', 'BGBl. Nr.', '60/1974')]
+
+  it('holds where no Artikel cites the Stammnorm and no heading fits', () => {
+    expect(noArticleFor(bgbl45, art(2, 'Änderung der Strafprozeßordnung 1975', 'BGBl. Nr.', '631/1975'))).toBe(true)
+    expect(noArticleFor([], art(2, 'Änderung der Strafprozeßordnung 1975', 'BGBl. Nr.', '631/1975'))).toBe(true)
+  })
+
+  it('does not hold for the law the Bundesgesetzblatt does carry', () => {
+    expect(noArticleFor(bgbl45, art(0, 'Änderung des Strafgesetzbuches', 'BGBl. Nr.', '60/1974'))).toBe(false)
+  })
+
+  it('takes a tie on the Stammnorm for no proof of absence', () => {
+    const fremdenrecht = [art(0, 'Änderung des Asylgesetzes 2005', 'BGBl. I Nr.', '100/2005'), art(4, 'Änderung des Fremdenpolizeigesetzes 2005', 'BGBl. I Nr.', '100/2005')]
+    expect(noArticleFor(fremdenrecht, art(0, 'Änderung des Bundesgesetzes über die Gewährung von Asyl', 'BGBl. I Nr.', '100/2005'))).toBe(false)
   })
 })
 
