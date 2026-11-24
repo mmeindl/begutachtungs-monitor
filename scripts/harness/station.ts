@@ -118,7 +118,19 @@ import { PARLIAMENT, RIS_API, getJson as fetchJson, getParliamentHtml, getText a
 const isList81 = (url: string): boolean => url.startsWith(`${PARLIAMENT}/Filter/api/filter/data/81?`)
 /** `--liste-aus-cache`: the lists replayed from the cache, on purpose (see above). */
 const replayLists = argFlag('liste-aus-cache')
-const cache = argFlag('cache') ? installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: (url) => isList81(url) || isBegutSearch(url), replay: replayLists }) : null
+/**
+ * Records this run asks Parliament for again, once (24.11.2026). A draft's
+ * record cached before its committee stage names the Regierungsvorlage as
+ * its last text, while the Regierungsvorlage's own record, read later, names
+ * the committee's and the Kundmachung: 103/ME's copy was of 09.09.2026, and
+ * the null comparison held the Regierungsvorlage against BGBl. I Nr. 88/2026
+ * and counted the committee's amendments as 39 residues. `loadDraft` adds a
+ * draft's address here when the two records disagree; served from disk only
+ * when fetched in this run.
+ */
+const liveRecords = new Set<string>()
+const runStart = new Date()
+const cache = argFlag('cache') ? installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: (url) => isList81(url) || isBegutSearch(url) || (liveRecords.has(url) ? runStart : false), replay: replayLists }) : null
 
 const SCRIPT = 'harness/station'
 const gp = argAssigned('gp') ?? 'XXVIII'
@@ -242,6 +254,8 @@ interface Draft {
   stations: Map<LawStationId, LawUnit[]>
   /** Every station the record names, readable or not — a station only as PDF is offered and refused. */
   present: Set<LawStationId>
+  /** The stations the Regierungsvorlage's own record names (`rv`, `ausschuss`, `plenum`); empty for a law without a draft, whose record is its own. */
+  rvNames: Set<LawStationId>
   /** The Kundmachung was found through the Bundesrat's Einspruch. */
   viaObjection: boolean
   /** The draft read from RIS XML, beside its HTML reading — for null comparison 2. */
@@ -252,8 +266,9 @@ interface Draft {
 
 /** One draft's station texts, as `lawDiffService` resolves and reads them. */
 async function loadDraft(inr: number, risXmlOf: (inr: number) => Promise<string | null>): Promise<Draft | null> {
+  const recordUrl = `${PARLIAMENT}/gegenstand/${gp}/ME/${inr}?json=True`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const content: any = (await getJson<any>(`${PARLIAMENT}/gegenstand/${gp}/ME/${inr}?json=True`))?.content ?? {}
+  const content: any = (await getJson<any>(recordUrl))?.content ?? {}
   const found = findLawStations(content, 'ME')
   if (!found.has('rv')) return null
   const stations = new Map<LawStationId, LawUnit[]>()
@@ -265,7 +280,7 @@ async function loadDraft(inr: number, risXmlOf: (inr: number) => Promise<string 
   const meFromRis = xml ? await readUnits(`${inr}/ME me (RIS)`, xml, 'xml') : null
   // The page reads the RIS text where Parliament has the draft as PDF only.
   if (!stations.has('me') && found.has('me') && meFromRis) stations.set('me', meFromRis)
-  const draft: Draft = { label: `${inr}/ME`, stations, present: new Set(found.keys()), viaObjection: false, meFromRis: stations.get('me') === meFromRis ? null : meFromRis, bundled: null, rvCount: 0 }
+  const draft: Draft = { label: `${inr}/ME`, stations, present: new Set(found.keys()), rvNames: new Set(), viaObjection: false, meFromRis: stations.get('me') === meFromRis ? null : meFromRis, bundled: null, rvCount: 0 }
   const stages = parseStages(content.stages)
   try {
     draft.rvCount = new Set(findRvLinks(stages).map((l) => `${l.gp}/${l.inr}`)).size
@@ -277,6 +292,12 @@ async function loadDraft(inr: number, risXmlOf: (inr: number) => Promise<string 
   if (rvLink) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rv: any = (await getJson<any>(`${PARLIAMENT}/gegenstand/${rvLink.gp}/I/${rvLink.inr}?json=True`))?.content ?? {}
+    draft.rvNames = new Set(findLawStations(rv, 'I').keys())
+    // The draft's copy older than the Regierungsvorlage's: asked again (`liveRecords`).
+    if (cache && !liveRecords.has(recordUrl) && [...draft.rvNames].some((id) => !found.has(id))) {
+      liveRecords.add(recordUrl)
+      return loadDraft(inr, risXmlOf)
+    }
     draft.bundled = bundlesOtherDrafts(rv.preconst, gp, inr)
     let nummer = extractBgblLink(rv.status?.bgbllinks)?.number ?? null
     if (!nummer) {
@@ -314,7 +335,7 @@ async function loadItem(ityp: 'I' | 'A', inr: number): Promise<Draft | null> {
     const html = found.get(id)?.html
     if (html) stations.set(id, await readUnits(`${inr}/${ityp} ${id}`, html, 'html'))
   }
-  const draft: Draft = { label: `${inr}/${ityp}`, stations, present: new Set(found.keys()), viaObjection: false, meFromRis: null, bundled: false, rvCount: 0 }
+  const draft: Draft = { label: `${inr}/${ityp}`, stations, present: new Set(found.keys()), rvNames: new Set(), viaObjection: false, meFromRis: null, bundled: false, rvCount: 0 }
   let nummer = extractBgblLink(content.status?.bgbllinks)?.number ?? null
   if (!nummer) {
     nummer = await bgblViaObjectionOf(content, { gp, ityp, inr })
@@ -381,6 +402,8 @@ interface Record_ extends Partial<HarnessStamp>, Partial<CorpusReach> {
    * written before.
    */
   nullUnits?: Record<'parlament-bgbl' | 'html-xml', number>
+  /** Drafts left out of null comparison 1 because their last parliamentary text is not held, as „103/ME ausschuss". Absent before 24.11.2026. */
+  nullUnread?: string[]
   /** Every changed unit of every pair and its badge, so two runs compare verdict by verdict. */
   verdicts: Record<string, 'geändert' | 'redaktionell' | 'ohne Wortdiff'>
   /** In a committed baseline (`stationBaseline.json`): why each residue that is not editorial stands. */
@@ -455,7 +478,7 @@ function windowOfList(): Record_['window'] {
   return { oldest: at(drafts[0]), newest: at(drafts.at(-1)), listFetchedAt: fetched.length ? new Date(fetched[0]!).toISOString() : null, fromCache: served.some((r) => r.fromCache) }
 }
 const listWindow = withoutDraft ? undefined : windowOfList()
-const record: Record_ = { gp, ...(population ? { population } : {}), ...(listWindow ? { window: listWindow } : {}), drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, refused: [], withoutRv: 0, viaObjection: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, verdicts: {} }
+const record: Record_ = { gp, ...(population ? { population } : {}), ...(listWindow ? { window: listWindow } : {}), drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, refused: [], withoutRv: 0, viaObjection: 0, ceiling: [], residues: [], nullUnits: { 'parlament-bgbl': 0, 'html-xml': 0 }, nullUnread: [], verdicts: {} }
 /** With `--mutationen`: every distinct unit of a later text, by its text, with where it stands. */
 const laterUnits = new Map<string, { unit: LawUnit; where: string }>()
 const requested = targets.filter((x) => !only.size || only.has(x.inr))
@@ -515,9 +538,15 @@ for (const target of requested) {
       }
     }
   }
-  // Null comparison 1: the last parliamentary text against the Kundmachung.
-  const last = (['plenum', 'ausschuss', 'rv', 'antrag'] as const).find((id) => d!.stations.get(id)?.length)
-  if (last && d.stations.get('bgbl')?.length) {
+  // Null comparison 1: the last parliamentary text against the Kundmachung —
+  // the last either record names. Where that text is not held, the draft is
+  // left out and listed, never held against an earlier text: the
+  // Regierungsvorlage is not what was adopted where a committee amended it
+  // (24.11.2026, see `liveRecords`).
+  const named = new Set([...d.present, ...d.rvNames])
+  const last = (['plenum', 'ausschuss', 'rv', 'antrag'] as const).find((id) => named.has(id))
+  if (last && d.stations.get('bgbl')?.length && !d.stations.get(last)?.length) record.nullUnread!.push(`${d.label} ${last}`)
+  else if (last && d.stations.get('bgbl')?.length) {
     const compared = comparePair(d, last, 'bgbl')
     if (!compared.refused) {
       record.nullUnits!['parlament-bgbl'] += compared.diff.units.length
@@ -562,6 +591,7 @@ for (const kind of ['parlament-bgbl', 'html-xml'] as const) {
   const list = record.residues.filter((r) => r.kind === kind)
   const substantive = list.filter((r) => !r.residue.editorial)
   console.log(`\n── 3. Nullvergleich ${kind === 'parlament-bgbl' ? 'letzte parlamentarische Fassung → Kundmachung' : 'Entwurf aus Parlaments-HTML → derselbe aus RIS-XML'}: ${list.length} Reste in ${record.nullUnits![kind]} Einheiten, davon ${substantive.length} nicht redaktionell`)
+  if (kind === 'parlament-bgbl' && record.nullUnread!.length) console.log(`   nicht verglichen, die letzte Fassung ist nicht lesbar: ${record.nullUnread!.join(' · ')}`)
   for (const r of list) {
     if (r.residue.editorial && kind === 'parlament-bgbl') continue
     console.log(`   ${residueLine(r)}`)

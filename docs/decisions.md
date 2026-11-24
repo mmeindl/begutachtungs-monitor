@@ -2021,11 +2021,26 @@ gets an entry of its own only where it carries a reason the rule does not.
   versions lost their last 1.121, and with them the §§ four laws of 2025
   created (`fetchAllVersions` now reads every page and refuses a short
   list). The page was never affected: it reads a law as of a day, not its
-  history. The first round over the whole period (58f6a395) stays
-  unpublished: the station lane's null test took 103/ME's Regierungsvorlage
-  for Parliament's last text, the monitor holding none later, and counted
-  the committee's amendments in BGBl. I Nr. 88/2026 as differences between
-  texts that should be equal (39 of 43). Considered and dropped the same
+  history. The first round over the whole period (58f6a395) stayed
+  unpublished, and what held it were four faults, three of the instruments
+  and one the page shares. (1) The station lane read 103/ME's record as cached on
+  09.09.2026, before the committee stage, while the Regierungsvorlage's
+  record, read later, led it to BGBl. I Nr. 88/2026; its null test then held
+  the Regierungsvorlage against the law and counted the committee's
+  amendments as 39 of 43 differences between texts that should be equal. A
+  draft's record that names fewer stations than its Regierungsvorlage's is
+  now read again, and the null test compares the last text either record
+  names or leaves the draft out by name, never an earlier one. (2) Three
+  shown §§ „half applied" were the bench pairing the wrong version before: a
+  Bundesgesetzblatt issued later can take effect first (88/2026 before
+  62/2026 in EStG § 26), and RIS keeps the earlier one's version on the text
+  without it (`versionPairFor`). (3) The ORF-Gesetz's Novelle names the law
+  only by its long title, which shares no word with „ORF-Gesetz", and the
+  page's resolver refused the only law its Stammnorm found (`konsLaw.ts`). It
+  now takes a name equal to RIS's long title, word for word, and the bench
+  passes the clause as the page does. (4) The Referenzwerte-Vollzugsgesetz's
+  versions of BGBl. I Nr. 5/2026 came into RIS later than a copy fetched past
+  the 60 days: an absence is now asked live before it counts. Considered and dropped the same
   day: a separate weekly job that froze the rules at a git tag to score only
   laws published after it. Its alarm would have watched the frozen code, not
   what runs, and the figure it guarded is the page's „bei den anderen kann
