@@ -8,7 +8,7 @@
  *
  * `<dir>` holds what the round wrote, under these names:
  *
- *   kons.json        kons.ts -- --seit=2024-10-24 --cache --oracle --entwurf --json=<dir>/kons.json  (the period's start, GP_STARTS)
+ *   kons.json        kons.ts -- --seit=2024-10-24 --cache --oracle --entwurf --erstsicht=scripts/harness/firstSight.json --json=<dir>/kons.json  (the period's start, GP_STARTS)
  *   fi-pdf.json      faultInjection.ts -- --gp=XXVIII --nur-periode --mindestens=95 --json=<dir>/fi-pdf.json
  *   fi-xml.json      faultInjection.ts -- --gp=XXVIII --nur-periode --xml --mindestens=95 --json=<dir>/fi-xml.json
  *   annex-pdf.json   annexPdf.ts -- --gp=XXVIII --nur-periode --json=<dir>/annex-pdf.json
@@ -38,21 +38,29 @@
  * The two that can be let through on purpose are named in the record:
  * `--erlaube-ungehalten=Fehlt,Lücke` (`unheld`), `--erlaube-gemischt`
  * (`mixed`, the commit then from `--commit` or the checkout).
+ *
+ * FIRST SIGHT (24.11.2026, `scripts/lib/firstSight.ts`). A round that passes
+ * also appends the drafts it met for the first time to
+ * `scripts/harness/firstSight.json` (`--erstsicht=<file>` for another), the
+ * only way anything enters that file. Commit both files together.
  */
 import { execSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { argAssigned, argFlag } from '../lib/args'
 import { RoundRefused, buildGenauigkeitRecord } from '../lib/genauigkeitRound'
+import { fileAfterRound, formatFirstSight, type FirstSightFile, type FirstSightRound } from '../lib/firstSight'
 
 const dir = argAssigned('in')
 if (!dir) {
-  console.error('Usage: npx vite-node -c vitest.config.ts scripts/harness/genauigkeit.ts -- --in=<dir> [--out=<file>] [--erlaube-ungehalten=<Klasse,…>] [--erlaube-gemischt [--commit=<hash>]]')
+  console.error('Usage: npx vite-node -c vitest.config.ts scripts/harness/genauigkeit.ts -- --in=<dir> [--out=<file>] [--erstsicht=<file>] [--erlaube-ungehalten=<Klasse,…>] [--erlaube-gemischt [--commit=<hash>]]')
   process.exit(1)
 }
 const outFile = argAssigned('out') ?? 'shared/data/genauigkeit.json'
+const firstSightFile = argAssigned('erstsicht') ?? 'scripts/harness/firstSight.json'
 
 let record
+let firstSight
 try {
   record = buildGenauigkeitRecord(
     (name) => (existsSync(join(dir, name)) ? JSON.parse(readFileSync(join(dir, name), 'utf8')) : undefined),
@@ -63,6 +71,10 @@ try {
       head: () => execSync('git rev-parse --short=8 HEAD', { encoding: 'utf8' }).trim(),
     },
   )
+  const round = (JSON.parse(readFileSync(join(dir, 'kons.json'), 'utf8')) as { firstSight?: FirstSightRound }).firstSight
+  const after = fileAfterRound(JSON.parse(readFileSync(firstSightFile, 'utf8')) as FirstSightFile, round)
+  if ('refusals' in after) throw new RoundRefused(after.refusals)
+  firstSight = { file: after.file, round: round! }
 } catch (err) {
   if (!(err instanceof RoundRefused)) throw err
   console.error(err.message)
@@ -73,3 +85,6 @@ try {
 const json = JSON.stringify(record, null, 2).replace(/\{\n\s+"(?:key|path)": [^{}]*?\n\s+\}/g, (m) => m.replace(/\s*\n\s*/g, ' '))
 writeFileSync(outFile, `${json}\n`)
 console.log(`${outFile}: Messung vom ${record.date}, Stand ${record.commit}${record.mixed ? ' (gemischt)' : ''}`)
+writeFileSync(firstSightFile, formatFirstSight(firstSight.file))
+const { scored } = firstSight.round
+console.log(`${firstSightFile}: ${firstSight.file.drafts.length} Entwürfe auf den ersten Blick (${firstSight.round.captured.length} neu); gleiche Anweisung auf gleichem Text ${scored.comparable}, davon Wort für Wort das Gesetz ${scored.identical}`)

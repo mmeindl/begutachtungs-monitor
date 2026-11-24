@@ -16,6 +16,11 @@
 # older than the list; redraw it from <outdir>/station.json, with a reason for
 # every residue that is not editorial.
 #
+# The kons lane reads scripts/harness/firstSight.json and keeps the drafts it
+# meets for the first time into kons.json; the builder appends them to the
+# file once the round passes. Run the bench on a law newer than the last
+# round only in a round: a law first compared outside one is no longer unseen.
+#
 # HARNESS_CACHE: the cache to read and fill (default .harness-cache).
 # BM_STATE_DIR: the server's state (default <outdir>/state, never production's).
 set -u
@@ -63,7 +68,7 @@ note 'server warm'
 { step fi-pdf vn scripts/harness/faultInjection.ts -- --gp=XXVIII --nur-periode --misses --mindestens=95 --json="$OUT/fi-pdf.json"
   step fi-xml vn scripts/harness/faultInjection.ts -- --gp=XXVIII --nur-periode --xml --misses --mindestens=95 --json="$OUT/fi-xml.json"; } &
 A=$!
-{ step kons vn scripts/harness/kons.ts -- --seit=2024-10-24 --cache --oracle --entwurf --quiet --json="$OUT/kons.json"
+{ step kons vn scripts/harness/kons.ts -- --seit=2024-10-24 --cache --oracle --entwurf --erstsicht=scripts/harness/firstSight.json --quiet --json="$OUT/kons.json"
   step annex-xml vn scripts/harness/annexPdf.ts -- --gp=XXVIII --nur-periode --xml --json="$OUT/annex-xml.json" --zeilen="$OUT/rows-xml.json"
   step annex-pdf vn scripts/harness/annexPdf.ts -- --gp=XXVIII --nur-periode --json="$OUT/annex-pdf.json" --zeilen="$OUT/rows-pdf.json"; } &
 B=$!

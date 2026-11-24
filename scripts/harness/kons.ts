@@ -71,8 +71,10 @@ import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { asArray } from '../lib/ris'
 import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../../server/utils/text/designation'
-import { appendFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 import { draftPathOf, type DraftPathCase, type DraftPathRecord } from '../lib/konsDraftPath'
+import { isFirstSight, keptParagraph, shownParagraph, type FirstSightFile, type FirstSightRound, type KeptDraft } from '../lib/firstSight'
+import type { ConsolidatedParagraph } from '../../shared/types/annex'
 import { harnessKey, kindKey, matchArticle, misnumberedShown, noArticleFor, removalVerdict, repealNoteOf, scoredKey, UNCHANGED_CLASSES, unchangedClass, type UnchangedClass } from './konsJudge'
 
 interface Verdict {
@@ -198,6 +200,15 @@ const withOracle = argFlag('oracle')
  * instructions went into the law unchanged (`lib/konsDraftPath.ts`).
  */
 const withDraftPath = withOracle && argFlag('entwurf')
+/**
+ * `--erstsicht=<file>` (24.11.2026, `lib/firstSight.ts`): the draft path also
+ * scores the text the page composed when a round first met each draft, as
+ * the file keeps it, and keeps the drafts this run meets for the first time
+ * into its record, for the builder to append.
+ */
+const firstSightPath = argAssigned('erstsicht') ?? null
+if (firstSightPath && !withDraftPath) throw new Error('--erstsicht braucht --oracle --entwurf')
+const firstSightFile: FirstSightFile | null = firstSightPath ? JSON.parse(readFileSync(firstSightPath, 'utf8')) : null
 /**
  * The annex is read through the page's own source choice, `annexSourceFor`
  * (`annex/annexSource.ts`): older-name candidates, bundles, then the named
@@ -738,7 +749,7 @@ async function oracleOfDraft(me: any, gp: string, kundmachung: string, article: 
 const draftRecords = new Map<string, { flat: NonNullable<ReturnType<typeof flattenRisRecord>>; documents: ReturnType<NonNullable<typeof annexDocumentsOf>>; draftBlocks: TextBlock[]; beginn: string; me: string; rvBgbls: (string | null)[] }>()
 /** Every Bundesgesetzblatt the run read, by „45/2025", with its amending Artikel — what a draft's Artikel is looked for in (`notEnacted`). */
 const bgblArticles = new Map<string, DraftArticle[]>()
-const enactedLaws: { recordId: string; kurztitel: string; article: DraftArticle; blocks: readonly TextBlock[]; pairs: Map<string, { before: KonsParagraphRef | null; afters: KonsParagraphRef[] }> }[] = []
+const enactedLaws: { recordId: string; kurztitel: string; article: DraftArticle; blocks: readonly TextBlock[]; pairs: Map<string, { before: KonsParagraphRef | null; afters: KonsParagraphRef[] }>; bgbl: string; kundmachung: string }[] = []
 
 /**
  * One read of a record's annex per run. A Sammelnovelle asks for the same
@@ -868,7 +879,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     }
   }
 
-  if (withDraftPath && oracle) enactedLaws.push({ recordId: oracle.recordId, kurztitel, article, blocks, pairs })
+  if (withDraftPath && oracle) enactedLaws.push({ recordId: oracle.recordId, kurztitel, article, blocks, pairs, bgbl: bgblKey(bgblNumber) ?? bgblNumber, kundmachung })
 
   /** The newest version that already existed when this amendment was promulgated. */
   const lastBefore = (list: readonly KonsParagraphRef[]): KonsParagraphRef | null => {
@@ -1510,33 +1521,17 @@ for (const v of verdicts.filter((x) => x.note)) console.log(`  ? ${v.bgbl}${v.ar
  * The annex is RIS's (`annexSourceFor`), without the page's fallback to
  * Parliament's copy, which these drafts do not need.
  */
-async function scoreDraftPath(): Promise<DraftPathRecord> {
+async function scoreDraftPath(): Promise<{ record: DraftPathRecord; firstSight: FirstSightRound | null }> {
   const { consolidate } = await import('../../server/utils/kons/consolidate')
   const { resolveKonsLaw, fetchParagraphXml, draftRenditionOf } = await import('../lib/productionSources')
   const squash = (text: string): string => text.replace(/\s+/g, '')
   const side = (segments: readonly { type: string; text: string }[] | null | undefined, drop: 'removed' | 'inserted'): string =>
     (segments ?? []).filter((s) => s.type !== drop).map((s) => s.text).join(' ')
-  const cases: DraftPathCase[] = []
-  let composed = 0
-  let failed = 0
-  for (const [recordId, draft] of draftRecords) {
-    let out: Awaited<ReturnType<typeof consolidate>>
-    try {
-      out = await consolidate({ gp: null, inr: null, risId: recordId }, draft.draftBlocks, draft.beginn, {
-        resolveLaw: resolveKonsLaw,
-        paragraphXml: (ref) => fetchParagraphXml(ref.nor, ref.xmlUrl!),
-        annexRows: async (articles) => {
-          const source = await annexSourceFor!(draft.documents, articles)
-          return typeof source === 'string' ? null : source.parsed.rows
-        },
-        draftRendition: () => draftRenditionOf(draft.flat.mainDocument.pdf ?? null),
-      })
-      composed++
-    } catch (err) {
-      failed++
-      console.error(`Entwurfspfad: ${draft.me} nicht zusammengesetzt — ${String(err).slice(0, 160)}`)
-      continue
-    }
+  type Shown = Pick<ConsolidatedParagraph, 'id' | 'annexLaw' | 'segments' | 'headingSegments'>
+
+  /** Every § the page shows for one draft, held against each law that came of it. */
+  async function casesOf(recordId: string, draft: NonNullable<ReturnType<typeof draftRecords.get>>, shown: readonly Shown[]): Promise<DraftPathCase[]> {
+    const cases: DraftPathCase[] = []
     const parts = articleBlocks(draft.draftBlocks).filter((p) => p.article.amends)
     for (const entry of enactedLaws.filter((e) => e.recordId === recordId)) {
       const article = parts.length === 1 ? parts[0]!.article : matchArticle(parts.map((p) => p.article), entry.article)
@@ -1544,7 +1539,7 @@ async function scoreDraftPath(): Promise<DraftPathRecord> {
       const part = parts.find((p) => p.article === article)!
       const draftLines = linesByParagraph(part.blocks)
       const lawLines = linesByParagraph(entry.blocks)
-      for (const p of out.paragraphs) {
+      for (const p of shown) {
         if (parts.length > 1 && p.annexLaw !== article.key) continue
         const label = [...entry.pairs.keys()].find((l) => (isSchedule(l) ? unitKey(l) === p.id : scoredKey(l) === p.id))
         const base = { key: `${recordId}|${p.annexLaw}|${p.id}`, me: draft.me, law: entry.kurztitel, id: p.id }
@@ -1579,19 +1574,90 @@ async function scoreDraftPath(): Promise<DraftPathRecord> {
     // an Artikel for the law (`noArticleFor`). Otherwise it is „no law".
     const reached = new Set(cases.map((c) => c.key))
     const allRead = draft.rvBgbls.length > 0 && draft.rvBgbls.every((b) => b !== null && bgblArticles.has(b))
-    for (const p of out.paragraphs) {
+    for (const p of shown) {
       const key = `${recordId}|${p.annexLaw}|${p.id}`
       if (reached.has(key)) continue
       const own = parts.length === 1 ? parts[0]!.article : parts.find((x) => x.article.key === p.annexLaw)?.article
       const notEnacted = !!own && allRead && draft.rvBgbls.every((b) => noArticleFor(bgblArticles.get(b!)!, own))
       cases.push({ key, me: draft.me, law: String(p.annexLaw ?? ''), id: p.id, amended: notEnacted ? 'notEnacted' : 'noLaw' })
     }
+    return cases
+  }
+
+  const cases: DraftPathCase[] = []
+  let composed = 0
+  let failed = 0
+  // First sight (`--erstsicht`): the kept drafts and the ones kept now, scored apart.
+  const kept = new Map((firstSightFile?.drafts ?? []).map((d) => [d.record, d]))
+  const keptReached = new Set<string>()
+  const captured: KeptDraft[] = []
+  const firstCases: DraftPathCase[] = []
+  let firstComposed = 0
+  let firstFailed = 0
+  const stamp = harnessStamp()
+  const seen = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Vienna' }).format(new Date(stamp.at))
+  for (const [recordId, draft] of draftRecords) {
+    let out: Awaited<ReturnType<typeof consolidate>> | null = null
+    let failure: string | null = null
+    try {
+      out = await consolidate({ gp: null, inr: null, risId: recordId }, draft.draftBlocks, draft.beginn, {
+        resolveLaw: resolveKonsLaw,
+        paragraphXml: (ref) => fetchParagraphXml(ref.nor, ref.xmlUrl!),
+        annexRows: async (articles) => {
+          const source = await annexSourceFor!(draft.documents, articles)
+          return typeof source === 'string' ? null : source.parsed.rows
+        },
+        draftRendition: () => draftRenditionOf(draft.flat.mainDocument.pdf ?? null),
+      })
+      composed++
+    } catch (err) {
+      failed++
+      failure = String(err).slice(0, 160)
+      console.error(`Entwurfspfad: ${draft.me} nicht zusammengesetzt — ${failure}`)
+    }
+    const fresh = out ? await casesOf(recordId, draft, out.paragraphs) : []
+    cases.push(...fresh)
+    if (!firstSightFile) continue
+    // A kept draft is scored with the text kept then, never with today's.
+    const first = kept.get(recordId)
+    if (first) {
+      keptReached.add(recordId)
+      if (first.failed) firstFailed++
+      else {
+        firstComposed++
+        firstCases.push(...(await casesOf(recordId, draft, first.paragraphs.map(shownParagraph))))
+      }
+      continue
+    }
+    const laws = enactedLaws.filter((e) => e.recordId === recordId)
+    if (!isFirstSight(recordId, laws.map((e) => e.kundmachung), firstSightFile)) continue
+    captured.push({
+      record: recordId,
+      me: draft.me,
+      bgbl: [...new Set(laws.map((e) => e.bgbl))],
+      seen,
+      commit: stamp.commit,
+      ...(failure !== null ? { failed: failure } : {}),
+      paragraphs: out ? out.paragraphs.map(keptParagraph) : [],
+    })
+    if (out) {
+      firstComposed++
+      firstCases.push(...fresh)
+    } else firstFailed++
   }
   const record = draftPathOf(cases, composed, failed)
   console.log(`\n  Entwurfspfad: ${record.drafts} Entwürfe, ${record.shown} gezeigte §§; gleiche Anweisung auf gleichem Text ${record.comparable}, davon Wort für Wort das Gesetz ${record.identical}`)
   console.log(`    nicht bewertet: Anweisung geändert ${record.instructionChanged}, Text vorher geändert ${record.stockMoved}, ohne Anweisungszeile ${record.noInstructionLine}, vom Gesetz nicht geändert ${record.notAmended}, Gesetzestext nicht lesbar ${record.enactedUnread}, nicht Gesetz geworden ${record.notEnacted ?? 0}, kein Gesetz zugeordnet ${record.noLawJoined}`)
   for (const d of record.differs) console.log(`    ✗ ${d.me} ${d.law} § ${d.id}`)
-  return record
+  if (!firstSightFile) return { record, firstSight: null }
+
+  const scored = draftPathOf(firstCases, firstComposed, firstFailed)
+  const unscored = [...kept.keys()].filter((r) => !keptReached.has(r))
+  console.log(`\n  Erster Blick (Entwürfe, deren Gesetze seit ${firstSightFile.since} kundgemacht sind): ${kept.size} gespeichert, ${captured.length} neu erfasst${unscored.length ? `, ${unscored.length} keinem Gesetz mehr zugeordnet` : ''}`)
+  console.log(`    ${scored.drafts} Entwürfe${scored.failed ? ` (${scored.failed} nicht zusammengesetzt)` : ''}, ${scored.shown} gezeigte §§; gleiche Anweisung auf gleichem Text ${scored.comparable}, davon Wort für Wort das Gesetz ${scored.identical}`)
+  for (const d of scored.differs) console.log(`    ✗ ${d.me} ${d.law} § ${d.id}`)
+  for (const r of unscored) console.log(`    ? ${kept.get(r)!.me}: in dieser Runde keinem Gesetz zugeordnet`)
+  return { record, firstSight: { since: firstSightFile.since, held: [...kept.keys()], unscored, scored, captured } }
 }
 
 /**
@@ -1601,7 +1667,7 @@ async function scoreDraftPath(): Promise<DraftPathRecord> {
  * Verweigerung|Weg` —, so a figure the page wants is summed from it rather
  * than parsed out of the lines printed here.
  */
-const draftPath = withDraftPath ? await scoreDraftPath() : null
+const { record: draftPath, firstSight } = withDraftPath ? await scoreDraftPath() : { record: null, firstSight: null }
 /** Law by law, with what kind of change each makes (`lib/benchCensus.ts`). */
 const lawLines = verdicts.map((v) => ({ bgbl: v.bgbl, article: v.article, law: v.law, instructions: v.instructions, read: v.read, applied: v.applied, checked: v.checked, identical: v.identical, divergent: v.divergent, note: v.note, kinds: lawKinds.get(`${v.bgbl}|${v.article ?? ''}`) ?? [] }))
 const accounts = census ? accountOf(census.listings, { laws: lawLines, unreached }, new Date().toISOString().slice(0, 10)) : null
@@ -1645,6 +1711,8 @@ if (jsonFile) {
     removed: { confirmed: removed('confirmed'), wrong: removed('wrong'), unverifiable: removed('unverifiable'), renumbered: removedRenumbered },
     /** `--entwurf`: the page's own composition of the drafts, against the law (`lib/konsDraftPath.ts`). */
     ...(draftPath ? { draftPath } : {}),
+    /** `--erstsicht`: the drafts kept at first sight, scored with their kept text, and the ones kept now (`lib/firstSight.ts`). */
+    ...(firstSight ? { firstSight } : {}),
     /** Law by law, with what kind of change each makes (`lib/benchCensus.ts`). */
     laws: lawLines,
     /** `--seit`: every entry of the window with its one outcome, and the numbers missing from the list. */

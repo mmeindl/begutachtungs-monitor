@@ -2080,6 +2080,33 @@ gets an entry of its own only where it carries a reason the rule does not.
   laws published after it. Its alarm would have watched the frozen code, not
   what runs, and the figure it guarded is the page's „bei den anderen kann
   der Anteil niedriger sein" until there are laws enough to show apart.
+- **What the page composed for a new law is kept at first sight, and scored
+  as it was** (24.11.2026, `scripts/lib/firstSight.ts`,
+  `scripts/harness/firstSight.json`, `kons.ts --erstsicht`). Once a round's
+  faults are fixed, every law of the period passes, so the page's figures
+  are figures after the fixes, on laws the engine was corrected on. How
+  often it is right on a law nobody corrected it on cannot be measured
+  afterwards: compared and fixed, a law is no longer unseen. The record
+  keeps the text the page composed for each draft the first time a round
+  joins it to a law, for drafts whose laws were all published on or after
+  25.11.2026, with the commit that composed it. Every round scores the kept
+  text against RIS: a fix to the measurement applies to it, a fix to the
+  engine does not. Only the builder writes the file, by appending after a
+  round passed; a draft leaves only through `removed`, with why, and is
+  never kept again. Unlike the frozen tag, it measures the code that ran.
+  The join runs through RIS's amendment history, so a draft is kept after
+  RIS has consolidated its law, and the record is blind only while a new
+  law is first compared in a round: no bench run on a law newer than the
+  last round outside one. The figure stays off the page until it covers
+  enough drafts (about three a month, so roughly half a year); until then
+  the round prints it. Tried the same day with a start of 1 September: 11
+  drafts, 246 shown §§, 60 of 60 comparable ones the law, about 3.6 KB per
+  kept §. A word planted in the new text of 108/ME's §§ made all 17 of its
+  comparable ones differ, the fresh figures unchanged. A word planted in
+  text the draft leaves standing moved 19 of them to „Text vorher geändert"
+  instead: the draft path decides that class by holding the page's own text
+  in force against RIS, so a misread standing text drops out of the score
+  rather than counting against it (open).
 - **A round names one period, and the builder holds it** (23.11.2026,
   `--nur-periode`, `inPeriod`). RIS ignores the period filter, so „the 400
   newest" held seven drafts (179 §§) of the period before under the label
