@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bridgeVersionGap, oneCharApart, pickByEqualName, pickByName, promulgatedBeforeInForce, soleUnlessContradicted, standingOnDay, type KonsLawAtDate, type KonsParagraphRef, type KonsVersion } from '../server/utils/ris/konsLaw'
+import { bridgeVersionGap, longTitleOf, oneCharApart, pickByEqualName, pickByName, promulgatedBeforeInForce, soleUnlessContradicted, standingOnDay, type KonsLawAtDate, type KonsParagraphRef, type KonsVersion } from '../server/utils/ris/konsLaw'
 
 /**
  * Which law of a Bundesgesetzblatt a caller meant.
@@ -79,6 +79,22 @@ describe('soleUnlessContradicted — a sole law needs no rival, only no contradi
   })
   it('takes it without a name to hold against', () => {
     expect(soleUnlessContradicted(law('Bundesverwaltungsgerichtsgesetz'), null)).not.toBeNull()
+  })
+  it('keeps the law a clause names by its long title, word for word only (BGBl. I Nr. 16/2025)', () => {
+    const orf: [string, { kurztitel: string; abkuerzung: string; langtitel: string }] = ['10000785', { kurztitel: 'ORF-Gesetz', abkuerzung: 'ORF-G', langtitel: 'Bundesgesetz über den Österreichischen Rundfunk' }]
+    expect(soleUnlessContradicted(orf, 'Bundesgesetz über den Österreichischen Rundfunk')).not.toBeNull()
+    expect(soleUnlessContradicted(orf, '16. Bundesgesetz, mit dem das Bundesgesetz über den Österreichischen Rundfunk geändert wird')).toBeNull()
+    expect(soleUnlessContradicted(['1', { ...orf[1], langtitel: '' }], 'Bundesgesetz über den Österreichischen Rundfunk')).toBeNull()
+  })
+})
+
+describe('longTitleOf — the long title out of RIS Titel (24.11.2026)', () => {
+  it('drops the short forms in parentheses and the Stammfassung line', () => {
+    expect(longTitleOf('Bundesgesetz über den Österreichischen Rundfunk (ORF-Gesetz, ORF-G)<br/>StF: BGBl. Nr. 379/1984 (WV) idF BGBl. Nr. 612/1986 (DFB)')).toBe('Bundesgesetz über den Österreichischen Rundfunk')
+  })
+  it('keeps a title that is its own short title, and reads nothing else', () => {
+    expect(longTitleOf('Einkommensteuergesetz 1988<br/>StF: BGBl. Nr. 400/1988')).toBe('Einkommensteuergesetz 1988')
+    expect(longTitleOf(undefined)).toBe('')
   })
 })
 

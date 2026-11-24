@@ -49,7 +49,7 @@ import { applyNovelle, instructionsFromUnits, renamedOrigins, resolveTarget, typ
 import { bodyText, plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
-import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
+import { articleBlocks, draftArticles, promulgationByArticle, type ClauseName, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { namedParagraphs, type NovaoAddress } from '../../server/utils/kons/novao'
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../../server/utils/harness/risKonsHistory'
@@ -259,6 +259,13 @@ if (dumpFile) writeFileSync(dumpFile, '')
  * time to consolidate it (`liveAfter`, `CONSOLIDATION_GRACE_DAYS` after the
  * Kundmachung); after that they are fixed and cost no request. The list of
  * the Bundesgesetzblätter (`--seit`) comes fresh every run.
+ *
+ * The grace is a cost rule, not a proof: RIS consolidated the
+ * Referenzwerte-Vollzugsgesetz's Artikel of BGBl. I Nr. 5/2026 after a copy
+ * fetched past the 60 days, and the law read as never consolidated
+ * (24.11.2026). So an absence is never taken from disk: a law that
+ * `resolveLaw` cannot find, or finds without a version of this
+ * Bundesgesetzblatt, is asked again live (`verifyLaw`).
  */
 let liveAfter: Date | null = null
 const isBgblList = (url: string): boolean => {
@@ -269,7 +276,8 @@ const isBgblList = (url: string): boolean => {
     return false
   }
 }
-if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: (url) => (isBgblList(url) ? true : liveAfter !== null && isLiveQuery(url) ? liveAfter : false) })
+const cached = argFlag('cache')
+if (cached) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: (url) => (isBgblList(url) ? true : liveAfter !== null && isLiveQuery(url) ? liveAfter : false) })
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: 'harness/kons' })
@@ -350,23 +358,6 @@ async function discoverAmendments(count: number, sammel: boolean): Promise<{ id:
   return out
 }
 
-/**
- * The law's name as the Promulgationsklausel writes it — "Das
- * Unternehmensgesetzbuch - UGB, dRGBl. S. 219/1897, …" → "Unternehmensgesetzbuch".
- * A long title with the short one in parentheses ("Das Bundesgesetz
- * betreffend die Bundesstraßen (Bundesstraßengesetz 1971 - BStG 1971), …")
- * yields the parenthesised short title.
- */
-function lawNameFromClause(blocks: readonly TextBlock[]): string | null {
-  const clause = blocks.find((b) => b.kind !== 'novao' && /\bwird wie folgt geändert\b/i.test(b.text))
-  if (!clause) return null
-  const m = /^(?:Das|Die|Der)\s+(.+?),\s*(?:d?RGBl|BGBl|StGBl|JGS)\b/i.exec(clause.text)
-  if (!m) return null
-  const paren = /\(([^()]+?)(?:\s+[-–]\s+[^()]+)?\)\s*$/.exec(m[1]!)
-  const name = paren ? paren[1]! : m[1]!
-  return name.replace(/\s+[-–]\s+\S+(?:\s+\d{4})?$/, '').trim() || null
-}
-
 interface ResolvedLaw {
   gesetzesnummer: string
   kurztitel: string
@@ -398,8 +389,15 @@ interface ResolvedLaw {
  * Digitalisierungs-Durchführungsgesetz; UStG 1994 next to its Anhang) — the
  * production resolver refuses ambiguity by design. The title hint and the
  * clause name then pick the law out, checked the same way.
+ *
+ * The clause is the page's reading of it (`DraftArticle.clause`), and it goes
+ * to the resolver as the page passes it, since 24.11.2026. The bench had
+ * its own copy of the reader and folded the clause into the title: the
+ * ORF-Gesetz's Novelle BGBl. I Nr. 16/2025 names the law only as the
+ * „Bundesgesetz über den Österreichischen Rundfunk", and with neither
+ * witness its sole Stammnorm candidate stood contradicted.
  */
-async function resolveLaw(blocks: readonly TextBlock[], bgblNumber: string, kundmachung: string, titleHint: string | undefined): Promise<ResolvedLaw | { note: string }> {
+async function resolveLaw(blocks: readonly TextBlock[], bgblNumber: string, kundmachung: string, titleHint: string | undefined, clause: ClauseName | null): Promise<ResolvedLaw | { note: string }> {
   const stammnormen = [...promulgationByArticle(blocks).values()]
   if (stammnormen.length > 1) return { note: `Sammelnovelle: ${stammnormen.length} Stammnormen` }
   const candidates: { gesetzesnummer: string; kurztitel: string; via: string }[] = []
@@ -407,7 +405,7 @@ async function resolveLaw(blocks: readonly TextBlock[], bgblNumber: string, kund
   const add = (gesetzesnummer: string | null, kurztitel: string, via: string): void => {
     if (gesetzesnummer && !candidates.some((c) => c.gesetzesnummer === gesetzesnummer)) candidates.push({ gesetzesnummer, kurztitel, via })
   }
-  const clauseName = lawNameFromClause(blocks)
+  const clauseName = clause?.name ?? null
   if (stammnormen[0]) {
     // The Artikel's own name is what separates the laws one BGBl created in
     // the same breath — 532/1993 promulgated the Bankwesengesetz *and* the
@@ -416,7 +414,7 @@ async function resolveLaw(blocks: readonly TextBlock[], bgblNumber: string, kund
     // disambiguate) and is the difference between a scored Artikel and a
     // dropped one in a package, where 90 of 342 laws failed on exactly this
     // ambiguity (`risKons.resolveLawByBgbl`, 2026-09-09).
-    const law = await resolveLawByBgbl(stammnormen[0], kundmachung, titleHint ?? clauseName)
+    const law = await resolveLawByBgbl(stammnormen[0], kundmachung, titleHint, clause)
     tried.push(`Stammnorm ${stammnormen[0].organ} ${stammnormen[0].nummer}`)
     add(law?.gesetzesnummer ?? null, law?.kurztitel ?? '', 'Stammnorm')
   }
@@ -803,7 +801,17 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   const total = instructions.length + refused.length
   if (total === 0) return blank('keine Novellierungsanordnungen')
 
-  const resolved = await resolveLaw(blocks, bgblNumber, kundmachung, titleHint ?? article.title ?? undefined)
+  let resolved = await resolveLaw(blocks, bgblNumber, kundmachung, titleHint ?? article.title ?? undefined, article.clause)
+  if ('note' in resolved && cached && liveAfter !== null) {
+    // An absence is asked live before it counts (see `liveAfter`).
+    const grace = liveAfter
+    liveAfter = new Date()
+    try {
+      resolved = await resolveLaw(blocks, bgblNumber, kundmachung, titleHint ?? article.title ?? undefined, article.clause)
+    } finally {
+      liveAfter = grace
+    }
+  }
   if ('note' in resolved) return { ...blank(resolved.note), instructions: total, read: instructions.length }
   const { versions, pairs } = resolved
   const kurztitel = resolved.kurztitel || titleHint || article.title || ctx.fallback

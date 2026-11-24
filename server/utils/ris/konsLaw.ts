@@ -217,10 +217,10 @@ export async function resolveLawByBgbl(
   clause?: ClauseName | null,
   read: KonsRecordsRead = konsRecordsOfNummer,
 ): Promise<KonsLawAtDate | null> {
-  const byLaw = new Map<string, { kurztitel: string; abkuerzung: string; paragraphs: Record<string, KonsParagraphRef> }>()
-  for (const { ref: p, kurztitel, abkuerzung } of await read(bgbl.nummer, date)) {
+  const byLaw = new Map<string, { kurztitel: string; abkuerzung: string; langtitel: string; paragraphs: Record<string, KonsParagraphRef> }>()
+  for (const { ref: p, kurztitel, abkuerzung, langtitel = '' } of await read(bgbl.nummer, date)) {
     if (!sameRisStammnorm(p.stammnorm!, bgbl)) continue
-    const entry = byLaw.get(p.gesetzesnummer!) ?? { kurztitel, abkuerzung, paragraphs: {} as Record<string, KonsParagraphRef> }
+    const entry = byLaw.get(p.gesetzesnummer!) ?? { kurztitel, abkuerzung, langtitel, paragraphs: {} as Record<string, KonsParagraphRef> }
     // One version per label at a given date; keep the first RIS returns.
     entry.paragraphs[p.label] ??= p
     byLaw.set(p.gesetzesnummer!, entry)
@@ -240,6 +240,24 @@ export interface KonsRecord {
   ref: KonsParagraphRef
   kurztitel: string
   abkuerzung: string
+  /** The law's long title (`longTitleOf`); absent in records cached before 24.11.2026. */
+  langtitel?: string
+}
+
+/**
+ * RIS's `Titel` of a consolidated law, as the long title alone:
+ * „Bundesgesetz über den Österreichischen Rundfunk (ORF-Gesetz, ORF-G)<br/>StF:
+ * BGBl. Nr. 379/1984 …" → „Bundesgesetz über den Österreichischen Rundfunk".
+ * A clause may name a law only so — BGBl. I Nr. 16/2025 does — and the
+ * Kurztitel and Abkürzung share no word with it (24.11.2026).
+ */
+export function longTitleOf(titel: unknown): string {
+  if (typeof titel !== 'string') return ''
+  return titel
+    .split(/<br\s*\/?>/i)[0]!
+    .replace(/\s*\([^()]*\)\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /** The read under `resolveLawByBgbl` — `konsRecordsOfNummer`, or the request path's cached copy of it (`kons/konsCache.ts`). */
@@ -298,6 +316,7 @@ export async function konsRecordsOfNummer(nummer: string, date: string): Promise
         ref: p,
         kurztitel: meta?.Kurztitel ?? '',
         abkuerzung: typeof meta?.BrKons?.Abkuerzung === 'string' ? meta.BrKons.Abkuerzung : '',
+        langtitel: longTitleOf(meta?.Titel),
       })
     }
     seen += refs.length
@@ -460,18 +479,28 @@ async function lawOfNummer(gesetzesnummer: string, date: string): Promise<KonsLa
  * no contradiction, and noisy titles score low without being wrong
  * (Versorgungssicherungsgesetz, StAG, AWG 2002 at 0,50). A refusal is safe —
  * the §§ go unchecked; a wrong law is not.
+ *
+ * A name that **is** the law's long title fits too (24.11.2026): „Das
+ * Bundesgesetz über den Österreichischen Rundfunk, BGBl. Nr. 379/1984, …"
+ * shares no word with „ORF-Gesetz" or „ORF-G". Equality, not a score: a
+ * long title is many words, and scored it would let nearly any name through.
  */
-export function soleUnlessContradicted<T extends { kurztitel: string; abkuerzung: string }>(only: [string, T], name: string | null | undefined): [string, T] | null {
+export function soleUnlessContradicted<T extends { kurztitel: string; abkuerzung: string; langtitel?: string }>(only: [string, T], name: string | null | undefined): [string, T] | null {
   const [, entry] = only
   if (!name || !(entry.kurztitel || entry.abkuerzung)) return only
-  const fits = bestNameScore(name, [entry.kurztitel, entry.abkuerzung]) > 0 || namesCompatible(name, entry.kurztitel)
+  const fits = bestNameScore(name, [entry.kurztitel, entry.abkuerzung]) > 0 || namesCompatible(name, entry.kurztitel) || isLongTitle(name, entry.langtitel)
   return fits ? only : null
 }
 
+/** Whether `name` is the long title RIS gives the law, word for word. */
+function isLongTitle(name: string, langtitel: string | undefined): boolean {
+  return !!langtitel && normName(name) === normName(langtitel)
+}
+
 /**
- * Of several laws born from the same BGBl, the one whose Kurztitel or
- * Abkürzung **is** the caller's name, a trailing year aside — or none
- * (20.11.2026).
+ * Of several laws born from the same BGBl, the one whose Kurztitel,
+ * Abkürzung or long title **is** the caller's name, a trailing year aside —
+ * or none (20.11.2026; the long title since 24.11.2026).
  *
  * BGBl. Nr. 311/1985 created the Staatsbürgerschaftsgesetz 1985 and the
  * Staatsbürgerschafts-Übergangsrecht 1985, both „StbG". 152/ME XXVIII's
@@ -481,10 +510,10 @@ export function soleUnlessContradicted<T extends { kurztitel: string; abkuerzung
  * the score cannot, and only for exactly one law; the year is dropped from
  * RIS's name only, never matched loosely.
  */
-export function pickByEqualName<T extends { kurztitel: string; abkuerzung?: string }>(byLaw: Map<string, T>, name: string): [string, T] | null {
+export function pickByEqualName<T extends { kurztitel: string; abkuerzung?: string; langtitel?: string }>(byLaw: Map<string, T>, name: string): [string, T] | null {
   const wanted = normName(name)
   if (!wanted) return null
-  const fits = [...byLaw].filter(([, e]) => [e.kurztitel, e.kurztitel.replace(/\s+\d{4}\s*$/, ''), e.abkuerzung ?? ''].some((n) => n.trim() !== '' && normName(n) === wanted))
+  const fits = [...byLaw].filter(([, e]) => [e.kurztitel, e.kurztitel.replace(/\s+\d{4}\s*$/, ''), e.abkuerzung ?? '', e.langtitel ?? ''].some((n) => n.trim() !== '' && normName(n) === wanted))
   return fits.length === 1 ? fits[0]! : null
 }
 
