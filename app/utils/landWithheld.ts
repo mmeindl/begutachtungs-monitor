@@ -78,8 +78,8 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
   },
   deletion: {
     lead: 'Nicht gezeigt:',
-    one: 'Für ihn fand der Monitor weder einen neuen Text noch im Entwurf die Anordnung, dass er entfällt – das kann daran liegen, wie der Monitor das PDF liest',
-    many: 'Für sie fand der Monitor weder einen neuen Text noch im Entwurf die Anordnung, dass sie entfallen – das kann daran liegen, wie der Monitor das PDF liest',
+    one: 'Für ihn fand der Monitor weder einen neuen Text noch im Entwurf die Anweisung, dass er entfällt – das kann daran liegen, wie der Monitor das PDF liest',
+    many: 'Für sie fand der Monitor weder einen neuen Text noch im Entwurf die Anweisung, dass sie entfallen – das kann daran liegen, wie der Monitor das PDF liest',
   },
   // The Bund's „nicht im Entwurf" (12.11.2026): said as our finding, with our reading named as a cause.
   // „Einen Teil": the rule fires where too much is missing (`landTguGuard.ts`), not only where all is.

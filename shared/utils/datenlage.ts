@@ -354,7 +354,7 @@ const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
     frist: ['partial', 'bei Verordnungen teils nur „vier Wochen ab Zustellung“'],
     way: ['inferred', 'das Archiv nennt die Vorlage nicht; verknüpft über die Geschäftszahl'],
     kundmachung: ['inferred', 'das Land nennt sie nicht; gelesen am Beschlussdatum im Titel des Gesetzblatts'],
-    tgu: ['partlyRead', 'rechts stehen Novellierungsanordnungen; was feiner als ein Absatz ändert, zeigt der Monitor nicht'],
+    tgu: ['partlyRead', 'rechts stehen die Anweisungen des Entwurfs; was feiner als ein Absatz ändert, zeigt der Monitor nicht'],
     // 15.11.2026: that the Land publishes no committee text was never checked — the reader
     // reads the Verfassungsdienst's pages only (`LAND_COMMITTEE_TEXT`: `reportNotRead`).
     // What is published and read is Vorlage and Gesetz; the rest is said as unknown.
@@ -1091,7 +1091,7 @@ export function datenlageBedarf(r = GENAUIGKEIT): DatenlageBedarf[] {
         },
         {
           what: 'Die Dokumente von Land und Landtag als Text, nicht nur als PDF',
-          today: `Aus den PDFs liest der Monitor nicht alles: ${n(ls.unread)} Anordnungen sind als „Nicht lesbar“ benannt, ${n(ls.withheld)} nicht gezeigt.`,
+          today: `Aus den PDFs liest der Monitor nicht alles: ${n(ls.unread)} Anweisungen sind als „Nicht lesbar“ benannt, ${n(ls.withheld)} nicht gezeigt.`,
         },
       ],
     },

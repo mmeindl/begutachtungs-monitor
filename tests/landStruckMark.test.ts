@@ -46,7 +46,7 @@ describe('landUncheckedNote', () => {
     expect(landUncheckedNote(['struck'])).toMatch(/^Nicht geprüft, ob der Entwurf streicht, was hier gestrichen ist: /)
     expect(landUncheckedNote(['noDraftCheck'])).toMatch(/^Nicht geprüft, ob der neue Text Wort für Wort im Entwurf steht: Kärnten/)
     const both = landUncheckedNote(['wording', 'struck'])!
-    expect(both).toContain('Wort für Wort im Entwurf steht: eine Anordnung')
+    expect(both).toContain('Wort für Wort im Entwurf steht: eine Anweisung')
     expect(both).toContain('Nicht geprüft, ob der Entwurf streicht')
     expect(landUncheckedNote([])).toBeNull()
   })

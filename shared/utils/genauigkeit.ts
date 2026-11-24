@@ -26,6 +26,7 @@
 import data from '../data/genauigkeit.json'
 import type { ConsolidatedWithheldCause, GenauigkeitFault, GenauigkeitPaths, GenauigkeitRecord, LandCode, LawDiffSegment } from '../types'
 import { formatDateDe, formatNumberDe } from './format'
+import { gapDe } from './gaps'
 import { LAND_NAME } from './laender'
 
 export const GENAUIGKEIT: GenauigkeitRecord = data
@@ -446,6 +447,10 @@ export interface GenauigkeitArt {
   split?: { caption: string; parts: HundertTeil[]; after?: string }
   /** Where nothing can be split into parts: the few figures that say the result, as numbers. */
   facts?: { value: string; label: string }[]
+  /** What the facts' words mean, in one or two sentences under them: „Regelverstöße" alone left both readers of 24.11.2026 asking which rules. */
+  factsNote?: string
+  /** What of this kind the monitor does not read at all, as a gap sentence („Nicht im Monitor: …", `gapDe`). */
+  gap?: string
   /** Under „Im Einzelnen": the result in full, the rule, the measurement, and what the check does not catch. */
   rule: string
   measured: string[]
@@ -527,6 +532,22 @@ export function faultNoteDe(fault: FaultBar): string {
   if (fault.withheld === 0) return `${caught}: alle mit Vermerk gezeigt${low}`
   if (marked === 0) return `${caught}: alle nicht mehr gezeigt${low}`
   return `${caught}: ${n(fault.withheld)} nicht mehr gezeigt, ${n(marked)} mit Vermerk gezeigt${low}`
+}
+
+/**
+ * The Land whose Textgegenüberstellung is read but held to no check: its
+ * right column prints the Novelle, not the new text (`landTguKaernten.ts`).
+ */
+export const LAND_UNCHECKED: LandCode = 'ktn'
+
+/**
+ * The Länder whose Textgegenüberstellung the monitor does not read at all
+ * (24.11.2026): every Land neither in the record's checked ones nor the one
+ * read unchecked. From the record and `LAND_NAME`, never typed: a Land the
+ * reader learns leaves this list with the next round.
+ */
+export function landsNotRead(r: GenauigkeitRecord = GENAUIGKEIT): LandCode[] {
+  return (Object.keys(LAND_NAME) as LandCode[]).filter((c) => !r.laender.tgu.lands.includes(c) && c !== LAND_UNCHECKED)
 }
 
 /** „Oberösterreich, Salzburg, Tirol und Wien". */
@@ -699,6 +720,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
         { value: n(st.breaches), label: `${st.breaches === 1 ? 'Regelverstoß' : 'Regelverstöße'} in ${n(st.pairs)} Vergleichen` },
         { value: n(st.nullSubstantive), label: `von ${n(st.nullUnits)} Textteilen, die gleich sein sollten, als Änderung gezeigt` },
       ],
+      factsNote: 'Die Regeln prüfen, ob ein Vergleich in sich stimmt, etwa: Jede als geändert markierte Stelle zeigt eine sichtbare Änderung. Texte, die gleich sein sollten, sind derselbe Text aus zwei Quellen, etwa die letzte Fassung des Parlaments und das Bundesgesetzblatt.',
       rule:
         `Verglichen wird der Entwurf mit der Regierungsvorlage, diese mit den Fassungen von Ausschuss und Plenum, und der ganze Weg mit dem Bundesgesetzblatt. Eine dritte Fassung gibt es nicht: Ob ein Unterschied zwischen zwei verschiedenen Texten richtig erkannt ist, lässt sich an nichts Drittem prüfen. Geprüft wird, dass jeder Vergleich beide Texte so vollständig wiedergibt, wie der Monitor sie gelesen hat, und jede als geändert markierte Stelle eine sichtbare Änderung zeigt – und an Texten, die gleich sein müssen, dass der Vergleich nichts findet.${stFaults ? ' Dazu ändern wir in echten Texten je die erste passende Stelle und prüfen, dass der Vergleich sie als Änderung zeigt und nicht als „redaktionell“ oder „unverändert“.' : ''}`,
       measured: [
@@ -718,7 +740,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       id: 'land-gegenueberstellung',
       heading: 'Die Textgegenüberstellung eines Bundeslandes',
       pageName: 'Was ändert der Entwurf?',
-      against: `Geprüft am geltenden Recht im RIS und am Entwurf des Bundeslandes, bei ${landNames}. Für Kärnten gibt es diese Prüfung nicht.`,
+      against: `Geprüft am geltenden Recht im RIS und am Entwurf des Bundeslandes, bei ${landNames}.`,
       result: [
         `Aus den Textgegenüberstellungen von ${landNames} zeigt der Monitor ${n(tgu.shown)} geänderte oder neue Paragraphen. ${n(tgu.withheldAll)} Paragraphen zeigt er nicht, weil eine Prüfung sie nicht bestätigt; bei ${n(tgu.strict.differs)} davon weicht der neue Text vom Entwurf ab.`,
         `${n(landClean)} der gezeigten stehen ohne Vermerk: Ihr neuer Text stimmt Wort für Wort mit dem Entwurf überein, und was sie streichen, ordnet der Entwurf an. ${n(landMarked)} tragen den Vermerk „nicht geprüft“, weil sich ihr neuer oder ihr gestrichener Text nicht Wort für Wort bestätigen lässt.`,
@@ -731,15 +753,17 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
           { art: 'nichtGeprueft', label: '„nicht geprüft“', meaning: 'Neuer oder gestrichener Text ließ sich nicht Wort für Wort bestätigen.', count: landMarked },
           { art: 'nichtGezeigt', label: 'nicht gezeigt', meaning: 'Eine Prüfung hat ihn zurückgehalten.', count: tgu.withheldAll },
         ]),
-        after: 'In Kärnten gibt es diese Prüfung nicht. Dort trägt jeder geänderte oder neue Paragraph den Vermerk „nicht geprüft“.',
+        // Why Kärnten has none (24.11.2026, `landTguKaernten.ts`): its right column prints the Novelle, so the new text is the draft's own words with nothing second to hold them against.
+        after: 'In Kärnten gibt es diese Prüfung nicht. Dort steht neben dem alten Text nicht der neue, sondern die Anweisungen des Entwurfs. Der Monitor zeigt nur, was eine Anweisung als ganzen Paragraphen oder Absatz neu fasst, und kann diesen Text an keinem zweiten Dokument prüfen. Deshalb trägt dort jeder geänderte oder neue Paragraph den Vermerk „nicht geprüft“.',
       },
+      gap: gapDe('outOfScope', `Die Textgegenüberstellungen von ${landList(landsNotRead(r))} liest der Monitor noch nicht.`),
       faultsHeading: 'Eingebaute Fehler in der Gegenüberstellung eines Landes',
       faults: [
         bar('Ein Satz aus dem Entwurf eines anderen Bundeslandes', [landOther]),
         bar('Ein Satz aus einem anderen Paragraphen desselben Entwurfs', [landOwn]),
         bar('Ein Wort oder eine Zahl im neuen Text falsch, ein neuer Satz fehlt', landWording),
         bar('Ein Satz, der bleibt, ist als gestrichen gezeigt', [tgu.struckKept]),
-        bar('Ein Wort, eine Zahl oder ein Verweis im alten Text falsch', tgu.left, { blind: true, why: 'Solche Paragraphen tragen meist keinen Vermerk. Wer den alten Wortlaut zitiert, sieht im Dokument des Bundeslandes nach.' }),
+        bar('Ein Wort, eine Zahl oder ein Verweis im alten Text falsch', tgu.left, { blind: true, why: 'Solche Paragraphen tragen meist keinen Vermerk. Wer den alten Wortlaut zitiert, sieht im verlinkten Dokument des Landes nach.' }),
       ],
       rule: `Gelesen wird die Textgegenüberstellung eines Landes, wo der Monitor ihre Form lesen kann: bei ${landList(tgu.lands)}. Die linke Spalte wird gegen das geltende Recht im RIS gehalten, die rechte gegen den Entwurf des Landes: Was sie als neu zeigt, muss Wort für Wort und Zahl für Zahl der Wortlaut sein, den der Entwurf für den Paragraphen schreibt. Lässt sich das nicht vergleichen, steht am Paragraphen „nicht geprüft“; zurückgehalten wird er dann nur, wenn er mindestens zehn neue Wörter hat und davon mindestens acht und mehr als ein Zehntel im Entwurf fehlen. Auch was die Spalte streicht, hält er gegen den Entwurf: Streicht keine Anweisung diesen Text, oder bringt der Paragraph nichts Neues und der Entwurf nennt das Gestrichene nicht, steht „nicht geprüft“. Kärntens Gegenüberstellungen zeigt er ohne diese Prüfung, mit „nicht geprüft“ an jedem geänderten Paragraphen.`,
       measured: [
@@ -763,11 +787,12 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       ],
       faults: [],
       facts: [{ value: n(ls.hits), label: `${ls.hits === 1 ? 'Regelverstoß' : 'Regelverstöße'} in ${n(ls.compared)} Vergleichen` }],
+      factsNote: 'Die Regeln prüfen, ob ein Vergleich in sich stimmt, etwa: Keine Anweisung erscheint doppelt, und keine Kopfzeile eines Dokuments wird als Gesetzestext gelesen.',
       rule:
-        'Verglichen werden Entwurf, Regierungsvorlage, Ausschussbericht und Landesgesetzblatt eines Landes, gelesen aus den PDFs von Land und Landtag. Wie beim Bund gibt es keine dritte Fassung. Geprüft wird, dass kein Vergleich eine Anordnung doppelt zeigt, eine Kopfzeile des Dokuments als Text liest oder einen Teil einer Anordnung als eigene, neue Anordnung meldet; und ob eine Anordnung den Text, den sie ankündigt – etwa eine Zeile einer Tabelle –, in beiden Dokumenten an ihrer Stelle trägt.',
+        'Verglichen werden Entwurf, Regierungsvorlage, Ausschussbericht und Landesgesetzblatt eines Landes, gelesen aus den PDFs von Land und Landtag. Wie beim Bund gibt es keine dritte Fassung. Geprüft wird, dass kein Vergleich eine Anweisung doppelt zeigt, eine Kopfzeile des Dokuments als Text liest oder einen Teil einer Anweisung als eigene, neue Anweisung meldet; und ob eine Anweisung den Text, den sie ankündigt – etwa eine Zeile einer Tabelle –, in beiden Dokumenten an ihrer Stelle trägt.',
       measured: [
         `${n(ls.compared)} Vergleiche: ${ls.hits ? `${n(ls.hits)} Verstöße gegen diese Regeln` : 'kein Verstoß gegen diese Regeln'}.${ls.accepted ? ` ${n(ls.accepted)} Stellen sehen aus wie ein Verstoß und sind einzeln gelesen: ${n(ls.accepted - ls.acceptedReader)} stehen so in den Dokumenten, ${n(ls.acceptedReader)} sind ein noch offener Lesefehler des Monitors.` : ''}`,
-        `Bei ${n(ls.withheld)} Anordnungen in ${n(ls.withheldPairs)} Vergleichen fand der Monitor den angekündigten Text in einem der beiden Dokumente nicht an seiner Stelle; sie stehen als „nicht gezeigt“ beim Gesetz. Bei ${n(ls.unread)} in ${n(ls.unreadPairs)} Vergleichen fehlt er in beiden; verglichen ist dort der Rest der Anordnung, und „Nicht lesbar“ sagt es.`,
+        `Bei ${n(ls.withheld)} Anweisungen in ${n(ls.withheldPairs)} Vergleichen fand der Monitor den angekündigten Text in einem der beiden Dokumente nicht an seiner Stelle; sie stehen als „nicht gezeigt“ beim Gesetz. Bei ${n(ls.unread)} in ${n(ls.unreadPairs)} Vergleichen fehlt er in beiden; verglichen ist dort der Rest der Anweisung, und „Nicht lesbar“ sagt es.`,
       ],
       missed: [
         `Liest der Monitor dasselbe Wort in beiden Dokumenten gleich falsch, bemerkt das niemand. Denselben Text aus zwei Quellen gibt es bei den Ländern nur in Oberösterreich, als Ausschusstext und Landesgesetzblatt: in ${n(ls.nullComparison.units)} Textteilen ${n(ls.nullComparison.residues)} Unterschiede, ${n(ls.nullComparison.substantive)} davon als Änderung gezeigt.`,
@@ -876,7 +901,7 @@ export function genauigkeitKurz(r: GenauigkeitRecord = GENAUIGKEIT): { kacheln: 
       { lead: '„nicht bestätigt“:', text: 'Eine der Prüfungen ging nicht auf. Den Wortlaut im verlinkten Entwurf nachsehen.' },
       { lead: '„nicht geprüft“:', text: 'Es gab nichts, woran der Monitor den Text prüfen konnte. Den Wortlaut im verlinkten Entwurf nachsehen.' },
       { lead: 'Kein Vermerk:', text: 'Die Prüfungen haben nichts gefunden. Das heißt nicht, dass der Text sicher stimmt.' },
-      { lead: 'Bundesländer:', text: `Bei ${landList(tgu.lands)} sind ${partDe(landHeld, tgu.shown)}\u00a0% der gezeigten Paragraphen Wort für Wort am Entwurf geprüft, der alte Text nur teilweise. In Kärnten gibt es diese Prüfung nicht. Wer den alten Wortlaut zitiert, sieht im Dokument des Bundeslandes nach.` },
+      { lead: 'Bundesländer:', text: `Bei ${landList(tgu.lands)} sind ${partDe(landHeld, tgu.shown)}\u00a0% der gezeigten Paragraphen Wort für Wort am Entwurf geprüft, der alte Text nur teilweise. In Kärnten gibt es diese Prüfung nicht, und die Textgegenüberstellungen von ${landList(landsNotRead(r))} liest der Monitor noch nicht. Wer den alten Wortlaut zitiert, sieht im verlinkten Dokument des Landes nach.` },
     ],
   }
 }

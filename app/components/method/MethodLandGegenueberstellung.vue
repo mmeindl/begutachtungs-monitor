@@ -39,8 +39,8 @@
         Paragraphen schreibt; sonst zeigt der Monitor ihn nicht. Wo sich
         das nicht prüfen lässt, auch bei Gestrichenem, steht beim Paragraphen
         „nicht geprüft“ und beim Gesetz der Grund. Kärnten druckt in der
-        rechten Spalte die Änderungsanordnungen der Novelle: Gezeigt wird dort
-        nur, was eine Anordnung ganz abdruckt. Gegen den Entwurf geprüft wird
+        rechten Spalte die Änderungsanweisungen der Novelle: Gezeigt wird dort
+        nur, was eine Anweisung ganz abdruckt. Gegen den Entwurf geprüft wird
         es nicht, darum trägt es „nicht geprüft“.
       </dd>
     </div>

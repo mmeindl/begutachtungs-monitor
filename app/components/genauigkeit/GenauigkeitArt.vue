@@ -40,6 +40,7 @@ const details = computed(() => [
       <GenauigkeitHundert :caption="art.split.caption" :parts="art.split.parts" />
       <p v-if="art.split.after" class="text-sm text-ink">{{ art.split.after }}</p>
     </template>
+    <GapNote v-if="art.gap" :text="art.gap" as="p" class="text-sm" />
     <!-- The figure above its words, the words first for a screen reader:
          „Regelverstöße in 519 Vergleichen: 0". In a div: a list right under
          the section takes the method text's spacing and bold terms. -->
@@ -50,6 +51,7 @@ const details = computed(() => [
           <dd class="font-heading text-3xl text-ink">{{ f.value }}</dd>
         </div>
       </dl>
+      <p v-if="art.factsNote" class="mt-2 text-sm text-ink-secondary">{{ art.factsNote }}</p>
     </div>
     <GenauigkeitFehler v-if="art.faults.length" :faults="art.faults" :heading="art.faultsHeading" />
     <div v-if="!weak.length && art.missed.length" class="mt-8">

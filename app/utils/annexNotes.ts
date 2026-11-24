@@ -78,7 +78,7 @@ const WITHHELD_FINDING: Record<AnnexWithheldCause, (u: UnitWordDe) => string> = 
   notInDraft: (u) => `die vorgeschlagene Fassung enthält Text, den der Entwurf für diesen ${u.oblique} nicht anordnet.`,
   // Not „der Entwurf hebt ihn nicht auf": that the grammar found no such
   // instruction is no proof that none is there (19.11.2026).
-  repealUnproven: (u) => `die vorgeschlagene Fassung zeigt von diesem ${u.oblique} nichts, und eine Anordnung des Entwurfs, die ihn aufhebt, ließ sich nicht finden.`,
+  repealUnproven: (u) => `die vorgeschlagene Fassung zeigt von diesem ${u.oblique} nichts, und eine Anweisung des Entwurfs, die ihn aufhebt, ließ sich nicht finden.`,
   repeated: (u) => `die Beilage druckt diesen ${u.oblique} mehrmals, und welche ihrer Stellen einander gegenüberstehen, ließ sich nicht entscheiden.`,
 }
 /* SHORT SINCE 30.09.2026 — one clause of attribution, not the list of

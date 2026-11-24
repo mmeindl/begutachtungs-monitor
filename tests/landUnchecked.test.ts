@@ -13,8 +13,8 @@ describe('„nicht geprüft" at a Land\'s § whose new text was not held against
 
   it('says what was not checked once, and each reason once, in the order first met', () => {
     expect(landUncheckedNote([])).toBeNull()
-    expect(landUncheckedNote(['long', 'unassigned', 'long'])).toBe('Nicht geprüft, ob der neue Text Wort für Wort im Entwurf steht: für den wortweisen Abgleich ist der Text zu lang; den neuen Text konnte der Monitor keiner Anordnung des Entwurfs sicher zuordnen.')
+    expect(landUncheckedNote(['long', 'unassigned', 'long'])).toBe('Nicht geprüft, ob der neue Text Wort für Wort im Entwurf steht: für den wortweisen Abgleich ist der Text zu lang; den neuen Text konnte der Monitor keiner Anweisung des Entwurfs sicher zuordnen.')
     expect(landUncheckedNote(['draftUnread'])).toBe('Nicht geprüft, ob der neue Text Wort für Wort im Entwurf steht: den Gesetzestext des Entwurfs fand der Monitor nicht oder konnte ihn nicht lesen.')
-    expect(landUncheckedNote(['wording'])).toMatch(/eine Anordnung des Entwurfs konnte der Monitor nicht Wort für Wort lesen\.$/)
+    expect(landUncheckedNote(['wording'])).toMatch(/eine Anweisung des Entwurfs konnte der Monitor nicht Wort für Wort lesen\.$/)
   })
 })

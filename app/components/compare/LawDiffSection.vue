@@ -483,7 +483,7 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
 
 /** What one unit is called, so a context line can count them. */
 function unitNoun(n: number): string {
-  if (isNovelle.value) return n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen'
+  if (isNovelle.value) return n === 1 ? 'Änderungsanweisung' : 'Änderungsanweisungen'
   return n === 1 ? 'Paragraph' : 'Paragraphen'
 }
 

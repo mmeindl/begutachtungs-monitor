@@ -206,7 +206,7 @@ const heading = computed(() => (props.from === 'geltend' || props.to === 'gelten
 const FROM_LABEL = computed(() => LABEL[props.from])
 const TO_LABEL = computed(() => LABEL[props.to])
 const isNovelle = computed(() => isNovelleUnits(units.value))
-const unitNoun = (n: number) => (isNovelle.value ? (n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen') : (n === 1 ? 'Paragraph' : 'Paragraphen'))
+const unitNoun = (n: number) => (isNovelle.value ? (n === 1 ? 'Änderungsanweisung' : 'Änderungsanweisungen') : (n === 1 ? 'Paragraph' : 'Paragraphen'))
 const BADGE_LABEL = badgeLabels('entfallen')
 
 function badgeOf(u: LawDiffUnit): DiffBadge {

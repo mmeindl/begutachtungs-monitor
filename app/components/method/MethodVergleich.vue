@@ -28,11 +28,11 @@
       </dd>
     </div>
     <div>
-      <dt>Anordnung für Anordnung oder Paragraph für Paragraph</dt>
+      <dt>Anweisung für Anweisung oder Paragraph für Paragraph</dt>
       <dd>
         Ein Gesetz, das ein bestehendes ändert, besteht aus nummerierten
-        Änderungsanordnungen (Z&nbsp;1, Z&nbsp;2&nbsp;…); verglichen wird dann
-        Anordnung für Anordnung. Ein neues Gesetz vergleichen wir Paragraph
+        Änderungsanweisungen (Z&nbsp;1, Z&nbsp;2&nbsp;…); verglichen wird dann
+        Anweisung für Anweisung. Ein neues Gesetz vergleichen wir Paragraph
         für Paragraph.
       </dd>
     </div>

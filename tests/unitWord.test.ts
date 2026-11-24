@@ -126,7 +126,7 @@ describe('the annex notices, by unit', () => {
   it('keeps the § wording and says „Artikel" at an Artikel', () => {
     expect(annexWithheldText('notInDraft')).toBe('die vorgeschlagene Fassung enthält Text, den der Entwurf für diesen Paragraphen nicht anordnet.')
     expect(annexWithheldText('notInDraft', 'article')).toBe('die vorgeschlagene Fassung enthält Text, den der Entwurf für diesen Artikel nicht anordnet.')
-    expect(annexWithheldText('repealUnproven', 'article')).toBe('die vorgeschlagene Fassung zeigt von diesem Artikel nichts, und eine Anordnung des Entwurfs, die ihn aufhebt, ließ sich nicht finden.')
+    expect(annexWithheldText('repealUnproven', 'article')).toBe('die vorgeschlagene Fassung zeigt von diesem Artikel nichts, und eine Anweisung des Entwurfs, die ihn aufhebt, ließ sich nicht finden.')
     expect(annexWithheldText('repeated', 'article')).toBe('die Beilage druckt diesen Artikel mehrmals, und welche ihrer Stellen einander gegenüberstehen, ließ sich nicht entscheiden.')
     expect(annexWithheldText('standing', 'article')).toBe(annexWithheldText('standing'))
     expect(annexWithheldBlame('standing', 'table', 'article')).toBe('Das kann auch an unserer Zuordnung zum Artikel liegen.')

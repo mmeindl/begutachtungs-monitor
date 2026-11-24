@@ -33,7 +33,7 @@ const committeeSentence = computed(() => landCommitteeSentenceDe(props.land))
     <div>
       <dt>Verglichen wird wie beim Bund</dt>
       <dd>
-        Ein Gesetz, das ein bestehendes ändert, Anordnung für Anordnung, ein
+        Ein Gesetz, das ein bestehendes ändert, Anweisung für Anweisung, ein
         neues Gesetz Paragraph für Paragraph. Anführungszeichen und
         Trennstriche am Zeilenende zählen nicht als Änderung: PDF und
         Gesetzblatt setzen sie verschieden.
@@ -47,7 +47,7 @@ const committeeSentence = computed(() => landCommitteeSentenceDe(props.land))
       <dt>Lieber kein Vergleich als ein falscher</dt>
       <dd>
         Haben zwei Texte keinen einzigen Teil gemeinsam, zeigen wir keinen
-        Vergleich, statt alles als neu zu melden. Ebenso bei einer Anordnung,
+        Vergleich, statt alles als neu zu melden. Ebenso bei einer Anweisung,
         deren angekündigten Text – eine Zeile einer Tabelle oder des
         Inhaltsverzeichnisses – wir in einem der beiden Dokumente nicht an
         seiner Stelle finden: Sie steht dann als „nicht gezeigt“ bei ihrem

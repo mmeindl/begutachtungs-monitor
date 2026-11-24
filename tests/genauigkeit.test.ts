@@ -29,6 +29,7 @@ import {
   RESULT_WORDS,
   FAST_IMMER,
   fewTriesDe,
+  landsNotRead,
   weakFigureDe,
   WEG_BEISPIEL,
   faultNoteDe,
@@ -488,7 +489,7 @@ describe('at a glance', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
     r.laender.tgu = { ...r.laender.tgu, shown: 20, strict: { held: 17, differs: 2, unchecked: 3, onlyStruck: 1, noWordCompared: 2, markedHeld: 2 } }
     // Held with no new word is nothing held word for word (23.11.2026).
-    expect(genauigkeitKurz(r).check[4]!.text).toContain('sind 75,0\u00a0% der gezeigten Paragraphen Wort für Wort am Entwurf geprüft, der alte Text nur teilweise. In Kärnten gibt es diese Prüfung nicht.')
+    expect(genauigkeitKurz(r).check[4]!.text).toContain('sind 75,0\u00a0% der gezeigten Paragraphen Wort für Wort am Entwurf geprüft, der alte Text nur teilweise. In Kärnten gibt es diese Prüfung nicht, und die Textgegenüberstellungen von Burgenland, Niederösterreich, Steiermark und Vorarlberg liest der Monitor noch nicht.')
   })
 
   it('opens with the instruction, then gives each mark its own line and what to do (24.11.2026)', () => {
@@ -547,6 +548,36 @@ describe('the injected faults, as a reader sees them (24.11.2026)', () => {
         expect(fehlerBild(art.faults).weak).toEqual(expect.arrayContaining(blind))
       }
     }
+  })
+})
+
+describe('the Länder and the rules, named (24.11.2026)', () => {
+  it('names the Länder whose annex the monitor does not read, from the record, never typed', () => {
+    expect(landsNotRead()).toEqual(['bgld', 'noe', 'stmk', 'vbg'])
+    const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
+    r.laender.tgu.lands = [...r.laender.tgu.lands, 'bgld']
+    expect(landsNotRead(r)).toEqual(['noe', 'stmk', 'vbg'])
+    const land = genauigkeitArten().find((a) => a.id === 'land-gegenueberstellung')!
+    expect(land.gap).toBe('Nicht im Monitor: Die Textgegenüberstellungen von Burgenland, Niederösterreich, Steiermark und Vorarlberg liest der Monitor noch nicht.')
+    // Kärnten: why it has no check, where the squares are.
+    expect(land.split!.after).toContain('nicht der neue, sondern die Anweisungen des Entwurfs')
+  })
+
+  it('says under every „Regelverstöße" what the rules check', () => {
+    for (const art of genauigkeitArten()) {
+      if (art.facts?.some((f) => f.label.includes('Regelverst'))) expect(art.factsNote).toMatch(/^Die Regeln prüfen, ob ein Vergleich in sich stimmt, etwa: .+\.$/)
+    }
+  })
+
+  it('says „Anweisung" for what a draft orders, one word on the whole page', () => {
+    const kurz = genauigkeitKurz()
+    const all = [
+      ...genauigkeitArten().flatMap((a) => [a.against, ...a.result, a.rule, ...a.measured, ...a.missed, a.factsNote ?? '', a.gap ?? '', a.split?.after ?? '', ...a.faults.map((f) => `${f.label} ${f.why ?? ''}`)]),
+      ...kurz.kacheln.flatMap((k) => [k.label, k.note ?? '']),
+      ...kurz.check.map((c) => `${c.lead} ${c.text}`),
+    ].join(' ')
+    expect(all).not.toMatch(/Anordnung/)
+    expect(all).toMatch(/Anweisung/)
   })
 })
 

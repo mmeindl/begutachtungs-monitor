@@ -2010,6 +2010,16 @@ gets an entry of its own only where it carries a reason the rule does not.
     each mark its own line and action; the term „Textgegenüberstellung" is
     explained where it first appears again;
   - the funnel says „werden nicht ganz ausgeschrieben", not „scheiden aus".
+  - the Länder whose Textgegenüberstellung the monitor does not read are
+    named as „Nicht im Monitor" under the Länder's squares and in the
+    checklist, from the record and `LAND_NAME` (`landsNotRead`), never
+    typed; and why Kärnten has no check stands there: its right column
+    prints the draft's Anweisungen, so the new text has nothing second to
+    be held against;
+  - under each count of „Regelverstöße", what the rules check;
+  - one word for what a draft orders, „Anweisung" (the § 6a example
+    explains it); product-wide since the same day, see „The page says
+    „Anweisung", never „Anordnung"".
   A simulated reader is not a user test (those wait for 2027); it finds
   wording a reader stumbles on, not whether the page serves its people.
 - **A kind of fault the check catches „fast immer" stands in one bar with
@@ -3987,6 +3997,17 @@ the reasoning in full stands in that component's header comment.
   reader's, and the object is a Ministerialentwurf. It stays where a source
   is quoted in its own words (Parliament's sentence on what happens to a
   Stellungnahme) and in English comments and identifiers.
+- **The page says „Anweisung", never „Anordnung"** (maintainer,
+  24.11.2026). What a draft orders („In § 6a wird die Jahreszahl … ersetzt")
+  was „Anweisung" in some places and „Anordnung" in others: the method texts
+  of the comparisons said „Anordnung für Anordnung", the withheld notes of a
+  Land „die Anweisung, die … ankündigt", `/genauigkeit` both, and one of
+  the simulated readers of the same day asked whether they differ.
+  „Anweisung" is the reader's word and the one the page explains; the compound is „Änderungsanweisung" (the count
+  of a Novelle's comparison). „Novellierungsanordnung", the legal term, stays
+  out of reader copy. The harness's own reason strings
+  (`STRICT_UNCHECKED`, the annex gate's reasons) keep their words: the page
+  never prints them.
 - **A method text is the credit line in full sentences, and it is scanned,
   not read** (18.11.2026, first `MethodGegenueberstellung`, the same day
   all fourteen). A `<dl>` whose terms
