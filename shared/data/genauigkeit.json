@@ -1,32 +1,37 @@
 {
   "date": "2026-11-24",
-  "commit": "2f8b1c47",
+  "commit": "92caf564",
   "gp": "XXVIII",
   "lesefassung": {
     "bench": {
       "bgbl": 205,
       "laws": 824,
       "checked": 5820,
-      "shown": 802,
-      "identical": 802,
+      "shown": 933,
+      "identical": 932,
       "invented": 0,
       "incomplete": 0,
-      "otherwise": 0,
+      "otherwise": 1,
       "ungated": {
         "shown": 4601,
         "identical": 4445
       },
       "witnessed": {
-        "shown": 310,
-        "identical": 308
+        "shown": 399,
+        "identical": 395
       },
       "draftPath": {
-        "drafts": 74,
+        "drafts": 84,
         "failed": 0,
-        "shown": 1790,
-        "comparable": 568,
-        "identical": 566,
+        "shown": 2012,
+        "comparable": 684,
+        "identical": 681,
         "differs": [
+          {
+            "me": "58/ME",
+            "law": "Bundesvergabegesetz Konzessionen 2018",
+            "id": "108"
+          },
           {
             "me": "97/ME",
             "law": "Finanzstrafgesetz",
@@ -38,12 +43,13 @@
             "id": "11"
           }
         ],
-        "instructionChanged": 954,
+        "instructionChanged": 1210,
         "stockMoved": 25,
-        "noInstructionLine": 7,
-        "notAmended": 47,
+        "noInstructionLine": 9,
+        "notAmended": 53,
         "enactedUnread": 0,
-        "noLawJoined": 189
+        "noLawJoined": 7,
+        "notEnacted": 24
       }
     },
     "faults": {
@@ -216,15 +222,15 @@
     "pairs": 519,
     "breaches": 0,
     "nullUnits": 11184,
-    "nullResidues": 498,
+    "nullResidues": 497,
     "nullSubstantive": 4,
     "nullPlaceholders": 493,
     "faults": [
-      { "key": "ziffer", "tried": 8364, "caught": 8364 },
-      { "key": "minus", "tried": 8354, "caught": 8354 },
-      { "key": "nicht", "tried": 1584, "caught": 1584 },
-      { "key": "und-oder", "tried": 5637, "caught": 5637 },
-      { "key": "oder-und", "tried": 2622, "caught": 2622 },
+      { "key": "ziffer", "tried": 8363, "caught": 8363 },
+      { "key": "minus", "tried": 8353, "caught": 8353 },
+      { "key": "nicht", "tried": 1583, "caught": 1583 },
+      { "key": "und-oder", "tried": 5636, "caught": 5636 },
+      { "key": "oder-und", "tried": 2621, "caught": 2621 },
       { "key": "prozent", "tried": 116, "caught": 116 },
       { "key": "vergleich", "tried": 1, "caught": 1 },
       { "key": "zahlen-verbunden", "tried": 267, "caught": 267 },

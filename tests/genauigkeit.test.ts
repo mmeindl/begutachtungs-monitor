@@ -10,6 +10,7 @@ import {
   CHAIN_MISFILED,
   CHAIN_STRUCK,
   CHAIN_WORDING,
+  BENCH_OTHERWISE_READ,
   DRAFT_PATH_DIFFERS_READ,
   FUNNEL_GROUP_OF,
   GENAUIGKEIT,
@@ -207,9 +208,14 @@ describe('genauigkeitArten', () => {
 
   it('names what is not the law in force, by kind', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
-    r.lesefassung.bench = { ...r.lesefassung.bench, shown: 10, identical: 7, invented: 1, incomplete: 1, otherwise: 1 }
+    r.lesefassung.bench = { ...r.lesefassung.bench, shown: 10, identical: 6, invented: 1, incomplete: 1, otherwise: 2 }
     const measured = genauigkeitArten(r)[0]!.measured[1]!
-    expect(measured).toContain('sind 7 Wort für Wort das Gesetz. Einem fehlt ein Teil, einer ist aus einem anderen Grund nicht das Gesetz. Ein Wort, das nicht im Gesetz steht, hat einer.')
+    expect(measured).toContain('sind 6 Wort für Wort das Gesetz. Einem fehlt ein Teil, 2 sind aus einem anderen Grund nicht das Gesetz. Ein Wort, das nicht im Gesetz steht, hat einer.')
+  })
+
+  it('names the read case only while the count is the one that was read (24.11.2026)', () => {
+    expect(GENAUIGKEIT.lesefassung.bench.otherwise).toBe(BENCH_OTHERWISE_READ)
+    expect(genauigkeitArten()[0]!.measured[1]!).toContain('Bei einem setzt das RIS nach der Änderung einen Bindestrich, wo vorher ein Gedankenstrich stand; keine Anweisung ordnet das an.')
   })
 
   it('draws every class of fault in one bar, the tries adding up to the record', () => {
@@ -267,11 +273,10 @@ describe('genauigkeitArten', () => {
     const r: GenauigkeitRecord = structuredClone(GENAUIGKEIT)
     r.stations = { ...r.stations, nullUnits: 9542, nullResidues: 458, nullSubstantive: 4, nullPlaceholders: 458 - NULL_RESIDUES_READ }
     const result = genauigkeitArten(r)[2]!.result.join(' ')
-    expect(result).toContain(`in 9.542 Textteilen 458 Unterschiede. ${458 - NULL_RESIDUES_READ} sind die Nummer des Bundesgesetzblatts, die vor der Kundmachung noch offen ist. Die übrigen ${NULL_RESIDUES_READ} haben wir einzeln gelesen`)
-    expect(result).toContain('4 davon zeigt der Monitor als Änderung, die anderen als „redaktionell“.')
+    expect(result).toContain(`in 9.542 Textteilen 458 Unterschiede. 4 davon zeigt er als Änderung, die anderen als „redaktionell“. ${458 - NULL_RESIDUES_READ} sind die Nummer des Bundesgesetzblatts, die vor der Kundmachung noch offen ist. Die übrigen ${NULL_RESIDUES_READ} haben wir einzeln gelesen`)
     expect(result).not.toContain('fälschlich')
     r.stations.nullSubstantive = 0
-    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('Keinen davon zeigt der Monitor als Änderung')
+    expect(genauigkeitArten(r)[2]!.result.join(' ')).toContain('Keinen davon zeigt er als Änderung')
   })
 
   it('claims to have read the null residues only while they are the ones that were read (23.11.2026)', () => {
@@ -295,7 +300,7 @@ describe('genauigkeitArten', () => {
 
   it('scores the page on the draft path, not on the enacted law\'s instructions (23.11.2026)', () => {
     const { draftPath: dp } = GENAUIGKEIT.lesefassung.bench
-    expect(dp.comparable + dp.instructionChanged + dp.stockMoved + dp.noInstructionLine + dp.notAmended + (dp.enactedUnread ?? 0) + (dp.noLawJoined ?? 0)).toBe(dp.shown)
+    expect(dp.comparable + dp.instructionChanged + dp.stockMoved + dp.noInstructionLine + dp.notAmended + (dp.enactedUnread ?? 0) + (dp.noLawJoined ?? 0) + (dp.notEnacted ?? 0)).toBe(dp.shown)
     const first = genauigkeitArten()[0]!.result[0]!
     expect(first).toContain(`Bei ${formatNumberDe(dp.comparable)} ging die Anweisung unverändert ins Gesetz`)
     expect(first).toContain(`${formatNumberDe(dp.identical)} stimmen Wort für Wort`)
@@ -450,7 +455,7 @@ describe('in short', () => {
 describe('benchCoversPeriod', () => {
   const period = (): GenauigkeitRecord => {
     const r = structuredClone(GENAUIGKEIT)
-    r.lesefassung.bench.draftPath = { ...r.lesefassung.bench.draftPath, enactedUnread: 0, noLawJoined: 192 }
+    r.lesefassung.bench.draftPath = { ...r.lesefassung.bench.draftPath, enactedUnread: 0, noLawJoined: 7, notEnacted: 24 }
     return r
   }
 
@@ -458,6 +463,7 @@ describe('benchCoversPeriod', () => {
     const sixty = structuredClone(GENAUIGKEIT)
     delete sixty.lesefassung.bench.draftPath.enactedUnread
     delete sixty.lesefassung.bench.draftPath.noLawJoined
+    delete sixty.lesefassung.bench.draftPath.notEnacted
     expect(benchCoversPeriod(sixty)).toBe(false)
     expect(genauigkeitKurz(sixty).shows.join(' ')).toContain('An diesen Gesetzen wurden auch die Regeln entwickelt.')
   })
@@ -472,13 +478,14 @@ describe('benchCoversPeriod', () => {
     expect(lesefassung).toContain('Jedes neu kundgemachte Gesetz kommt mit der nächsten Messung dazu.')
   })
 
-  it('says how many shown §§ no enacted law joins, and leaves them out of „einem Gesetz zuordnen"', () => {
+  it('says how many shown §§ never became law or join no law, and leaves both out of „einem Gesetz zuordnen"', () => {
     const r = period()
     const dp = r.lesefassung.bench.draftPath
     const art = genauigkeitArten(r).find((a) => a.id === 'lesefassung')!
     const result = art.result.join(' ')
-    expect(result).toContain(`lassen sich ${formatNumberDe(dp.shown - 192)} gezeigte Paragraphen einem Gesetz zuordnen. Bei 192 weiteren findet die Prüfung kein kundgemachtes Gesetz zu ihrem Artikel des Entwurfs.`)
-    expect(result).toContain(`Die übrigen ${formatNumberDe(dp.shown - 192 - dp.comparable)} lassen sich so nicht prüfen`)
-    expect(art.measured.join(' ')).toContain('192, denen die Prüfung kein kundgemachtes Gesetz zuordnet.')
+    const joined = dp.shown - 7 - 24
+    expect(result).toContain(`lassen sich ${formatNumberDe(joined)} gezeigte Paragraphen einem Gesetz zuordnen. 24 weitere stehen in Artikeln des Entwurfs, die nicht Gesetz wurden. Bei 7 anderen findet die Prüfung kein kundgemachtes Gesetz zu ihrem Artikel des Entwurfs.`)
+    expect(result).toContain(`Die übrigen ${formatNumberDe(joined - dp.comparable)} lassen sich so nicht prüfen`)
+    expect(art.measured.join(' ')).toContain('24 in Artikeln, die nicht Gesetz wurden, 7, denen die Prüfung kein kundgemachtes Gesetz zuordnet.')
   })
 })

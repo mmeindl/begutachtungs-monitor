@@ -278,19 +278,29 @@ export const LAND_WORDING = ['Zahl', 'Wort', 'Satz weg'] as const
  * The comparable §§ of the draft path that are not the law: in Tabak- und
  * Nichtraucherschutzgesetz § 11 the law changes Abs. 5, which the draft's
  * annex prints as unchanged; in Finanzstrafgesetz § 99 the law closes a
- * hyphen („Konten-einschaugesetz") no instruction names.
+ * hyphen („Konten-einschaugesetz") no instruction names; in Bundesvergabegesetz
+ * Konzessionen 2018 § 108 RIS sets „ - " for the „ — " it had before, around
+ * words no instruction touches (24.11.2026).
  */
-export const DRAFT_PATH_DIFFERS_READ: readonly string[] = ['71/ME § 11', '97/ME § 99']
+export const DRAFT_PATH_DIFFERS_READ: readonly string[] = ['58/ME § 108', '71/ME § 11', '97/ME § 99']
+/**
+ * The shown §§ of the bench that are not the law for none of the named
+ * reasons, read by hand (24.11.2026): one, Bundesvergabegesetz Konzessionen
+ * 2018 § 108 of BGBl. I Nr. 8/2026 (also 58/ME § 108 above). RIS's text after
+ * the law sets „ - " where its text before had „ — ", around words no
+ * instruction touches; ours keeps the dash. A round with another count says
+ * „aus einem anderen Grund" until the case is read.
+ */
+export const BENCH_OTHERWISE_READ = 1
 /**
  * The null comparisons' residues other than an open BGBl number (24.11.2026):
- * three filler dots of the HTML (47/ME, 116/ME in both tests), a quoted title
- * our XML reader drops (2/ME), and an Anlage heading the RIS XML sets as a
- * layout template, which the XML reader does not read as text (75/ME).
- * None is a different wording in the sources. The five lone full stops after
- * a § designation of 23.11. were a split designation the HTML reader now
- * reads whole.
+ * three filler dots of the HTML (47/ME, 116/ME in both tests) and a quoted
+ * title our XML reader drops (2/ME). None is a different wording in the
+ * sources. The five lone full stops after a § designation of 23.11. were a
+ * split designation the HTML reader now reads whole, and the Anlage heading
+ * of 75/ME a layout template the XML reader now reads.
  */
-export const NULL_RESIDUES_READ = 5
+export const NULL_RESIDUES_READ = 4
 
 /* ------------------------------------------------------------------ */
 /* The kinds of comparison                                              */
@@ -643,14 +653,16 @@ function nullSentence(st: GenauigkeitRecord['stations']): string {
   if (st.nullResidues === 0) return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen keinen Unterschied.`
   const substantive = st.nullSubstantive === 0 ? 'keiner' : st.nullSubstantive === 1 ? 'einer' : n(st.nullSubstantive)
   const rest = st.nullResidues - st.nullPlaceholders
-  return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen ${n(st.nullResidues)} Unterschiede. ${n(st.nullPlaceholders)} sind die Nummer des Bundesgesetzblatts, die vor der Kundmachung noch offen ist. ${rest === NULL_RESIDUES_READ ? `Die übrigen ${n(rest)} haben wir einzeln gelesen: In den Quellen steht derselbe Wortlaut, der Unterschied kommt von Füllpunkten oder vom Einlesen.` : `Die übrigen ${n(rest)} sind noch nicht einzeln gelesen.`} ${substantive === 'keiner' ? 'Keinen' : substantive === 'einer' ? 'Einen' : substantive} davon zeigt der Monitor als Änderung, die anderen als „redaktionell“.`
+  // The split into change and „redaktionell" right after the total (24.11.2026): behind „Die übrigen 4", „4 davon … die anderen" read as four of four.
+  return `Im Test mit Texten, die gleich sein sollten, fand der Monitor in ${n(st.nullUnits)} Textteilen ${n(st.nullResidues)} Unterschiede. ${substantive === 'keiner' ? 'Keinen' : substantive === 'einer' ? 'Einen' : substantive} davon zeigt er als Änderung, die anderen als „redaktionell“. ${n(st.nullPlaceholders)} sind die Nummer des Bundesgesetzblatts, die vor der Kundmachung noch offen ist. ${rest === NULL_RESIDUES_READ ? `Die übrigen ${n(rest)} haben wir einzeln gelesen: In den Quellen steht derselbe Wortlaut, der Unterschied kommt von Füllpunkten, einem überzähligen Satzzeichen in einer Quelle oder vom Einlesen.` : `Die übrigen ${n(rest)} sind noch nicht einzeln gelesen.`}`
 }
 
 /** „Einem fehlt ein Teil.", „2 fehlt ein Teil, einer ist nur halb angewendet." */
 function restSentence(bench: GenauigkeitRecord['lesefassung']['bench']): string {
   const parts: string[] = []
   if (bench.incomplete) parts.push(`${bench.incomplete === 1 ? 'Einem' : n(bench.incomplete)} fehlt ein Teil`)
-  if (bench.otherwise) parts.push(`${bench.otherwise === 1 ? 'einer' : n(bench.otherwise)} ${bench.otherwise === 1 ? 'ist' : 'sind'} aus einem anderen Grund nicht das Gesetz`)
+  if (bench.otherwise === BENCH_OTHERWISE_READ) parts.push('bei einem setzt das RIS nach der Änderung einen Bindestrich, wo vorher ein Gedankenstrich stand; keine Anweisung ordnet das an')
+  else if (bench.otherwise) parts.push(`${bench.otherwise === 1 ? 'einer' : n(bench.otherwise)} ${bench.otherwise === 1 ? 'ist' : 'sind'} aus einem anderen Grund nicht das Gesetz`)
   const sentence = parts.join(', ')
   return sentence ? `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.` : ''
 }

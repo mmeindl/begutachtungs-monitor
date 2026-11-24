@@ -2,13 +2,12 @@
  "gp": "XXVIII",
  "drafts": 114,
  "pairs": 519,
- "note": "Reste der beiden Nullvergleiche (scripts/harness/station.ts) aus der Messrunde vom 24.11.2026, über den Cache mit der Liste des Tages: 114 Entwürfe und 519 Paare (am 22.11.2026 108 und 470). Seit dieser Runde liest der Nullvergleich die letzte Fassung, die einer der beiden Datensätze nennt, und den Datensatz eines Entwurfs, der weniger Stationen nennt als der seiner Regierungsvorlage, frisch: 103/ME stand mit dem Stand vom 09.09.2026 im Cache und verglich die Regierungsvorlage mit der Kundmachung. Fünf Reste sind weg, alle derselbe Leserfehler: ein Gliederungssymbol, das Word auf zwei Spans teilt (32/ME, 101/ME). Ein Rest hier ist nicht hingenommen: reasons sagt für jeden nicht redaktionellen, warum er steht; die redaktionellen der Kundmachung sind die eingesetzte Fundstelle und Zeichen, nicht einzeln gelesen.",
+ "note": "Reste der beiden Nullvergleiche (scripts/harness/station.ts) aus der Messrunde vom 24.11.2026 auf 92caf564, über den Cache mit der Liste des Tages: 114 Entwürfe und 519 Paare (am 22.11.2026 108 und 470). Seit diesem Tag liest der Nullvergleich die letzte Fassung, die einer der beiden Datensätze nennt, und den Datensatz eines Entwurfs, der weniger Stationen nennt als der seiner Regierungsvorlage, frisch: 103/ME stand mit dem Stand vom 09.09.2026 im Cache und verglich die Regierungsvorlage mit der Kundmachung. Sechs Reste sind an diesem Tag gegangen, alle Lesefehler: ein Gliederungssymbol, das Word auf zwei Spans teilt (32/ME, 101/ME), und die Überschrift einer Anlage, die das RIS-XML als Formatvorlage setzt (75/ME). Ein Rest hier ist nicht hingenommen: reasons sagt für jeden nicht redaktionellen, warum er steht; die redaktionellen der Kundmachung sind die eingesetzte Fundstelle und Zeichen, nicht einzeln gelesen.",
  "reasons": {
   "html-xml 2/ME html>xml changed Änderung des Bundesgesetzes über die justizielle Zusammenarb · Z73→Z73": "Leser: der zitierte Titel der Vereinbarung steht im Parlaments-HTML, im RIS-XML nicht als lesbarer Block — offen",
   "html-xml 47/ME html>xml changed Änderungen des Rechtsanwaltstarifgesetzes · Z2→Z2": "Quellen verschieden: das RIS-XML schreibt „kommt,.\" (Tippfehler der Quelle)",
   "parlament-bgbl 116/ME plenum>bgbl changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)",
-  "html-xml 116/ME html>xml changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)",
-  "parlament-bgbl 75/ME plenum>bgbl changed (redaktionell) 99. Bundesgesetz, mit dem das Versorgungssicherungsgesetz ge · Z23→Z23": "Leser: beide Quellen setzen „Anlage als Überschrift der neuen Anlage, das Parlaments-HTML als Absatz (PDK1Anlage), das RIS-XML als Formatvorlage (pdvorlage), die der XML-Leser nicht als Text liest — redaktionell, offen"
+  "html-xml 116/ME html>xml changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)"
  },
  "residues": [
   {
@@ -5050,19 +5049,6 @@
     "pieces": [
      "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
      "… ⟦+99/2026⟧ treten mit 1. Jänner…"
-    ],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "parlament-bgbl",
-   "pair": "75/ME plenum>bgbl",
-   "residue": {
-    "unit": "99. Bundesgesetz, mit dem das Versorgungssicherungsgesetz ge · Z23→Z23",
-    "change": "changed",
-    "editorial": true,
-    "pieces": [
-     "…Die Anlage lautet: ⟦-\"Anlage⟧ Welche Waren unter die…"
     ],
     "ceiling": false
    }
@@ -13563,7 +13549,6 @@
   "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z15→Z15": "geändert",
   "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z18→Z18": "geändert",
   "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z20→Z20": "geändert",
-  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z23→Z23": "redaktionell",
   "76/ME me>rv Änderung des Alternative Investmentfonds Manager-G · Z3→Z3": "geändert",
   "76/ME me>rv Änderung des Alternative Investmentfonds Manager-G · Z5→Z5": "geändert",
   "76/ME me>rv Änderung des Alternative Investmentfonds Manager-G · Z9→Z9": "geändert",

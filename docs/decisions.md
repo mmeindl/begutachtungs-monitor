@@ -2048,11 +2048,21 @@ gets an entry of its own only where it carries a reason the rule does not.
   reader took the first alone and left „20a." in the text (121/ME Z 30,
   Ausschuss against Kundmachung, shown as changed). The „lone full stops
   after the § sign" open since 19.11. (32/ME, 101/ME) were the same split.
-  The draft path now counts the shown §§ no enacted law of the bench joins
-  (189 in the first published round, all of omnibus drafts whose other
-  Artikel came into force through another Bundesgesetzblatt or not at all),
+  The draft path now counts the shown §§ no enacted law of the bench joins,
   and the page says how many; until then they dropped out of „lassen sich
-  einem Gesetz zuordnen" unsaid. Considered and dropped the same
+  einem Gesetz zuordnen" unsaid. Of the 189 the first published round
+  counted, most were the bench's: a Regierungsvorlage that merges drafts
+  (129 d.B. carries Artikel of twelve) was joined to its first draft only,
+  and „BGBl. I Nr. 8/2026  (NR: …" with two spaces hid the Regierungsvorlage
+  of the Bundesvergabegesetz Konzessionen 2018. The rest never became law:
+  11/ME's StPO and ZPO, 97/ME's Kontenregistergesetz. Such a § counts as „nicht
+  Gesetz geworden" only on proof — every Regierungsvorlage of the draft has a
+  Bundesgesetzblatt, the run read each, and none has an Artikel citing the
+  law's Stammnorm or carrying its title (`noArticleFor`); without it the §
+  stays at „no law". The next round: 31 left of 189, 24 of them not enacted.
+  The same day the RIS XML reader learned the layout template
+  (`<pdvorlage>`) in which a Bundesgesetzblatt sets an Anlage heading, read
+  as Parliament's HTML reads the same paragraph. Considered and dropped the same
   day: a separate weekly job that froze the rules at a git tag to score only
   laws published after it. Its alarm would have watched the frozen code, not
   what runs, and the figure it guarded is the page's „bei den anderen kann
