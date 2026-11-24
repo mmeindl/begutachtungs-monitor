@@ -1950,9 +1950,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   in exactly one of the page's groups (`tests/genauigkeit.test.ts` fails on
   a key no group names), and a blind spot by construction — a unit RIS
   lacks too, a foreign sentence in both columns alike, one misread word in
-  a Land's right column — is printed with its count of tries, not left out
-  of a range. Shares are rounded down, so the page never claims a catch
-  that was not measured.
+  a Land's right column — is a bar of its own, never left out of a range,
+  and its count of tries stands under „Im Einzelnen" (since 24.11.2026; a
+  bar of fewer than 100 tries says so under it). Shares are rounded down,
+  so the page never claims a catch that was not measured.
 - **The share of whole §§ shown counts only the §§ that have a proposed
   version to compose** (19.11.2026, `wegFunnel`). A § the draft repeals has
   none, and a § of a law the draft enacts anew is the draft's own text;
@@ -1967,6 +1968,64 @@ gets an entry of its own only where it carries a reason the rule does not.
   file. The sentences stay, folded under „Im Einzelnen"; the harnesses and
   the commit measured are not on the page, which is for a reader and not
   for a developer — the record carries both.
+- **`/genauigkeit` is scanned, not read: shares in view, counts one click
+  down** (maintainer, 24.11.2026). At some 8,800 px the page answered „what
+  can I rely on" only to someone who read all of it, and exact counts of
+  Paragraphen and Entwürfe tell a reader less than shares and figures.
+  Now: four shares at the top, as large as a heading; what stays to check
+  as lines that open in bold; one picture of an injected fault for what
+  every share is of; and per kind of comparison the same order
+  (`GenauigkeitArt`): what it is held against, one figure, the faults,
+  „Im Einzelnen". The figure is a square of 100 where a § can be one of
+  several things (`GenauigkeitHundert`: no mark, „nicht bestätigt", „nicht
+  geprüft", not shown, each square drawn as the § looks on the page, no
+  hue), a funnel for how many whole §§ arrive (`GenauigkeitTrichter`: the
+  steps' figures, each drop with its why), and frequencies („34 von 1.000")
+  where a percentage would read as rounding. Parts of one whole are rounded
+  by largest remainder (`largestRemainder`), so the squares add up to 100
+  and a funnel's drops subtract to its next figure. Nothing left the page:
+  every count, rule and sentence that stood there is under „Im Einzelnen"
+  of its kind; visible text fell from about 2,600 words to 1,650, all of it
+  4,700. A figure measured where the rules were tuned says what that means
+  for a reader at its figure in the section („Bei neuen Gesetzen kann der
+  Anteil niedriger sein"); the tile at the top carries only where it was
+  measured, in words the page has not yet had to explain („Gemessen an
+  Paragraphen, die so Gesetz wurden, wie der Entwurf sie vorschlug"). The
+  cause — the rules were developed on part of these laws — stands under
+  „Was die Zahlen nicht sagen"; at the tile it was a caveat no reader could
+  decode (maintainer, 24.11.2026).
+  The same day two simulated readers (an NGO's policy officer on a laptop, a
+  citizen without legal training on a phone; agents given only the
+  screenshots and the page's text) answered nine questions from the page.
+  Both got its point and trusted it more for naming its limits, and both
+  misread the same things, which changed the copy:
+  - a catch rate prints its verb („0,2 % gefangen", `weakFigureDe`): bare,
+    the comma's 0,2 % read as „commas almost never go missing";
+  - „zweite Lesung" (a stage in Parliament the monitor follows) became
+    „Gegenlesen am PDF" and „liest den Entwurf ein zweites Mal";
+  - each share at the top says what it is not or what remains: 63,2 % read
+    as „a third of the changes missing", 96 % as „96 % correct", 100 % as
+    „error-free", 99,5 % as „drafts pass unchanged" (the framing rule);
+  - „Was selbst nachzusehen bleibt" opens with the instruction and gives
+    each mark its own line and action; the term „Textgegenüberstellung" is
+    explained where it first appears again;
+  - the funnel says „werden nicht ganz ausgeschrieben", not „scheiden aus".
+  A simulated reader is not a user test (those wait for 2027); it finds
+  wording a reader stumbles on, not whether the page serves its people.
+- **A kind of fault the check catches „fast immer" stands in one bar with
+  the others; every other one alone, with its why** (24.11.2026,
+  `FAST_IMMER`, `fehlerBild`). „Fast immer" is at least 95 %, in the bar's
+  weakest class too (`weakestShare`), and that bar is drawn at its weakest
+  share, so a sum never shows more than its weakest class caught. Every bar
+  below the line carries one sentence of what it means for a reader
+  (`FaultBar.why`); the test fails on a bar of the published round that
+  falls below without one, so a new round that moves a bar needs a
+  sentence, not a silent place. Until then every group stood as its own bar
+  with a line of counts, six of seven at 98 to 100 %, and the one a reader
+  had to know about was the seventh. The line moved two bars of the
+  ministry's annex — a label of an Absatz at 89,9 %, a sentence lost from
+  the left column at 79,2 % — from „fängt" to „nicht immer", where they
+  belong for a reader, though neither is blind by construction.
 - **Report per-draft figures (median, share of drafts)** over pooled
   percentages, which a few large laws dominate (§12.12).
 - **Figures about windows, claims and joins are measured on a production
