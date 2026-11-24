@@ -295,7 +295,7 @@ describe('genauigkeitArten', () => {
 
   it('scores the page on the draft path, not on the enacted law\'s instructions (23.11.2026)', () => {
     const { draftPath: dp } = GENAUIGKEIT.lesefassung.bench
-    expect(dp.comparable + dp.instructionChanged + dp.stockMoved + dp.noInstructionLine + dp.notAmended).toBe(dp.shown)
+    expect(dp.comparable + dp.instructionChanged + dp.stockMoved + dp.noInstructionLine + dp.notAmended + (dp.enactedUnread ?? 0) + (dp.noLawJoined ?? 0)).toBe(dp.shown)
     const first = genauigkeitArten()[0]!.result[0]!
     expect(first).toContain(`Bei ${formatNumberDe(dp.comparable)} ging die Anweisung unverändert ins Gesetz`)
     expect(first).toContain(`${formatNumberDe(dp.identical)} stimmen Wort für Wort`)
@@ -455,8 +455,11 @@ describe('benchCoversPeriod', () => {
   }
 
   it('keeps the old sentences for a record of „the 60 newest"', () => {
-    expect(benchCoversPeriod(GENAUIGKEIT)).toBe(false)
-    expect(genauigkeitKurz(GENAUIGKEIT).shows.join(' ')).toContain('An diesen Gesetzen wurden auch die Regeln entwickelt.')
+    const sixty = structuredClone(GENAUIGKEIT)
+    delete sixty.lesefassung.bench.draftPath.enactedUnread
+    delete sixty.lesefassung.bench.draftPath.noLawJoined
+    expect(benchCoversPeriod(sixty)).toBe(false)
+    expect(genauigkeitKurz(sixty).shows.join(' ')).toContain('An diesen Gesetzen wurden auch die Regeln entwickelt.')
   })
 
   it('says for a record of the whole period that the rules were developed on part of its laws', () => {
@@ -467,5 +470,15 @@ describe('benchCoversPeriod', () => {
     expect(kurz).not.toContain('An diesen Gesetzen wurden auch die Regeln entwickelt.')
     const lesefassung = genauigkeitArten(r).find((a) => a.id === 'lesefassung')!.result.join(' ')
     expect(lesefassung).toContain('Jedes neu kundgemachte Gesetz kommt mit der nächsten Messung dazu.')
+  })
+
+  it('says how many shown §§ no enacted law joins, and leaves them out of „einem Gesetz zuordnen"', () => {
+    const r = period()
+    const dp = r.lesefassung.bench.draftPath
+    const art = genauigkeitArten(r).find((a) => a.id === 'lesefassung')!
+    const result = art.result.join(' ')
+    expect(result).toContain(`lassen sich ${formatNumberDe(dp.shown - 192)} gezeigte Paragraphen einem Gesetz zuordnen. Bei 192 weiteren findet die Prüfung kein kundgemachtes Gesetz zu ihrem Artikel des Entwurfs.`)
+    expect(result).toContain(`Die übrigen ${formatNumberDe(dp.shown - 192 - dp.comparable)} lassen sich so nicht prüfen`)
+    expect(art.measured.join(' ')).toContain('192, denen die Prüfung kein kundgemachtes Gesetz zuordnet.')
   })
 })

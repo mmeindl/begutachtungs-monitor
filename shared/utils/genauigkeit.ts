@@ -282,12 +282,15 @@ export const LAND_WORDING = ['Zahl', 'Wort', 'Satz weg'] as const
  */
 export const DRAFT_PATH_DIFFERS_READ: readonly string[] = ['71/ME § 11', '97/ME § 99']
 /**
- * The null comparisons' residues other than an open BGBl number: five lone
- * full stops after a § designation, three filler dots of the HTML (47/ME,
- * 116/ME in both tests), and a quoted title our XML reader drops (2/ME).
- * None is a different wording in the sources.
+ * The null comparisons' residues other than an open BGBl number (24.11.2026):
+ * three filler dots of the HTML (47/ME, 116/ME in both tests), a quoted title
+ * our XML reader drops (2/ME), and an Anlage heading the RIS XML sets as a
+ * layout template, which the XML reader does not read as text (75/ME).
+ * None is a different wording in the sources. The five lone full stops after
+ * a § designation of 23.11. were a split designation the HTML reader now
+ * reads whole.
  */
-export const NULL_RESIDUES_READ = 9
+export const NULL_RESIDUES_READ = 5
 
 /* ------------------------------------------------------------------ */
 /* The kinds of comparison                                              */
@@ -477,6 +480,10 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
   const witnessed = (r.lesefassung.funnel.witnessed ?? 0) + (r.lesefassung.risOnly.witnessed ?? 0)
   const notLaw = bench.shown - bench.identical
   const dp = bench.draftPath
+  // Shown §§ no enacted law of the bench joins (24.11.2026): counted since the bench reads the whole period, left out without a word before.
+  const noLaw = dp.noLawJoined ?? 0
+  const unread = dp.enactedUnread ?? 0
+  const joined = dp.shown - noLaw
   const blind = total(classes(r.lesefassung.faults, RESULT_BLIND))
   const blindComma = classes(r.lesefassung.faults, RESULT_BLIND_COMMA)
   const comma = total(blindComma)
@@ -502,8 +509,8 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       against: 'Geprüft an der Textgegenüberstellung des Ministeriums, wo sie abweicht am Gesetzestext des Entwurfs als PDF, und nachträglich am kundgemachten Gesetz.',
       result: [
         // The path a reader meets (23.11.2026): the draft's own instructions, as the page applies them. Until then this line reported the enacted law's instructions, which no page applies.
-        `Am sichersten lässt sich das Ergebnis an Entwürfen prüfen, die inzwischen kundgemacht sind. Aus ${n(dp.drafts)} solchen Entwürfen lassen sich ${n(dp.shown)} gezeigte Paragraphen einem Gesetz zuordnen. Bei ${n(dp.comparable)} ging die Anweisung unverändert ins Gesetz, es gibt also genau eine richtige Fassung: ${n(dp.identical)} stimmen Wort für Wort.${dp.comparable > dp.identical ? ` Bei ${ofParagraphs(dp.comparable - dp.identical)} ${dp.differs.every((d) => DRAFT_PATH_DIFFERS_READ.includes(`${d.me} § ${d.id}`)) ? 'steht im Gesetz etwas, das keine Anweisung des Entwurfs anordnet' : 'weicht unser Ergebnis vom Gesetz ab'}.` : ''}${benchCoversPeriod(r) ? ' An einem Teil dieser Gesetze wurden auch die Regeln entwickelt; bei den anderen kann der Anteil niedriger sein. Jedes neu kundgemachte Gesetz kommt mit der nächsten Messung dazu.' : ' An diesen Gesetzen wurden auch die Regeln entwickelt; bei anderen kann der Anteil niedriger sein.'}`,
-        `Die übrigen ${n(dp.shown - dp.comparable)} lassen sich so nicht prüfen: Ihr Text hat sich auf dem Weg zum Gesetz geändert, das Gesetz ändert sie nicht, oder ihre Anweisung lässt sich nicht vergleichen.`,
+        `Am sichersten lässt sich das Ergebnis an Entwürfen prüfen, die inzwischen kundgemacht sind. Aus ${n(dp.drafts)} solchen Entwürfen lassen sich ${n(joined)} gezeigte Paragraphen einem Gesetz zuordnen.${noLaw ? ` Bei ${n(noLaw)} weiteren findet die Prüfung kein kundgemachtes Gesetz zu ihrem Artikel des Entwurfs.` : ''} Bei ${n(dp.comparable)} ging die Anweisung unverändert ins Gesetz, es gibt also genau eine richtige Fassung: ${n(dp.identical)} stimmen Wort für Wort.${dp.comparable > dp.identical ? ` Bei ${ofParagraphs(dp.comparable - dp.identical)} ${dp.differs.every((d) => DRAFT_PATH_DIFFERS_READ.includes(`${d.me} § ${d.id}`)) ? 'steht im Gesetz etwas, das keine Anweisung des Entwurfs anordnet' : 'weicht unser Ergebnis vom Gesetz ab'}.` : ''}${benchCoversPeriod(r) ? ' An einem Teil dieser Gesetze wurden auch die Regeln entwickelt; bei den anderen kann der Anteil niedriger sein. Jedes neu kundgemachte Gesetz kommt mit der nächsten Messung dazu.' : ' An diesen Gesetzen wurden auch die Regeln entwickelt; bei anderen kann der Anteil niedriger sein.'}`,
+        `Die übrigen ${n(joined - dp.comparable)} lassen sich so nicht prüfen: Ihr Text hat sich auf dem Weg zum Gesetz geändert, das Gesetz ändert sie nicht, ${unread ? 'ihr Text im Gesetz ließ sich nicht lesen, ' : ''}oder ihre Anweisung lässt sich nicht vergleichen.`,
         // The trade-off, in the open (20.11.2026): a first-time reader found it only under the fold, and it is what the share shown is paid for.
         `Die Prüfung ist streng. In einem zweiten Test wendet der Monitor die Anweisungen von ${n(bench.bgbl)} Bundesgesetzblättern selbst an. Mit der Prüfung bleiben ${n(bench.shown)} Paragraphen, ${bench.identical === bench.shown ? 'alle' : n(bench.identical)} Wort für Wort das Gesetz. Ohne sie wären es ${n(bench.ungated.shown)}, ${n(bench.ungated.shown - bench.ungated.identical)} davon mit Abweichungen.`,
         ...(witnessed
@@ -523,7 +530,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       rule:
         'Der Monitor setzt den Paragraphen selbst zusammen, aus dem geltenden Text im RIS und den Anweisungen des Entwurfs, und hält ihn gegen die Textgegenüberstellung des Ministeriums. Was sie als geltend zeigt, muss im RIS stehen, was sie als neu zeigt, in unserem Ergebnis; Leerzeichen und Bindestriche zählen dabei nicht. Ihre Absätze müssen in derselben Reihenfolge stehen, und unser Ergebnis darf nichts ändern, was sie nicht zeigt.',
       measured: [
-        `An den Entwürfen: ${n(dp.comparable)} Paragraphen mit unveränderter Anweisung auf unverändertem Text, ${n(dp.identical)} davon Wort für Wort das Gesetz. Nicht bewertet: ${n(dp.instructionChanged)} mit geänderter Anweisung, ${n(dp.stockMoved)}, deren Ausgangstext sich vorher geändert hat, ${n(dp.noInstructionLine)} ohne eigene Anweisungszeile, ${n(dp.notAmended)}, die das Gesetz nicht ändert.`,
+        `An den Entwürfen: ${n(dp.comparable)} Paragraphen mit unveränderter Anweisung auf unverändertem Text, ${n(dp.identical)} davon Wort für Wort das Gesetz. Nicht bewertet: ${n(dp.instructionChanged)} mit geänderter Anweisung, ${n(dp.stockMoved)}, deren Ausgangstext sich vorher geändert hat, ${n(dp.noInstructionLine)} ohne eigene Anweisungszeile, ${n(dp.notAmended)}, die das Gesetz nicht ändert${unread ? `, ${n(unread)}, deren Text im Gesetz sich nicht lesen ließ` : ''}${noLaw ? `, ${n(noLaw)}, denen die Prüfung kein kundgemachtes Gesetz zuordnet` : ''}.`,
         `An den Bundesgesetzblättern, mit deren eigenen Anweisungen: ${n(bench.laws)} Gesetze. Von ${n(bench.shown)} Paragraphen, die die Prüfung bestätigt, sind ${n(bench.identical)} Wort für Wort das Gesetz.${notLaw ? ` ${restSentence(bench)}` : ''} Ein Wort, das nicht im Gesetz steht, hat${bench.invented ? ` ${bench.invented === 1 ? 'einer' : n(bench.invented)}` : ' keiner'}. Manche dieser Fassungen treten erst später in Kraft; verglichen wird mit dem kundgemachten Text.`,
         // What „ohne" leaves in force (20.11.2026): the rules that judge each instruction and its result by themselves still decide.
         `Ohne die Prüfung gegen die Gegenüberstellung – jeder Paragraph, bei dem sich alle Anweisungen anwenden ließen und das Ergebnis für sich stimmig ist – wären es ${n(bench.ungated.identical)} von ${n(bench.ungated.shown)} gewesen.`,

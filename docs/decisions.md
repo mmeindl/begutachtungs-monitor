@@ -2048,7 +2048,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   reader took the first alone and left „20a." in the text (121/ME Z 30,
   Ausschuss against Kundmachung, shown as changed). The „lone full stops
   after the § sign" open since 19.11. (32/ME, 101/ME) were the same split.
-  Considered and dropped the same
+  The draft path now counts the shown §§ no enacted law of the bench joins
+  (189 in the first published round, all of omnibus drafts whose other
+  Artikel came into force through another Bundesgesetzblatt or not at all),
+  and the page says how many; until then they dropped out of „lassen sich
+  einem Gesetz zuordnen" unsaid. Considered and dropped the same
   day: a separate weekly job that froze the rules at a git tag to score only
   laws published after it. Its alarm would have watched the frozen code, not
   what runs, and the figure it guarded is the page's „bei den anderen kann

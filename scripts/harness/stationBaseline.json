@@ -1,16 +1,14 @@
 {
  "gp": "XXVIII",
- "drafts": 108,
- "pairs": 470,
- "note": "Reste der beiden Nullvergleiche (scripts/harness/station.ts) aus der Messrunde vom 22.11.2026, über den Cache mit der Liste des Tages: 108 Entwürfe und 470 Paare (am Abend des 19.11.2026 91 und 453; am Mittag jenes Tages vier Reste mehr: die Überschriften der Anlagen in 32/ME und 43/ME, die das Parlament im Text des letzten § ließ, sind seither keine Reste mehr). Ein Rest hier ist nicht hingenommen: reasons sagt für jeden nicht redaktionellen, warum er steht; die redaktionellen der Kundmachung sind die eingesetzte Fundstelle und Zeichen, nicht einzeln gelesen.",
+ "drafts": 114,
+ "pairs": 519,
+ "note": "Reste der beiden Nullvergleiche (scripts/harness/station.ts) aus der Messrunde vom 24.11.2026, über den Cache mit der Liste des Tages: 114 Entwürfe und 519 Paare (am 22.11.2026 108 und 470). Seit dieser Runde liest der Nullvergleich die letzte Fassung, die einer der beiden Datensätze nennt, und den Datensatz eines Entwurfs, der weniger Stationen nennt als der seiner Regierungsvorlage, frisch: 103/ME stand mit dem Stand vom 09.09.2026 im Cache und verglich die Regierungsvorlage mit der Kundmachung. Fünf Reste sind weg, alle derselbe Leserfehler: ein Gliederungssymbol, das Word auf zwei Spans teilt (32/ME, 101/ME). Ein Rest hier ist nicht hingenommen: reasons sagt für jeden nicht redaktionellen, warum er steht; die redaktionellen der Kundmachung sind die eingesetzte Fundstelle und Zeichen, nicht einzeln gelesen.",
  "reasons": {
   "html-xml 2/ME html>xml changed Änderung des Bundesgesetzes über die justizielle Zusammenarb · Z73→Z73": "Leser: der zitierte Titel der Vereinbarung steht im Parlaments-HTML, im RIS-XML nicht als lesbarer Block — offen",
-  "html-xml 32/ME html>xml changed (redaktionell) Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §151→§151": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
-  "html-xml 32/ME html>xml changed (redaktionell) Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §153→§153": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
   "html-xml 47/ME html>xml changed Änderungen des Rechtsanwaltstarifgesetzes · Z2→Z2": "Quellen verschieden: das RIS-XML schreibt „kommt,.\" (Tippfehler der Quelle)",
-  "html-xml 101/ME html>xml changed (redaktionell) Bundesgesetz über die Errichtung eines Unterstützungsfonds f · §7→§7": "Leser: ein einzelner „.\" hinter dem §-Symbol im Parlaments-HTML (lawtext/parliamentHtml.ts) — redaktionell, offen",
   "parlament-bgbl 116/ME plenum>bgbl changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)",
-  "html-xml 116/ME html>xml changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)"
+  "html-xml 116/ME html>xml changed Änderung der Exekutionsordnung · Z2→Z2": "Quellen verschieden: Parlament setzt einen einzelnen Punkt als Füllzeichen („liegt. 4,85 Euro\"), RIS einen Tabulator mit Füllpunkten (<tab leader=\"p\"/>)",
+  "parlament-bgbl 75/ME plenum>bgbl changed (redaktionell) 99. Bundesgesetz, mit dem das Versorgungssicherungsgesetz ge · Z23→Z23": "Leser: beide Quellen setzen „Anlage als Überschrift der neuen Anlage, das Parlaments-HTML als Absatz (PDK1Anlage), das RIS-XML als Formatvorlage (pdvorlage), die der XML-Leser nicht als Text liest — redaktionell, offen"
  },
  "residues": [
   {
@@ -3176,32 +3174,6 @@
    "kind": "parlament-bgbl",
    "pair": "32/ME plenum>bgbl",
    "residue": {
-    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §159→§159",
-    "change": "changed",
-    "editorial": true,
-    "pieces": [
-     "… ⟦-.⟧ (1) Unbeschadet der Entscheidungen…"
-    ],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "parlament-bgbl",
-   "pair": "32/ME plenum>bgbl",
-   "residue": {
-    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §161→§161",
-    "change": "changed",
-    "editorial": true,
-    "pieces": [
-     "… ⟦-.⟧ (1) Aufgabe des Aufsichtsorgans…"
-    ],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "parlament-bgbl",
-   "pair": "32/ME plenum>bgbl",
-   "residue": {
     "unit": "Bundesgesetz zur Definition des Begriffs der Energiearmut fü · §12→§12",
     "change": "changed",
     "editorial": true,
@@ -3238,32 +3210,6 @@
      "… ⟦+91/2025⟧ treten mit dem der…",
      "…Bundesgesetzes BGBl. I Nr. ⟦-xx/202x⟧ …",
      "… ⟦+91/2025⟧ treten mit dem der…"
-    ],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "html-xml",
-   "pair": "32/ME html>xml",
-   "residue": {
-    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §151→§151",
-    "change": "changed",
-    "editorial": true,
-    "pieces": [
-     "… ⟦-.⟧ (1) Unbeschadet der Entscheidungen…"
-    ],
-    "ceiling": false
-   }
-  },
-  {
-   "kind": "html-xml",
-   "pair": "32/ME html>xml",
-   "residue": {
-    "unit": "Bundesgesetz zur Regelung der Elektrizitätswirtschaft (Elekt · §153→§153",
-    "change": "changed",
-    "editorial": true,
-    "pieces": [
-     "… ⟦-.⟧ (1) Aufgabe des Aufsichtsorgans…"
     ],
     "ceiling": false
    }
@@ -4896,6 +4842,20 @@
   },
   {
    "kind": "parlament-bgbl",
+   "pair": "73/ME plenum>bgbl",
+   "residue": {
+    "unit": "100. Bundesgesetz, mit dem die Gewerbeordnung 1994 geändert  · Z19→Z19",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+100/2026⟧ treten mit Ablauf des…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
    "pair": "74/ME plenum>bgbl",
    "residue": {
     "unit": "Änderung des Asylgesetzes 2005 · Z141→Z141",
@@ -5062,6 +5022,47 @@
     "pieces": [
      "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
      "… ⟦+39/2026⟧ treten mit 12. Juni…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "75/ME plenum>bgbl",
+   "residue": {
+    "unit": "99. Bundesgesetz, mit dem das Versorgungssicherungsgesetz ge · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+99/2026⟧ tritt mit 1. Jänner…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "75/ME plenum>bgbl",
+   "residue": {
+    "unit": "99. Bundesgesetz, mit dem das Versorgungssicherungsgesetz ge · Z20→Z20",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+99/2026⟧ treten mit 1. Jänner…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "75/ME plenum>bgbl",
+   "residue": {
+    "unit": "99. Bundesgesetz, mit dem das Versorgungssicherungsgesetz ge · Z23→Z23",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Die Anlage lautet: ⟦-\"Anlage⟧ Welche Waren unter die…"
     ],
     "ceiling": false
    }
@@ -5518,6 +5519,34 @@
   },
   {
    "kind": "parlament-bgbl",
+   "pair": "89/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen Verwaltungsverfahrensgesetzes 1991 · Z14→Z14",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+86/2026⟧ treten mit Ablauf des…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "89/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Verwaltungsstrafgesetzes 1991 · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+86/2026⟧ treten mit Ablauf des…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
    "pair": "92/ME ausschuss>bgbl",
    "residue": {
     "unit": "30. Bundesgesetz, mit dem das Lebenshaltungs- und Wohnkosten · Z3→Z3",
@@ -5546,6 +5575,92 @@
   },
   {
    "kind": "parlament-bgbl",
+   "pair": "93/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wirtschaftliche Eigentümer Registergesetzes · Z36→Z36",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+94/2026⟧ anzuwenden.\"…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "93/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wirtschaftliche Eigentümer Registergesetzes · Z37→Z37",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+94/2026⟧ treten mit 5. November…",
+     "…Bundgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+94/2026⟧ ist auf Meldungen anzuwenden,…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "93/ME rv>bgbl",
+   "residue": {
+    "unit": "Bundesgesetz über die Einrichtung eines Registers der wirtsc · §31→§31",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetz BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+94/2026⟧ werden 1. Art. 10…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "93/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Gebührengesetzes 1957 · Z1→Z1",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…2027), BGBl. I Nr. ⟦-xxx/202x\"⟧ …",
+     "… ⟦+94/2026\"⟧ ersetzt.…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "93/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Gebührengesetzes 1957 · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+94/2026⟧ tritt mit 10. Juli…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "93/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzmarkt-Geldwäschegesetzes · Z25→Z25",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+94/2026⟧ treten mit dem auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
    "pair": "95/ME ausschuss>bgbl",
    "residue": {
     "unit": "Änderung des Ärztegesetzes 1998 · Z28→Z28",
@@ -5566,6 +5681,146 @@
      "… ⟦+65/2026⟧ treten rückwirkend mit 29.…",
      "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
      "… ⟦+65/2026⟧ treten mit 1. August…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "96/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Allgemeinen Sozialversicherungsgesetzes · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ (1) § 51 Abs.…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ treten mit 1. Jänner…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ sowie der Aufhebung der…",
+     "…durch BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ hinsichtlich ihrer Wirkung auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "96/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Gewerblichen Sozialversicherungsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ (1) § 27 Abs.…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ tritt mit 1. Jänner…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ sowie der Aufhebung der…",
+     "…durch BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ hinsichtlich ihrer Wirkung auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "96/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ (1) § 419a samt…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ tritt mit dem auf…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ tritt mit 1. Jänner…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ sowie der Aufhebung der…",
+     "…durch BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ hinsichtlich ihrer Wirkung auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "96/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Freiberuflichen-Sozialversicherungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ § 8 letzter Satz…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ tritt mit 1. Jänner…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "96/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsmarktservicegesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ treten mit 1. Jänner…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "96/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsmarktservicegesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ finanzierten Beihilfen, Maßnahmen und…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "96/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Arbeitsmarktpolitik-Finanzierungsgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ treten mit 1. Jänner…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "96/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Einkommensteuergesetzes 1988 · Z9→Z9",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026,⟧ …",
+     "… ⟦+88/2026,⟧ treten mit 1. Jänner…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xx/2026⟧ …",
+     "… ⟦+88/2026⟧ ist für Bezüge und…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xx/2026⟧ …",
+     "… ⟦+88/2026⟧ tritt mit 1. Jänner…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xx/2026⟧ …",
+     "… ⟦+88/2026⟧ ist hinsichtlich der Überweisung…"
     ],
     "ceiling": false
    }
@@ -5705,14 +5960,281 @@
    }
   },
   {
-   "kind": "html-xml",
-   "pair": "101/ME html>xml",
+   "kind": "parlament-bgbl",
+   "pair": "103/ME plenum>bgbl",
    "residue": {
-    "unit": "Bundesgesetz über die Errichtung eines Unterstützungsfonds f · §7→§7",
+    "unit": "Änderung des Einkommensteuergesetzes 1988 · Z9→Z9",
     "change": "changed",
     "editorial": true,
     "pieces": [
-     "… ⟦-.⟧ Keine Zuwendung nach diesem…"
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026,⟧ …",
+     "… ⟦+88/2026,⟧ treten mit 1. Jänner…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xx/2026⟧ …",
+     "… ⟦+88/2026⟧ ist für Bezüge und…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xx/2026⟧ …",
+     "… ⟦+88/2026⟧ tritt mit 1. Jänner…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xx/2026⟧ …",
+     "… ⟦+88/2026⟧ ist hinsichtlich der Überweisung…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "103/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Betrieblichen Mitarbeiter- und Selbständigenvor · Z43→Z43",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-XXX/2026⟧ …",
+     "… ⟦+88/2026⟧ bestehende Konzessionen zum Betrieb…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "103/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Betrieblichen Mitarbeiter- und Selbständigenvor · Z48→Z48",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-XXX/2026⟧ …",
+     "… ⟦+88/2026⟧ treten mit 1. Jänner…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-XXX/2026⟧ …",
+     "… ⟦+88/2026⟧ tritt mit 1. Jänner…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "103/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pensionskassengesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-XXX/2026⟧ …",
+     "… ⟦+88/2026⟧ treten mit 1. Jänner…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "103/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Betriebspensionsgesetzes · Z10→Z10",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Novelle BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ § 3 Abs. 1…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ treten mit 1. Jänner…",
+     "…Bundesgesetz BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ geschlossene kollektivvertragliche Pensionskassenzusagen behalten…",
+     "…Novelle BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ Mit der Vollziehung sind…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "103/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Landarbeitsgesetzes 2021 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ tritt mit 1. Jänner…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "103/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Pensionskassenvorsorgegesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+88/2026⟧ treten in Kraft: 1.…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z160→Z160",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ treten mit dem auf…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ treten mit 11. Jänner…",
+     "…Bundesgesetz BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ gestellt wurde, ist weiterhin…",
+     "…Bundesgesetz BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ anzuwenden und sind die…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ ist erstmalig bei Jahresabschlussprüfungen…",
+     "…31. Dezember 2026 begonnen ⟦-haben. \"⟧ …",
+     "… ⟦+haben.\"⟧ …"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Bankwesengesetzes · Z162→Z162",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetz BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ wird die Richtlinie (EU)…",
+     "…L 2024/2994 vom 04.12.2024, ⟦-umgesetzt. \"⟧ …",
+     "… ⟦+umgesetzt.\"⟧ …"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzmarktaufsichtsbehördengesetzes · Z7→Z7",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ treten mit dem auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Finanzmarktaufsichtsbehördengesetzes · Z8→Z8",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetz BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ wird die Richtlinie (EU)…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Sparkassengesetzes · Z11→Z11",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+93/2026⟧ treten mit dem auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapierfirmengesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetz BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+93/2026⟧ wird die Richtlinie (EU)…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapierfirmengesetzes · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+93/2026⟧ treten mit dem auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Kreditdienstleister- und Kreditkäufergesetzes · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+93/2026⟧ treten mit dem auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Investmentfondsgesetzes 2011 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+93/2026⟧ treten mit dem auf…",
+     "…Kundmachung folgenden Tag in ⟦-Kraft. \"⟧ …",
+     "… ⟦+Kraft.\"⟧ …"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Wertpapieraufsichtsgesetzes 2018 · Z13→Z13",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+93/2026⟧ treten mit dem auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "108/ME rv>bgbl",
+   "residue": {
+    "unit": "Änderung des Einlagensicherungs- und Anlegerentschädigungsge · Z4→Z4",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/202x⟧ …",
+     "… ⟦+93/2026⟧ treten mit dem auf…"
     ],
     "ceiling": false
    }
@@ -5777,6 +6299,26 @@
     "pieces": [
      "…Bundesgesetzes BGBl. I Nr. ⟦-xx/2026⟧ …",
      "… ⟦+63/2026⟧ treten mit 1. August…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "114/ME rv>bgbl",
+   "residue": {
+    "unit": "95. Bundesgesetz, mit dem das GeoSphere Austria-Gesetz geänd · Z32→Z32",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+95/2026⟧ außer Kraft. (3) Das…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+95/2026⟧ treten mit dem auf…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+95/2026⟧ tritt sechs Monate nach…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+95/2026⟧ treten mit 1. Oktober…"
     ],
     "ceiling": false
    }
@@ -6807,6 +7349,94 @@
     "pieces": [
      "…weit ausgedehnten ländlichen Gebiet ⟦-liegt.⟧ …",
      "… ⟦+liegt⟧ 4,85 Euro.\"…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "117/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Familienlastenausgleichsgesetzes 1967 · Z6→Z6",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetz BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+84/2026⟧ erfassten Bestimmungen gilt Folgendes:…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "117/ME plenum>bgbl",
+   "residue": {
+    "unit": "Änderung des Kinderbetreuungsgeldgesetzes · Z2→Z2",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+84/2026⟧ tritt mit 12. Juni…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+84/2026⟧ treten mit 1. Juli…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "121/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Strafvollzugsgesetzes · Z81→Z81",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+91/2026⟧ treten mit 1. November…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "121/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung des Jugendgerichtsgesetzes 1988 · Z5→Z5",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+91/2026⟧ treten mit 1. November…",
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+91/2026⟧ treten mit dem auf…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "121/ME ausschuss>bgbl",
+   "residue": {
+    "unit": "Änderung der Strafprozeßordnung 1975 · Z3→Z3",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…Bundesgesetzes BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+91/2026⟧ treten mit 1. November…"
+    ],
+    "ceiling": false
+   }
+  },
+  {
+   "kind": "parlament-bgbl",
+   "pair": "122/ME rv>bgbl",
+   "residue": {
+    "unit": "92. Bundesgesetz, mit dem das Strafgesetzbuch geändert wird  · Z19→Z19",
+    "change": "changed",
+    "editorial": true,
+    "pieces": [
+     "…2026, BGBl. I Nr. ⟦-xxx/2026⟧ …",
+     "… ⟦+92/2026⟧ treten mit 1. November…"
     ],
     "ceiling": false
    }
@@ -10217,8 +10847,6 @@
   "32/ME rv>bgbl Bundesgesetz zur Regelung der Elektrizitätswirtsch · §138→§138": "geändert",
   "32/ME rv>bgbl Bundesgesetz zur Regelung der Elektrizitätswirtsch · §139→§139": "geändert",
   "32/ME rv>bgbl Bundesgesetz zur Regelung der Elektrizitätswirtsch · §140→§140": "geändert",
-  "32/ME rv>bgbl Bundesgesetz zur Regelung der Elektrizitätswirtsch · §159→§159": "redaktionell",
-  "32/ME rv>bgbl Bundesgesetz zur Regelung der Elektrizitätswirtsch · §161→§161": "redaktionell",
   "32/ME rv>bgbl Bundesgesetz zur Regelung der Elektrizitätswirtsch · §188→§188": "geändert",
   "32/ME rv>bgbl Bundesgesetz zur Regelung der Elektrizitätswirtsch · §190→§190": "geändert",
   "32/ME rv>bgbl Bundesgesetz zur Definition des Begriffs der Energ · §12→§12": "redaktionell",
@@ -12114,6 +12742,36 @@
   "73/ME me>rv Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z19→Z17": "geändert",
   "73/ME me>rv Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z20→Z19": "geändert",
   "73/ME me>rv Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z21→Z20": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z5→Z4": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z9→Z8": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z10→Z9": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z11→Z10": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z12→Z11": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z13→Z13": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z18→Z15": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z19→Z17": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z20→Z18": "geändert",
+  "73/ME me>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z21→Z19": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z5→Z4": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z9→Z8": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z10→Z9": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z11→Z10": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z12→Z11": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z13→Z13": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z18→Z15": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z19→Z17": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z20→Z18": "geändert",
+  "73/ME me>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z21→Z19": "geändert",
+  "73/ME rv>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z8→Z8": "geändert",
+  "73/ME rv>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z15→Z15": "geändert",
+  "73/ME rv>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z17→Z17": "geändert",
+  "73/ME rv>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z19→Z18": "geändert",
+  "73/ME rv>plenum Bundesgesetz, mit dem die Gewerbeordnung 1994 geän · Z20→Z19": "geändert",
+  "73/ME rv>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z8→Z8": "geändert",
+  "73/ME rv>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z15→Z15": "geändert",
+  "73/ME rv>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z17→Z17": "geändert",
+  "73/ME rv>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z19→Z18": "geändert",
+  "73/ME rv>bgbl 100. Bundesgesetz, mit dem die Gewerbeordnung 1994 · Z20→Z19": "geändert",
   "74/ME me>rv Änderung des Asylgesetzes 2005 · Z3→Z3": "geändert",
   "74/ME me>rv Änderung des Asylgesetzes 2005 · Z5→Z5": "geändert",
   "74/ME me>rv Änderung des Asylgesetzes 2005 · Z8→Z9": "geändert",
@@ -12841,6 +13499,71 @@
   "74/ME rv>bgbl Änderung des Grundversorgungsgesetzes - Bund 2005 · Z45→Z45": "redaktionell",
   "74/ME rv>bgbl Änderung des Staatsbürgerschaftsgesetzes 1985 · Z11→Z11": "redaktionell",
   "74/ME rv>bgbl Änderung des Ausländerbeschäftigungsgesetzes · Z6→Z6": "redaktionell",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z2→Z2": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z3→Z3": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z5→Z6": "redaktionell",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z6→Z7": "redaktionell",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z7→Z8": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z8→Z9": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z9→Z10": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z10→Z11": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z12→Z13": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z13→Z15": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z15→Z17": "redaktionell",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z16→Z18": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z18→Z20": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z19→Z21": "geändert",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z20→Z22": "redaktionell",
+  "75/ME me>rv Bundesgesetz, mit dem das Versorgungssicherungsges · Z21→Z23": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z2→Z2": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z3→Z3": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z5→Z6": "redaktionell",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z6→Z7": "redaktionell",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z7→Z8": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z8→Z9": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z9→Z10": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z10→Z11": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z12→Z13": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z13→Z15": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z15→Z17": "redaktionell",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z16→Z18": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z18→Z20": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z19→Z21": "geändert",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z20→Z22": "redaktionell",
+  "75/ME me>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z21→Z23": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z2→Z2": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z3→Z3": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z5→Z6": "redaktionell",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z6→Z7": "redaktionell",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z7→Z8": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z8→Z9": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z9→Z10": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z10→Z11": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z12→Z13": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z13→Z15": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z15→Z17": "redaktionell",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z16→Z18": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z18→Z20": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z19→Z21": "geändert",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z20→Z22": "redaktionell",
+  "75/ME me>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z21→Z23": "geändert",
+  "75/ME rv>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z1→Z1": "geändert",
+  "75/ME rv>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z2→Z2": "geändert",
+  "75/ME rv>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z11→Z11": "geändert",
+  "75/ME rv>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z13→Z13": "geändert",
+  "75/ME rv>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z14→Z14": "geändert",
+  "75/ME rv>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z15→Z15": "geändert",
+  "75/ME rv>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z18→Z18": "geändert",
+  "75/ME rv>plenum Bundesgesetz, mit dem das Versorgungssicherungsges · Z20→Z20": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z1→Z1": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z2→Z2": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z11→Z11": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z13→Z13": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z14→Z14": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z15→Z15": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z18→Z18": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z20→Z20": "geändert",
+  "75/ME rv>bgbl 99. Bundesgesetz, mit dem das Versorgungssicherung · Z23→Z23": "redaktionell",
   "76/ME me>rv Änderung des Alternative Investmentfonds Manager-G · Z3→Z3": "geändert",
   "76/ME me>rv Änderung des Alternative Investmentfonds Manager-G · Z5→Z5": "geändert",
   "76/ME me>rv Änderung des Alternative Investmentfonds Manager-G · Z9→Z9": "geändert",
@@ -13179,6 +13902,22 @@
   "89/ME me>rv Änderung des Verwaltungsstrafgesetzes 1991 · Z7→Z7": "geändert",
   "89/ME me>rv Änderung des Verwaltungsstrafgesetzes 1991 · Z9→Z9": "geändert",
   "89/ME me>rv Änderung des Verwaltungsstrafgesetzes 1991 · Z11→Z11": "geändert",
+  "89/ME me>bgbl Änderung des Allgemeinen Verwaltungsverfahrensgese · Z1→Z1": "geändert",
+  "89/ME me>bgbl Änderung des Allgemeinen Verwaltungsverfahrensgese · Z2→Z3": "geändert",
+  "89/ME me>bgbl Änderung des Allgemeinen Verwaltungsverfahrensgese · Z4→Z5": "geändert",
+  "89/ME me>bgbl Änderung des Allgemeinen Verwaltungsverfahrensgese · Z6→Z7": "geändert",
+  "89/ME me>bgbl Änderung des Allgemeinen Verwaltungsverfahrensgese · Z9→Z10": "geändert",
+  "89/ME me>bgbl Änderung des Allgemeinen Verwaltungsverfahrensgese · Z12#dup→Z13": "geändert",
+  "89/ME me>bgbl Änderung des Allgemeinen Verwaltungsverfahrensgese · Z13→Z14": "geändert",
+  "89/ME me>bgbl Änderung des Verwaltungsstrafgesetzes 1991 · Z2→Z2": "geändert",
+  "89/ME me>bgbl Änderung des Verwaltungsstrafgesetzes 1991 · Z4→Z4": "geändert",
+  "89/ME me>bgbl Änderung des Verwaltungsstrafgesetzes 1991 · Z5→Z5": "geändert",
+  "89/ME me>bgbl Änderung des Verwaltungsstrafgesetzes 1991 · Z6→Z6": "geändert",
+  "89/ME me>bgbl Änderung des Verwaltungsstrafgesetzes 1991 · Z7→Z7": "geändert",
+  "89/ME me>bgbl Änderung des Verwaltungsstrafgesetzes 1991 · Z9→Z9": "geändert",
+  "89/ME me>bgbl Änderung des Verwaltungsstrafgesetzes 1991 · Z11→Z11": "geändert",
+  "89/ME rv>bgbl Änderung des Allgemeinen Verwaltungsverfahrensgese · Z14→Z14": "redaktionell",
+  "89/ME rv>bgbl Änderung des Verwaltungsstrafgesetzes 1991 · Z11→Z11": "redaktionell",
   "92/ME me>ausschuss Bundesgesetz, mit dem das Lebenshaltungs- und Wohn · Z1→Z1": "geändert",
   "92/ME me>ausschuss Bundesgesetz, mit dem das Lebenshaltungs- und Wohn · Z5→Z5": "geändert",
   "92/ME me>bgbl 30. Bundesgesetz, mit dem das Lebenshaltungs- und  · Z1→Z1": "geändert",
@@ -13191,6 +13930,84 @@
   "92/ME rv>bgbl 30. Bundesgesetz, mit dem das Lebenshaltungs- und  · Z5→Z5": "geändert",
   "92/ME ausschuss>bgbl 30. Bundesgesetz, mit dem das Lebenshaltungs- und  · Z3→Z3": "redaktionell",
   "92/ME ausschuss>bgbl 30. Bundesgesetz, mit dem das Lebenshaltungs- und  · Z5→Z5": "redaktionell",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z3→Z3": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z6→Z6": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z7→Z8": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z14→Z16": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z16→Z18": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z17→Z19": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z21→Z25": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z25→Z29": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z27→Z31": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z31→Z35": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z32→Z36": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z33→Z37": "geändert",
+  "93/ME me>rv Änderung des Wirtschaftliche Eigentümer Registerge · Z35→Z39": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §1→§1": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §2→§2": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §3→§3": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §5→§5": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §6→§6": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §7→§7": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §8→§8": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §9→§9": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §10→§10": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §11→§11": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §12→§12": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §13→§13": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §14→§14": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §15→§15": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §16→§17": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §17→§18": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §18→§19": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §19→§20": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §21→§22": "redaktionell",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §22→§23": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §24→§25": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §27→§28": "geändert",
+  "93/ME me>rv Bundesgesetz über die Einrichtung eines Registers  · §29→§30": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z3→Z3": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z6→Z6": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z7→Z8": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z14→Z16": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z16→Z18": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z17→Z19": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z21→Z25": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z25→Z29": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z27→Z31": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z31→Z35": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z32→Z36": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z33→Z37": "geändert",
+  "93/ME me>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z35→Z39": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §1→§1": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §2→§2": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §3→§3": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §5→§5": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §6→§6": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §7→§7": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §8→§8": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §9→§9": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §10→§10": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §11→§11": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §12→§12": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §13→§13": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §14→§14": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §15→§15": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §16→§17": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §17→§18": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §18→§19": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §19→§20": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §21→§22": "redaktionell",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §22→§23": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §24→§25": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §27→§28": "geändert",
+  "93/ME me>bgbl Bundesgesetz über die Einrichtung eines Registers  · §29→§30": "geändert",
+  "93/ME rv>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z36→Z36": "redaktionell",
+  "93/ME rv>bgbl Änderung des Wirtschaftliche Eigentümer Registerge · Z37→Z37": "redaktionell",
+  "93/ME rv>bgbl Bundesgesetz über die Einrichtung eines Registers  · §31→§31": "redaktionell",
+  "93/ME rv>bgbl Änderung des Gebührengesetzes 1957 · Z1→Z1": "redaktionell",
+  "93/ME rv>bgbl Änderung des Gebührengesetzes 1957 · Z2→Z2": "redaktionell",
+  "93/ME rv>bgbl Änderung des Finanzmarkt-Geldwäschegesetzes · Z25→Z25": "redaktionell",
   "95/ME me>rv Änderung des Ärztegesetzes 1998 · Z1→Z2": "geändert",
   "95/ME me>rv Änderung des Ärztegesetzes 1998 · Z2→Z3": "geändert",
   "95/ME me>rv Änderung des Ärztegesetzes 1998 · Z3→Z4": "geändert",
@@ -13264,6 +14081,75 @@
   "96/ME me>rv Änderung des Einkommensteuergesetzes 1988 · Z3→Z5": "geändert",
   "96/ME me>rv Änderung des Einkommensteuergesetzes 1988 · Z5→Z8": "geändert",
   "96/ME me>rv Änderung des Einkommensteuergesetzes 1988 · Z6→Z9": "geändert",
+  "96/ME me>ausschuss Änderung des Allgemeinen Sozialversicherungsgesetz · Z2→Z2": "geändert",
+  "96/ME me>ausschuss Änderung des Allgemeinen Sozialversicherungsgesetz · Z3→Z3": "geändert",
+  "96/ME me>ausschuss Änderung des Allgemeinen Sozialversicherungsgesetz · Z4→Z4": "geändert",
+  "96/ME me>ausschuss Änderung des Gewerblichen Sozialversicherungsgeset · Z2→Z2": "geändert",
+  "96/ME me>ausschuss Änderung des Gewerblichen Sozialversicherungsgeset · Z3→Z3": "geändert",
+  "96/ME me>ausschuss Änderung des Bauern-Sozialversicherungsgesetzes · Z2→Z2": "geändert",
+  "96/ME me>ausschuss Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3": "geändert",
+  "96/ME me>ausschuss Änderung des Freiberuflichen-Sozialversicherungsge · Z1→Z1": "redaktionell",
+  "96/ME me>ausschuss Änderung des Arbeitsmarktservicegesetzes · Z2→Z2": "geändert",
+  "96/ME me>ausschuss Änderung des Arbeitsmarktservicegesetzes · Z3→Z3": "geändert",
+  "96/ME me>ausschuss Änderung des Arbeitsmarktpolitik-Finanzierungsgese · Z1→Z1": "geändert",
+  "96/ME me>ausschuss Änderung des Arbeitsmarktpolitik-Finanzierungsgese · Z3→Z2": "geändert",
+  "96/ME me>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z3→Z5": "geändert",
+  "96/ME me>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z5→Z8": "geändert",
+  "96/ME me>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z6→Z9": "geändert",
+  "96/ME me>plenum Änderung des Allgemeinen Sozialversicherungsgesetz · Z2→Z2": "geändert",
+  "96/ME me>plenum Änderung des Allgemeinen Sozialversicherungsgesetz · Z3→Z3": "geändert",
+  "96/ME me>plenum Änderung des Allgemeinen Sozialversicherungsgesetz · Z4→Z4": "geändert",
+  "96/ME me>plenum Änderung des Gewerblichen Sozialversicherungsgeset · Z2→Z2": "geändert",
+  "96/ME me>plenum Änderung des Gewerblichen Sozialversicherungsgeset · Z3→Z3": "geändert",
+  "96/ME me>plenum Änderung des Bauern-Sozialversicherungsgesetzes · Z2→Z2": "geändert",
+  "96/ME me>plenum Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3": "geändert",
+  "96/ME me>plenum Änderung des Freiberuflichen-Sozialversicherungsge · Z1→Z1": "redaktionell",
+  "96/ME me>plenum Änderung des Arbeitsmarktservicegesetzes · Z2→Z2": "geändert",
+  "96/ME me>plenum Änderung des Arbeitsmarktservicegesetzes · Z3→Z3": "geändert",
+  "96/ME me>plenum Änderung des Arbeitsmarktpolitik-Finanzierungsgese · Z1→Z1": "geändert",
+  "96/ME me>plenum Änderung des Arbeitsmarktpolitik-Finanzierungsgese · Z3→Z2": "geändert",
+  "96/ME me>plenum Änderung des Einkommensteuergesetzes 1988 · Z3→Z5": "geändert",
+  "96/ME me>plenum Änderung des Einkommensteuergesetzes 1988 · Z5→Z8": "geändert",
+  "96/ME me>plenum Änderung des Einkommensteuergesetzes 1988 · Z6→Z9": "geändert",
+  "96/ME me>bgbl Änderung des Allgemeinen Sozialversicherungsgesetz · Z2→Z2": "geändert",
+  "96/ME me>bgbl Änderung des Allgemeinen Sozialversicherungsgesetz · Z3→Z3": "geändert",
+  "96/ME me>bgbl Änderung des Allgemeinen Sozialversicherungsgesetz · Z4→Z4": "geändert",
+  "96/ME me>bgbl Änderung des Gewerblichen Sozialversicherungsgeset · Z2→Z2": "geändert",
+  "96/ME me>bgbl Änderung des Gewerblichen Sozialversicherungsgeset · Z3→Z3": "geändert",
+  "96/ME me>bgbl Änderung des Bauern-Sozialversicherungsgesetzes · Z2→Z2": "geändert",
+  "96/ME me>bgbl Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3": "geändert",
+  "96/ME me>bgbl Änderung des Freiberuflichen-Sozialversicherungsge · Z1→Z1": "redaktionell",
+  "96/ME me>bgbl Änderung des Freiberuflichen-Sozialversicherungsge · Z2→Z2": "redaktionell",
+  "96/ME me>bgbl Änderung des Arbeitsmarktservicegesetzes · Z2→Z2": "geändert",
+  "96/ME me>bgbl Änderung des Arbeitsmarktservicegesetzes · Z3→Z3": "geändert",
+  "96/ME me>bgbl Änderung des Arbeitsmarktpolitik-Finanzierungsgese · Z1→Z1": "geändert",
+  "96/ME me>bgbl Änderung des Arbeitsmarktpolitik-Finanzierungsgese · Z3→Z2": "geändert",
+  "96/ME me>bgbl Änderung des Einkommensteuergesetzes 1988 · Z3→Z5": "geändert",
+  "96/ME me>bgbl Änderung des Einkommensteuergesetzes 1988 · Z5→Z8": "geändert",
+  "96/ME me>bgbl Änderung des Einkommensteuergesetzes 1988 · Z6→Z9": "geändert",
+  "96/ME rv>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z3→Z3": "geändert",
+  "96/ME rv>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z9→Z9": "geändert",
+  "96/ME rv>plenum Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3": "geändert",
+  "96/ME rv>plenum Änderung des Einkommensteuergesetzes 1988 · Z3→Z3": "geändert",
+  "96/ME rv>plenum Änderung des Einkommensteuergesetzes 1988 · Z9→Z9": "geändert",
+  "96/ME rv>bgbl Änderung des Allgemeinen Sozialversicherungsgesetz · Z4→Z4": "redaktionell",
+  "96/ME rv>bgbl Änderung des Gewerblichen Sozialversicherungsgeset · Z3→Z3": "redaktionell",
+  "96/ME rv>bgbl Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3": "geändert",
+  "96/ME rv>bgbl Änderung des Freiberuflichen-Sozialversicherungsge · Z2→Z2": "redaktionell",
+  "96/ME rv>bgbl Änderung des Arbeitsmarktservicegesetzes · Z2→Z2": "redaktionell",
+  "96/ME rv>bgbl Änderung des Arbeitsmarktservicegesetzes · Z3→Z3": "redaktionell",
+  "96/ME rv>bgbl Änderung des Arbeitsmarktpolitik-Finanzierungsgese · Z2→Z2": "redaktionell",
+  "96/ME rv>bgbl Änderung des Einkommensteuergesetzes 1988 · Z3→Z3": "geändert",
+  "96/ME rv>bgbl Änderung des Einkommensteuergesetzes 1988 · Z9→Z9": "geändert",
+  "96/ME ausschuss>plenum Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3": "geändert",
+  "96/ME ausschuss>bgbl Änderung des Allgemeinen Sozialversicherungsgesetz · Z4→Z4": "redaktionell",
+  "96/ME ausschuss>bgbl Änderung des Gewerblichen Sozialversicherungsgeset · Z3→Z3": "redaktionell",
+  "96/ME ausschuss>bgbl Änderung des Bauern-Sozialversicherungsgesetzes · Z3→Z3": "geändert",
+  "96/ME ausschuss>bgbl Änderung des Freiberuflichen-Sozialversicherungsge · Z2→Z2": "redaktionell",
+  "96/ME ausschuss>bgbl Änderung des Arbeitsmarktservicegesetzes · Z2→Z2": "redaktionell",
+  "96/ME ausschuss>bgbl Änderung des Arbeitsmarktservicegesetzes · Z3→Z3": "redaktionell",
+  "96/ME ausschuss>bgbl Änderung des Arbeitsmarktpolitik-Finanzierungsgese · Z2→Z2": "redaktionell",
+  "96/ME ausschuss>bgbl Änderung des Einkommensteuergesetzes 1988 · Z9→Z9": "redaktionell",
   "97/ME me>rv Änderung des Einkommensteuergesetzes 1988 · Z1→Z1": "geändert",
   "97/ME me>rv Änderung des Einkommensteuergesetzes 1988 · Z4→Z3": "geändert",
   "97/ME me>rv Änderung des Umsatzsteuergesetzes 1994 · Z1→Z1": "redaktionell",
@@ -13428,6 +14314,315 @@
   "103/ME me>rv Änderung des Pensionskassengesetzes · Z9→Z8": "geändert",
   "103/ME me>rv Änderung des Landarbeitsgesetzes 2021 · Z3→Z2": "geändert",
   "103/ME me>rv Änderung des Landarbeitsgesetzes 2021 · Z4→Z3": "geändert",
+  "103/ME me>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z1→Z2": "geändert",
+  "103/ME me>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z2→Z3": "geändert",
+  "103/ME me>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z5→Z22": "geändert",
+  "103/ME me>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z7→Z26a": "geändert",
+  "103/ME me>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z10→Z28": "geändert",
+  "103/ME me>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z12→Z48": "geändert",
+  "103/ME me>ausschuss Änderung des Pensionskassengesetzes · Z1→Z1": "geändert",
+  "103/ME me>ausschuss Änderung des Pensionskassengesetzes · Z4→Z3": "geändert",
+  "103/ME me>ausschuss Änderung des Pensionskassengesetzes · Z6→Z5": "geändert",
+  "103/ME me>ausschuss Änderung des Pensionskassengesetzes · Z7→Z6": "geändert",
+  "103/ME me>ausschuss Änderung des Pensionskassengesetzes · Z8→Z7": "geändert",
+  "103/ME me>ausschuss Änderung des Pensionskassengesetzes · Z9→Z8": "geändert",
+  "103/ME me>ausschuss Änderung des Landarbeitsgesetzes 2021 · Z3→Z2": "geändert",
+  "103/ME me>ausschuss Änderung des Pensionskassenvorsorgegesetzes · Z3→Z3": "geändert",
+  "103/ME me>plenum Änderung des Einkommensteuergesetzes 1988 · Z1→Z2": "geändert",
+  "103/ME me>plenum Änderung des Einkommensteuergesetzes 1988 · Z2→Z3": "geändert",
+  "103/ME me>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z5→Z22": "geändert",
+  "103/ME me>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z7→Z26a": "geändert",
+  "103/ME me>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z10→Z28": "geändert",
+  "103/ME me>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z12→Z48": "geändert",
+  "103/ME me>plenum Änderung des Pensionskassengesetzes · Z1→Z1": "geändert",
+  "103/ME me>plenum Änderung des Pensionskassengesetzes · Z4→Z3": "geändert",
+  "103/ME me>plenum Änderung des Pensionskassengesetzes · Z6→Z5": "geändert",
+  "103/ME me>plenum Änderung des Pensionskassengesetzes · Z7→Z6": "geändert",
+  "103/ME me>plenum Änderung des Pensionskassengesetzes · Z8→Z7": "geändert",
+  "103/ME me>plenum Änderung des Pensionskassengesetzes · Z9→Z8": "geändert",
+  "103/ME me>plenum Änderung des Landarbeitsgesetzes 2021 · Z3→Z2": "geändert",
+  "103/ME me>plenum Änderung des Pensionskassenvorsorgegesetzes · Z3→Z3": "geändert",
+  "103/ME me>bgbl Änderung des Einkommensteuergesetzes 1988 · Z1→Z2": "geändert",
+  "103/ME me>bgbl Änderung des Einkommensteuergesetzes 1988 · Z2→Z3": "geändert",
+  "103/ME me>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z5→Z22": "geändert",
+  "103/ME me>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z7→Z26a": "geändert",
+  "103/ME me>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z10→Z28": "geändert",
+  "103/ME me>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z12→Z48": "geändert",
+  "103/ME me>bgbl Änderung des Pensionskassengesetzes · Z1→Z1": "geändert",
+  "103/ME me>bgbl Änderung des Pensionskassengesetzes · Z4→Z3": "geändert",
+  "103/ME me>bgbl Änderung des Pensionskassengesetzes · Z6→Z5": "geändert",
+  "103/ME me>bgbl Änderung des Pensionskassengesetzes · Z7→Z6": "geändert",
+  "103/ME me>bgbl Änderung des Pensionskassengesetzes · Z8→Z7": "geändert",
+  "103/ME me>bgbl Änderung des Pensionskassengesetzes · Z9→Z8": "geändert",
+  "103/ME me>bgbl Änderung des Landarbeitsgesetzes 2021 · Z3→Z2": "geändert",
+  "103/ME me>bgbl Änderung des Pensionskassenvorsorgegesetzes · Z3→Z3": "geändert",
+  "103/ME rv>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z3→Z3": "geändert",
+  "103/ME rv>ausschuss Änderung des Einkommensteuergesetzes 1988 · Z9→Z9": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z4→Z4": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z13→Z13": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z21→Z21": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z22→Z22": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z28→Z28": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z34→Z34": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z39→Z39": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z47→Z47": "geändert",
+  "103/ME rv>ausschuss Änderung des Betrieblichen Mitarbeiter- und Selbst · Z48→Z48": "geändert",
+  "103/ME rv>ausschuss Änderung des Pensionskassengesetzes · Z7→Z7": "geändert",
+  "103/ME rv>ausschuss Änderung des Pensionskassengesetzes · Z8→Z8": "geändert",
+  "103/ME rv>ausschuss Änderung des Betriebspensionsgesetzes · Z10→Z10": "geändert",
+  "103/ME rv>ausschuss Änderung des Landarbeitsgesetzes 2021 · Z3→Z3": "redaktionell",
+  "103/ME rv>ausschuss Änderung des Pensionskassenvorsorgegesetzes · Z3→Z3": "geändert",
+  "103/ME rv>plenum Änderung des Einkommensteuergesetzes 1988 · Z3→Z3": "geändert",
+  "103/ME rv>plenum Änderung des Einkommensteuergesetzes 1988 · Z9→Z9": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z4→Z4": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z13→Z13": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z21→Z21": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z22→Z22": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z25→Z25": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z28→Z28": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z34→Z34": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z35→Z35": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z36→Z36": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z39→Z39": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z47→Z47": "geändert",
+  "103/ME rv>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z48→Z48": "geändert",
+  "103/ME rv>plenum Änderung des Pensionskassengesetzes · Z7→Z7": "geändert",
+  "103/ME rv>plenum Änderung des Pensionskassengesetzes · Z8→Z8": "geändert",
+  "103/ME rv>plenum Änderung des Betriebspensionsgesetzes · Z10→Z10": "geändert",
+  "103/ME rv>plenum Änderung des Landarbeitsgesetzes 2021 · Z3→Z3": "redaktionell",
+  "103/ME rv>plenum Änderung des Pensionskassenvorsorgegesetzes · Z3→Z3": "geändert",
+  "103/ME rv>bgbl Änderung des Einkommensteuergesetzes 1988 · Z3→Z3": "geändert",
+  "103/ME rv>bgbl Änderung des Einkommensteuergesetzes 1988 · Z9→Z9": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z4→Z4": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z13→Z13": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z21→Z21": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z22→Z22": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z25→Z25": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z28→Z28": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z34→Z34": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z35→Z35": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z36→Z36": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z39→Z39": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z43→Z43": "redaktionell",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z47→Z47": "geändert",
+  "103/ME rv>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z48→Z48": "geändert",
+  "103/ME rv>bgbl Änderung des Pensionskassengesetzes · Z7→Z7": "geändert",
+  "103/ME rv>bgbl Änderung des Pensionskassengesetzes · Z8→Z8": "geändert",
+  "103/ME rv>bgbl Änderung des Betriebspensionsgesetzes · Z10→Z10": "geändert",
+  "103/ME rv>bgbl Änderung des Landarbeitsgesetzes 2021 · Z3→Z3": "redaktionell",
+  "103/ME rv>bgbl Änderung des Pensionskassenvorsorgegesetzes · Z3→Z3": "geändert",
+  "103/ME ausschuss>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z21→Z21": "geändert",
+  "103/ME ausschuss>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z25→Z25": "geändert",
+  "103/ME ausschuss>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z26c→Z26c": "geändert",
+  "103/ME ausschuss>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z35→Z35": "geändert",
+  "103/ME ausschuss>plenum Änderung des Betrieblichen Mitarbeiter- und Selbst · Z36→Z36": "geändert",
+  "103/ME ausschuss>plenum Änderung des Betriebspensionsgesetzes · Z10→Z10": "geändert",
+  "103/ME ausschuss>bgbl Änderung des Einkommensteuergesetzes 1988 · Z9→Z9": "redaktionell",
+  "103/ME ausschuss>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z21→Z21": "geändert",
+  "103/ME ausschuss>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z25→Z25": "geändert",
+  "103/ME ausschuss>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z26c→Z26c": "geändert",
+  "103/ME ausschuss>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z35→Z35": "geändert",
+  "103/ME ausschuss>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z36→Z36": "geändert",
+  "103/ME ausschuss>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z43→Z43": "redaktionell",
+  "103/ME ausschuss>bgbl Änderung des Betrieblichen Mitarbeiter- und Selbst · Z48→Z48": "redaktionell",
+  "103/ME ausschuss>bgbl Änderung des Pensionskassengesetzes · Z8→Z8": "redaktionell",
+  "103/ME ausschuss>bgbl Änderung des Betriebspensionsgesetzes · Z10→Z10": "geändert",
+  "103/ME ausschuss>bgbl Änderung des Landarbeitsgesetzes 2021 · Z3→Z3": "redaktionell",
+  "103/ME ausschuss>bgbl Änderung des Pensionskassenvorsorgegesetzes · Z3→Z3": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z2→Z2": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z5→Z6": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z7→Z8": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z8→Z9": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z9→Z10": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z10→Z11": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z11→Z12": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z14→Z16": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z17→Z19": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z18→Z20": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z22→Z24": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z23→Z26": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z24→Z27": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z25→Z28": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z26→Z29": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z27→Z30": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z28→Z31": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z29→Z32": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z30→Z33": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z31→Z34": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z33→Z36": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z34→Z37": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z37→Z41": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z38→Z42": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z39→Z43": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z40→Z44": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z41→Z45": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z48→Z53": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z49→Z54": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z50→Z55": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z63→Z67": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z64→Z69": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z65→Z70": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z66→Z71": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z68→Z73": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z69→Z74": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z70→Z75": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z72→Z77": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z74→Z79": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z76→Z81": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z77→Z82": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z78→Z83": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z80→Z86": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z82→Z88": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z83→Z89": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z85→Z91": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z87→Z93": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z88→Z94": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z89→Z95": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z90→Z96": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z91→Z97": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z92→Z98": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z95→Z101": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z101→Z107": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z104→Z110": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z105→Z111": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z109→Z115": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z110→Z116": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z115→Z125": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z119→Z130": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z121→Z132": "redaktionell",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z122→Z133": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z124→Z136": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z125→Z137": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z126→Z138": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z129→Z141": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z134→Z146": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z136→Z148": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z138→Z150": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z142→Z155": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z143→Z159": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z144→Z160": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z145→Z162": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z147→Z164": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z148→Z165": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z149→Z166": "geändert",
+  "108/ME me>rv Änderung des Bankwesengesetzes · Z150→Z167": "geändert",
+  "108/ME me>rv Änderung des Finanzmarktaufsichtsbehördengesetzes · Z3→Z3": "geändert",
+  "108/ME me>rv Änderung des Finanzmarktaufsichtsbehördengesetzes · Z4→Z4": "geändert",
+  "108/ME me>rv Änderung des Finanzmarktaufsichtsbehördengesetzes · Z7→Z7": "geändert",
+  "108/ME me>rv Änderung des Finanzmarktaufsichtsbehördengesetzes · Z8→Z8": "geändert",
+  "108/ME me>rv Änderung des Sparkassengesetzes · Z3→Z3": "geändert",
+  "108/ME me>rv Änderung des Sparkassengesetzes · Z7→Z7": "geändert",
+  "108/ME me>rv Änderung des Sparkassengesetzes · Z8→Z8": "geändert",
+  "108/ME me>rv Änderung des Sparkassengesetzes · Z9→Z9": "geändert",
+  "108/ME me>rv Änderung des Sparkassengesetzes · Z10→Z10": "geändert",
+  "108/ME me>rv Änderung des Sparkassengesetzes · Z11→Z12": "geändert",
+  "108/ME me>rv Änderung des Wertpapierfirmengesetzes · Z2→Z2": "redaktionell",
+  "108/ME me>rv Änderung des Kreditdienstleister- und Kreditkäufer · Z1→Z1": "geändert",
+  "108/ME me>rv Änderung des Kreditdienstleister- und Kreditkäufer · Z3→Z3": "geändert",
+  "108/ME me>rv Änderung des Kreditdienstleister- und Kreditkäufer · Z6→Z6": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z2→Z2": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z5→Z6": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z7→Z8": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z8→Z9": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z9→Z10": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z10→Z11": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z11→Z12": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z14→Z16": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z17→Z19": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z18→Z20": "redaktionell",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z22→Z24": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z23→Z26": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z24→Z27": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z25→Z28": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z26→Z29": "redaktionell",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z27→Z30": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z28→Z31": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z29→Z32": "redaktionell",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z30→Z33": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z31→Z34": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z33→Z36": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z34→Z37": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z37→Z41": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z38→Z42": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z39→Z43": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z40→Z44": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z41→Z45": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z48→Z53": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z49→Z54": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z50→Z55": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z63→Z67": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z64→Z69": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z65→Z70": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z66→Z71": "redaktionell",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z68→Z73": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z69→Z74": "redaktionell",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z70→Z75": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z72→Z77": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z74→Z79": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z76→Z81": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z77→Z82": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z78→Z83": "redaktionell",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z80→Z86": "redaktionell",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z82→Z88": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z83→Z89": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z85→Z91": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z87→Z93": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z88→Z94": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z89→Z95": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z90→Z96": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z91→Z97": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z92→Z98": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z95→Z101": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z101→Z107": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z104→Z110": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z105→Z111": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z109→Z115": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z110→Z116": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z115→Z125": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z119→Z130": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z121→Z132": "redaktionell",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z122→Z133": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z124→Z136": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z125→Z137": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z126→Z138": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z129→Z141": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z134→Z146": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z136→Z148": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z138→Z150": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z142→Z155": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z143→Z159": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z144→Z160": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z145→Z162": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z147→Z164": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z148→Z165": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z149→Z166": "geändert",
+  "108/ME me>bgbl Änderung des Bankwesengesetzes · Z150→Z167": "geändert",
+  "108/ME me>bgbl Änderung des Finanzmarktaufsichtsbehördengesetzes · Z3→Z3": "geändert",
+  "108/ME me>bgbl Änderung des Finanzmarktaufsichtsbehördengesetzes · Z4→Z4": "geändert",
+  "108/ME me>bgbl Änderung des Finanzmarktaufsichtsbehördengesetzes · Z7→Z7": "geändert",
+  "108/ME me>bgbl Änderung des Finanzmarktaufsichtsbehördengesetzes · Z8→Z8": "geändert",
+  "108/ME me>bgbl Änderung des Sparkassengesetzes · Z3→Z3": "geändert",
+  "108/ME me>bgbl Änderung des Sparkassengesetzes · Z7→Z7": "geändert",
+  "108/ME me>bgbl Änderung des Sparkassengesetzes · Z8→Z8": "geändert",
+  "108/ME me>bgbl Änderung des Sparkassengesetzes · Z9→Z9": "geändert",
+  "108/ME me>bgbl Änderung des Sparkassengesetzes · Z10→Z10": "geändert",
+  "108/ME me>bgbl Änderung des Sparkassengesetzes · Z11→Z12": "geändert",
+  "108/ME me>bgbl Änderung des Wertpapierfirmengesetzes · Z2→Z2": "redaktionell",
+  "108/ME me>bgbl Änderung des Wertpapierfirmengesetzes · Z3→Z3": "redaktionell",
+  "108/ME me>bgbl Änderung des Kreditdienstleister- und Kreditkäufer · Z1→Z1": "geändert",
+  "108/ME me>bgbl Änderung des Kreditdienstleister- und Kreditkäufer · Z3→Z3": "geändert",
+  "108/ME me>bgbl Änderung des Kreditdienstleister- und Kreditkäufer · Z6→Z6": "geändert",
+  "108/ME rv>bgbl Änderung des Bankwesengesetzes · Z160→Z160": "redaktionell",
+  "108/ME rv>bgbl Änderung des Bankwesengesetzes · Z162→Z162": "redaktionell",
+  "108/ME rv>bgbl Änderung des Finanzmarktaufsichtsbehördengesetzes · Z7→Z7": "redaktionell",
+  "108/ME rv>bgbl Änderung des Finanzmarktaufsichtsbehördengesetzes · Z8→Z8": "redaktionell",
+  "108/ME rv>bgbl Änderung des Sparkassengesetzes · Z11→Z11": "redaktionell",
+  "108/ME rv>bgbl Änderung des Wertpapierfirmengesetzes · Z2→Z2": "redaktionell",
+  "108/ME rv>bgbl Änderung des Wertpapierfirmengesetzes · Z3→Z3": "redaktionell",
+  "108/ME rv>bgbl Änderung des Kreditdienstleister- und Kreditkäufer · Z6→Z6": "redaktionell",
+  "108/ME rv>bgbl Änderung des Investmentfondsgesetzes 2011 · Z3→Z3": "redaktionell",
+  "108/ME rv>bgbl Änderung des Wertpapieraufsichtsgesetzes 2018 · Z13→Z13": "redaktionell",
+  "108/ME rv>bgbl Änderung des Einlagensicherungs- und Anlegerentsch · Z4→Z4": "redaktionell",
   "112/ME me>rv Änderung der Notariatsordnung · Z3→Z3": "redaktionell",
   "112/ME me>ausschuss Änderung der Rechtsanwaltsordnung · Z5→Z5": "geändert",
   "112/ME me>ausschuss Änderung der Rechtsanwaltsordnung · Z31→Z31": "geändert",
@@ -13481,6 +14676,33 @@
   "112/ME ausschuss>bgbl Änderung der Notariatsordnung · Z3→Z3": "redaktionell",
   "112/ME ausschuss>bgbl Änderung des Notariatsprüfungsgesetzes · Z6→Z6": "redaktionell",
   "112/ME ausschuss>bgbl Änderung des Rechtsanwaltsprüfungsgesetzes · Z10→Z10": "redaktionell",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z8→Z8": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z17→Z10": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z11→Z11": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z13→Z13": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z14→Z14": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z15→Z15": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z16→Z17": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z18→Z19": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z20→Z21": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z21→Z22": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z27→Z28": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z31→Z31": "geändert",
+  "114/ME me>rv Bundesgesetz, mit dem das GeoSphere Austria-Gesetz · Z32→Z32": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z8→Z8": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z17→Z10": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z11→Z11": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z13→Z13": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z14→Z14": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z15→Z15": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z16→Z17": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z18→Z19": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z20→Z21": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z21→Z22": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z27→Z28": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z31→Z31": "geändert",
+  "114/ME me>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z32→Z32": "geändert",
+  "114/ME rv>bgbl 95. Bundesgesetz, mit dem das GeoSphere Austria-Ge · Z32→Z32": "redaktionell",
   "115/ME me>ausschuss Bundesgesetz, mit dem das Sterbeverfügungsgesetz g · Z2→Z2": "geändert",
   "115/ME me>ausschuss Bundesgesetz, mit dem das Sterbeverfügungsgesetz g · Z3→Z3": "geändert",
   "115/ME me>ausschuss Bundesgesetz, mit dem das Sterbeverfügungsgesetz g · Z4→Z4": "geändert",
@@ -13890,6 +15112,166 @@
   "116/ME ausschuss>bgbl Änderung des Arbeitslosenversicherungsgesetzes 197 · Z11→Z11": "geändert",
   "116/ME ausschuss>bgbl Änderung des Arbeitslosenversicherungsgesetzes 197 · Z12→Z12": "redaktionell",
   "117/ME me>rv Änderung des Familienlastenausgleichsgesetzes 1967 · Z6→Z6": "geändert",
+  "117/ME me>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z1→Z1": "geändert",
+  "117/ME me>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z2→Z2": "geändert",
+  "117/ME me>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z3→Z3": "geändert",
+  "117/ME me>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z6→Z5": "geändert",
+  "117/ME me>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z8→Z6": "geändert",
+  "117/ME me>plenum Änderung des Kinderbetreuungsgeldgesetzes · Z3→Z2": "geändert",
+  "117/ME me>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z1→Z1": "geändert",
+  "117/ME me>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z2→Z2": "geändert",
+  "117/ME me>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z3→Z3": "geändert",
+  "117/ME me>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z6→Z5": "geändert",
+  "117/ME me>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z8→Z6": "geändert",
+  "117/ME me>bgbl Änderung des Kinderbetreuungsgeldgesetzes · Z3→Z2": "geändert",
+  "117/ME rv>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z1→Z1": "geändert",
+  "117/ME rv>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z2→Z2": "geändert",
+  "117/ME rv>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z3→Z3": "geändert",
+  "117/ME rv>plenum Änderung des Familienlastenausgleichsgesetzes 1967 · Z8→Z6": "geändert",
+  "117/ME rv>plenum Änderung des Kinderbetreuungsgeldgesetzes · Z3→Z2": "geändert",
+  "117/ME rv>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z1→Z1": "geändert",
+  "117/ME rv>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z2→Z2": "geändert",
+  "117/ME rv>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z3→Z3": "geändert",
+  "117/ME rv>bgbl Änderung des Familienlastenausgleichsgesetzes 1967 · Z8→Z6": "geändert",
+  "117/ME rv>bgbl Änderung des Kinderbetreuungsgeldgesetzes · Z3→Z2": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z1→Z1": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z3→Z3": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z5→Z5": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z7→Z7": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z8→Z8": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z9→Z9": "redaktionell",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z10→Z10": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z12→Z12": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z13→Z13": "redaktionell",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z14→Z14": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z16→Z18": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z18→Z19": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z20→Z20": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z22→Z22": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z23→Z23": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z25→Z25": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z26→Z26": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z28→Z28": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z30→Z30": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z31→Z31": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z32→Z32": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z35→Z35": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z39→Z39": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z44→Z44": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z47→Z46": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z50→Z48": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z51→Z49": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z55→Z53": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z57→Z55": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z66→Z64": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z67→Z65": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z75→Z73": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z76→Z74": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z77→Z75": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z78→Z76": "geändert",
+  "121/ME me>rv Änderung des Strafvollzugsgesetzes · Z84→Z81": "geändert",
+  "121/ME me>rv Änderung des Jugendgerichtsgesetzes 1988 · Z4→Z5": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z1→Z1": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z3→Z3": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z5→Z5": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z7→Z7": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z8→Z8": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z9→Z9": "redaktionell",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z10→Z10": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z12→Z12": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z13→Z13": "redaktionell",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z14→Z14": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z16→Z18": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z18→Z19": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z20→Z20": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z22→Z22": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z23→Z23": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z25→Z25": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z26→Z26": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z28→Z28": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z30→Z30": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z31→Z31": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z32→Z32": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z35→Z35": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z39→Z39": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z44→Z44": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z47→Z46": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z50→Z48": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z51→Z49": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z55→Z53": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z57→Z55": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z66→Z64": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z67→Z65": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z75→Z73": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z76→Z74": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z77→Z75": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z78→Z76": "geändert",
+  "121/ME me>ausschuss Änderung des Strafvollzugsgesetzes · Z84→Z81": "geändert",
+  "121/ME me>ausschuss Änderung des Jugendgerichtsgesetzes 1988 · Z4→Z5": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z1→Z1": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z3→Z3": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z5→Z5": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z7→Z7": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z8→Z8": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z9→Z9": "redaktionell",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z10→Z10": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z12→Z12": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z13→Z13": "redaktionell",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z14→Z14": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z16→Z18": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z18→Z19": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z20→Z20": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z22→Z22": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z23→Z23": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z25→Z25": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z26→Z26": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z28→Z28": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z30→Z30": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z31→Z31": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z32→Z32": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z35→Z35": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z39→Z39": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z44→Z44": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z47→Z46": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z50→Z48": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z51→Z49": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z55→Z53": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z57→Z55": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z66→Z64": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z67→Z65": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z75→Z73": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z76→Z74": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z77→Z75": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z78→Z76": "geändert",
+  "121/ME me>bgbl Änderung des Strafvollzugsgesetzes · Z84→Z81": "geändert",
+  "121/ME me>bgbl Änderung des Jugendgerichtsgesetzes 1988 · Z4→Z5": "geändert",
+  "121/ME rv>ausschuss Änderung des Strafvollzugsgesetzes · Z14→Z14": "geändert",
+  "121/ME rv>bgbl Änderung des Strafvollzugsgesetzes · Z14→Z14": "geändert",
+  "121/ME rv>bgbl Änderung des Strafvollzugsgesetzes · Z81→Z81": "redaktionell",
+  "121/ME rv>bgbl Änderung des Jugendgerichtsgesetzes 1988 · Z5→Z5": "redaktionell",
+  "121/ME rv>bgbl Änderung der Strafprozeßordnung 1975 · Z3→Z3": "redaktionell",
+  "121/ME ausschuss>bgbl Änderung des Strafvollzugsgesetzes · Z81→Z81": "redaktionell",
+  "121/ME ausschuss>bgbl Änderung des Jugendgerichtsgesetzes 1988 · Z5→Z5": "redaktionell",
+  "121/ME ausschuss>bgbl Änderung der Strafprozeßordnung 1975 · Z3→Z3": "redaktionell",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z2→Z2": "geändert",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z3→Z3": "geändert",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z4→Z4": "geändert",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z7→Z7": "geändert",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z8→Z8": "geändert",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z9→Z9": "geändert",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z10→Z10": "geändert",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z19→Z19": "geändert",
+  "122/ME me>rv Bundesgesetz, mit dem das Strafgesetzbuch geändert · Z21→Z21": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z2→Z2": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z3→Z3": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z4→Z4": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z7→Z7": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z8→Z8": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z9→Z9": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z10→Z10": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z19→Z19": "geändert",
+  "122/ME me>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z21→Z21": "geändert",
+  "122/ME rv>bgbl 92. Bundesgesetz, mit dem das Strafgesetzbuch geän · Z19→Z19": "redaktionell",
   "125/ME me>rv Änderung des Glücksspielgesetzes · Z1→Z1": "geändert",
   "125/ME me>rv Änderung des Glücksspielgesetzes · Z2→Z2": "geändert",
   "125/ME me>rv Änderung des Glücksspielgesetzes · Z4→Z4": "geändert",

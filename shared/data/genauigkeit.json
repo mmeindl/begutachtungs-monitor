@@ -1,47 +1,49 @@
 {
-  "date": "2026-11-23",
-  "commit": "57135db7",
+  "date": "2026-11-24",
+  "commit": "2f8b1c47",
   "gp": "XXVIII",
   "lesefassung": {
     "bench": {
-      "bgbl": 60,
-      "laws": 207,
-      "checked": 1794,
-      "shown": 461,
-      "identical": 461,
+      "bgbl": 205,
+      "laws": 824,
+      "checked": 5820,
+      "shown": 802,
+      "identical": 802,
       "invented": 0,
       "incomplete": 0,
       "otherwise": 0,
       "ungated": {
-        "shown": 1471,
-        "identical": 1447
+        "shown": 4601,
+        "identical": 4445
       },
       "witnessed": {
-        "shown": 150,
-        "identical": 150
+        "shown": 310,
+        "identical": 308
       },
       "draftPath": {
-        "drafts": 33,
+        "drafts": 74,
         "failed": 0,
-        "shown": 796,
-        "comparable": 351,
-        "identical": 349,
+        "shown": 1790,
+        "comparable": 568,
+        "identical": 566,
         "differs": [
-          {
-            "me": "71/ME",
-            "law": "Tabak- und Nichtraucherinnen- bzw. Nichtraucherschutzgesetz",
-            "id": "11"
-          },
           {
             "me": "97/ME",
             "law": "Finanzstrafgesetz",
             "id": "99"
+          },
+          {
+            "me": "71/ME",
+            "law": "Tabak- und Nichtraucherinnen- bzw. Nichtraucherschutzgesetz",
+            "id": "11"
           }
         ],
-        "instructionChanged": 412,
-        "stockMoved": 14,
-        "noInstructionLine": 6,
-        "notAmended": 13
+        "instructionChanged": 954,
+        "stockMoved": 25,
+        "noInstructionLine": 7,
+        "notAmended": 47,
+        "enactedUnread": 0,
+        "noLawJoined": 189
       }
     },
     "faults": {
@@ -210,22 +212,22 @@
     }
   },
   "stations": {
-    "drafts": 108,
-    "pairs": 470,
+    "drafts": 114,
+    "pairs": 519,
     "breaches": 0,
-    "nullUnits": 10115,
-    "nullResidues": 458,
+    "nullUnits": 11184,
+    "nullResidues": 498,
     "nullSubstantive": 4,
-    "nullPlaceholders": 449,
+    "nullPlaceholders": 493,
     "faults": [
-      { "key": "ziffer", "tried": 7673, "caught": 7673 },
-      { "key": "minus", "tried": 7664, "caught": 7664 },
-      { "key": "nicht", "tried": 1416, "caught": 1416 },
-      { "key": "und-oder", "tried": 5153, "caught": 5153 },
-      { "key": "oder-und", "tried": 2343, "caught": 2343 },
+      { "key": "ziffer", "tried": 8364, "caught": 8364 },
+      { "key": "minus", "tried": 8354, "caught": 8354 },
+      { "key": "nicht", "tried": 1584, "caught": 1584 },
+      { "key": "und-oder", "tried": 5637, "caught": 5637 },
+      { "key": "oder-und", "tried": 2622, "caught": 2622 },
       { "key": "prozent", "tried": 116, "caught": 116 },
       { "key": "vergleich", "tried": 1, "caught": 1 },
-      { "key": "zahlen-verbunden", "tried": 254, "caught": 254 },
+      { "key": "zahlen-verbunden", "tried": 267, "caught": 267 },
       { "key": "bereich-verbunden", "tried": 146, "caught": 146 }
     ]
   },
