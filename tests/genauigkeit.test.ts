@@ -19,6 +19,7 @@ import {
   LAND_OTHER_DRAFT,
   LAND_OWN_DRAFT,
   NULL_RESIDUES_READ,
+  benchCoversPeriod,
   RESULT_BLIND,
   RESULT_BLIND_COMMA,
   RESULT_BLIND_EDGE,
@@ -442,5 +443,29 @@ describe('in short', () => {
         expect(art.consequence ?? art.missed[0]).toMatch(/\.$/)
       }
     }
+  })
+})
+
+// The bench over the whole period (24.11.2026): the sentences on whose laws the rules were developed follow the record.
+describe('benchCoversPeriod', () => {
+  const period = (): GenauigkeitRecord => {
+    const r = structuredClone(GENAUIGKEIT)
+    r.lesefassung.bench.draftPath = { ...r.lesefassung.bench.draftPath, enactedUnread: 0, noLawJoined: 192 }
+    return r
+  }
+
+  it('keeps the old sentences for a record of „the 60 newest"', () => {
+    expect(benchCoversPeriod(GENAUIGKEIT)).toBe(false)
+    expect(genauigkeitKurz(GENAUIGKEIT).shows.join(' ')).toContain('An diesen Gesetzen wurden auch die Regeln entwickelt.')
+  })
+
+  it('says for a record of the whole period that the rules were developed on part of its laws', () => {
+    const r = period()
+    expect(benchCoversPeriod(r)).toBe(true)
+    const kurz = genauigkeitKurz(r).shows.join(' ')
+    expect(kurz).toContain('an allen Gesetzen seit Beginn der Gesetzgebungsperiode')
+    expect(kurz).not.toContain('An diesen Gesetzen wurden auch die Regeln entwickelt.')
+    const lesefassung = genauigkeitArten(r).find((a) => a.id === 'lesefassung')!.result.join(' ')
+    expect(lesefassung).toContain('Jedes neu kundgemachte Gesetz kommt mit der nächsten Messung dazu.')
   })
 })

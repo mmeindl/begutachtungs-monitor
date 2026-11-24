@@ -2021,7 +2021,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   versions lost their last 1.121, and with them the §§ four laws of 2025
   created (`fetchAllVersions` now reads every page and refuses a short
   list). The page was never affected: it reads a law as of a day, not its
-  history. Considered and dropped the same
+  history. The first round over the whole period (58f6a395) stays
+  unpublished: the station lane's null test took 103/ME's Regierungsvorlage
+  for Parliament's last text, the monitor holding none later, and counted
+  the committee's amendments in BGBl. I Nr. 88/2026 as differences between
+  texts that should be equal (39 of 43). Considered and dropped the same
   day: a separate weekly job that froze the rules at a git tag to score only
   laws published after it. Its alarm would have watched the frozen code, not
   what runs, and the figure it guarded is the page's „bei den anderen kann

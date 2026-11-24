@@ -30,6 +30,16 @@ import { LAND_NAME } from './laender'
 
 export const GENAUIGKEIT: GenauigkeitRecord = data
 
+/**
+ * Whether the bench of a record read every Bundesgesetz of the period
+ * (24.11.2026, `kons.ts --seit`) or „the 60 newest" before. Such a record
+ * carries `noLawJoined`; the sentences on whose laws the rules were
+ * developed differ, and switch with the record that is published.
+ */
+export function benchCoversPeriod(r: GenauigkeitRecord = GENAUIGKEIT): boolean {
+  return r.lesefassung.bench.draftPath.noLawJoined !== undefined
+}
+
 export const GENAUIGKEIT_PATH = '/genauigkeit'
 
 /*
@@ -492,7 +502,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
       against: 'Geprüft an der Textgegenüberstellung des Ministeriums, wo sie abweicht am Gesetzestext des Entwurfs als PDF, und nachträglich am kundgemachten Gesetz.',
       result: [
         // The path a reader meets (23.11.2026): the draft's own instructions, as the page applies them. Until then this line reported the enacted law's instructions, which no page applies.
-        `Am sichersten lässt sich das Ergebnis an Entwürfen prüfen, die inzwischen kundgemacht sind. Aus ${n(dp.drafts)} solchen Entwürfen lassen sich ${n(dp.shown)} gezeigte Paragraphen einem Gesetz zuordnen. Bei ${n(dp.comparable)} ging die Anweisung unverändert ins Gesetz, es gibt also genau eine richtige Fassung: ${n(dp.identical)} stimmen Wort für Wort.${dp.comparable > dp.identical ? ` Bei ${ofParagraphs(dp.comparable - dp.identical)} ${dp.differs.every((d) => DRAFT_PATH_DIFFERS_READ.includes(`${d.me} § ${d.id}`)) ? 'steht im Gesetz etwas, das keine Anweisung des Entwurfs anordnet' : 'weicht unser Ergebnis vom Gesetz ab'}.` : ''} An einem Teil dieser Gesetze wurden auch die Regeln entwickelt; bei den anderen kann der Anteil niedriger sein. Jedes neu kundgemachte Gesetz kommt mit der nächsten Messung dazu.`,
+        `Am sichersten lässt sich das Ergebnis an Entwürfen prüfen, die inzwischen kundgemacht sind. Aus ${n(dp.drafts)} solchen Entwürfen lassen sich ${n(dp.shown)} gezeigte Paragraphen einem Gesetz zuordnen. Bei ${n(dp.comparable)} ging die Anweisung unverändert ins Gesetz, es gibt also genau eine richtige Fassung: ${n(dp.identical)} stimmen Wort für Wort.${dp.comparable > dp.identical ? ` Bei ${ofParagraphs(dp.comparable - dp.identical)} ${dp.differs.every((d) => DRAFT_PATH_DIFFERS_READ.includes(`${d.me} § ${d.id}`)) ? 'steht im Gesetz etwas, das keine Anweisung des Entwurfs anordnet' : 'weicht unser Ergebnis vom Gesetz ab'}.` : ''}${benchCoversPeriod(r) ? ' An einem Teil dieser Gesetze wurden auch die Regeln entwickelt; bei den anderen kann der Anteil niedriger sein. Jedes neu kundgemachte Gesetz kommt mit der nächsten Messung dazu.' : ' An diesen Gesetzen wurden auch die Regeln entwickelt; bei anderen kann der Anteil niedriger sein.'}`,
         `Die übrigen ${n(dp.shown - dp.comparable)} lassen sich so nicht prüfen: Ihr Text hat sich auf dem Weg zum Gesetz geändert, das Gesetz ändert sie nicht, oder ihre Anweisung lässt sich nicht vergleichen.`,
         // The trade-off, in the open (20.11.2026): a first-time reader found it only under the fold, and it is what the share shown is paid for.
         `Die Prüfung ist streng. In einem zweiten Test wendet der Monitor die Anweisungen von ${n(bench.bgbl)} Bundesgesetzblättern selbst an. Mit der Prüfung bleiben ${n(bench.shown)} Paragraphen, ${bench.identical === bench.shown ? 'alle' : n(bench.identical)} Wort für Wort das Gesetz. Ohne sie wären es ${n(bench.ungated.shown)}, ${n(bench.ungated.shown - bench.ungated.identical)} davon mit Abweichungen.`,
@@ -657,7 +667,7 @@ export function genauigkeitKurz(r: GenauigkeitRecord = GENAUIGKEIT): { shows: st
   return {
     shows: [
       'Zu einem Entwurf gehört meist eine Textgegenüberstellung des Ministeriums: eine Tabelle mit altem und neuem Text nebeneinander. Der Monitor übernimmt ihren Text Wort für Wort und markiert die Änderungen in Farbe. Lesen muss er sie aus einem PDF oder einer Tabelle; dabei kann ein Satz verloren gehen oder beim falschen Paragraphen landen.',
-      `Zusätzlich schreibt der Monitor ganze Paragraphen so aus, wie sie nach der Änderung lauten würden. Das lässt sich an Entwürfen prüfen, die inzwischen kundgemacht sind: Bei ${n(bench.draftPath.comparable)} Paragraphen ging die Anweisung des Entwurfs unverändert ins Gesetz, ${n(bench.draftPath.identical)} davon stimmen Wort für Wort mit dem Gesetz überein. Geprüft wird an allen Gesetzen seit Beginn der Gesetzgebungsperiode, deren Entwurf eine Textgegenüberstellung hat; an einem Teil davon wurden auch die Regeln entwickelt.`,
+      `Zusätzlich schreibt der Monitor ganze Paragraphen so aus, wie sie nach der Änderung lauten würden. Das lässt sich an Entwürfen prüfen, die inzwischen kundgemacht sind: Bei ${n(bench.draftPath.comparable)} Paragraphen ging die Anweisung des Entwurfs unverändert ins Gesetz, ${n(bench.draftPath.identical)} davon stimmen Wort für Wort mit dem Gesetz überein. ${benchCoversPeriod(r) ? 'Geprüft wird an allen Gesetzen seit Beginn der Gesetzgebungsperiode, deren Entwurf eine Textgegenüberstellung hat; an einem Teil davon wurden auch die Regeln entwickelt.' : 'An diesen Gesetzen wurden auch die Regeln entwickelt.'}`,
       `Der Monitor vergleicht auch, wie sich ein Bundesgesetz vom Entwurf bis zum Beschluss ändert. ${nullSentence(st)}`,
     ],
     check: [
@@ -811,7 +821,9 @@ export function measuredLineDe(r: GenauigkeitRecord = GENAUIGKEIT): string {
 
 /** „Was die Zahlen nicht sagen", one sentence each. */
 export const GENAUIGKEIT_GRENZEN: readonly string[] = [
-  'Keine Abweichung in einer Probe heißt nicht, dass es keine gibt. Viele der geprüften Paragraphen stammen aus denselben Gesetzen und hängen zusammen, und an einem Teil dieser Gesetze wurden die Regeln entwickelt.',
+  benchCoversPeriod()
+    ? 'Keine Abweichung in einer Probe heißt nicht, dass es keine gibt. Viele der geprüften Paragraphen stammen aus denselben Gesetzen und hängen zusammen, und an einem Teil dieser Gesetze wurden die Regeln entwickelt.'
+    : 'Keine Abweichung in einer Probe heißt nicht, dass es keine gibt. Die geprüften Paragraphen stammen aus wenigen Gesetzen und hängen zusammen, und an denselben Gesetzen wurden die Regeln entwickelt.',
   'Am fertigen Gesetz messen lässt sich nur, wo ein Gesetz schon kundgemacht ist. Bei einem laufenden Entwurf steht der endgültige Text noch nicht fest; dort prüft der Monitor mit der Textgegenüberstellung des Ministeriums und dem Gesetzestext des Entwurfs.',
   'Eingebaut sind die Fehler, die wir kennen. Einen Fehler einer Art, die niemand eingebaut hat, zählt keine dieser Zahlen.',
   'Texte der EU vergleicht der Monitor nicht. Für einen Vorschlag der Kommission und den beschlossenen Rechtsakt, etwa eine Richtlinie, gibt es keine amtliche Textgegenüberstellung. Von der EU liest der Monitor Angaben zum Ablauf, keine Texte; welche, steht unter Datenlage.',
