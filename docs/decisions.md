@@ -2104,9 +2104,19 @@ gets an entry of its own only where it carries a reason the rule does not.
   kept §. A word planted in the new text of 108/ME's §§ made all 17 of its
   comparable ones differ, the fresh figures unchanged. A word planted in
   text the draft leaves standing moved 19 of them to „Text vorher geändert"
-  instead: the draft path decides that class by holding the page's own text
-  in force against RIS, so a misread standing text drops out of the score
-  rather than counting against it (open).
+  instead: the draft path decided that class by holding the page's own text
+  in force against RIS, so a misread standing text dropped out of the score
+  rather than counting against it. It is now RIS against RIS: RIS's § on the
+  day the Begutachtung began, the version the page composed from, against
+  RIS's § before the law (`sameStock`). The same plant then made all 19
+  differ; over the period nothing moved (681 of 684, 25 moved), and the four
+  §§ whose class the two rules set apart were none comparable: three the
+  draft renumbers (32/ME turns E-ControlG § 43 into § 42, and the page
+  rightly shows the old § 43), one a long-repealed § that reads empty on
+  both sides. What stays unscored is a misread in text the draft strikes:
+  held against RIS by number, a renumbered § would count as wrong, so
+  `kons.ts --entwurf-dump` lists the page's old text against RIS's for
+  reading instead.
 - **A round names one period, and the builder holds it** (23.11.2026,
   `--nur-periode`, `inPeriod`). RIS ignores the period filter, so „the 400
   newest" held seven drafts (179 §§) of the period before under the label

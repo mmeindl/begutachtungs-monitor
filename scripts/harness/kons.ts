@@ -51,7 +51,7 @@ import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnit
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { articleBlocks, draftArticles, promulgationByArticle, type ClauseName, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { namedParagraphs, type NovaoAddress } from '../../server/utils/kons/novao'
-import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
+import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../../server/utils/harness/risKonsHistory'
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../../server/utils/harness/applyReport'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
@@ -249,6 +249,13 @@ if (withOracle) {
  */
 const oracleDumpFile = argAssigned('oracle-dump') ?? null
 if (oracleDumpFile) writeFileSync(oracleDumpFile, '')
+/**
+ * `--entwurf-dump=<file>` (24.11.2026): one JSON line per amended § of the
+ * draft path, with the texts where the page's old text is not RIS's of the
+ * day, so a § that is not scored, or not the law, can be read.
+ */
+const draftDumpFile = argAssigned('entwurf-dump') ?? null
+if (draftDumpFile) writeFileSync(draftDumpFile, '')
 /**
  * `--refusals=<file>` writes one JSON line per instruction the engine did not
  * carry out, with the **full** line and the reason.
@@ -749,7 +756,7 @@ async function oracleOfDraft(me: any, gp: string, kundmachung: string, article: 
 const draftRecords = new Map<string, { flat: NonNullable<ReturnType<typeof flattenRisRecord>>; documents: ReturnType<NonNullable<typeof annexDocumentsOf>>; draftBlocks: TextBlock[]; beginn: string; me: string; rvBgbls: (string | null)[] }>()
 /** Every Bundesgesetzblatt the run read, by „45/2025", with its amending Artikel — what a draft's Artikel is looked for in (`notEnacted`). */
 const bgblArticles = new Map<string, DraftArticle[]>()
-const enactedLaws: { recordId: string; kurztitel: string; article: DraftArticle; blocks: readonly TextBlock[]; pairs: Map<string, { before: KonsParagraphRef | null; afters: KonsParagraphRef[] }>; bgbl: string; kundmachung: string }[] = []
+const enactedLaws: { recordId: string; gesetzesnummer: string; kurztitel: string; article: DraftArticle; blocks: readonly TextBlock[]; pairs: Map<string, { before: KonsParagraphRef | null; afters: KonsParagraphRef[] }>; bgbl: string; kundmachung: string }[] = []
 
 /**
  * One read of a record's annex per run. A Sammelnovelle asks for the same
@@ -879,7 +886,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     }
   }
 
-  if (withDraftPath && oracle) enactedLaws.push({ recordId: oracle.recordId, kurztitel, article, blocks, pairs, bgbl: bgblKey(bgblNumber) ?? bgblNumber, kundmachung })
+  if (withDraftPath && oracle) enactedLaws.push({ recordId: oracle.recordId, gesetzesnummer: resolved.gesetzesnummer, kurztitel, article, blocks, pairs, bgbl: bgblKey(bgblNumber) ?? bgblNumber, kundmachung })
 
   /** The newest version that already existed when this amendment was promulgated. */
   const lastBefore = (list: readonly KonsParagraphRef[]): KonsParagraphRef | null => {
@@ -1529,8 +1536,12 @@ async function scoreDraftPath(): Promise<{ record: DraftPathRecord; firstSight: 
     (segments ?? []).filter((s) => s.type !== drop).map((s) => s.text).join(' ')
   type Shown = Pick<ConsolidatedParagraph, 'id' | 'annexLaw' | 'segments' | 'headingSegments'>
 
-  /** Every § the page shows for one draft, held against each law that came of it. */
-  async function casesOf(recordId: string, draft: NonNullable<ReturnType<typeof draftRecords.get>>, shown: readonly Shown[]): Promise<DraftPathCase[]> {
+  /**
+   * Every § the page shows for one draft, held against each law that came of
+   * it. `lawsAt`: the laws as the page read them on the day the Begutachtung
+   * began, so that whether the text in force moved is asked of RIS alone.
+   */
+  async function casesOf(recordId: string, draft: NonNullable<ReturnType<typeof draftRecords.get>>, shown: readonly Shown[], lawsAt: readonly KonsLawAtDate[], kept = false): Promise<DraftPathCase[]> {
     const cases: DraftPathCase[] = []
     const parts = articleBlocks(draft.draftBlocks).filter((p) => p.article.amends)
     for (const entry of enactedLaws.filter((e) => e.recordId === recordId)) {
@@ -1556,16 +1567,47 @@ async function scoreDraftPath(): Promise<{ record: DraftPathRecord; firstSight: 
         const text = squash(side(p.segments, 'removed'))
         const heading = squash(side(p.headingSegments, 'removed'))
         const before = pair.before ? await fetchParagraphTree(pair.before) : null
+        // RIS's § on the day the Begutachtung began, the version the page
+        // composed from. Whether the text in force moved before the law is
+        // RIS against RIS (24.11.2026): held against the page's own text, a
+        // § the page misread counted as moved and dropped out of the score.
+        // A § RIS does not carry on a side is an empty text there (a stub
+        // „aufgehoben" reads empty too); one it carries but could not be read
+        // is unknown, and the § is not scored.
+        const lawAt = lawsAt.find((l) => l.gesetzesnummer === entry.gesetzesnummer)
+        const stockRef = lawAt ? Object.values(lawAt.paragraphs).find((r) => (isSchedule(r.label) ? unitKey(r.label) === p.id : scoredKey(r.label) === p.id)) ?? null : null
+        const stock = stockRef ? await fetchParagraphTree(stockRef) : null
+        const stockText = !stockRef ? '' : stock ? bodyText(stock) : null
+        const beforeText = !pair.before ? '' : before ? bodyText(before) : null
+        const shownStock = squash(side(p.segments, 'inserted'))
         const a = draftLines.get(p.id) ?? new Set<string>()
         const b = lawLines.get(p.id) ?? new Set<string>()
-        cases.push({
+        const scored: DraftPathCase = {
           ...base,
           amended: true,
           lines: a.size,
           sameInstruction: a.size === b.size && [...a].every((line) => b.has(line)),
-          sameStock: before ? squash(bodyText(before)) === squash(side(p.segments, 'inserted')) : null,
+          sameStock: !lawAt || stockText === null || beforeText === null ? false : !pair.before && !stockRef ? null : squash(beforeText) === squash(stockText),
           identical: truths.some((tree) => squash(bodyText(tree)) === text && squash(tree.heading ?? '') === heading),
-        })
+        }
+        cases.push(scored)
+        if (draftDumpFile) {
+          // The page's old text against RIS's of the day, by number: a §
+          // the draft renumbers shows the text of the one it came from (32/ME,
+          // E-ControlG § 42 from § 43), so this is read, never scored.
+          const misread = stockText === null || squash(stockText) !== shownStock
+          appendFileSync(draftDumpFile, `${JSON.stringify({
+            ...scored,
+            ...(kept ? { kept: true } : {}),
+            lawAt: lawAt ? lawAt.gesetzesnummer : null,
+            stockVersion: stockRef ? { inkrafttreten: stockRef.inkrafttreten, organ: stockRef.kundmachungsorgan } : null,
+            beforeVersion: pair.before ? { inkrafttreten: pair.before.inkrafttreten, organ: pair.before.kundmachungsorgan } : null,
+            /** The rule until 24.11.2026: the page's old text against RIS's before the law. */
+            oldSameStock: before ? squash(bodyText(before)) === shownStock : null,
+            misread,
+            ...(misread || scored.sameStock === false ? { shownStock: side(p.segments, 'inserted'), risStock: stockText, risBefore: before ? bodyText(before) : null } : {}),
+          })}\n`)
+        }
       }
     }
     // A § of the page no enacted law was joined to stays in the count — as
@@ -1599,9 +1641,14 @@ async function scoreDraftPath(): Promise<{ record: DraftPathRecord; firstSight: 
   for (const [recordId, draft] of draftRecords) {
     let out: Awaited<ReturnType<typeof consolidate>> | null = null
     let failure: string | null = null
+    const lawsAt: KonsLawAtDate[] = []
     try {
       out = await consolidate({ gp: null, inr: null, risId: recordId }, draft.draftBlocks, draft.beginn, {
-        resolveLaw: resolveKonsLaw,
+        resolveLaw: async (organ, nummer, date, title, clause) => {
+          const law = await resolveKonsLaw(organ, nummer, date, title, clause)
+          if (law) lawsAt.push(law)
+          return law
+        },
         paragraphXml: (ref) => fetchParagraphXml(ref.nor, ref.xmlUrl!),
         annexRows: async (articles) => {
           const source = await annexSourceFor!(draft.documents, articles)
@@ -1615,7 +1662,7 @@ async function scoreDraftPath(): Promise<{ record: DraftPathRecord; firstSight: 
       failure = String(err).slice(0, 160)
       console.error(`Entwurfspfad: ${draft.me} nicht zusammengesetzt — ${failure}`)
     }
-    const fresh = out ? await casesOf(recordId, draft, out.paragraphs) : []
+    const fresh = out ? await casesOf(recordId, draft, out.paragraphs, lawsAt) : []
     cases.push(...fresh)
     if (!firstSightFile) continue
     // A kept draft is scored with the text kept then, never with today's.
@@ -1625,7 +1672,7 @@ async function scoreDraftPath(): Promise<{ record: DraftPathRecord; firstSight: 
       if (first.failed) firstFailed++
       else {
         firstComposed++
-        firstCases.push(...(await casesOf(recordId, draft, first.paragraphs.map(shownParagraph))))
+        firstCases.push(...(await casesOf(recordId, draft, first.paragraphs.map(shownParagraph), lawsAt, true)))
       }
       continue
     }

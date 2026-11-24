@@ -44,9 +44,20 @@ export type DraftPathCase = {
     lines: number
     /** The draft's instructions for the §, wording and quoted text, are the law's. */
     sameInstruction: boolean
-    /** The text the law amended is the one the draft amended; null where the § did not exist before. */
+    /**
+     * The text the law amended is the one the draft amended, asked of RIS
+     * alone: its § before the law against its § on the day the Begutachtung
+     * began, the version the page composed from. Null where the § existed on
+     * neither. Until 24.11.2026 the page's own old text stood for the second,
+     * and a § the page misread counted as moved instead of wrong.
+     */
     sameStock: boolean | null
-    /** Heading and text are the enacted law's, all but white space. */
+    /**
+     * Heading and text are the enacted law's, all but white space. A misread
+     * in text the draft strikes is not seen here: the page's old text is held
+     * against RIS only in `kons.ts --entwurf-dump`, because by number it is
+     * another §'s where the draft renumbers.
+     */
     identical: boolean
   }
 )
