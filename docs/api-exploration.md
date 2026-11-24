@@ -544,6 +544,14 @@ paragraph marker is the only boundary the layout guarantees). For GP XXVIII
 that made 109 of 132 annexes readable on 2026-09-09; current coverage is in
 `docs/decisions.md`, "The consolidated reading and the annex".
 
+**Why some annexes are images.** The ministry that drafts the law makes the
+annex and sends it to RIS, usually as DOCX and sometimes as PDF; the format
+is the ministry's choice, and ministries do not add alternative text (RIS,
+on request, 24.11.2026). That the image series are the PDF submissions,
+rendered one image per page, is inferred from that answer and the one image
+per PDF page in a sample of 20, and is not yet confirmed. Either way RIS
+cannot be asked to change it; only a rule for the ministries could.
+
 **Neither path is trusted on sight.** The left column claims to be the
 standing law, and holding it against RIS Bundesrecht is the check both paths
 get (`annex/verdict.ts`). Of the paragraphs with real prose, the table path
