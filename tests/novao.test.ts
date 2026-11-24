@@ -536,6 +536,32 @@ describe('Adressen über mehrere Paragraphen', () => {
   })
 })
 
+// BMSVG, BGBl. I Nr. 88/2026, Z 46: found by the first new-law run (24.11.2026).
+describe('parseAddressList — der Paragraph, zu dem Anlagen gehören', () => {
+  it('liest „Anlage 1 und 2 zu § 40" als zwei Anlagen, nicht als § 40', () => {
+    const list = parseAddressList('Die Anlage 1 und 2 zu § 40')
+    expect(list?.map((a) => [a.para, a.siblings])).toEqual([['Anlage 1', ['2']]])
+    const parsed = parseInstruction('46. Die Anlage 1 und 2 zu § 40 entfällt.')
+    expect(parsed.ops.map((o) => opAddress(o)?.para)).toEqual(['Anlage 1'])
+  })
+
+  it('lässt keinen Paragraphen stehen, wo die Anlagen nicht gelesen werden', () => {
+    const parsed = parseInstruction('Die Anlagen 1 bis 3 zu § 40 entfallen.')
+    expect(parsed.ops.map((o) => opAddress(o)?.para)).not.toContain('§ 40')
+  })
+
+  it('liest wie bisher eine einzelne Anlage und einen Paragraphen neben ihr', () => {
+    expect(parseAddressList('Die Anlage 1 zu § 40')?.map((a) => a.para)).toEqual(['Anlage 1'])
+    expect(parseAddressList('§ 39 und die Anlage 2 zu § 40')?.map((a) => a.para)).toEqual(['§ 39', 'Anlage 2'])
+  })
+
+  it('rührt einen zitierten Text nicht an', () => {
+    const parsed = parseInstruction('In § 5 wird der Ausdruck "Anlage 1 und 2 zu § 40" durch den Ausdruck "Anlage 3" ersetzt.')
+    expect(parsed.ops).toHaveLength(1)
+    expect(parsed.ops[0]).toMatchObject({ kind: 'replacePhrase', from: 'Anlage 1 und 2 zu § 40' })
+  })
+})
+
 describe('parseAddressList — die Plural-Kurzschreibweise', () => {
   const keys = (t: string) => parseAddressList(t)?.map(addressKey)
 

@@ -1503,6 +1503,8 @@ if (jsonFile) {
     /** Law by law, with what kind of change each makes: what `newLaws.ts` accounts for. */
     laws: verdicts.map((v) => ({ bgbl: v.bgbl, article: v.article, law: v.law, instructions: v.instructions, read: v.read, applied: v.applied, checked: v.checked, identical: v.identical, divergent: v.divergent, note: v.note, kinds: lawKinds.get(`${v.bgbl}|${v.article ?? ''}`) ?? [] })),
     removalFindings: removalLines,
+    /** The §§ the second witness released, one line each with what RIS says of them. */
+    witnessShown: witnessLines,
   }
   writeFileSync(jsonFile, `${JSON.stringify(record, null, 1)}\n`)
   console.log(`\nBericht geschrieben: ${jsonFile}`)

@@ -8,6 +8,7 @@ import {
   kindsOfLaw,
   lawOutcomeOf,
   poolOf,
+  splitRead,
   type BgblListing,
   type KonsLaw,
   type NewLawKonsRecord,
@@ -122,6 +123,31 @@ describe('findingsOf', () => {
   it('turns a failed outcome into a finding, and a waiting one not', () => {
     const accounts = accountOf([listing(1), listing(2)], record({ laws: [law(1, { note: 'Sammelnovelle: 2 Stammnormen' }), law(2, { note: 'BGBl. I Nr. 2/2026 in keiner Fassung von X als Kundmachungsorgan genannt' })] }), '2026-11-23')
     expect(findingsOf(record(), new Set(), accounts).map((f) => f.kind)).toEqual(['unscored'])
+  })
+})
+
+describe('findingsOf, by name', () => {
+  it('names each § the second witness released that RIS does not carry word for word', () => {
+    const found = findingsOf(record({
+      witness: { 'gezeigt|unvollständig': 1, 'gezeigt|identisch': 1 },
+      witnessShown: [
+        'BGBl. I Nr. 91/2026 Strafvollzugsgesetz § 133a — RIS: unvollständig, ME≠BGBl — Beilage „x" / BGBl „y"',
+        'BGBl. I Nr. 91/2026 Strafvollzugsgesetz § 22 — RIS: identisch, ME≠BGBl — Beilage „x" / BGBl „y"',
+      ],
+    }), new Set(), [])
+    expect(found).toEqual([{ kind: 'shownNotIdentical', detail: 'BGBl. I Nr. 91/2026 Strafvollzugsgesetz § 133a: vom zweiten Zeugen freigegeben, laut RIS unvollständig' }])
+  })
+})
+
+describe('splitRead', () => {
+  it('keeps a read finding in view, with why, and out of the red', () => {
+    const findings = [
+      { kind: 'shownNotIdentical' as const, detail: 'BGBl. I Nr. 91/2026 Strafvollzugsgesetz § 133a: vom zweiten Zeugen freigegeben, laut RIS unvollständig' },
+      { kind: 'wrongRepeal' as const, detail: 'BGBl. I Nr. 88/2026 Artikel 8 — BMSVG § 40' },
+    ]
+    const out = splitRead(findings, [{ finding: 'shownNotIdentical: BGBl. I Nr. 91/2026 Strafvollzugsgesetz § 133a', why: 'ein Leerzeichen vor dem Anführungszeichen' }])
+    expect(out.open.map((f) => f.kind)).toEqual(['wrongRepeal'])
+    expect(out.read).toEqual([{ ...findings[0]!, why: 'ein Leerzeichen vor dem Anführungszeichen' }])
   })
 })
 

@@ -889,8 +889,28 @@ function headingTwin(a: NovaoAddress): NovaoAddress {
  *
  * Returns one address per named place, or null if any part fails to parse.
  */
+/**
+ * „Die Anlage 1 und 2 zu § 40 entfällt" (BMSVG, BGBl. I Nr. 88/2026): the §
+ * behind a list of Anlagen says whose Anlagen they are, and is no place of
+ * its own. Split at „und", „2 zu § 40" read as an address, and the
+ * instruction repealed § 40, which the same Novelle had just restated; the
+ * Anlage 2 stayed. A single „Anlage 1 zu § 40" has always read as the
+ * Anlage, so the owner is dropped only behind a list, where the split breaks
+ * it: dropped behind a single one too, the address's own text (`raw`, which
+ * a refusal quotes) lost „zu § 30" in two drafts and nothing else changed.
+ * Outside quotes only: a quoted text is a payload, not an address. No
+ * instruction of the 300 drafts in `.cache/novao` reads differently
+ * (24.11.2026).
+ */
+const SCHEDULE_OWNER_RE = /(\b(?:Anlagen?|Anh[aä]nge?)\s+(?:\d+[a-z]*|[IVXL]+)\b(?:\s*(?:,|und|sowie|bis)\s*(?:\d+[a-z]*|[IVXL]+)\b)+)\s+zu(?:m|r)?\s+(?:§+\s*\d+[a-z]*|Art(?:\.|ikel)\s*(?:\d+[a-z]*|[IVXLC]+))\b/gi
+
+function withoutScheduleOwner(text: string): string {
+  return text.split(/("[^"]*")/).map((part, i) => (i % 2 ? part : part.replace(SCHEDULE_OWNER_RE, '$1'))).join('')
+}
+
 export function parseAddressList(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
-  const t = maskQuotes(normalizeText(text))
+  const source = withoutScheduleOwner(normalizeText(text))
+  const t = maskQuotes(source)
   const parts = t.split(/\s*,\s*|\s+(?:und|sowie)\s+/i).filter((p) => p.trim())
   // **A part that carries no designation is no place of its own — it is the
   // continuation of the one before it.** In „In § 9, § 10 Abs. 1 und 2,
@@ -925,7 +945,7 @@ export function parseAddressList(text: string, inherited?: NovaoAddress | null):
   const segments = withPara.length >= 2 ? withPara : hasPlaces ? null : splitPluralParagraphs(t)
   if (!segments) {
     if (!hasPlaces) {
-      const single = parseAddress(text, inherited)
+      const single = parseAddress(source, inherited)
       return single ? [single] : null
     }
     const out: NovaoAddress[] = []

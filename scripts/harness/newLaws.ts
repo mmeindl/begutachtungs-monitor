@@ -33,6 +33,7 @@ import {
   findingsOf,
   gapsIn,
   poolOf,
+  splitRead,
   type BgblAccount,
   type BgblListing,
   type Finding,
@@ -62,9 +63,13 @@ if (freezeFrom) {
   const tag = argAssigned('tag')
   if (!tag) throw new Error('--einfrieren braucht --tag=<tag>')
   if (rulesDirty()) throw new Error('server/ oder shared/ haben uncommittete Änderungen: das wären keine eingefrorenen Regeln')
-  const bench = JSON.parse(readFileSync(freezeFrom, 'utf8')) as NewLawKonsRecord
-  if (!bench.laws?.length) throw new Error(`${freezeFrom} nennt keine Gesetze: ein Lauf von kons.ts mit --json?`)
-  const knownKinds = [...new Set(bench.laws.flatMap((l) => l.kinds))].sort()
+  // One record or several, comma-separated: the bench, and laws read since.
+  const laws = freezeFrom.split(',').flatMap((file) => {
+    const record = JSON.parse(readFileSync(file, 'utf8')) as NewLawKonsRecord
+    if (!record.laws?.length) throw new Error(`${file} nennt keine Gesetze: ein Lauf von kons.ts mit --json?`)
+    return record.laws
+  })
+  const knownKinds = [...new Set(laws.flatMap((l) => l.kinds))].sort()
   writeFileSync(SCOPE_FILE, `${JSON.stringify({ ...scope, rules: { tag, tree: rulesTree() }, knownKinds }, null, 2)}\n`)
   console.log(`Eingefroren: ${tag}, ${knownKinds.length} bekannte Arten von Änderungen`)
   process.exit(0)
@@ -136,6 +141,7 @@ interface PoolReport {
   draftPath: NewLawKonsRecord['draftPath'] | null
   accounts: BgblAccount[]
   findings: Finding[]
+  read: (Finding & { why: string })[]
 }
 
 function reportOf(listings: readonly BgblListing[], record: NewLawKonsRecord, today: string): PoolReport {
@@ -151,7 +157,7 @@ function reportOf(listings: readonly BgblListing[], record: NewLawKonsRecord, to
     identical: scored.reduce((n, l) => n + l.identical, 0),
     draftPath: record.draftPath ?? null,
     accounts,
-    findings: findingsOf(record, new Set(scope.knownKinds), accounts),
+    ...(({ open, read }) => ({ findings: open, read }))(splitRead(findingsOf(record, new Set(scope.knownKinds), accounts), scope.read ?? [])),
   }
 }
 
@@ -195,6 +201,7 @@ async function main(): Promise<number> {
     if (d) console.log(`  Entwurfspfad: ${d.shown} §§, vergleichbar ${d.comparable}, Wort für Wort das Gesetz ${d.identical}; nicht bewertet ${d.shown - d.comparable}`)
     for (const a of p.accounts.filter((x) => x.outcome === 'pending')) console.log(`  wartet: ${a.nummer} — ${a.reason}`)
     for (const f of p.findings) console.log(`  ✗ [${f.kind}] ${f.detail}`)
+    for (const f of p.read) console.log(`  · gelesen [${f.kind}] ${f.detail} — ${f.why}`)
   }
 
   const jsonFile = argAssigned('json')

@@ -2011,7 +2011,19 @@ gets an entry of its own only where it carries a reason the rule does not.
   law used to fix a rule leaves the holdout (`leftHoldout`). BGBl. I Nr.
   82–103/2026 are reported as a trial and never as clean, because at least 84
   and 88 were read while the rules were worked on. No figure goes on
-  `/genauigkeit` before the holdout holds laws.
+  `/genauigkeit` before the holdout holds laws. A finding a person has read
+  and found no fault in goes into `read` with why, so it stays in the report
+  and stops turning the weekly run red. The trial's one real fault, „Die
+  Anlage 1 und 2 zu § 40 entfällt" read as repealing § 40 (BMSVG, BGBl. I
+  Nr. 88/2026), was fixed before the first freeze (`SCHEDULE_OWNER_RE`): of
+  every instruction in the round's cache, only that line reads differently.
+- **The rules are frozen at a tag, and the holdout starts after it**
+  (24.11.2026). `pnpm harness:new-laws --einfrieren=<bench.json>,<trial.json>
+  --tag=<tag>` stores the tree hashes of `server` and `shared` and every kind
+  of change those laws make; the tag goes on that commit and is pushed with
+  it. A change to `server` or `shared` ends the freeze: the run then refuses
+  to count the holdout until the rules are frozen again, and a law used for
+  the change moves to `leftHoldout`.
 - **A round names one period, and the builder holds it** (23.11.2026,
   `--nur-periode`, `inPeriod`). RIS ignores the period filter, so „the 400
   newest" held seven drafts (179 §§) of the period before under the label

@@ -61,6 +61,12 @@ export interface NewLawScope {
   leftHoldout: string[]
   /** Every kind of change a law of the development set makes. */
   knownKinds: string[]
+  /**
+   * Findings a person has read and found no fault in, each with why. A
+   * finding is matched by the start of `kind: detail`. Read, it is still
+   * printed, and no longer turns the run red, week after week.
+   */
+  read: { finding: string; why: string }[]
 }
 
 export type Pool = 'trial' | 'holdout' | 'used'
@@ -90,6 +96,8 @@ export interface NewLawKonsRecord {
   gate: Record<string, number>
   /** `Ausgang|Ergebnis` */
   witness: Record<string, number>
+  /** One line per § the second witness released: „BGBl. … Gesetz § 5 — RIS: identisch, …". */
+  witnessShown?: string[]
   /** `gliederung|orakel|plausibel|zeuge` */
   markers: Record<string, number>
 }
@@ -214,7 +222,18 @@ export function kindsOfLaw(law: {
   return [...kinds].sort()
 }
 
-/** What a person has to read. Each is a reason for the run to go red. */
+/** The findings a person has not read yet, and those read, each with why (`NewLawScope.read`). */
+export function splitRead(findings: readonly Finding[], read: NewLawScope['read']): { open: Finding[]; read: (Finding & { why: string })[] } {
+  const out = { open: [] as Finding[], read: [] as (Finding & { why: string })[] }
+  for (const f of findings) {
+    const known = read.find((r) => `${f.kind}: ${f.detail}`.startsWith(r.finding))
+    if (known) out.read.push({ ...f, why: known.why })
+    else out.open.push(f)
+  }
+  return out
+}
+
+/** What a person has to read. Each is a reason for the run to go red, until read (`splitRead`). */
 export function findingsOf(record: NewLawKonsRecord, knownKinds: ReadonlySet<string>, accounts: readonly BgblAccount[]): Finding[] {
   const out: Finding[] = []
   for (const a of accounts) {
@@ -228,9 +247,17 @@ export function findingsOf(record: NewLawKonsRecord, knownKinds: ReadonlySet<str
     const [plausible, oracle, result] = key.split('|')
     if (plausible === 'plausibel' && oracle === 'bestätigt' && result !== 'identisch') out.push({ kind: 'shownNotIdentical', detail: `${n}× von der Textgegenüberstellung bestätigt, laut RIS ${result}` })
   }
-  for (const [key, n] of Object.entries(record.witness)) {
-    const [outcome, result] = key.split('|')
-    if (outcome === 'gezeigt' && result !== 'identisch') out.push({ kind: 'shownNotIdentical', detail: `${n}× vom zweiten Zeugen freigegeben, laut RIS ${result}` })
+  // By name where the record carries the lines, so that one can be read and marked as such.
+  if (record.witnessShown) {
+    for (const line of record.witnessShown) {
+      const m = /^(.+?) — RIS: ([^,—]+)/.exec(line)
+      if (m && m[2]!.trim() !== 'identisch') out.push({ kind: 'shownNotIdentical', detail: `${m[1]}: vom zweiten Zeugen freigegeben, laut RIS ${m[2]!.trim()}` })
+    }
+  } else {
+    for (const [key, n] of Object.entries(record.witness)) {
+      const [outcome, result] = key.split('|')
+      if (outcome === 'gezeigt' && result !== 'identisch') out.push({ kind: 'shownNotIdentical', detail: `${n}× vom zweiten Zeugen freigegeben, laut RIS ${result}` })
+    }
   }
   const misnumbered = misnumberedShown(record.markers)
   if (misnumbered > 0) out.push({ kind: 'misnumbered', detail: `${misnumbered} gezeigte(r) Paragraph(en) unter anderen Bezeichnungen als im Gesetz` })
