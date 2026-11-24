@@ -121,13 +121,45 @@ export async function fetchAllVersions(gesetzesnummer: string): Promise<Map<stri
  * "Anm.: Abs. 2 mit Ablauf des 30.12.2029 außer Kraft getreten"). Each of
  * the cuts is law text that exists, so a harness accepts a match with any
  * of them (2026-09-09).
+ *
+ * **The version before is the one RIS built this BGBl's version on**
+ * (24.11.2026). A Bundesgesetzblatt issued later can take effect earlier:
+ * BGBl. I Nr. 88/2026 changed EStG § 26 from 17.10.2026, BGBl. I Nr. 62/2026
+ * from 01.01.2027. RIS keeps 62/2026's version as it consolidated it, on the
+ * text before 88/2026, and adds a second version of the same day „zuletzt
+ * geändert durch BGBl. I Nr. 88/2026" that carries both. Taken as the version
+ * before, 88/2026's text went into the engine and out again, and RIS's
+ * 62/2026 version, which never held it, called the § half applied: three §§
+ * of the whole period, all three this (WPFG § 53, BAO § 211, EStG § 26).
+ * Where a later BGBl rebuilt one of this BGBl's days, its versions are
+ * passed over on the way back. Without that rebuild, RIS consolidated this
+ * BGBl after the later one, built on its text, and the version before stands.
  */
 export function versionPairFor(versions: readonly KonsParagraphRef[], bgblNumber: string): { before: KonsParagraphRef | null; after: KonsParagraphRef; afters: KonsParagraphRef[] } | null {
   const first = versions.findIndex((v) => amendedBy(v) === bgblNumber)
   if (first < 0) return null
   let last = first
   while (last + 1 < versions.length && amendedBy(versions[last + 1]!) === bgblNumber) last++
-  return { before: versions[first - 1] ?? null, after: versions[first]!, afters: versions.slice(first, last + 1) }
+  const afters = versions.slice(first, last + 1)
+  const days = new Set(afters.map((v) => v.inkrafttreten))
+  const later = (v: KonsParagraphRef) => publishedAfter(amendedBy(v), bgblNumber)
+  const rebuilt = versions.some((v) => days.has(v.inkrafttreten) && later(v))
+  let before = first - 1
+  if (rebuilt) while (before >= 0 && later(versions[before]!)) before--
+  return { before: versions[before] ?? null, after: versions[first]!, afters }
+}
+
+/** „BGBl. I Nr. 88/2026" → [2026, 88]; null for anything else (a Stammfassung names none). */
+function bgblOrder(cite: string | null): [number, number] | null {
+  const m = /Nr\.\s*(\d+)\/(\d{4})\b/.exec(cite ?? '')
+  return m ? [Number(m[2]), Number(m[1])] : null
+}
+
+/** Whether Bundesgesetzblatt `a` was issued after `b`: the numbers of one Teil run in issue order through a year. */
+export function publishedAfter(a: string | null, b: string): boolean {
+  const x = bgblOrder(a)
+  const y = bgblOrder(b)
+  return x !== null && y !== null && (x[0] > y[0] || (x[0] === y[0] && x[1] > y[1]))
 }
 
 /** The paragraph document as a tree. */
