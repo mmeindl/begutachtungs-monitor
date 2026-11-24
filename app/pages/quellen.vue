@@ -6,7 +6,7 @@
  *
  * One entry per source, and each says three things in this order: the
  * licence, what is taken, the link. What a source publishes and what it does
- * not is `/datenlage`; how names are handled is `/datenschutz#dse-names`.
+ * not is `/datenlage`; how names are handled is `/datenschutz#names`.
  * Neither is repeated here.
  *
  * Per dataset, never across the board. How each reading came about, so the
@@ -266,7 +266,7 @@ const LAENDER_WITHOUT_LICENCE: { name: string; label: string; href: string }[] =
       </p>
       <p>
         Wie der Monitor mit Namen aus diesen Quellen umgeht, steht in der
-        <NuxtLink to="/datenschutz#dse-names" class="link-inline">Datenschutzerklärung</NuxtLink>.
+        <NuxtLink to="/datenschutz#names" class="link-inline">Datenschutzerklärung</NuxtLink>.
       </p>
     </ProseSection>
   </div>

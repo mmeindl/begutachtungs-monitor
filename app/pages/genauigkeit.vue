@@ -266,7 +266,7 @@ function detailsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE;
         Wer trotzdem einen Fehler findet: Unter jedem Vergleich steht
         „Fehler melden“, und jeder Hinweis hilft. Wie sich der Monitor
         sonst erreichen lässt, steht unter
-        <NuxtLink to="/ueber#about-contact" class="link-inline">Kontakt</NuxtLink>.
+        <NuxtLink to="/ueber#contact" class="link-inline">Kontakt</NuxtLink>.
         Was die Quellen selbst veröffentlichen, steht unter
         <NuxtLink to="/datenlage" class="link-inline">Datenlage</NuxtLink>.
       </p>

@@ -138,7 +138,7 @@ const { visible, shown, more, all: showAll } = usePagedList(filtered, STATEMENT_
         <!-- Not above the sheet (23.10.2026), but said: the list is what the
              Land published, not what it received (24.10.2026). -->
         <span :title="publicationNote ?? undefined">Nur, was das Land veröffentlicht – eingelangt sein können mehr</span>
-        <NuxtLink to="/datenschutz#dse-names" class="link-muted">Warum ohne Namen</NuxtLink>
+        <NuxtLink to="/datenschutz#names" class="link-muted">Warum ohne Namen</NuxtLink>
         <ExternalLink v-if="statementsUrl" :href="statementsUrl" class="link-muted">Alle beim Land ansehen</ExternalLink>
       </SectionCredits>
     </template>

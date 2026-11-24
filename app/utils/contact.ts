@@ -8,7 +8,7 @@
  * Datenschutzerklärung: a standing cost, for a threshold nobody has measured
  * yet. A mail the reader sends from their own program costs nothing to run
  * and processes nothing the Datenschutzerklärung does not already name
- * (`/datenschutz#dse-mail`). What a form would add is a report without a
+ * (`/datenschutz#mail`). What a form would add is a report without a
  * sender's address; that waits for a decision.
  *
  * WHY THE PAGE IS IN THE MAIL. „Paragraph 4 ist falsch zugeordnet" is no use

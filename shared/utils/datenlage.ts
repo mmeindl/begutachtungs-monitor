@@ -953,7 +953,7 @@ export const DATENLAGE_ANLIEGEN: DatenlageObject = {
  * `cellarDossier.ts`, `cellarVorschlag.ts` and `cellarUmsetzung.ts`
  * (EUR-Lex), `eciRegister.ts` (the register), and
  * `docs/research/umsetzungsplan-eu-zyklus.md` („Not in this plan").
- * Who is named among those who gave feedback is `/datenschutz#dse-names`'s
+ * Who is named among those who gave feedback is `/datenschutz#names`'s
  * to say, not this page's.
  */
 export const DATENLAGE_EU: DatenlageObject = {

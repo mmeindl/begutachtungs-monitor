@@ -93,7 +93,7 @@ const contact = useContact()
           >Quellcode auf GitHub</ExternalLink>
           ·
           <NuxtLink
-            to="/ueber#about-support"
+            to="/ueber#support"
             class="link-muted"
           >Projekt unterstützen</NuxtLink>
         </p>

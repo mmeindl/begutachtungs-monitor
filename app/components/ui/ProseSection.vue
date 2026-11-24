@@ -20,11 +20,18 @@
  * it, not the 56/80 px between chapters — that gap is the one the wrapper
  * gave it. A chapter that follows something else (the table of contents on
  * /so-funktionierts) keeps the full section gap.
+ *
+ * `formerId` (24.11.2026): an anchor the section answered to before it was
+ * renamed, for one that is linked from outside. A fragment never reaches
+ * the server and so cannot be redirected; the old id stays as an empty
+ * target at the section's top and lands where the section does. Only for a
+ * link known to exist, never for every old name.
  */
 defineProps<{
   id: string
   heading: string
   first?: boolean
+  formerId?: string
 }>()
 </script>
 
@@ -35,6 +42,7 @@ defineProps<{
     class="prose-flow scroll-mt-6"
     :class="first ? 'mt-10' : 'page-section'"
   >
+    <div v-if="formerId" :id="formerId" class="scroll-mt-6" />
     <h2 :id="`${id}-heading`" class="section-heading">{{ heading }}</h2>
     <slot />
   </section>

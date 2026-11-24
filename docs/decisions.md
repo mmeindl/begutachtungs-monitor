@@ -83,11 +83,23 @@ gets an entry of its own only where it carries a reason the rule does not.
   server, and a section dissolved into the places it describes has no one
   target. The move to `viewyourstate.org/at` needs a path-keeping 301 from
   the old host, under which these rules still apply.
+- **A section's anchor does not repeat its page** (maintainer, 24.11.2026).
+  The path already names the page: `/ueber#a11y`, not `/ueber#about-a11y`.
+  An id is a word or a short compound that reads on its own beside the
+  path and is unique on its page; a prefix had let a word stand that says
+  nothing alone: `about-status` for „Grenzen" is `limits`, `imp-line`
+  `editorial-line`, `imp-object` `purpose`, `imp-data` `unofficial`,
+  `dse-none` `does-not-happen`, `dse-status` `version`. The four pages
+  that carried a prefix (`about-`, `imp-`, `dse-`, `stat-`) follow since
+  that day. Their old anchors are not mapped, as above: an old one still
+  opens the right page, at its top. The one exception is an anchor known
+  to be linked from outside: `/impressum#imp-license` keeps answering as
+  an empty target at the top of `#license` (`ProseSection`'s `formerId`).
 
 - **Each of the prose pages has one job, and a fact stands on one of them**
   (16.11.2026). `/impressum`: the disclosure under § 25 MedienG. `/quellen`:
   which source is read and under which licence, one entry per source.
-  `/datenschutz`: what is processed, and in `#dse-names` who is named and
+  `/datenschutz`: what is processed, and in `#names` who is named and
   who is not, for every source. `/datenlage`: what a source publishes.
   `/genauigkeit` (19.11.2026): how the monitor's comparisons are checked,
   how often they hold, and which faults the checks do not catch — what the
@@ -100,7 +112,8 @@ gets an entry of its own only where it carries a reason the rule does not.
   `/ueber` and in the Impressum and had drifted apart, the names rule stood
   in three places, and how the Commission's feedback names are held stood
   only inside a licence entry. `/impressum#imp-license` stays as a short
-  section, because a fragment cannot be redirected.
+  section, because a fragment cannot be redirected (its anchor is
+  `#license` since 24.11.2026, the old one still answers).
 - **The monitor's own texts are CC BY 4.0** (16.11.2026, decided by the
   maintainer; `/quellen#eigene-texte`): explanations, method texts, the
   descriptions of routes and of the Datenlage. Not the material of the

@@ -105,7 +105,7 @@ const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen', publisher: 
         :marked="false"
         own="Einordnung der Einbringer:innen"
       >
-        <NuxtLink to="/datenschutz#dse-names" class="link-muted">Warum ohne Namen</NuxtLink>
+        <NuxtLink to="/datenschutz#names" class="link-muted">Warum ohne Namen</NuxtLink>
       </SectionCredits>
     </template>
     <!-- On the list's own sheet (16.11.2026), as `RvStatements`' empty

@@ -49,7 +49,7 @@ const contact = useContact()
       Offenlegung nach § 25 Mediengesetz.
     </p>
 
-    <ProseSection id="imp-owner" heading="Medieninhaber & Herausgeber" first>
+    <ProseSection id="owner" heading="Medieninhaber & Herausgeber" first>
       <!-- <address> is the semantic element for the contact block of its
            nearest section; `prose-flow` takes the browser's default italic
            back. -->
@@ -71,7 +71,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="imp-object" heading="Unternehmensgegenstand">
+    <ProseSection id="purpose" heading="Unternehmensgegenstand">
       <p>
         Betrieb einer nichtkommerziellen Informationsplattform zur
         Gesetzgebung in Österreich: Aufbereitung öffentlich zugänglicher
@@ -86,20 +86,20 @@ const contact = useContact()
          Förderungen noch durch Spenden", while /ueber has asked for donations
          since 04.10.2026. It now says what is true: donations, to the
          Medieninhaber as a private person. -->
-    <ProseSection id="imp-shares" heading="Beteiligungsverhältnisse">
+    <ProseSection id="shares" heading="Beteiligungsverhältnisse">
       <p>
         Medieninhaber ist eine natürliche Person. Es bestehen keine
         Beteiligungen anderer Personen oder Unternehmen, keine stillen
         Beteiligungen und keine Treuhandverhältnisse. Das Projekt erhält
         keine Förderungen und keine Werbeeinnahmen und hat keine
         Auftraggeber. Freiwillige
-        <NuxtLink to="/ueber#about-support" class="link-inline">Spenden</NuxtLink>
+        <NuxtLink to="/ueber#support" class="link-inline">Spenden</NuxtLink>
         gehen an den Medieninhaber als Privatperson. Ändert sich daran etwas,
         steht es hier.
       </p>
     </ProseSection>
 
-    <ProseSection id="imp-line" heading="Grundlegende Richtung (Blattlinie)">
+    <ProseSection id="editorial-line" heading="Grundlegende Richtung (Blattlinie)">
       <p>
         Der Begutachtungs-Monitor macht sichtbar, wie Gesetze in Österreich
         entstehen und wo man sich beteiligen kann, und verfolgt nach, was aus
@@ -123,7 +123,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="imp-data" heading="Kein amtliches Angebot">
+    <ProseSection id="unofficial" heading="Kein amtliches Angebot">
       <p>
         Der Monitor bereitet Daten amtlicher Quellen auf und leitet daraus
         Darstellungen ab, etwa den Textvergleich zwischen Entwurf und
@@ -143,9 +143,10 @@ const contact = useContact()
     </ProseSection>
 
     <!-- The register of sources moved to /quellen on 16.11.2026. The section
-         and its id stay: `/impressum#imp-license` is linked from outside, and
-         a fragment cannot be redirected. -->
-    <ProseSection id="imp-license" heading="Urheberrecht & Lizenzen">
+         stays: `/impressum#imp-license` is linked from outside, and a
+         fragment cannot be redirected. Its anchor is `#license` since
+         24.11.2026; the old id keeps answering through `former-id`. -->
+    <ProseSection id="license" former-id="imp-license" heading="Urheberrecht & Lizenzen">
       <p>
         Welche Quelle unter welcher Lizenz steht, zeigt die Seite
         <NuxtLink to="/quellen" class="link-inline">Quellen &amp; Lizenzen</NuxtLink>.
@@ -157,7 +158,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="imp-privacy" heading="Datenschutz">
+    <ProseSection id="privacy" heading="Datenschutz">
       <p>
         Welche Daten beim Besuch dieser Website verarbeitet werden – und
         welche nicht – steht in der

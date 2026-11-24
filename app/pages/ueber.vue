@@ -20,7 +20,7 @@ const contact = useContact()
       Über das Projekt
     </h1>
 
-    <ProseSection id="about-mission" heading="Worum es geht" first>
+    <ProseSection id="mission" heading="Worum es geht" first>
       <!-- 16.11.2026: the section still described the Bund's Begutachtung
            alone. It follows the order of the monitor's goal: a law through
            its making, where one can take part, what became of the input,
@@ -62,7 +62,7 @@ const contact = useContact()
          rule and what the site does not do on /datenschutz, what a source
          publishes on /datenlage. This section names them and links; it
          repeats none of them. -->
-    <ProseSection id="about-how" heading="Wie es funktioniert">
+    <ProseSection id="how" heading="Wie es funktioniert">
       <p>
         Alle Daten stammen aus amtlichen Quellen: vom Parlament, aus dem
         Rechtsinformationssystem des Bundes, von den Seiten der neun Länder
@@ -101,7 +101,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="about-subscribe" heading="Abonnieren">
+    <ProseSection id="subscribe" heading="Abonnieren">
       <p>
         Neue Begutachtungsverfahren gibt es als
         <ExternalLink href="/feed.xml" class="link-inline">RSS-Feed</ExternalLink> für jeden
@@ -129,7 +129,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="about-a11y" heading="Barrierefreiheit">
+    <ProseSection id="a11y" heading="Barrierefreiheit">
       <p>
         Der Monitor zielt auf WCAG 2.2, Konformitätsstufe AAA: alle
         Textfarben erreichen mindestens ein Kontrastverhältnis von 7:1,
@@ -148,7 +148,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="about-history" heading="Vorgeschichte">
+    <ProseSection id="history" heading="Vorgeschichte">
       <p>
         <ExternalLink
           href="https://github.com/Forum-Informationsfreiheit/OffenesParlament"
@@ -171,8 +171,8 @@ const contact = useContact()
          derived is ours and says so; a missing assignment proves no
          absence. The figures stand on /genauigkeit (the comparisons, since
          19.11.2026) and /datenlage#gemessen (the joins), the legal sentence
-         on /impressum#imp-data; none is repeated here. -->
-    <ProseSection id="about-reliability" heading="Wie verlässlich die Angaben sind">
+         on /impressum#unofficial; none is repeated here. -->
+    <ProseSection id="reliability" heading="Wie verlässlich die Angaben sind">
       <p>
         Fristen, Zahlen und Dokumente übernimmt der Monitor aus den
         amtlichen Quellen und verlinkt jede Angabe auf ihr Original. Sie
@@ -196,7 +196,7 @@ const contact = useContact()
       </p>
       <p>
         Der Monitor ist
-        <NuxtLink to="/impressum#imp-data" class="link-inline">kein amtliches Angebot</NuxtLink>.
+        <NuxtLink to="/impressum#unofficial" class="link-inline">kein amtliches Angebot</NuxtLink>.
         Wo es darauf ankommt, gilt das verlinkte Original.
       </p>
     </ProseSection>
@@ -205,7 +205,7 @@ const contact = useContact()
          devalued the data and warned nobody about the text comparison,
          where an error can actually arise). No date and no claim about the
          rest of the site: both went stale (16.11.2026). -->
-    <ProseSection id="about-status" heading="Grenzen">
+    <ProseSection id="limits" heading="Grenzen">
       <ul>
         <li>
           Der Textvergleich ist eine Ableitung, keine amtliche Fassung. Bei
@@ -237,7 +237,7 @@ const contact = useContact()
          private person; no organisation collects for the monitor. The
          Impressum's „Beteiligungsverhältnisse" says the same; change both
          together. -->
-    <ProseSection id="about-support" heading="Unterstützen">
+    <ProseSection id="support" heading="Unterstützen">
       <p>
         Der Monitor ist werbefrei und ohne Bezahlschranke; Betrieb und
         Weiterentwicklung trägt Manuel Meindl als Privatperson. Wer das
@@ -259,7 +259,7 @@ const contact = useContact()
          Hinweise und Feedback" asked nobody in particular; the invitation
          to work with the project is the footer's first line, on every
          page. -->
-    <ProseSection id="about-contact" heading="Kontakt">
+    <ProseSection id="contact" heading="Kontakt">
       <p>
         Eine Adresse für alles:
         <a

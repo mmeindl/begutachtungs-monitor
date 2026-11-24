@@ -31,7 +31,7 @@
  *     entry until 16.11.2026), and docs/decisions.md, „Anliegen an den
  *     Nationalrat", for who is never named there.
  * Art 14 (names from the official sources) is the part standard texts do not
- * know at all — here it is the actual content, in one section (`dse-names`),
+ * know at all — here it is the actual content, in one section (`names`),
  * which is also where the pages' „Warum ohne Namen" links lead.
  */
 usePageSeo({
@@ -56,7 +56,7 @@ const contact = useContact()
       Erklärung kurz – und sie beschreibt nur, was tatsächlich passiert.
     </p>
 
-    <ProseSection id="dse-controller" heading="Verantwortlicher" first>
+    <ProseSection id="controller" heading="Verantwortlicher" first>
       <address>
         Manuel Meindl<br>
         Steingasse 1<br>
@@ -75,7 +75,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-visit" heading="Beim Aufruf dieser Website">
+    <ProseSection id="visit" heading="Beim Aufruf dieser Website">
       <p>
         Damit eine Seite ausgeliefert werden kann, verarbeitet der Server
         technisch notwendig die IP-Adresse des Geräts, die angefragte
@@ -96,7 +96,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-zaehlung" heading="Zählung der Seitenaufrufe">
+    <ProseSection id="zaehlung" heading="Zählung der Seitenaufrufe">
       <p>
         Der Monitor zählt Seitenaufrufe je Art der Seite und Tag – etwa
         „Entwürfe des Bundes“, nicht den einzelnen Entwurf –, und er zählt, von
@@ -125,7 +125,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-cookie" heading="Wenn Sie Quellen auswählen">
+    <ProseSection id="cookie" heading="Wenn Sie Quellen auswählen">
       <p>
         Ändern Sie über „Entwürfe von“ die Auswahl – Bund und Länder –,
         merkt sich der Monitor sie in einem Cookie namens
@@ -145,7 +145,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-none" heading="Was nicht passiert">
+    <ProseSection id="does-not-happen" heading="Was nicht passiert">
       <ul>
         <li>Kein weiteres Cookie und keine andere Speicherung im Browser.</li>
         <li>
@@ -171,19 +171,19 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-feeds" heading="RSS-Feed & Fristen-Kalender">
+    <ProseSection id="feeds" heading="RSS-Feed & Fristen-Kalender">
       <p>
         Feed und Kalender werden bewusst ohne Anmeldung angeboten: Das
         Programm auf dem Gerät ruft die Adresse regelmäßig ab, genau wie
         eine normale Seite. Es gibt keine Abonnentenliste und keine E-Mail-
         Adressen. Die Abrufe fließen in die
-        <a href="#dse-zaehlung" class="link-inline">Zählung</a> ein; wie viele
+        <a href="#zaehlung" class="link-inline">Zählung</a> ein; wie viele
         Personen abonniert haben, lässt sich daraus nicht ablesen und wird
         nirgends gespeichert.
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-mail" heading="Kontaktaufnahme per E-Mail">
+    <ProseSection id="mail" heading="Kontaktaufnahme per E-Mail">
       <p>
         Wer an <a :href="contact.mailto" class="link-inline">{{ contact.email }}</a> schreibt, übermittelt damit
         Absenderadresse, Betreff und Inhalt der Nachricht. Diese werden
@@ -199,7 +199,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-donations" heading="Spenden">
+    <ProseSection id="donations" heading="Spenden">
       <p>
         Wer per Überweisung spendet, übermittelt Name, IBAN und Betrag an das
         Konto des Medieninhabers. Diese Angaben stehen nur in seinem
@@ -209,7 +209,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-hosting" heading="Hosting">
+    <ProseSection id="hosting" heading="Hosting">
       <p>
         Die Website läuft auf einem Server der netcup GmbH (Karlsruhe,
         Deutschland) im Rechenzentrum Nürnberg. Domain, DNS und
@@ -227,7 +227,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-names" heading="Namen aus den amtlichen Quellen">
+    <ProseSection id="names" heading="Namen aus den amtlichen Quellen">
       <p>
         Stellungnahmen kommen auch von Privatpersonen, und die amtlichen
         Quellen veröffentlichen ihre Namen. Das ist kein Grund, sie
@@ -293,7 +293,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-rights" heading="Rechte der Betroffenen">
+    <ProseSection id="rights" heading="Rechte der Betroffenen">
       <p>
         Es besteht das Recht auf Auskunft (Art 15), Berichtigung (Art 16),
         Löschung (Art 17), Einschränkung der Verarbeitung (Art 18),
@@ -316,7 +316,7 @@ const contact = useContact()
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-status" heading="Stand">
+    <ProseSection id="version" heading="Stand">
       <p>
         16. November 2026. Ändert sich etwas an der Verarbeitung, wird diese
         Erklärung vorher angepasst.

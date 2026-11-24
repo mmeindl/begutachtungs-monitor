@@ -88,7 +88,7 @@ const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
       welchen Domains Besuche kommen – als Summe je Tag, ohne IP-Adresse,
       Cookie oder Kennung. Wer was gelesen hat, lässt sich daraus nicht
       ablesen; wie das gezählt wird, steht unter
-      <NuxtLink to="/datenschutz#dse-zaehlung" class="link-inline">Datenschutz</NuxtLink>.
+      <NuxtLink to="/datenschutz#zaehlung" class="link-inline">Datenschutz</NuxtLink>.
     </p>
 
     <FetchGate
@@ -100,7 +100,7 @@ const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
       @retry="refresh()"
     >
       <template #default="{ data: stats }">
-        <ProseSection id="stat-tage" heading="Seitenaufrufe je Tag" first>
+        <ProseSection id="tage" heading="Seitenaufrufe je Tag" first>
           <p v-if="!stats.seit">
             Noch ist kein voller Tag gezählt. Die Zahlen erscheinen hier ab
             dem Tag nach dem Beginn der Zählung.
@@ -165,7 +165,7 @@ const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
           </template>
         </ProseSection>
 
-        <ProseSection v-if="stats.seit" id="stat-seiten" heading="Was aufgerufen wird">
+        <ProseSection v-if="stats.seit" id="seiten" heading="Was aufgerufen wird">
           <div
             v-for="(tabelle, i) in [
               { kopf: 'Seite', zahl: 'Aufrufe', caption: 'Seitenaufrufe seit Beginn der Zählung nach Art der Seite', zeilen: stats.nachSeite },
@@ -204,7 +204,7 @@ const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
           </div>
         </ProseSection>
 
-        <ProseSection v-if="stats.seit" id="stat-herkunft" heading="Woher Besuche kommen">
+        <ProseSection v-if="stats.seit" id="herkunft" heading="Woher Besuche kommen">
           <p>
             Domains erscheinen ab fünf Besuchen, damit ein einzelner Link von
             einer privaten Seite hier nicht auftaucht. Gezählt sind nur Besuche
