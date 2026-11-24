@@ -53,7 +53,17 @@ const RIS_ABSATZ_KIND: Record<string, BlockKind> = {
  * lacked the same words on both sides. The corpus measurement is in
  * `lawtext/konsTree.ts`.
  */
-const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
+const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|inhaltsvz|pdvorlage)\b([^>]*)>([\s\S]*?)<\/\1>/g
+/**
+ * `<pdvorlage><pdeinst formatname="PDK1Anlage" />„Anlage</pdvorlage>`: text the
+ * Bundesgesetzblatt sets in a layout template — the heading of a new Anlage
+ * and the line under it („(§ 365s Abs. 5 und 6)"), five times in the harness
+ * cache (24.11.2026). Unread, „Anlage" was in Parliament's HTML of the same
+ * text (`<p class=PDK1Anlage>`, an „other" block) and not in RIS's, and the
+ * plenum's Z 23 of 75/ME XXVIII stood as redaktionell against the
+ * Kundmachung. Read as the HTML reads it: a block of its own, kind „other".
+ */
+const PD_TEMPLATE_RE = /<pdeinst\s+formatname="([^"]+)"/
 const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
 /**
  * „<b>§ 56.</b> Die Bewertung …" — a quoted § whose symbol is set bold
@@ -206,8 +216,8 @@ export function parseRisXml(xml: string): TextBlock[] {
   const blocks: TextBlock[] = []
   for (const m of body.matchAll(RIS_BLOCK_RE)) {
     const tag = m[1]!
-    const typ = /typ="([^"]+)"/.exec(m[2]!)?.[1] ?? ''
     const inner = m[3]!
+    const typ = tag === 'pdvorlage' ? (PD_TEMPLATE_RE.exec(inner)?.[1] ?? '') : (/typ="([^"]+)"/.exec(m[2]!)?.[1] ?? '')
     const gldMatch = RIS_GLD_RE.exec(inner)
     const boldMatch = gldMatch ? null : RIS_BOLD_GLD_RE.exec(inner)
     const gld = gldMatch ? risText(gldMatch[1]!) : boldMatch ? risText(boldMatch[2]!) : null
@@ -247,6 +257,8 @@ export function parseRisXml(xml: string): TextBlock[] {
       // a flat block list has no slot for that level, and document order is
       // what the consumers need, so both spellings land the same way.
       kind = 'abs'
+    } else if (tag === 'pdvorlage') {
+      kind = 'other'
     } else {
       kind = 'toc'
     }

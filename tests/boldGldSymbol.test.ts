@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { parseLawUnits, parseLawUnitsFromRis } from '../server/utils/lawtext/lawUnits'
 import { diffLawPackage, summarizeDiff } from '../server/utils/diff/lawDiff'
 
@@ -94,5 +95,35 @@ describe('a Gliederungssymbol Word split across two spans (24.11.2026)', () => {
     const later = '<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;5.</span> (1) Text mit <span class=991GldSymbol>X</span> darin.</p>'
     const block = parseParliamentHtml(doc(later)).at(-1)!
     expect(block.gld).toBe(parseParliamentHtml(doc('<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;5.</span> (1) Text.</p>')).at(-1)!.gld)
+  })
+})
+
+describe('text the Bundesgesetzblatt sets in a layout template (24.11.2026)', () => {
+  // 75/ME XXVIII Z 23: „Die Anlage lautet:", then the new Anlage's heading.
+  const html = '<html><body>' +
+    '<p class=41UeberschrG1>Artikel&nbsp;1</p>' +
+    '<p class=43UeberschrG2>&Auml;nderung des Versorgungssicherungsgesetzes</p>' +
+    '<p class=12PromKlEinlSatz>Das Versorgungssicherungsgesetz wird wie folgt ge&auml;ndert:</p>' +
+    '<p class=21NovAo1>23. Die Anlage lautet:</p>' +
+    '<p class=PDK1Anlage>&#8222;Anlage</p>' +
+    '<p class=83ErlText>Welche Waren unter die Warengruppen fallen.&#8220;</p>' +
+    '</body></html>'
+  const xml = '<risdok><nutzdaten><abschnitt>' +
+    '<ueberschrift typ="g1">Artikel 1</ueberschrift>' +
+    '<ueberschrift typ="g2">Änderung des Versorgungssicherungsgesetzes</ueberschrift>' +
+    '<absatz typ="erltext">Das Versorgungssicherungsgesetz wird wie folgt geändert:</absatz>' +
+    '<absatz typ="novao1">23. Die Anlage lautet:</absatz>' +
+    '<pdvorlage><pdeinst formatname="PDK1Anlage" />„Anlage</pdvorlage>' +
+    '<absatz typ="erltext">Welche Waren unter die Warengruppen fallen.“</absatz>' +
+    '</abschnitt></nutzdaten></risdok>'
+
+  it('is read as the HTML reads the same paragraph: its own block, kind „other"', () => {
+    const block = parseRisXml(xml).find((b) => b.cls === 'pdvorlage/PDK1Anlage')
+    expect(block).toMatchObject({ kind: 'other', text: parseParliamentHtml(html).find((b) => b.cls === 'PDK1Anlage')!.text })
+  })
+
+  it('leaves the Ziffer unchanged between Parliament and the Kundmachung', () => {
+    const { units } = diffLawPackage(parseLawUnits(html), parseLawUnitsFromRis(xml), { keepAddedLaws: true, keepDroppedLaws: true })
+    expect(summarizeDiff(units)).toMatchObject({ changed: 0, inserted: 0, removed: 0 })
   })
 })
