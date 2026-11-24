@@ -48,10 +48,12 @@ export async function fetchLawAsOf(gesetzesnummer: string, date: string): Promis
   const paragraphs: KonsParagraphRef[] = []
   let kurztitel = ''
   const aenderungen = new Set<string>()
-  for (let page = 1; page <= 20; page++) {
+  let hits = 0
+  // Every page, as `fetchAllVersions` below; capped at 20, a law of more than 2.000 §§ lost its tail unsaid.
+  for (let page = 1; page <= Math.ceil(IMPLAUSIBLE_HITS / 100); page++) {
     const body = await konsJson(konsQuery({ Gesetzesnummer: gesetzesnummer, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) }))
     const results = body?.OgdSearchResult?.OgdDocumentResults
-    const hits = Number(results?.Hits?.['#text'] ?? 0)
+    hits = Number(results?.Hits?.['#text'] ?? 0)
     if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für Gesetzesnummer ${gesetzesnummer}`)
     const refs = asArray<any>(results?.OgdDocumentReference)
     for (const ref of refs) {
@@ -63,6 +65,7 @@ export async function fetchLawAsOf(gesetzesnummer: string, date: string): Promis
     }
     if (paragraphs.length >= hits || refs.length === 0) break
   }
+  if (paragraphs.length < hits) throw new Error(`Paragraphen unvollständig: ${paragraphs.length} von ${hits} für Gesetzesnummer ${gesetzesnummer}`)
   return { gesetzesnummer, kurztitel, aenderungen: [...aenderungen], paragraphs }
 }
 
@@ -74,10 +77,15 @@ export async function fetchLawAsOf(gesetzesnummer: string, date: string): Promis
 export async function fetchAllVersions(gesetzesnummer: string): Promise<Map<string, KonsParagraphRef[]>> {
   const out = new Map<string, KonsParagraphRef[]>()
   let seen = 0
-  for (let page = 1; page <= 40; page++) {
+  let hits = 0
+  // Every page, and refused when short (24.11.2026). Capped at 40 pages, the
+  // ASVG's 5.121 versions lost their last 1.121 without a word, and with them
+  // § 814 to § 818: BGBl. I Nr. 72, 73, 103 and 104/2025 read as never
+  // consolidated, though RIS had them.
+  for (let page = 1; page <= Math.ceil(IMPLAUSIBLE_HITS / 100); page++) {
     const body = await konsJson(konsQuery({ Gesetzesnummer: gesetzesnummer, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) }))
     const results = body?.OgdSearchResult?.OgdDocumentResults
-    const hits = Number(results?.Hits?.['#text'] ?? 0)
+    hits = Number(results?.Hits?.['#text'] ?? 0)
     if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für Gesetzesnummer ${gesetzesnummer}`)
     const refs = asArray<any>(results?.OgdDocumentReference)
     for (const r of refs) {
@@ -91,6 +99,7 @@ export async function fetchAllVersions(gesetzesnummer: string): Promise<Map<stri
     seen += refs.length
     if (seen >= hits || refs.length === 0) break
   }
+  if (seen < hits) throw new Error(`Fassungen unvollständig: ${seen} von ${hits} für Gesetzesnummer ${gesetzesnummer}`)
   for (const list of out.values()) list.sort((a, b) => String(a.inkrafttreten).localeCompare(String(b.inkrafttreten)))
   return out
 }

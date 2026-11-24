@@ -8,7 +8,7 @@
  *
  * `<dir>` holds what the round wrote, under these names:
  *
- *   kons.json        kons.ts -- --discover=60 --sammel --cache --oracle --entwurf --json=<dir>/kons.json
+ *   kons.json        kons.ts -- --seit=2024-10-24 --cache --oracle --entwurf --json=<dir>/kons.json  (the period's start, GP_STARTS)
  *   fi-pdf.json      faultInjection.ts -- --gp=XXVIII --nur-periode --mindestens=95 --json=<dir>/fi-pdf.json
  *   fi-xml.json      faultInjection.ts -- --gp=XXVIII --nur-periode --xml --mindestens=95 --json=<dir>/fi-xml.json
  *   annex-pdf.json   annexPdf.ts -- --gp=XXVIII --nur-periode --json=<dir>/annex-pdf.json

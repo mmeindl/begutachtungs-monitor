@@ -128,6 +128,22 @@ describe('installFetchCache', () => {
     expect(calls).toEqual([LIST, LIST])
   })
 
+  // A law's version list: stale until RIS has consolidated the law (24.11.2026).
+  it('answers from disk only what it fetched at or after the date it is given', async () => {
+    answers = ['Fassungen vom September', 'Fassungen vom November']
+    fakeUpstream()
+    let after = new Date(0)
+    installFetchCache(dir, { fresh: () => after })
+    await fetch(KONS)
+    const file = readdirSync(dir).map((f) => join(dir, f))[0]!
+    utimesSync(file, new Date('2026-09-09'), new Date('2026-09-09'))
+    after = new Date('2026-09-01')
+    expect(await (await fetch(KONS)).text()).toBe('Fassungen vom September')
+    after = new Date('2026-12-15')
+    expect(await (await fetch(KONS)).text()).toBe('Fassungen vom November')
+    expect(calls).toEqual([KONS, KONS])
+  })
+
   it('still answers everything else from disk', async () => {
     answers = ['Dokument', 'anderes Dokument']
     fakeUpstream()

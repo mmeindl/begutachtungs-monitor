@@ -62,7 +62,8 @@ import { DERIVED_CACHE } from '../../server/utils/cache/base'
 import { flattenRisRecord } from '../../server/utils/ris/risRecord'
 import { absatzSequence, designatedUnitsOf, followingUnit, standingUnitsOf, oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { installFetchCache, isLiveQuery } from '../lib/harnessCache'
-import { kindsOfLaw } from '../lib/newLaws'
+import { accountOf, bgblNumberOf, CONSOLIDATION_GRACE_DAYS, gapsIn, kindsOfLaw, type BgblListing } from '../lib/benchCensus'
+import { bgblRecordOf } from '../../server/utils/ris/bgblJoin'
 import { harnessStamp } from '../lib/harnessRecord'
 import { renditionOfPages, witnessVerdict, type DraftRendition } from '../../server/utils/kons/draftWitness'
 import { argAssigned, argFlag } from '../lib/args'
@@ -249,12 +250,26 @@ const refusalFile = argAssigned('refusals') ?? null
 if (refusalFile) writeFileSync(refusalFile, '')
 if (dumpFile) writeFileSync(dumpFile, '')
 /**
- * `--frisch` (with `--cache`, 23.11.2026): every query goes upstream, only
- * documents come from disk (`isLiveQuery`). For laws newer than the cache.
- * Its answers are written too, so give it its own `HARNESS_CACHE`: in the
- * round's cache they would move what the next round measures.
+ * What `--cache` serves from disk (24.11.2026). A document under its own
+ * address never changes. A query can: the version list of a law cached in
+ * September knows no Novelle of October, and from disk 38 of the 53 laws in
+ * the 18 newest Bundesgesetzblätter read as never consolidated, though RIS
+ * had them all. So while a Bundesgesetzblatt is scored, its queries
+ * (`isLiveQuery`) come from disk only where they were fetched after RIS had
+ * time to consolidate it (`liveAfter`, `CONSOLIDATION_GRACE_DAYS` after the
+ * Kundmachung); after that they are fixed and cost no request. The list of
+ * the Bundesgesetzblätter (`--seit`) comes fresh every run.
  */
-if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', argFlag('frisch') ? { fresh: isLiveQuery } : {})
+let liveAfter: Date | null = null
+const isBgblList = (url: string): boolean => {
+  try {
+    const u = new URL(url)
+    return u.searchParams.get('Applikation') === 'BgblAuth' && u.searchParams.has('VonKundmachungsdatum')
+  } catch {
+    return false
+  }
+}
+if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache', { fresh: (url) => (isBgblList(url) ? true : liveAfter !== null && isLiveQuery(url) ? liveAfter : false) })
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: 'harness/kons' })
@@ -601,7 +616,7 @@ const witnessLines: string[] = []
 const removalTally = new Map<string, number>()
 const removalLines: string[] = []
 let removedRenumbered = 0
-/** The kinds of change each law makes (`kindsOfLaw`), by `Bundesgesetzblatt|Artikel`, for `newLaws.ts`. */
+/** The kinds of change each law makes (`kindsOfLaw`), by `Bundesgesetzblatt|Artikel` (`lib/benchCensus.ts`). */
 const lawKinds = new Map<string, string[]>()
 const tally = (map: Map<string, number>, key: string): void => {
   map.set(key, (map.get(key) ?? 0) + 1)
@@ -720,6 +735,9 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict[]> {
   const bundesrecht = ref.Data.Metadaten.Bundesrecht
   const bgblNumber: string = bundesrecht.BgblAuth?.Bgblnummer
   const kundmachung: string = bundesrecht.BgblAuth?.Ausgabedatum ?? ''
+  // Until the caller resets it: every query of this Bundesgesetzblatt (`installFetchCache` above).
+  const issued = Date.parse(kundmachung)
+  liveAfter = new Date(Number.isNaN(issued) ? Date.now() : Math.min(Date.now(), issued + CONSOLIDATION_GRACE_DAYS * 86_400_000))
   const xmlUrl: string | undefined = asArray<any>(ref.Data.Dokumentliste.ContentReference)
     .flatMap((c) => asArray<any>(c.Urls.ContentUrl))
     .find((u) => u.DataType === 'Xml')?.Url
@@ -1066,7 +1084,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       tally(markerTally, `${differs ? 'abweichend' : 'gleich'}|${oracleKey}|${plausible ? 'plausibel' : 'unplausibel'}|${witnessShown ? 'gezeigt' : '—'}`)
       if (differs && (verbose || oracleKey === 'bestätigt' || witnessShown)) {
         const i = at >= 0 ? at : Math.min(mine.length, theirs.length)
-        console.log(`        ↳ Gliederung § ${id} [Orakel: ${oracleKey}${plausible ? ', plausibel' : ''}${witnessShown ? ', vom Zeugen gezeigt' : ''}]: Engine ${mine.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'} — RIS ${theirs.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'}`)
+        console.log(`        ↳ Gliederung ${bgblNumber}${articleLabel ? ` ${articleLabel}` : ''} ${kurztitel.slice(0, 50)} § ${id} [Orakel: ${oracleKey}${plausible ? ', plausibel' : ''}${witnessShown ? ', vom Zeugen gezeigt' : ''}]: Engine ${mine.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'} — RIS ${theirs.slice(Math.max(0, i - 1), i + 3).join(' ') || '∅'}`)
       }
     }
     // A confirmed § that is not the RIS text is the row the gate table sums
@@ -1227,16 +1245,74 @@ const ids = argv.filter((a) => /^BGBLA_/.test(a))
  * a run that shrinks must say so.
  */
 const wanted = discover === null ? null : Number(discover)
-const cases: { id: string; law?: string }[] = wanted !== null
-  ? await discoverAmendments(wanted, withSammel)
-  : ids.map((id) => {
-      const next = argv[argv.indexOf(id) + 1]
-      // The next id is the next law, not this one's title (23.11.2026).
-      return { id, law: next && !next.startsWith('-') && !/^BGBLA_/.test(next) ? next : undefined }
+
+/**
+ * `--seit=<YYYY-MM-DD>` (24.11.2026): every Bundesgesetz of Teil I published
+ * since that day, from a list fetched fresh, instead of „the 60 newest" of a
+ * list cached in September, which never grew. The whole years are read, so
+ * that a missing number counts from Nr. 1 (`gapsIn`); a list shorter than
+ * RIS's own count is refused, because a missing tail shows as no gap.
+ */
+const since = argAssigned('seit')
+if (since !== null && !/^\d{4}-\d{2}-\d{2}$/.test(since)) throw new Error(`--seit=${since}: ein Datum wie 2024-10-24`)
+
+async function listTeil1Year(year: number): Promise<BgblListing[]> {
+  const seen = new Set<string>()
+  const out: BgblListing[] = []
+  let hits = 0
+  for (let page = 1; page <= 50; page++) {
+    const body = await risJson({
+      Applikation: 'BgblAuth',
+      DokumenteProSeite: 'OneHundred',
+      Seitennummer: String(page),
+      VonKundmachungsdatum: `${year}-01-01`,
+      BisKundmachungsdatum: `${year}-12-31`,
+      'Sortierung.SortedByColumn': 'Kundmachungsdatum',
+      'Sortierung.SortDirection': 'Ascending',
     })
+    const result = body?.OgdSearchResult?.OgdDocumentResults
+    const docs = asArray<any>(result?.OgdDocumentReference)
+    hits = Number(result?.Hits?.['#text'] ?? 0)
+    for (const doc of docs) {
+      const rec = bgblRecordOf(doc)
+      if (!rec || seen.has(rec.id)) continue
+      seen.add(rec.id)
+      if (rec.teil !== 'Teil1') continue
+      const number = bgblNumberOf(rec.nummer)
+      if (!number) throw new Error(`Nummer nicht lesbar: ${rec.id} „${rec.nummer}"`)
+      out.push({ ...number, id: rec.id, nummer: rec.nummer, date: rec.datum, typ: rec.typ, title: String(rec.kurztitel ?? rec.titel ?? '') })
+    }
+    if (docs.length < 100 || seen.size >= hits) break
+  }
+  if (seen.size !== hits) throw new Error(`BGBl-Liste ${year} unvollständig: ${seen.size} von ${hits} Treffern gelesen`)
+  return out
+}
+
+async function casesSince(from: string): Promise<{ cases: { id: string; law?: string }[]; census: { from: string; listings: BgblListing[]; gaps: string[] } }> {
+  const listings: BgblListing[] = []
+  const first = Number(from.slice(0, 4))
+  for (let year = first; year <= new Date().getFullYear(); year++) listings.push(...(await listTeil1Year(year)))
+  const window = listings.filter((l) => l.date >= from).sort((a, b) => a.year - b.year || a.number - b.number)
+  return {
+    cases: window.filter((l) => l.typ === 'Bundesgesetz').map((l) => ({ id: l.id })),
+    census: { from, listings: window, gaps: gapsIn(listings, { year: first, number: 1 }) },
+  }
+}
+
+const sinceRun = since !== null ? await casesSince(since) : null
+const census = sinceRun?.census ?? null
+const cases: { id: string; law?: string }[] = sinceRun
+  ? sinceRun.cases
+  : wanted !== null
+    ? await discoverAmendments(wanted, withSammel)
+    : ids.map((id) => {
+        const next = argv[argv.indexOf(id) + 1]
+        // The next id is the next law, not this one's title (23.11.2026).
+        return { id, law: next && !next.startsWith('-') && !/^BGBLA_/.test(next) ? next : undefined }
+      })
 
 if (cases.length === 0) {
-  console.error('Usage: npx vite-node scripts/harness/kons.ts <BGBl-ID> [Kurztitel] | --discover=N [--sammel]')
+  console.error('Usage: npx vite-node scripts/harness/kons.ts <BGBl-ID> [Kurztitel] | --seit=YYYY-MM-DD | --discover=N [--sammel]')
   process.exit(1)
 }
 
@@ -1249,6 +1325,8 @@ for (const c of cases) {
   } catch (err) {
     console.log(`\n${c.id}: ${String(err)}`)
     unreached.push({ id: c.id, cause: String(err).slice(0, 200) })
+  } finally {
+    liveAfter = null
   }
 }
 
@@ -1266,7 +1344,7 @@ const packages = [...perBgbl.values()].filter((n) => n > 1).length
 // The corpus the run was *asked* for, beside the one it reached. A report over
 // a tenth of the intended corpus reads exactly like a report over all of it,
 // which is how the `--discover` bug above stayed invisible for a day.
-const corpus = wanted === null ? `${cases.length} explizit genannt` : `--discover=${wanted}${withSammel ? ' --sammel' : ''}${verordnungen ? ' --verordnungen' : ''} → ${cases.length} geladen`
+const corpus = since !== null ? `--seit=${since} → ${cases.length} Bundesgesetze` : wanted === null ? `${cases.length} explizit genannt` : `--discover=${wanted}${withSammel ? ' --sammel' : ''}${verordnungen ? ' --verordnungen' : ''} → ${cases.length} geladen`
 console.log(`Prüfstand über ${scored.length} Gesetze aus ${bgblCount} Bundesgesetzblättern [Korpus: ${corpus}]${packages > 0 ? `, davon ${packages} Sammelnovellen` : ''}${verdicts.length > scored.length ? ` (${verdicts.length - scored.length} nicht auswertbar)` : ''}`)
 const pct = (n: number, of: number) => (of === 0 ? '—' : `${((n / of) * 100).toFixed(1)} %`)
 console.log(`  Anweisungen           : ${sum((v) => v.instructions)}`)
@@ -1466,6 +1544,15 @@ async function scoreDraftPath(): Promise<DraftPathRecord> {
  * than parsed out of the lines printed here.
  */
 const draftPath = withDraftPath ? await scoreDraftPath() : null
+/** Law by law, with what kind of change each makes (`lib/benchCensus.ts`). */
+const lawLines = verdicts.map((v) => ({ bgbl: v.bgbl, article: v.article, law: v.law, instructions: v.instructions, read: v.read, applied: v.applied, checked: v.checked, identical: v.identical, divergent: v.divergent, note: v.note, kinds: lawKinds.get(`${v.bgbl}|${v.article ?? ''}`) ?? [] }))
+const accounts = census ? accountOf(census.listings, { laws: lawLines, unreached }, new Date().toISOString().slice(0, 10)) : null
+if (census && accounts) {
+  const outcomes = new Map<string, number>()
+  for (const a of accounts) outcomes.set(a.outcome, (outcomes.get(a.outcome) ?? 0) + 1)
+  console.log(`\n  Bundesgesetzblatt I seit ${census.from}: ${accounts.length} Einträge — ${[...outcomes].map(([k, n]) => `${k} ${n}`).join(', ')}; ${census.gaps.length ? `FEHLENDE NUMMERN: ${census.gaps.join(', ')}` : 'keine Nummer fehlt'}`)
+  for (const a of accounts.filter((x) => x.outcome === 'failed' || x.outcome === 'pending')) console.log(`    ${a.outcome === 'failed' ? '✗' : '…'} ${a.nummer}: ${a.reason}`)
+}
 const jsonFile = argAssigned('json')
 if (jsonFile) {
   const missed = new Set(unreached.map((u) => u.id))
@@ -1500,8 +1587,10 @@ if (jsonFile) {
     removed: { confirmed: removed('confirmed'), wrong: removed('wrong'), unverifiable: removed('unverifiable'), renumbered: removedRenumbered },
     /** `--entwurf`: the page's own composition of the drafts, against the law (`lib/konsDraftPath.ts`). */
     ...(draftPath ? { draftPath } : {}),
-    /** Law by law, with what kind of change each makes: what `newLaws.ts` accounts for. */
-    laws: verdicts.map((v) => ({ bgbl: v.bgbl, article: v.article, law: v.law, instructions: v.instructions, read: v.read, applied: v.applied, checked: v.checked, identical: v.identical, divergent: v.divergent, note: v.note, kinds: lawKinds.get(`${v.bgbl}|${v.article ?? ''}`) ?? [] })),
+    /** Law by law, with what kind of change each makes (`lib/benchCensus.ts`). */
+    laws: lawLines,
+    /** `--seit`: every entry of the window with its one outcome, and the numbers missing from the list. */
+    ...(census && accounts ? { census: { from: census.from, listed: accounts.length, gaps: census.gaps, accounts } } : {}),
     removalFindings: removalLines,
     /** The §§ the second witness released, one line each with what RIS says of them. */
     witnessShown: witnessLines,

@@ -2666,6 +2666,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       if ('error' in units) return units.error
       const located = op.endWord ? endWordHits(units, op.text) : locatePhrase(law, op.target, units, op.eachUnit, op.text, op.wordBound, { alreadyThere: () => false })
       if ('error' in located) return located.error
+      const filled = filledLines(law)
       writeHits(
         located.hits,
         (current, at, len) => {
@@ -2679,8 +2680,39 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         },
         (text) => text.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim(),
       )
+      dropEmptiedLines(filled)
       return null
     }
+  }
+}
+
+/**
+ * The unmarked lines of a law that carry text, each with the unit it stands
+ * in — taken before a phrase is cut, so that a line the cut empties can go
+ * (`dropEmptiedLines`).
+ *
+ * „In § 45 Abs. 2 entfällt die Wendung ‚Bundes-Aufbaugymnasium und
+ * Bundes-Aufbaurealgymnasium,'" (SchOG, BGBl. I Nr. 2/2026) takes a whole
+ * line of a list without numbers. The words came out as the law's, and the
+ * empty line stayed: the page would have shown a gap in the list, under a
+ * structure RIS does not carry (24.11.2026). Only a line the cut empties:
+ * one empty before is the standing text's.
+ */
+function filledLines(law: StandingLaw): { node: LawNode; parent: LawNode }[] {
+  const out: { node: LawNode; parent: LawNode }[] = []
+  const walk = (parent: LawNode): void => {
+    for (const child of parent.children) {
+      if (child.level === 'schluss' && child.children.length === 0 && child.text.trim() !== '') out.push({ node: child, parent })
+      walk(child)
+    }
+  }
+  for (const p of law.paragraphs) walk(p)
+  return out
+}
+
+function dropEmptiedLines(lines: readonly { node: LawNode; parent: LawNode }[]): void {
+  for (const { node, parent } of lines) {
+    if (node.text.trim() === '') parent.children = parent.children.filter((c) => c !== node)
   }
 }
 

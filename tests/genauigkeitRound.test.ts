@@ -42,6 +42,9 @@ function round(): Record<string, any> {
       markers: { 'gleich|bestätigt|plausibel': 459, 'abweichend|widersprochen|plausibel': 2, 'abweichend|kein Orakel|unplausibel': 5 },
       witness: { 'gezeigt|identisch': 152, 'gezeigt|unvollständig': 1, 'pruefung|identisch': 95, 'kein PDF|identisch': 4 },
       draftPath: { drafts: 3, failed: 0, shown: 20, comparable: 10, identical: 10, differs: [], instructionChanged: 8, stockMoved: 1, noInstructionLine: 0, notAmended: 1 },
+      census: { from: '2024-10-24', listed: 2, gaps: [], accounts: [{ id: 'BGBLA_2026_I_1', nummer: 'BGBl. I Nr. 1/2026', date: '2026-01-10', outcome: 'scored', laws: 1, reason: null }, { id: 'BGBLA_2026_I_2', nummer: 'BGBl. I Nr. 2/2026', date: '2026-01-12', outcome: 'notLaw', laws: 0, reason: 'Kundmachung' }] },
+      laws: [{ bgbl: 'BGBl. I Nr. 1/2026', article: null, law: 'Gesetz', instructions: 1, read: 1, applied: 1, checked: 1, identical: 1, divergent: 0, note: null, kinds: ['anweisung:replace:para'] }],
+      removalFindings: [],
     },
     'fi-pdf.json': faultRecord('pdf'),
     'fi-xml.json': faultRecord('table'),
@@ -242,6 +245,41 @@ describe('the gates it had before', () => {
       'station.json records 1 invariant breaches',
       'land-st/summary.json records 2 invariant hits not accounted for',
     ])
+  })
+})
+
+// Every law of the period, and nothing new unread (24.11.2026, `lib/benchCensus.ts`).
+describe('the bench\'s census of the period', () => {
+  it('refuses a bench that read a corpus instead of the period', () => {
+    const r = round()
+    delete r['kons.json'].census
+    expect(refusals(r)).toEqual(['kons.json does not account for the laws of the period (no "census"): run kons.ts with --seit'])
+    r['kons.json'].census = { ...round()['kons.json'].census, from: '2025-01-01' }
+    expect(refusals(r)).toEqual(['kons.json reads the laws since 2025-01-01, the period began 2024-10-24'])
+  })
+
+  it('refuses a missing number of the Bundesgesetzblatt', () => {
+    const r = round()
+    r['kons.json'].census.gaps = ['BGBl. I Nr. 7/2026']
+    expect(refusals(r)).toEqual(['kons.json: the Bundesgesetzblatt lacks BGBl. I Nr. 7/2026: a law missed, or a list RIS cut short'])
+  })
+
+  it('refuses a law the bench could not score, a wrong repeal and a kind of change nobody read', () => {
+    const r = round()
+    r['kons.json'].census.accounts[0] = { ...r['kons.json'].census.accounts[0], outcome: 'failed', reason: 'Gesetz nicht im BrKons gefunden' }
+    r['kons.json'].removalFindings = ['falsch: BGBl. I Nr. 1/2026 — Gesetz § 4', 'nicht prüfbar: BGBl. I Nr. 1/2026 — Gesetz § 5']
+    r['kons.json'].laws[0].kinds = ['anweisung:replace:para', 'anweisung:noch-nie:para']
+    expect(refusals(r)).toEqual([
+      'kons.json: unscored: BGBl. I Nr. 1/2026: Gesetz nicht im BrKons gefunden — read it, then add it to scripts/lib/benchKnown.ts',
+      'kons.json: wrongRepeal: BGBl. I Nr. 1/2026 — Gesetz § 4 — read it, then add it to scripts/lib/benchKnown.ts',
+      'kons.json: newKind: anweisung:noch-nie:para (zuerst in BGBl. I Nr. 1/2026, Gesetz) — read it, then add it to scripts/lib/benchKnown.ts',
+    ])
+  })
+
+  it('leaves a shown § that is not the law to the page, which prints that figure', () => {
+    const r = round()
+    r['kons.json'].witnessShown = ['BGBl. I Nr. 1/2026 Gesetz § 3 — RIS: unvollständig, ME≠BGBl — Beilage „a" / BGBl „b"']
+    expect(refusals(r)).toEqual([])
   })
 })
 

@@ -1997,33 +1997,35 @@ gets an entry of its own only where it carries a reason the rule does not.
   A new case makes `DRAFT_PATH_DIFFERS_READ` fail until someone has read it.
   The second witness's 150 of 150 stays beside it and is no evidence for
   drafts: on the bench it reads a Bundesgesetzblatt against itself.
-- **Every new law is scored with rules frozen before it existed** (23.11.2026,
-  `scripts/harness/newLaws.ts`, `scripts/lib/newLaws.ts`,
-  `.github/workflows/new-laws.yml`). Every other figure comes from laws the
-  rules were developed on. Nothing proves that every way a law can go wrong
-  has been thought of, so three things are held instead: every law was seen
-  (BGBl I numbers run without a gap, so a missed law is a missing number);
-  every law ends in one outcome, and the outcomes add up to the list; and a
-  law making a kind of change no development law made is named for a person
-  to read. The run uses the tag's code and fresh queries in a cache of its
-  own: from the round's cache, 38 of the 53 laws in the 18 newest
-  Bundesgesetzblätter read as never consolidated, and RIS had all of them. A
-  law used to fix a rule leaves the holdout (`leftHoldout`). BGBl. I Nr.
-  82–103/2026 are reported as a trial and never as clean, because at least 84
-  and 88 were read while the rules were worked on. No figure goes on
-  `/genauigkeit` before the holdout holds laws. A finding a person has read
-  and found no fault in goes into `read` with why, so it stays in the report
-  and stops turning the weekly run red. The trial's one real fault, „Die
-  Anlage 1 und 2 zu § 40 entfällt" read as repealing § 40 (BMSVG, BGBl. I
-  Nr. 88/2026), was fixed before the first freeze (`SCHEDULE_OWNER_RE`): of
-  every instruction in the round's cache, only that line reads differently.
-- **The rules are frozen at a tag, and the holdout starts after it**
-  (24.11.2026). `pnpm harness:new-laws --einfrieren=<bench.json>,<trial.json>
-  --tag=<tag>` stores the tree hashes of `server` and `shared` and every kind
-  of change those laws make; the tag goes on that commit and is pushed with
-  it. A change to `server` or `shared` ends the freeze: the run then refuses
-  to count the holdout until the rules are frozen again, and a law used for
-  the change moves to `leftHoldout`.
+- **The bench reads every Bundesgesetz of the period, and nothing drops out
+  unsaid** (24.11.2026, `kons.ts --seit`, `scripts/lib/benchCensus.ts`,
+  `scripts/lib/benchKnown.ts`). Until then it read „the 60 newest" from a
+  list cached in September: every round measured the same laws, the ones
+  the rules were developed on, and never met a new one. The first 18
+  Bundesgesetzblätter after them found a fault at once: „Die Anlage 1 und 2
+  zu § 40 entfällt" read as repealing § 40 (BMSVG, BGBl. I Nr. 88/2026,
+  fixed in `SCHEDULE_OWNER_RE`; of every instruction in the round's cache,
+  only that line reads differently). Nothing proves that every way a law can
+  go wrong has been thought of, so the builder holds three things instead:
+  no BGBl number is missing (they run without a gap within a year); every
+  entry ends in one outcome; and a law the bench cannot score, a wrong
+  repeal, or a kind of change no law before made, refuses the round until a
+  person has read it and entered it in `benchKnown.ts`. A shown § that is
+  not the law refuses nothing: the page prints that figure itself.
+  Read from the cache, 38 of the 53 laws in those 18 Bundesgesetzblätter
+  looked unconsolidated, though RIS had them all. So a law's queries come
+  from disk only where they were fetched after RIS had time to consolidate
+  it (60 days after the Kundmachung); after that they cost no request, and
+  the list itself is fetched every run. The first run over the whole period
+  found the bench's version reader capped at 40 pages: the ASVG's 5.121
+  versions lost their last 1.121, and with them the §§ four laws of 2025
+  created (`fetchAllVersions` now reads every page and refuses a short
+  list). The page was never affected: it reads a law as of a day, not its
+  history. Considered and dropped the same
+  day: a separate weekly job that froze the rules at a git tag to score only
+  laws published after it. Its alarm would have watched the frozen code, not
+  what runs, and the figure it guarded is the page's „bei den anderen kann
+  der Anteil niedriger sein" until there are laws enough to show apart.
 - **A round names one period, and the builder holds it** (23.11.2026,
   `--nur-periode`, `inPeriod`). RIS ignores the period filter, so „the 400
   newest" held seven drafts (179 §§) of the period before under the label

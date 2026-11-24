@@ -7,15 +7,14 @@ import {
   gapsIn,
   kindsOfLaw,
   lawOutcomeOf,
-  poolOf,
   splitRead,
   type BgblListing,
   type KonsLaw,
-  type NewLawKonsRecord,
-} from '../scripts/lib/newLaws'
+  type BenchRecord,
+} from '../scripts/lib/benchCensus'
 
 /**
- * Scoring every new law (23.11.2026). What is held here is that nothing drops
+ * The bench's census (23.11.2026). What is held here is that nothing drops
  * out unsaid: a missing number, a law without an outcome, a kind of change no
  * rule was tested on.
  */
@@ -25,7 +24,7 @@ const listing = (number: number, over: Partial<BgblListing> = {}): BgblListing =
 const law = (number: number, over: Partial<KonsLaw> = {}): KonsLaw => ({
   bgbl: `BGBl. I Nr. ${number}/2026`, article: null, law: 'Gesetz', instructions: 1, read: 1, applied: 1, checked: 1, identical: 1, divergent: 0, note: null, kinds: [], ...over,
 })
-const record = (over: Partial<NewLawKonsRecord> = {}): NewLawKonsRecord => ({
+const record = (over: Partial<BenchRecord> = {}): BenchRecord => ({
   unreached: [], laws: [], removalFindings: [], gate: {}, witness: {}, markers: {}, ...over,
 })
 
@@ -37,20 +36,6 @@ describe('gapsIn', () => {
 
   it('ignores what lies before the start', () => {
     expect(gapsIn([{ year: 2025, number: 9 }, { year: 2026, number: 5 }, { year: 2026, number: 6 }], { year: 2026, number: 5 })).toEqual([])
-  })
-})
-
-describe('poolOf', () => {
-  const scope = { holdoutFrom: { year: 2026, number: 104 }, leftHoldout: ['BGBl. I Nr. 110/2026'] }
-
-  it('counts only a law published after the freeze as holdout', () => {
-    expect(poolOf(listing(103), scope)).toBe('trial')
-    expect(poolOf(listing(104), scope)).toBe('holdout')
-    expect(poolOf(listing(1, { year: 2027, nummer: 'BGBl. I Nr. 1/2027' }), scope)).toBe('holdout')
-  })
-
-  it('takes a law used to fix a rule out of the holdout', () => {
-    expect(poolOf(listing(110), scope)).toBe('used')
   })
 })
 
@@ -99,7 +84,7 @@ describe('kindsOfLaw', () => {
 })
 
 describe('findingsOf', () => {
-  const kinds = (r: NewLawKonsRecord, known: string[] = []) => findingsOf(r, new Set(known), []).map((f) => f.kind)
+  const kinds = (r: BenchRecord, known: string[] = []) => findingsOf(r, new Set(known), []).map((f) => f.kind)
 
   it('is empty for a clean law of a known kind', () => {
     expect(kinds(record({ laws: [law(1, { kinds: ['sammelnovelle'] })], gate: { 'plausibel|bestätigt|identisch|ohne Verweigerung|PDF': 3 }, witness: { 'gezeigt|identisch': 2 } }), ['sammelnovelle'])).toEqual([])

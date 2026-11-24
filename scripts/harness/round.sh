@@ -63,7 +63,7 @@ note 'server warm'
 { step fi-pdf vn scripts/harness/faultInjection.ts -- --gp=XXVIII --nur-periode --misses --mindestens=95 --json="$OUT/fi-pdf.json"
   step fi-xml vn scripts/harness/faultInjection.ts -- --gp=XXVIII --nur-periode --xml --misses --mindestens=95 --json="$OUT/fi-xml.json"; } &
 A=$!
-{ step kons vn scripts/harness/kons.ts -- --discover=60 --sammel --cache --oracle --entwurf --quiet --json="$OUT/kons.json"
+{ step kons vn scripts/harness/kons.ts -- --seit=2024-10-24 --cache --oracle --entwurf --quiet --json="$OUT/kons.json"
   step annex-xml vn scripts/harness/annexPdf.ts -- --gp=XXVIII --nur-periode --xml --json="$OUT/annex-xml.json" --zeilen="$OUT/rows-xml.json"
   step annex-pdf vn scripts/harness/annexPdf.ts -- --gp=XXVIII --nur-periode --json="$OUT/annex-pdf.json" --zeilen="$OUT/rows-pdf.json"; } &
 B=$!

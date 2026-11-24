@@ -109,8 +109,12 @@ export interface FetchCacheOptions {
    * that day's list, and the weekly drift alarm — whose CI cache is carried
    * from week to week — could not see a new draft, which is the only thing
    * that can show a ressort's new layout (20.11.2026).
+   *
+   * A date instead of `true` (24.11.2026): the disk answers only where it
+   * fetched the request at or after that date. A law's version list is
+   * stale until RIS has consolidated the law, and fixed after it.
    */
-  fresh?: (url: string) => boolean
+  fresh?: (url: string) => boolean | Date
   /** Answer the `fresh` requests from disk after all, where it holds them: an offline replay, chosen and said. */
   replay?: boolean
 }
@@ -163,16 +167,18 @@ export function installFetchCache(dir: string, options: FetchCacheOptions = {}):
   const served: ServedRequest[] = []
   globalThis.fetch = (async (input: any, init?: any) => {
     const url = typeof input === 'string' ? input : String(input?.url ?? input)
-    const tracked = options.fresh?.(url) ?? false
+    const rule = options.fresh?.(url) ?? false
+    const tracked = rule === true
     // Bodies are stored as bytes, not as a string. Round-tripping a PDF
     // through `res.text()` and back through utf8 corrupts every deflate
     // stream in it — pdf.js then reports "Bad FCHECK in flate stream" and
     // the document parses as empty (2026-09-09).
     const file = cacheFile(dir, url, typeof init?.body === 'string' ? init.body : null)
+    const onDisk = existsSync(file) && (!(rule instanceof Date) || statSync(file).mtime >= rule)
     // A fresh request goes upstream even when the disk holds it, and a failure
     // there fails the run: an old list served in place of a failed one would
     // be the stale window again, unsaid.
-    if ((!tracked || options.replay) && existsSync(file)) {
+    if ((!tracked || options.replay) && onDisk) {
       const cached = readFileSync(file)
       if (pdfIsIntact(cached)) {
         if (tracked) served.push({ url, fromCache: true, fetchedAt: statSync(file).mtime })

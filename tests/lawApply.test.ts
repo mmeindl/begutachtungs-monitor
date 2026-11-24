@@ -1973,6 +1973,23 @@ describe('the sentences of a § without Absatz numbering (26.09.2026)', () => {
     expect(out.paragraphs[0]!.children[0]!.children.at(-1)!.text).toBe('gebührt eine Abgeltung gemäß dem Prüfungstaxengesetz.')
   })
 
+  // SchOG § 45 Abs. 2, BGBl. I Nr. 2/2026: found by the bench over the whole period (24.11.2026).
+  it('drops a line of a list without numbers that a cut empties, and keeps one that still says something', () => {
+    const list = () => {
+      const l = unnumbered('Bundesschulen sind:')
+      const body = l.paragraphs[0]!.children[0]!
+      for (const t of ['Bundesgymnasium,', 'Bundes-Aufbaugymnasium und Bundes-Aufbaurealgymnasium,', 'Bundeswerkschulheim.']) body.children.push(makeNode('schluss', 'schluss', '', t))
+      return l
+    }
+    const lines = (l: StandingLaw) => l.paragraphs[0]!.children[0]!.children.map((c) => c.text)
+    const whole = run(list(), instr('In § 8 entfällt die Wendung "Bundes-Aufbaugymnasium und Bundes-Aufbaurealgymnasium,".'))
+    expect(whole.results[0]!.reason).toBeNull()
+    expect(lines(whole.law)).toEqual(['Bundesgymnasium,', 'Bundeswerkschulheim.'])
+    const part = run(list(), instr('In § 8 entfällt die Wendung "und Bundes-Aufbaurealgymnasium".'))
+    expect(part.results[0]!.reason).toBeNull()
+    expect(lines(part.law)).toEqual(['Bundesgymnasium,', 'Bundes-Aufbaugymnasium,', 'Bundeswerkschulheim.'])
+  })
+
   it('appends a sentence to its one Absatz, not beside it', () => {
     const { law: out, results } = run(unnumbered('Der erste Satz.'), instr('Dem § 8 wird folgender Satz angefügt:', ['Der zweite Satz.']))
     expect(results[0]!.reason).toBeNull()

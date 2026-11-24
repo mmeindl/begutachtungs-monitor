@@ -1,10 +1,13 @@
 /**
- * Scoring every new law against rules that were frozen before it existed
- * (23.11.2026, `scripts/harness/newLaws.ts`).
+ * What the BGBl bench holds beside its scores (23.11.2026, `kons.ts --seit`):
+ * that no law of the period dropped out, and that a law unlike any before it
+ * reaches a person.
  *
- * WHY. Every figure on `/genauigkeit` comes from laws the rules were developed
- * on. A score on laws published after the rules were frozen is the only figure
- * that says how the monitor does on a law nobody has tuned it to.
+ * WHY. Until 24.11.2026 the bench read „the 60 newest" from a list cached in
+ * September, so every round measured the same laws, the ones the rules were
+ * developed on, and never met a new one. The first 18 Bundesgesetzblätter
+ * after it found a fault at once (BMSVG § 40). The bench now reads every
+ * Bundesgesetz of the period, and these are its checks.
  *
  * WHAT IT CANNOT PROMISE, AND WHAT IT DOES INSTEAD. Nothing proves that every
  * way a law can go wrong has been thought of. Three things can be held:
@@ -15,11 +18,11 @@
  * 2. Every law ends in exactly one outcome, and the outcomes add up to the
  *    list (`accountOf`). A law RIS has not consolidated yet waits, and is said
  *    to wait; after `CONSOLIDATION_GRACE_DAYS` it is a finding.
- * 3. A law that does something no law of the development set did is named
- *    (`kindsOfLaw`, `findingsOf`), so a person reads it instead of its passing
- *    quietly.
+ * 3. A law that does something no law before it did is named (`kindsOfLaw`,
+ *    `findingsOf`), and the round is refused until a person has read it
+ *    (`benchKnown.ts`).
  *
- * Pure, so all of it is held by `tests/newLaws.test.ts`.
+ * Pure, so all of it is held by `tests/benchCensus.test.ts`.
  */
 import { misnumberedShown } from '../harness/konsJudge'
 import type { DraftPathRecord } from './konsDraftPath'
@@ -41,35 +44,11 @@ export interface BgblListing extends BgblNumber {
   title: string
 }
 
-/**
- * Which laws count as what, and against which rules.
- *
- * `holdoutFrom` is the first number published after the rules were frozen.
- * Laws from `trialFrom` up to it were out of the bench but open to whoever
- * worked on the rules: they are reported, and never as clean. A law used to
- * fix a rule moves to `leftHoldout` and stops counting.
- */
-export interface NewLawScope {
-  rules: {
-    /** The git tag holding the frozen code. */
-    tag: string | null
-    /** Tree hashes of `server` and `shared` at that tag: other code is no frozen run. */
-    tree: string | null
-  }
-  trialFrom: BgblNumber
-  holdoutFrom: BgblNumber
-  leftHoldout: string[]
-  /** Every kind of change a law of the development set makes. */
-  knownKinds: string[]
-  /**
-   * Findings a person has read and found no fault in, each with why. A
-   * finding is matched by the start of `kind: detail`. Read, it is still
-   * printed, and no longer turns the run red, week after week.
-   */
-  read: { finding: string; why: string }[]
+/** A finding a person has read and found no fault in, matched by the start of `kind: detail`, with why. */
+export interface BenchRead {
+  finding: string
+  why: string
 }
-
-export type Pool = 'trial' | 'holdout' | 'used'
 
 /** One law as `kons.ts --json` reports it. */
 export interface KonsLaw {
@@ -87,7 +66,7 @@ export interface KonsLaw {
 }
 
 /** The part of a `kons.ts --json` record this module reads. */
-export interface NewLawKonsRecord {
+export interface BenchRecord {
   unreached: { id: string; cause: string }[]
   laws: KonsLaw[]
   draftPath?: DraftPathRecord
@@ -135,11 +114,6 @@ export function bgblNumberOf(nummer: string): BgblNumber | null {
   return m ? { number: Number(m[1]), year: Number(m[2]) } : null
 }
 
-/** Whether `a` was published at or after `b`, by its number. */
-export function atOrAfter(a: BgblNumber, b: BgblNumber): boolean {
-  return a.year > b.year || (a.year === b.year && a.number >= b.number)
-}
-
 /** Every number missing from `from` up to the highest of each year. The tail of a list cannot show here: the caller checks RIS's hit count. */
 export function gapsIn(listings: readonly BgblNumber[], from: BgblNumber): string[] {
   const byYear = new Map<number, Set<number>>()
@@ -159,11 +133,6 @@ export function gapsIn(listings: readonly BgblNumber[], from: BgblNumber): strin
   return out
 }
 
-export function poolOf(listing: BgblListing, scope: Pick<NewLawScope, 'holdoutFrom' | 'leftHoldout'>): Pool {
-  if (scope.leftHoldout.includes(listing.nummer)) return 'used'
-  return atOrAfter(listing, scope.holdoutFrom) ? 'holdout' : 'trial'
-}
-
 /** What became of one law, from the note the bench left on it. */
 export function lawOutcomeOf(note: string | null, ageDays: number): LawOutcome {
   if (note === null) return 'scored'
@@ -181,7 +150,7 @@ const daysBetween = (from: string, to: string): number => Math.floor((Date.parse
  * A Sammelnovelle takes its worst law's: one law that failed is not hidden
  * behind the nine that were scored.
  */
-export function accountOf(listings: readonly BgblListing[], record: Pick<NewLawKonsRecord, 'laws' | 'unreached'>, today: string): BgblAccount[] {
+export function accountOf(listings: readonly BgblListing[], record: Pick<BenchRecord, 'laws' | 'unreached'>, today: string): BgblAccount[] {
   return listings.map((l) => {
     const base = { id: l.id, nummer: l.nummer, date: l.date }
     if (l.typ !== 'Bundesgesetz') return { ...base, outcome: 'notLaw' as const, laws: 0, reason: l.typ ?? 'ohne Typ' }
@@ -222,8 +191,8 @@ export function kindsOfLaw(law: {
   return [...kinds].sort()
 }
 
-/** The findings a person has not read yet, and those read, each with why (`NewLawScope.read`). */
-export function splitRead(findings: readonly Finding[], read: NewLawScope['read']): { open: Finding[]; read: (Finding & { why: string })[] } {
+/** The findings a person has not read yet, and those read, each with why. */
+export function splitRead(findings: readonly Finding[], read: readonly BenchRead[]): { open: Finding[]; read: (Finding & { why: string })[] } {
   const out = { open: [] as Finding[], read: [] as (Finding & { why: string })[] }
   for (const f of findings) {
     const known = read.find((r) => `${f.kind}: ${f.detail}`.startsWith(r.finding))
@@ -234,7 +203,7 @@ export function splitRead(findings: readonly Finding[], read: NewLawScope['read'
 }
 
 /** What a person has to read. Each is a reason for the run to go red, until read (`splitRead`). */
-export function findingsOf(record: NewLawKonsRecord, knownKinds: ReadonlySet<string>, accounts: readonly BgblAccount[]): Finding[] {
+export function findingsOf(record: BenchRecord, knownKinds: ReadonlySet<string>, accounts: readonly BgblAccount[]): Finding[] {
   const out: Finding[] = []
   for (const a of accounts) {
     if (a.outcome !== 'failed') continue

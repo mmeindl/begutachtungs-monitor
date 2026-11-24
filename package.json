@@ -14,7 +14,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "harness:kons": "vite-node -c vitest.config.ts scripts/harness/kons.ts --",
-    "harness:new-laws": "vite-node -c vitest.config.ts scripts/harness/newLaws.ts --",
     "harness:me": "vite-node -c vitest.config.ts scripts/harness/me.ts --",
     "harness:annex": "vite-node -c vitest.config.ts scripts/harness/annexPdf.ts --",
     "harness:fault-injection": "vite-node -c vitest.config.ts scripts/harness/faultInjection.ts --",

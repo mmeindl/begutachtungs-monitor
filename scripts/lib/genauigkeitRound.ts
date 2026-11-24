@@ -19,6 +19,9 @@ import type { ConsolidatedWithheldCause, GenauigkeitFault, GenauigkeitRecord } f
 import { misnumberedShown } from '../harness/konsJudge'
 import { DIRTY, FLOOR_MIN_TRIES, UNKNOWN_COMMIT, type PeriodScope } from './harnessRecord'
 import type { DraftPathRecord } from './konsDraftPath'
+import { findingsOf, splitRead, type BenchRecord, type BgblAccount, type FindingKind, type KonsLaw } from './benchCensus'
+import { BENCH_READ, KNOWN_KINDS } from './benchKnown'
+import { GP_STARTS } from '../../shared/utils/gp'
 
 /** The floor the fault records have to have been held to (`faultInjection.ts --mindestens`). */
 export const FLOOR_PERCENT = 95
@@ -66,7 +69,19 @@ interface KonsRecord extends Stamped {
   witness?: Record<string, number>
   /** `--entwurf`: the page's own composition of the drafts, against the law. */
   draftPath?: DraftPathRecord
+  /** `--seit`: every entry of the Bundesgesetzblatt since the period began, each with one outcome (24.11.2026). */
+  census?: { from: string; listed: number; gaps: string[]; accounts: BgblAccount[] }
+  laws?: KonsLaw[]
+  removalFindings?: string[]
+  witnessShown?: string[]
 }
+
+/**
+ * What the census refuses until a person has read it (`benchKnown.ts`). A
+ * shown § that is not the law is no refusal: the page prints that figure
+ * itself; a misnumbered one and a draft-path miss are refused on their own.
+ */
+const REFUSED_FINDINGS: ReadonlySet<FindingKind> = new Set(['unreached', 'unscored', 'wrongRepeal', 'newKind'])
 
 /** `floor` on a floored class: „gehalten", „verfehlt", „nicht gehalten" (tried too seldom), or „nicht anwendbar" where the class cannot occur on the path. */
 interface FaultClass extends GenauigkeitFault { floored?: boolean; floor?: string }
@@ -239,6 +254,16 @@ export function buildGenauigkeitRecord(readRecord: RoundReader, options: RoundOp
   // The bench applies the enacted instructions; a reader meets the draft's (23.11.2026, `lib/konsDraftPath.ts`).
   if (!kons.draftPath) refusals.push('kons.json does not score the draft path (no "draftPath"): run kons.ts with --entwurf')
   else if (kons.draftPath.failed) refusals.push(`kons.json: ${kons.draftPath.failed} draft(s) could not be composed on the draft path`)
+  // Every law of the period, each with one outcome, and anything unlike the laws before it read by a person (24.11.2026).
+  if (!kons.census) refusals.push('kons.json does not account for the laws of the period (no "census"): run kons.ts with --seit')
+  else {
+    const from = GP_STARTS[ROUND_GP]
+    if (kons.census.from !== from) refusals.push(`kons.json reads the laws since ${kons.census.from}, the period began ${from}`)
+    if (kons.census.gaps.length) refusals.push(`kons.json: the Bundesgesetzblatt lacks ${kons.census.gaps.join(', ')}: a law missed, or a list RIS cut short`)
+    const record: BenchRecord = { unreached: kons.unreached ?? [], laws: kons.laws ?? [], removalFindings: kons.removalFindings ?? [], gate: kons.gate, witness: kons.witness ?? {}, markers: kons.markers ?? {}, ...(kons.witnessShown ? { witnessShown: kons.witnessShown } : {}) }
+    const found = findingsOf(record, new Set(KNOWN_KINDS), kons.census.accounts).filter((f) => REFUSED_FINDINGS.has(f.kind))
+    for (const f of splitRead(found, BENCH_READ).open) refusals.push(`kons.json: ${f.kind}: ${f.detail} — read it, then add it to scripts/lib/benchKnown.ts`)
+  }
 
   // One period (23.11.2026): RIS ignores the period filter, and the list's 400 newest reached into the one before.
   for (const [name, r] of [['fi-pdf.json', faults.pdf], ['fi-xml.json', faults.table], ['annex-pdf.json', annexPdf], ['annex-xml.json', annexXml]] as const) {
