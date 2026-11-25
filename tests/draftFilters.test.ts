@@ -7,6 +7,7 @@ import {
   type DraftFilterValues,
   ART_CHOICES,
   activeFilterChips,
+  countLabelHasGap,
   artChoiceLabel,
   artChoiceOf,
   artChoiceParams,
@@ -329,10 +330,28 @@ describe('activeFilterChips', () => {
       activeFilterChips({ status: 'closed', art: 'verordnung', gp: 'XXVII', ministry: 'BMF' }),
     ).toEqual([
       { key: 'status', label: 'Nicht möglich' },
-      { key: 'art', label: 'Verordnungsentwürfe' },
       { key: 'gp', label: 'GP XXVII' },
+      { key: 'art', label: 'Verordnungsentwürfe' },
       { key: 'ministry', label: 'BMF' },
     ])
+  })
+
+  it('states „Setzt EU-Recht um" first, where it stands in the panel on a phone', () => {
+    expect(activeFilterChips({ ...empty, art: 'gesetz', eu: 'umsetzung' })).toEqual([
+      { key: 'eu', label: 'Setzt EU-Recht um' },
+      { key: 'art', label: 'Gesetzesentwürfe' },
+    ])
+  })
+})
+
+describe('countLabelHasGap', () => {
+  it('finds a half on its way or failed, and nothing in a plain breakdown', () => {
+    const counts = { me: 3, vorlagen: [], laterStationsOnly: false } as const
+    expect(countLabelHasGap(draftCountLabel({ ...counts, ris: { gesetz: 1, verordnung: 2 } }))).toBe(false)
+    expect(countLabelHasGap(draftCountLabel({ ...counts, ris: 'pending' }))).toBe(true)
+    expect(countLabelHasGap(draftCountLabel({ ...counts, ris: 'failed' }))).toBe(true)
+    expect(countLabelHasGap(draftCountLabel({ ...counts, ris: null, laender: { pending: ['t'] } }))).toBe(true)
+    expect(countLabelHasGap(draftCountLabel({ ...counts, ris: null, vorlagen: 'failed' }))).toBe(true)
   })
 })
 

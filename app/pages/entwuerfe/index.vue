@@ -10,6 +10,7 @@ import {
   type FilterChipKey,
   type SortKey,
   activeFilterChips,
+  countLabelHasGap,
   spanOptionsFor,
   CUSTOM_SPAN_OPTION,
   CUSTOM_SPAN_VALUE,
@@ -215,7 +216,7 @@ onNavigate(() => {
  * anyway — every control writes the URL through Vue.
  */
 const moreFilters = computed(
-  () => Number(chosenArt.value !== '') + Number(span.value.gp !== '' || span.value.landtag !== '') + Number(ministry.value !== ''),
+  () => Number(chosenArt.value !== '') + Number(eu.value !== '') + Number(span.value.gp !== '' || span.value.landtag !== '') + Number(ministry.value !== ''),
 )
 const filtersOpen = ref(false)
 
@@ -229,11 +230,13 @@ const activeFilters = computed(() =>
     von: customSpan.value ? von.value : '',
     bis: customSpan.value ? bis.value : '',
     ministry: ministry.value,
+    eu: eu.value,
   }, periodView.value),
 )
 const clearChip: Record<FilterChipKey, () => void> = {
   status: () => { statusFilter.value = 'all' },
   art: () => { chosenArt.value = '' },
+  eu: () => { eu.value = '' },
   gp: () => { gp.value = '' },
   landtag: () => { landtag.value = '' },
   zeitraum: () => { von.value = ''; bis.value = '' },
@@ -529,6 +532,22 @@ const {
   appliedArt,
 )
 
+/**
+ * The count line on a phone (25.11.2026): past two terms it folds to the
+ * drafts and laws the list holds — the search's own two numbers, never one
+ * pooled figure — and opens to the breakdown. At five lines it stood
+ * between the search and the first row. A line that says part of the list
+ * is missing never folds (`countLabelHasGap`); from `md` up it always
+ * stands in full.
+ */
+const countFolds = computed(() =>
+  !listPending.value && countLabel.value.split(' · ').length > 2 && !countLabelHasGap(countLabel.value),
+)
+const countSummary = computed(() => [
+  ...(visibleTotal.value || !visibleLaws.value ? [countLabelDe(visibleTotal.value, 'Entwurf', 'Entwürfe')] : []),
+  ...(visibleLaws.value ? [countLabelDe(visibleLaws.value, 'Gesetz', 'Gesetze')] : []),
+].join(' · '))
+
 const searchPlaceholder = computed(() => {
   /* No count while a half is on its way (12.11.2026): the number would
    * grow under the reader's cursor. */
@@ -675,9 +694,15 @@ const statementsSortNote = computed(() => {
                control, beside it — a property of the draft that narrows the
                set. Never unavailable: every station and Art can hold a
                draft that implements a directive. -->
-          <ToggleChip :pressed="eu === 'umsetzung'" @toggle="toggleEu">
-            Setzt EU-Recht um
-          </ToggleChip>
+          <!-- From `md` up only (25.11.2026): on a phone it stands first in
+               the panel below, so „Stellungnahme
+               möglich" and „Filter" share one line. The phone's copy is
+               the same control, and the closed panel states it as a chip. -->
+          <div class="hidden md:contents">
+            <ToggleChip :pressed="eu === 'umsetzung'" @toggle="toggleEu">
+              Setzt EU-Recht um
+            </ToggleChip>
+          </div>
           <!-- „Ohne Entwurf" stood here as a third chip until 14.11.2026;
                it is a group of the select „Art" now (`ART_CHOICES`). -->
           <!-- Art, period and Ressort stand in the same line from `md`
@@ -717,6 +742,37 @@ const statementsSortNote = computed(() => {
             class="w-full gap-2 md:flex md:flex-wrap md:items-center"
             :class="filtersOpen ? 'grid grid-cols-1' : 'hidden'"
           >
+            <!-- The phone's „Setzt EU-Recht um", first in the panel, right
+                 under „Stellungnahme möglich" (25.11.2026): chips together,
+                 then the selects — a chip between full-width selects broke
+                 the column. A wrapper so the grid cell does not stretch it. -->
+            <div class="md:hidden">
+              <ToggleChip :pressed="eu === 'umsetzung'" @toggle="toggleEu">
+                Setzt EU-Recht um
+              </ToggleChip>
+            </div>
+            <!-- A time span with a name (14.11.2026): the Bund's GP, one
+                 Land's own period, or the dates alone — the sources decide
+                 (`spanOptionsFor`). The Länder rows fall into it by the day
+                 their Begutachtung began, so every option states the dates
+                 the filter uses instead of a note explaining the rule.
+                 Values: the GP code (`?gp=`), a Land period's `sbg-17`
+                 (`?landtag=`).
+                 „Eigener Zeitraum" turns this cell into the range editor in
+                 place (18.11.2026, `SpanSelect`, shared with /anliegen).
+                 First of the panel since 25.11.2026: it fixes which rows
+                 exist (the list is fetched per period, and the sources
+                 decide its options), while Art and Ministerium narrow them. -->
+            <SpanSelect
+              id="filter-gp"
+              v-model="spanSelect"
+              label="Zeitraum"
+              :options="spanOptions"
+              :span="customSpan ? { von, bis } : null"
+              :min="SPAN_MIN_DAY"
+              class="min-w-0 md:w-72 md:shrink-0"
+              @span="setSpan"
+            />
             <div class="min-w-0 md:w-60 md:shrink-0">
               <label for="filter-art" class="sr-only">Art</label>
               <!-- Native <optgroup>s through the slot (14.11.2026): „Mit
@@ -740,25 +796,6 @@ const statementsSortNote = computed(() => {
                 </template>
               </TokenSelect>
             </div>
-            <!-- A time span with a name (14.11.2026): the Bund's GP, one
-                 Land's own period, or the dates alone — the sources decide
-                 (`spanOptionsFor`). The Länder rows fall into it by the day
-                 their Begutachtung began, so every option states the dates
-                 the filter uses instead of a note explaining the rule.
-                 Values: the GP code (`?gp=`), a Land period's `sbg-17`
-                 (`?landtag=`).
-                 „Eigener Zeitraum" turns this cell into the range editor in
-                 place (18.11.2026, `SpanSelect`, shared with /anliegen). -->
-            <SpanSelect
-              id="filter-gp"
-              v-model="spanSelect"
-              label="Zeitraum"
-              :options="spanOptions"
-              :span="customSpan ? { von, bis } : null"
-              :min="SPAN_MIN_DAY"
-              class="min-w-0 md:w-72 md:shrink-0"
-              @span="setSpan"
-            />
             <!-- The Ressort takes the rest of the line, so the filters end
                  where the search below ends; its names are the longest. -->
             <div class="min-w-0 md:flex-1">
@@ -823,23 +860,40 @@ const statementsSortNote = computed(() => {
           class="w-full"
           :ui="{ base: 'min-h-target' }"
         />
+        <!-- On a phone, where no column header is drawn, the order is a
+             select right under the search (25.11.2026): with the controls,
+             not after the count line, which could push it five lines down.
+             No visible „Sortieren": the column headers' sort arrows say it,
+             so the phone and the desktop draw the order alike; the hidden
+             label still names the control. -->
+        <div class="md:hidden">
+          <label for="filter-sort" class="sr-only">Sortieren</label>
+          <!-- Full width, like every control above it on a phone. -->
+          <TokenSelect id="filter-sort" v-model="sortSelect" icon="i-lucide-arrow-up-down" block>
+            <TokenOption v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </TokenOption>
+          </TokenSelect>
+        </div>
         <!-- The count line, the boundary between the zones: above it what
-             fixes the set, here how it is read. On a phone, where no
-             column header is drawn, the order is a select beside it. -->
-        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <!-- Fades with the rows while they refresh: it counts the same
-               stale answer. The live region announces the new count. -->
-          <p class="stale-fade text-sm text-ink-muted" aria-live="polite" :data-stale="refreshing || undefined">
-            {{ gateData ? countLabel : '' }}
-          </p>
-          <div class="flex min-w-0 items-center gap-2 md:hidden">
-            <label for="filter-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
-            <TokenSelect id="filter-sort" v-model="sortSelect">
-              <TokenOption v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </TokenOption>
-            </TokenSelect>
-          </div>
+             fixes the set, here how it is read. Fades with the rows while
+             they refresh: it counts the same stale answer. The live region
+             announces the new count. On a phone a long line folds
+             (`countFolds`). -->
+        <div class="stale-fade text-sm text-ink-muted" aria-live="polite" :data-stale="refreshing || undefined">
+          <template v-if="gateData">
+            <Disclosure v-if="countFolds" tone="muted" class="md:hidden">
+              <template #summary>
+                {{ countSummary }}<span class="sr-only"> – nach Art aufschlüsseln</span>
+              </template>
+              <p class="pb-1">
+                {{ countLabel }}
+              </p>
+            </Disclosure>
+            <p :class="countFolds && 'hidden md:block'">
+              {{ countLabel }}
+            </p>
+          </template>
         </div>
         <!-- Above the rows, like every other statement about what the list is
                doing: read afterwards it is worthless. -->

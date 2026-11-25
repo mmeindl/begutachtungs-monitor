@@ -65,6 +65,13 @@ const props = defineProps<{
    * list's options in the select's own text colour.
    */
   chevronOnly?: boolean
+  /**
+   * An icon before the value (25.11.2026), for a select whose label is
+   * visually hidden: the phone's sort on /entwuerfe carries the column
+   * headers' sort arrows instead of the word „Sortieren". Decoration for
+   * the eye only; the <label for> still names the control.
+   */
+  icon?: string
 }>()
 const reasonId = computed(() => (props.id ? `${props.id}-reason` : undefined))
 </script>
@@ -88,10 +95,16 @@ const reasonId = computed(() => (props.id ? `${props.id}-reason` : undefined))
       class="w-full min-w-0 appearance-none truncate text-sm text-ink"
       :class="chevronOnly
         ? 'rounded-r-md border-l border-baseline bg-transparent pl-11 pr-0'
-        : 'min-h-target rounded-md border border-baseline bg-surface py-2 pl-3 pr-9 hover:border-hover-edge hover:bg-hover disabled:cursor-not-allowed disabled:border-dashed disabled:bg-page disabled:text-ink-muted disabled:hover:bg-page'"
+        : [icon ? 'pl-9' : 'pl-3', 'min-h-target rounded-md border border-baseline bg-surface py-2 pr-9 hover:border-hover-edge hover:bg-hover disabled:cursor-not-allowed disabled:border-dashed disabled:bg-page disabled:text-ink-muted disabled:hover:bg-page']"
     >
       <slot />
     </select>
+    <UIcon
+      v-if="icon && !chevronOnly"
+      :name="icon"
+      class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
+      aria-hidden="true"
+    />
     <span v-if="unavailable" :id="reasonId" class="sr-only">{{ unavailable }}</span>
     <UIcon
       name="i-lucide-chevron-down"

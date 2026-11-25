@@ -176,6 +176,16 @@ const TREATIES_FAILED = 'die Staatsverträge sind gerade nicht abrufbar'
 const VORLAGEN_PENDING = 'die Regierungsvorlagen ohne Entwurf werden noch geladen'
 const VORLAGEN_FAILED = 'die Regierungsvorlagen ohne Entwurf sind gerade nicht abrufbar'
 
+/**
+ * Whether a count line says that part of the list is missing — on its way
+ * or failed (the terms above). Such a line is never folded away on a phone
+ * (`/entwuerfe`, 25.11.2026): a gap is said where the count stands, not one
+ * press away.
+ */
+export function countLabelHasGap(label: string): boolean {
+  return / werden noch geladen| sind gerade nicht abrufbar/i.test(label)
+}
+
 function sameLands(a: readonly LandCode[], b: readonly LandCode[]): boolean {
   return a.length === b.length && a.every((land) => b.includes(land))
 }
@@ -1268,7 +1278,7 @@ export function unionMinistries(
   return [...byCode].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
 }
 
-export type FilterChipKey = 'status' | 'art' | 'gp' | 'landtag' | 'zeitraum' | 'ministry'
+export type FilterChipKey = 'status' | 'art' | 'eu' | 'gp' | 'landtag' | 'zeitraum' | 'ministry'
 
 /**
  * The closed panel's values, each as a chip that removes it. Data, not
@@ -1276,6 +1286,9 @@ export type FilterChipKey = 'status' | 'art' | 'gp' | 'landtag' | 'zeitraum' | '
  *
  * `status` appears only for an old `?status=closed` link — „Nicht möglich"
  * left the controls on 02.10.2026 and survives as this chip.
+ *
+ * `eu` since 25.11.2026: on a phone „Setzt EU-Recht um" stands first in the
+ * panel, so the closed panel states it like the rest, in the panel's order.
  *
  * The period chip stays „GP XXVIII" while its option reads „seit 24.10.2024
  * (GP XXVIII)" (14.11.2026): the chip only repeats a choice the reader made in
@@ -1289,16 +1302,14 @@ export type FilterChipKey = 'status' | 'art' | 'gp' | 'landtag' | 'zeitraum' | '
  * compact form („seit 24.10.2024", „23.10.2019–23.10.2024").
  */
 export function activeFilterChips(
-  f: Pick<DraftFilterValues, 'status' | 'art' | 'gp' | 'ministry'> & { landtag?: string; begutachtung?: BegutachtungFilter; von?: string; bis?: string },
+  f: Pick<DraftFilterValues, 'status' | 'art' | 'gp' | 'ministry'> & { landtag?: string; begutachtung?: BegutachtungFilter; von?: string; bis?: string; eu?: string },
   view: PeriodView = { mode: 'bund' },
   calendars: LandPeriodCalendars = LAND_PERIODS,
 ): { key: FilterChipKey; label: string }[] {
   const out: { key: FilterChipKey; label: string }[] = []
   if (f.status === 'closed') out.push({ key: 'status', label: 'Nicht möglich' })
-  /* The select's option by its label — „Ohne Entwurf" included since it
-   * moved into the select (14.11.2026); one press clears both parameters. */
-  const choice = artChoiceOf(f.art, f.begutachtung ?? '')
-  if (choice) out.push({ key: 'art', label: artChoiceLabel(choice) })
+  /* In the panel's order (25.11.2026): the EU chip, the span, Art, Ministerium. */
+  if (f.eu === 'umsetzung') out.push({ key: 'eu', label: 'Setzt EU-Recht um' })
   /* A span of the reader's own by its days, as asked — „09.11.2026–15.11.2026",
    * „seit 09.11.2026" — and no period chip beside it: the period it is
    * fetched by is not the reader's choice. */
@@ -1309,6 +1320,10 @@ export function activeFilterChips(
     out.push({ key: 'landtag', label: parts && period ? landPeriodChipDe(parts.land, period) : f.landtag })
   }
   if (f.gp && !f.von) out.push({ key: 'gp', label: view.mode === 'bund' ? `GP ${f.gp}` : (gpSpanDatesDe(f.gp, true) ?? `GP ${f.gp}`) })
+  /* The select's option by its label — „Ohne Entwurf" included since it
+   * moved into the select (14.11.2026); one press clears both parameters. */
+  const choice = artChoiceOf(f.art, f.begutachtung ?? '')
+  if (choice) out.push({ key: 'art', label: artChoiceLabel(choice) })
   if (f.ministry) out.push({ key: 'ministry', label: f.ministry })
   return out
 }
