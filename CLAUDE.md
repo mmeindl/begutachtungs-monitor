@@ -2,7 +2,9 @@
 
 Rules, measurements and rejected alternatives: `docs/decisions.md`. Read the
 relevant section before changing an area. Research memos that answer one
-question once go to `docs/research/`.
+question once go to `docs/research/`. Procedures (committing and deploying,
+handing over a UI change, a measuring round, researching a new source) are
+skills in `.claude/skills/`.
 
 ## What this is
 
@@ -26,10 +28,10 @@ state – state your view*. Live at https://begutachtungs-monitor.at.
   section.
 - **Next:** Germany. It has no central source for drafts (each ministry
   publishes its own), so expect a source per publisher, as with the Länder.
-- **Also next:** the EU law cycle, and the routes to a norm that `/wege`
-  shows but the monitor does not follow yet. Before building either, read
-  `docs/decisions.md`, "Routes to a norm, and what the monitor follows", and
-  the last section of `docs/research/wege-zu-einer-rechtsnorm.md`.
+- **Also next:** the routes to a norm that `/wege` shows but the monitor does
+  not follow yet. Before building one, read `docs/decisions.md`, "Routes to a
+  norm, and what the monitor follows", and the last section of
+  `docs/research/wege-zu-einer-rechtsnorm.md`.
 - **Therefore:** nothing new hardcodes Austria where configuration would do.
   Countries become path segments (`/at`, `/de`), not separate codebases.
 
@@ -56,9 +58,10 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
 - **Private persons are counted, never named.** The filter runs on the
   server, before anything reaches the SSR payload; in doubt a submitter is a
   person. What is named and what is not changes only with the maintainer.
-- **After every change to `server/utils/parliament/privacy.ts`,** run
-  `pnpm audit:classifier` and read the old-against-new corpus comparison,
-  every newly public name by hand. Tests alone have missed real leaks.
+- **After every change to `server/utils/parliament/privacy.ts`,** run the old
+  and the new classifier over every list-142 row and read every newly public
+  name by hand; `pnpm audit:classifier` reviews the new one's verdicts. Tests
+  alone have missed real leaks.
 - **The licence differs per source, and the site says which applies where**
   (`/quellen`, credit lines at the content). RIS open data is
   CC BY 4.0. On Parliament's side the result lists and API data of the
@@ -67,14 +70,16 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
   Stellungnahmen is excluded from reuse. Never write a blanket CC BY claim.
 - **Where a document exists in both sources, RIS is read first**
   (`annexSourceFor`). That order and `READ_PARLIAMENT_COPY` do not move while
-  the licence question (E3) is open.
+  the licence question is open (`docs/decisions.md`, "Open questions").
 - **Statement texts are linked, never fetched or parsed** by the product.
   Machine reading of statement texts happens only under the text-and-data-mining
   exception (§ 42h UrhG).
 - **A new source (a Land, a country, a dataset) ships only with its licence
   checked and stated** on `/quellen`.
 - **No third-party resources at runtime:** no web fonts, CDN, analytics
-  service or cookies. Page views are counted, visitors are not.
+  service or third-party cookie. The one cookie is our own, `quellen`, set
+  only when a reader changes the sources of a list. Page views are counted,
+  visitors are not.
 - **Every code change, wherever it is made, is held against the legal
   pages:** `/impressum`, `/datenschutz`, `/quellen` and `/ueber`. If it could
   make a sentence there untrue or leave something unsaid, read the pages and
@@ -121,18 +126,46 @@ Stellungnahme. This binds UI and copy.
 
 ## Working rules
 
-- **No Claude attribution:** no `Co-Authored-By` trailer in commits and no
-  "Generated with" line in pull requests. This overrides the tool's default.
-- **Commit messages are English** (German until 13.11.2026) and tell the
-  story of the change. German terms of the subject stay German
-  (Regierungsvorlage, Textgegenüberstellung). A rule that outlives the change
-  also goes into `docs/decisions.md`.
+- **New work starts on a new local branch, never on `main`.** Before the
+  first edit, open a branch from `main` named after the work and say so;
+  work that continues an existing branch stays on it. Branches are never
+  pushed: only `main` is, after the branch is merged into it locally.
+  Commit, merge, push and deploy each need their own go-ahead from the
+  maintainer (skill `ship`). Others edit
+  this checkout at the same time: commit only your own hunks, and never
+  `git stash`, reset or otherwise move the working tree.
+- **No Claude attribution** in commits or pull requests.
+  `.claude/settings.json` turns it off; never add it by hand.
+- **Commit messages are English** and tell the story of the change. German
+  terms of the subject stay German (Regierungsvorlage,
+  Textgegenüberstellung). A rule that outlives the change also goes into
+  `docs/decisions.md`.
 - **Boring, low-ops tech.** No database, no accounts, no state layer. The
   predecessor project died in operation, not in construction. Anyone must be
   able to run a copy for under €100 a year.
 - **Measure, then show.** Read samples, not only rates; a "changes nothing"
   result is suspect until the harness is shown to cover the path.
-- Spelling in our own German text: "Paragraph", never "Paragraf".
+- **Check it yourself.** A drift run, a server check, a page in the browser
+  or a note that says "blocked" is yours to test, not the maintainer's
+  to-do. Re-measure every load-bearing number a subagent reports through
+  the production module, and look at the page before repeating a claim
+  about what it shows.
+- **Change what was asked, everywhere it applies, and nothing else.** A UI or
+  copy change reaches every place it occurs; a rename reaches every file
+  that carries the old name, `private/` included. Neighbouring code stays
+  as it is, and nothing is built, deleted or published unasked.
+- **Dates come from `date`,** never from dates already in the text. A date
+  later than today is an error.
+- **In chat, plain words.** Define a term the first time it appears; no
+  internal ids or status asides the maintainer has to decode.
+
+### Words
+
+In our own German text: „Paragraph", never „Paragraf" (quoted official
+text, the regexes that match it and API parameters such as RIS's
+`Paragraf=` keep theirs) · „Ministerium", never „Ressort" · „Anweisung",
+never „Anordnung" · „Vermerk" for the pill at a § · the object is an
+„Entwurf" (code: `Draft`), „Begutachtung" names the stage.
 
 ## Stack and commands
 
@@ -155,6 +188,14 @@ Gotchas that cost time before:
   although the typecheck passes. Import it explicitly.
 - Do not start a second dev server. If the browser and `curl` disagree, the
   running one is stale and needs a restart.
+- A shared `useFetch`/`useAsyncData` key keeps the options of its first
+  registration: never register it with `enabled: false` as a placeholder.
+- No `v-html` for upstream content; the server reduces it to plain text.
+- The current legislative period is never hardcoded without a fallback.
+- An address that goes away keeps a 301 to its nearest successor, for good.
+- No model call while a request is served.
+- Never send a message to a running Workflow agent: it starts a second copy
+  in the same worktree. Stop the workflow and relaunch it with the note.
 
 Deployment: `deploy/README.md`.
 
