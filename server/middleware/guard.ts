@@ -6,17 +6,21 @@
  *    proxy. Cold, one call fans out to hundreds of upstream requests; open
  *    to the internet, a loop over fifteen periods would get this server's
  *    address rate-limited by Parliament, which takes the whole site down
- *    with it. 404 rather than 403: from outside they do not exist. To
- *    measure one (the EU map's build, say), ask a built server
- *    (`node .output/server/index.mjs` with `BM_STATE_DIR`) from 127.0.0.1
- *    without an X-Forwarded-For header.
+ *    with it. 404 rather than 403: from outside they do not exist. They
+ *    answer 404 through the dev server on :3000 too: nitropack forwards
+ *    every request into its worker with an X-Forwarded-For header (checked
+ *    25.11.2026). To measure one (the EU map's build, say), ask a built
+ *    server (`node .output/server/index.mjs` with `BM_STATE_DIR`) from
+ *    127.0.0.1 without an X-Forwarded-For header, or the dev worker's own
+ *    socket (`curl --unix-socket <nitro-worker-….sock> http://localhost/…`).
  * 2. Every external request draws from a per-client budget, and the two
  *    routes that cost upstream requests on every call draw from a second,
  *    stricter one as well. A page's in-process API calls are not external
  *    requests: the page was admitted, its parts are not counted again.
  *
  * 3. A request that did not come through the proxy — the prewarm, the
- *    watchdog, the Länder archive, every request in dev — waits for fresh
+ *    watchdog, the Länder archive, a call to the dev worker's socket (not
+ *    the dev server's port, see 1) — waits for fresh
  *    cache values instead of taking a stale one (`cache/stale.ts`): the
  *    prewarm unit runs its builds one after another only because each curl
  *    returns when its build is done. A page's in-process API calls return

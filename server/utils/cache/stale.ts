@@ -58,9 +58,12 @@
  * served stale within their limits — the one place a direct request can get
  * a value built on stale inputs, and then only one already in flight.
  *
- * In dev every request is direct (no proxy, no `x-forwarded-for`), so dev
- * behaves as before 12.11.2026, as with `swr: false` — which is what a
- * developer reloading after an edit wants anyway.
+ * In dev a request from the browser is not direct: nitropack's dev server
+ * forwards it into its worker over a unix socket and adds `x-forwarded-for`
+ * (`createHTTPProxy`, checked 25.11.2026), so it takes a stale value like a
+ * visitor's. To wait for fresh values in dev, ask the worker's socket
+ * directly (`lsof -U -a -c node` names `nitro-worker-….sock`;
+ * `curl --unix-socket <sock> http://localhost/…`).
  *
  * Memory: an SWR entry is written without a TTL, so the production driver
  * holds one past its limit until the budget needs its room
