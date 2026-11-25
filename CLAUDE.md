@@ -1,10 +1,9 @@
 # CLAUDE.md
 
-Rules, measurements and rejected alternatives: `docs/decisions.md`. Read the
-relevant section before changing an area. Research memos that answer one
-question once go to `docs/research/`. Procedures (committing and deploying,
-handing over a UI change, a measuring round, researching a new source) are
-skills in `.claude/skills/`.
+Rules, measurements and rejected alternatives: one file per area in
+`docs/decisions/` (index `docs/decisions.md`); `.claude/rules/` loads an
+area's file when its code is read. Research memos: `docs/research/`.
+Procedures: skills in `.claude/skills/`.
 
 ## What this is
 
@@ -29,8 +28,8 @@ state – state your view*. Live at https://begutachtungs-monitor.at.
 - **Next:** Germany. It has no central source for drafts (each ministry
   publishes its own), so expect a source per publisher, as with the Länder.
 - **Also next:** the routes to a norm that `/wege` shows but the monitor does
-  not follow yet. Before building one, read `docs/decisions.md`, "Routes to a
-  norm, and what the monitor follows", and the last section of
+  not follow yet. Before building one, read `docs/decisions/routes.md` and the
+  last section of
   `docs/research/wege-zu-einer-rechtsnorm.md`.
 - **Therefore:** nothing new hardcodes Austria where configuration would do.
   Countries become path segments (`/at`, `/de`), not separate codebases.
@@ -70,7 +69,7 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
   Stellungnahmen is excluded from reuse. Never write a blanket CC BY claim.
 - **Where a document exists in both sources, RIS is read first**
   (`annexSourceFor`). That order and `READ_PARLIAMENT_COPY` do not move while
-  the licence question is open (`docs/decisions.md`, "Open questions").
+  the licence question is open (`docs/decisions/legal.md`, "Open questions").
 - **Statement texts are linked, never fetched or parsed** by the product.
   Machine reading of statement texts happens only under the text-and-data-mining
   exception (§ 42h UrhG).
@@ -86,8 +85,7 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
   adjust them in the same change. Typical causes: a new or changed source, a
   field or a name newly shown or withheld, anything stored, cached or
   counted, a cookie, a third party, hosting, money, a feature added or
-  removed. Each fact stands on one page (`docs/decisions.md`, "Each of the
-  prose pages has one job").
+  removed. Each fact stands on one page (`docs/decisions/legal.md`).
 - An edit to a legal page is named to the maintainer with its old and new
   wording, never made in passing. What the pages claim in law (a licence, a
   legal basis, who is named) changes only with the maintainer's decision.
@@ -105,8 +103,7 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
 - Every gap sentence opens with one of four lead words that say whose gap it
   is: „Nicht veröffentlicht", „Gerade nicht abrufbar", „Nicht lesbar",
   „Nicht im Monitor". Write it through `shared/utils/gaps.ts` and render it
-  with `GapNote`; the rule and its exceptions are in `docs/decisions.md`,
-  „A gap sentence opens with one of four lead words".
+  with `GapNote`; the rule and its exceptions: `docs/decisions/ui.md`.
 
 ### Framing: Nachverfolgung, not a blame counter
 
@@ -122,7 +119,7 @@ Stellungnahme. This binds UI and copy.
 - **Boring and clean.** Two hues with one meaning each: blue means "you can
   do something here", yellow is the highlighter. Hierarchy comes from size
   and weight. No decoration that carries no information.
-- Rules in full: `docs/decisions.md`, "Design and accessibility".
+- Rules in full: `docs/decisions/ui.md`.
 
 ## Working rules
 
@@ -138,8 +135,7 @@ Stellungnahme. This binds UI and copy.
   `.claude/settings.json` turns it off; never add it by hand.
 - **Commit messages are English** and tell the story of the change. German
   terms of the subject stay German (Regierungsvorlage,
-  Textgegenüberstellung). A rule that outlives the change also goes into
-  `docs/decisions.md`.
+  Textgegenüberstellung).
 - **Boring, low-ops tech.** No database, no accounts, no state layer. The
   predecessor project died in operation, not in construction. Anyone must be
   able to run a copy for under €100 a year.
@@ -218,9 +214,6 @@ the maintainer:
 2. Persistence and history (snapshots of deadlines and statement counts).
 3. Base rates across hundreds of procedures.
 4. Synthesis of statement texts (clustering, summaries).
-
-"Upcoming" consultations have no verified data source. That is an open
-research question, not a build item.
 
 The maintainer's working list is private. If a task is not clearly ordinary
 work, ask before building.
