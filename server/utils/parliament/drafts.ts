@@ -67,6 +67,17 @@ const meListConfig = defineCachedFunction(
  * fallback 'XXVIII'. Derived: `findGpCode` is our search through a foreign
  * document, so it belongs in the layer that dies with the code
  * (`cache/base.ts`). The configuration underneath it is the cached half.
+ *
+ * TO SEE THE DAY A NEW PERIOD CONVENES (25.09.2026): return the new code at
+ * the top of this function, let the running dev server reload it, look, and
+ * delete the line. Safe only because this function sits on `derived`, which
+ * dev mounts in memory (`nitro.devStorage` in `nuxt.config.ts`): the forced
+ * value dies with the revert. A function on the `cache` mount would keep it
+ * on disk, so the trick does not carry over to upstream payloads. Lists 81
+ * and 101 answer a period that does not exist yet with 0 rows and a valid
+ * header, so the GP and header checks pass and the page shows what an empty
+ * period looks like. Re-measure a real change of period with
+ * `scripts/corpus/periodenwechsel.ts <alte> <neue>`.
  */
 export const getCurrentGp = defineCachedFunction(
   async (): Promise<string> => {

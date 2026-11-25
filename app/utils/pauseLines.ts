@@ -15,6 +15,15 @@
  *   (the start page's title); a „du" here would be a second form on one
  *   site, and a „Sie" in an aside is stiff.
  *
+ * What makes a line work, read off the candidates kept and dropped
+ * (23.11.2026): a triad („kein …, kein …, kein …"), emptiness offered as a
+ * gift, a concrete outdoor image that invites, effort recognised and a rest
+ * allowed, a plain legal formula applied to the pause („Paragraph 404: …").
+ * What does not: echo puns and antitheses, twisted proverbs, nature against
+ * law as an aphorism, a personified internet, forced wordplay, and legal
+ * terms only insiders know. Further lines, and a second language's, follow
+ * the same patterns.
+ *
  * The words are here, not in the templates, so a second language can replace
  * them. A second language writes its own lines; these do not translate.
  *

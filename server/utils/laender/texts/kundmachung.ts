@@ -54,6 +54,13 @@ type Decision = Pick<ResolvedKundmachung, 'record' | 'certainBy'>
  * the draft reads as law text, and every read answered. Until then such a
  * find stood on the page as „Gesetz geworden" though the check had found it
  * was not this draft's (`if (title.vorlageUrl) return null`, „no find").
+ *
+ * „Reads as law text" (`draft.units`, from `landDraftUnits`) is the guard
+ * that matters most: the PDF a Land files as its draft can be another
+ * document — Salzburg files a Stellungnahme of the Gemeindeverband as the
+ * „Entwurf" of 23088 — and a letter matches no Vorlage, so without the guard
+ * it would refute a right find. No text-based decision may refute anything
+ * before the draft reads as law.
  */
 export type KundmachungVerdict = ResolvedKundmachung | 'widerlegt' | null
 

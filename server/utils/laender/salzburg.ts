@@ -190,6 +190,12 @@ export function parseSalzburgRegister(html: string, registerUrl: string): RawEnt
  *  - A Textgegenüberstellung filed long after its draft, numbered right
  *    after it: 18171 and 18182, dated 2017 for drafts of 2015 and 2016. The
  *    number says they were filed together; the year limit does not apply.
+ *
+ * A change to these rules is diffed old against new over the whole register,
+ * both kinds (some 840 Gesetze and 1,540 Verordnungen on 23.10.2026), and
+ * every row whose grouping changes is read. A rule that joins one more pair
+ * can split or swallow another anywhere in the register; a sample of drafts
+ * does not show it.
  */
 const ATTACHMENT_SEP_RE = /^(?:\s*[-–;]\s*|\s+\()(.+?)\)?\s*$/
 /** An addition that names a kind of document, not a year or a name. */

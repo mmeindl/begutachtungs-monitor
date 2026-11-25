@@ -6,7 +6,10 @@
  *    proxy. Cold, one call fans out to hundreds of upstream requests; open
  *    to the internet, a loop over fifteen periods would get this server's
  *    address rate-limited by Parliament, which takes the whole site down
- *    with it. 404 rather than 403: from outside they do not exist.
+ *    with it. 404 rather than 403: from outside they do not exist. To
+ *    measure one (the EU map's build, say), ask a built server
+ *    (`node .output/server/index.mjs` with `BM_STATE_DIR`) from 127.0.0.1
+ *    without an X-Forwarded-For header.
  * 2. Every external request draws from a per-client budget, and the two
  *    routes that cost upstream requests on every call draw from a second,
  *    stricter one as well. A page's in-process API calls are not external

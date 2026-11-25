@@ -17,6 +17,12 @@
  * `inset` switch went with the last line-under-a-list caller): the box's
  * hairline and inset while there is something to show, nothing visible once
  * everything is shown, so no empty band is left.
+ *
+ * The two buttons (23.10.2026): „Alle N anzeigen" stands whenever any row is
+ * hidden, with no threshold — the `allAbove` prop that hid it below a count
+ * is gone. „Weitere 10 anzeigen" joins it only while more than one step
+ * remains: with ten or fewer left both buttons are the same press, and the
+ * one that names the list's end is kept.
  */
 const props = defineProps<{
   /** How many rows the list is currently showing (may exceed `total`). */
