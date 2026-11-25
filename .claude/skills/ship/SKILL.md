@@ -81,8 +81,8 @@ it; do not fix it.
   change makes untrue. Fix it in the same commit, after naming the old and
   new wording to the maintainer.
 
-A rule that outlives the change goes into `docs/decisions.md` in the same
-commit.
+A rule that outlives the change goes into its area file in `docs/decisions/`
+(the index `docs/decisions.md` lists them) in the same commit.
 
 ## 4. Commit
 

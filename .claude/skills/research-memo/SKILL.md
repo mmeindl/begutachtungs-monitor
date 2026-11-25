@@ -15,8 +15,9 @@ Germany, the EU cycle and the remaining routes on `/wege` all start here.
 ## 1. Read what exists
 
 - `CLAUDE.md` in full.
-- The sections of `docs/decisions.md` the question touches. For a new route
-  or stage, that is "Routes to a norm, and what the monitor follows".
+- The area files of `docs/decisions/` the question touches. For a new route
+  or stage, that is `routes.md`, "Routes to a norm, and what the monitor
+  follows".
 - `docs/research/`: an earlier memo may already answer half of it. Extend it
   rather than starting a parallel one.
 - `docs/api-exploration.md` for known upstream traps.
@@ -85,7 +86,7 @@ so the maintainer can answer "1. A 2. B". Do not build.
   section that the build keeps current.
 - Build only after approval. Implementation goes to Opus agents. The lead
   reviews and re-measures.
-- Rules that outlive the plan go into `docs/decisions.md`.
+- Rules that outlive the plan go into their area file in `docs/decisions/`.
 
 ## Provisional: refine on first use
 

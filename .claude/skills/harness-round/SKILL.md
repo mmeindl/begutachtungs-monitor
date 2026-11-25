@@ -16,8 +16,8 @@ the last section.
 
 ## The rules every measurement follows
 
-They are in `docs/decisions.md`, "Measuring". Read that section before the
-first command. The ones that cost the most when forgotten:
+They are in `docs/decisions/measuring.md`, which loads with any file under
+`scripts/harness/`. Read it before the first command. The ones that cost the most when forgotten:
 
 - **A figure on a page comes out of a harness record, never out of a hand.**
 - **A null result is evidence only once the instrument reaches the changed
@@ -105,9 +105,34 @@ from there, so the script stays the single source.
    - Bring branches together one at a time on an integration branch, and
      run the full checks after each one. Cross-branch breaks show up there.
 5. **Close** with a full Mode A round. Update `/datenlage`, `/genauigkeit` and
-   `docs/decisions.md` where a rule outlives the fix. Ask before landing on
+   the area file in `docs/decisions/` where a rule outlives the fix. Ask before landing on
    main. After the push, take the annex-drift baseline as the `ship` skill
    describes.
+
+### Before a fix ships
+
+These two rules stood in `docs/decisions.md` until 25.11.2026. They are
+procedure, so they live here.
+
+- **Before a parser change, compare old against new over the whole corpus and
+  read every item that moves.** Zeros measured on tuning data are in-sample.
+- **A fix of the struck-text rule is attacked by a reader before it ships**
+  (22.11.2026). Four reviews in a row, each by readers who had not written
+  the code, found the fix before them accounting for more than the draft
+  strikes; two of the holes had cleared a real §
+  (`docs/decisions/draft-check.md`, „Each instruction accounts only where and
+  for what it strikes"), a third was found only on drafts the check had never
+  been measured on. The rule
+  that came of it: a change that lets the check account for more is given
+  to an independent reader with the instruction to break it, and every
+  finding to a second reader who tries to refute it; a change that makes it
+  account for less needs the corpus read alone, every § that moves and,
+  for a change to how a line is read, every real instruction line through
+  the reader before and after (9,401 distinct lines of GP XXVIII, a matter
+  of seconds). Removing a reading can move the accounting to a looser
+  fallback: when „§ 5 Abs. 1 erster Satz lautet:" stopped counting as the
+  Absatz written anew, its payload, printed from the § designation on,
+  would have counted as the whole §. The fallback is checked with the fix.
 
 ### Provisional: refine on first use
 

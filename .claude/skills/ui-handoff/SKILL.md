@@ -13,7 +13,7 @@ left?" and "why did you change that?".
 
 ## 1. Before building: idiom and scope
 
-- **Find the existing idiom first.** The rules are in `docs/decisions.md`,
+- **Find the existing idiom first.** The rules are in `docs/decisions/ui.md`,
   "Design and accessibility", and in the box grammar and one-hue rules there.
   Grep for a component or pattern that already does this job. A new pattern
   needs a reason that you can state.
