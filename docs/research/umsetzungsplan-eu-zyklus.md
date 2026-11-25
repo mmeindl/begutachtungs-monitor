@@ -481,8 +481,7 @@ reading through the built reader was done the same day (27 windows in
 full, 4,537 rows, 2,078 distinct names) and added two conditions: no
 number of five or more digits and no e-mail address in the name, and only
 the head of the field is shown (cut at „;", a web address, „Contact:"; a
-head over 120 characters is counted). Not done: the Impressum sentence
-(maintainer's). Not verified: the portal's answer to a page number past
+head over 120 characters is counted). Not verified: the portal's answer to a page number past
 the last.
 
 **The fold became a list, 15.11.2026** (maintainer's decisions; the rule
@@ -497,9 +496,9 @@ counted row is a shape without them (`FEEDBACK_READER_VERSION` 2, the
 cache keyed by initiative and publication, since the links carry the
 initiative). The reading knows no country; the view takes the configured
 member state, or none. Persons, „Sonstige", unnamed organisations and
-unpublished rows stay figures under the list. Not done: the Impressum
-sentence, which does not yet say that each contribution is linked and
-listed with its date, kind and country. Not verified: the panel in a
+unpublished rows stay figures under the list. The sentence on `/quellen#kommission`
+says since 25.11.2026 that each contribution is linked and listed with its date,
+kind and country. Not verified: the panel in a
 browser (no dev server in that session).
 
 ### Step 5 — the European Citizens' Initiative

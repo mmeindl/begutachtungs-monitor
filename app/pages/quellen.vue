@@ -219,8 +219,8 @@ const LAENDER_WITHOUT_LICENCE: { name: string; label: string; href: string }[] =
               class="link-inline"
             >Portal</ExternalLink>.
             Die Rückmeldungen selbst stammen von Dritten: Ihre Texte übernimmt
-            der Monitor nicht; er nennt einreichende Organisationen und
-            verlinkt die Rückmeldung im Portal.
+            der Monitor nicht; er nennt einreichende Organisationen mit Datum,
+            Art und Land der Rückmeldung und verlinkt sie im Portal.
           </dd>
         </div>
         <div id="buergerinitiative">
