@@ -713,17 +713,28 @@ const statementsSortNote = computed(() => {
           <UButton
             color="neutral"
             variant="outline"
-            icon="i-lucide-sliders-horizontal"
             class="shrink-0 md:hidden"
+            :class="moreFilters && 'ring-ink'"
             :aria-expanded="filtersOpen"
             aria-controls="filter-more-panel"
             @click="filtersOpen = !filtersOpen"
           >
+            <!-- The „Länder" button's grammar (25.11.2026): an ink ring
+                 while something is chosen, a chevron that turns when open,
+                 no leading icon. Before, open and closed looked alike; and
+                 with the chevron the sliders icon pushed the button off the
+                 line of „Stellungnahme möglich" at 390 px. -->
             Filter
             <span
               v-if="moreFilters"
               class="rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-surface"
             >{{ moreFilters }}<span class="sr-only"> aktiv</span></span>
+            <UIcon
+              name="i-lucide-chevron-down"
+              class="size-4 shrink-0 text-ink-muted transition-transform"
+              :class="filtersOpen && 'rotate-180'"
+              aria-hidden="true"
+            />
           </UButton>
           <!-- Set widths and `block` selects: a native <select> sizes
                itself by its LONGEST option, so the widths are set here.
