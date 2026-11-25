@@ -38,6 +38,7 @@ export function useSourceChoice(): {
   laender: ComputedRef<LandCode[]>
   isLocked: (code: SourceCode) => boolean
   toggle: (code: SourceCode) => void
+  setLaender: (codes: readonly LandCode[]) => void
   /** `?quellen=…` for a link that should carry the choice; '' for the default. */
   queryValue: ComputedRef<string>
 } {
@@ -70,15 +71,28 @@ export function useSourceChoice(): {
   const isLast = (code: SourceCode) => chosen.value.length === 1 && chosen.value[0] === code
   const isLocked = (code: SourceCode) => code === 'bund' && isLast(code)
 
-  function toggle(code: SourceCode): void {
-    if (isLocked(code)) return
-    const next = isLast(code)
-      ? [...DEFAULT_SOURCES]
-      : chosen.value.includes(code) ? chosen.value.filter((c) => c !== code) : [...chosen.value, code]
+  /** The one write: an empty choice falls back to the default (NEVER EMPTY). */
+  function commit(next: readonly SourceCode[]): void {
     chosen.value = parseSourceList(formatSourceList(next)) ?? [...DEFAULT_SOURCES]
     const value = isDefaultSources(chosen.value) ? null : formatSourceList(chosen.value)
     cookie.value = value
     router.replace({ query: { ...route.query, [SOURCE_PARAM]: value ?? undefined } })
+  }
+
+  function toggle(code: SourceCode): void {
+    if (isLocked(code)) return
+    commit(isLast(code)
+      ? DEFAULT_SOURCES
+      : chosen.value.includes(code) ? chosen.value.filter((c) => c !== code) : [...chosen.value, code])
+  }
+
+  /**
+   * „Alle Länder" of the Länder control (`SourceChips`, 25.11.2026):
+   * the Länder replaced at once, the Bund as it was. No Länder and no Bund
+   * is the empty choice, so the Bund comes back, as with the last chip.
+   */
+  function setLaender(codes: readonly LandCode[]): void {
+    commit([...(chosen.value.includes('bund') ? ['bund' as const] : []), ...codes])
   }
 
   return {
@@ -87,6 +101,7 @@ export function useSourceChoice(): {
     laender: computed(() => chosen.value.filter((c): c is LandCode => c !== 'bund')),
     isLocked,
     toggle,
+    setLaender,
     queryValue: computed(() => (isDefaultSources(chosen.value) ? '' : formatSourceList(chosen.value))),
   }
 }
