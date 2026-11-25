@@ -35,6 +35,21 @@ an entry holds, and the other areas: `docs/decisions.md`.
   cannot be redirected and the old `#imp-license` is linked from outside
   (`docs/decisions/foundations.md`, „A section's anchor does not repeat its
   page").
+- **The Medieninhaber and controller is the Verein** (25.11.2026, decided by
+  the maintainer; before, the maintainer as a private person). Its name,
+  register number, address and board stand once, in
+  `app/utils/publisher.ts`; `/impressum#owner` and `/datenschutz#controller`
+  render the same block from it (`PublisherAddress`). The board is named
+  because § 25 Abs. 2 MedienG asks a Verein that is Medieninhaber for its
+  board and its purpose: a deliberate exception to „no personal data in the
+  repository", like the address. The purpose stands in `/impressum#purpose`
+  in the statutes' own words and whole: a shortened purpose would be our
+  reading of it. The rule of representation is not repeated: the register
+  carries it in full. The maintainer pays the running costs
+  privately for now, and while the Verein has no bank account donations go
+  to him as a private person. `/impressum#shares`, `/ueber#support` and
+  `/datenschutz#donations` say that in the same words; the three change
+  together.
 - **The monitor's own texts are CC BY 4.0** (16.11.2026, decided by the
   maintainer; `/quellen#eigene-texte`): explanations, method texts, the
   descriptions of routes and of the Datenlage. Not the material of the

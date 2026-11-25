@@ -56,17 +56,10 @@ const contact = useContact()
       Erklärung kurz – und sie beschreibt nur, was tatsächlich passiert.
     </p>
 
+    <!-- The controller is the Medieninhaber, the Verein since 25.11.2026:
+         one block for both pages (`PublisherAddress`). -->
     <ProseSection id="controller" heading="Verantwortlicher" first>
-      <address>
-        Manuel Meindl<br>
-        Steingasse 1<br>
-        4020 Linz, Österreich<br>
-        E-Mail:
-        <a
-          :href="contact.mailto"
-          class="link-inline"
-        >{{ contact.email }}</a>
-      </address>
+      <PublisherAddress />
       <p>
         Ein Datenschutzbeauftragter ist nicht bestellt; die Voraussetzungen
         des Art 37 DSGVO liegen nicht vor. Die vollständigen Angaben zum
@@ -199,11 +192,14 @@ const contact = useContact()
       </p>
     </ProseSection>
 
+    <!-- 25.11.2026: the account is a person's, not the Medieninhaber's. The
+         Verein has none yet; `/impressum#shares` says why. -->
     <ProseSection id="donations" heading="Spenden">
       <p>
         Wer per Überweisung spendet, übermittelt Name, IBAN und Betrag an das
-        Konto des Medieninhabers. Diese Angaben stehen nur in seinem
-        Kontoauszug und werden nicht weiterverwendet. Liberapay ist ein
+        private Konto von Manuel Meindl, nicht an den Verein. Diese Angaben
+        stehen nur in seinem Kontoauszug und werden nicht weiterverwendet.
+        Liberapay ist ein
         eigener Dienst mit eigener Datenschutzerklärung; der Monitor
         verlinkt ihn nur.
       </p>

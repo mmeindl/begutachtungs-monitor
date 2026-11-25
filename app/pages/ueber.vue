@@ -2,6 +2,7 @@
 import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import { feedUrlsOf } from '~/composables/useFeedUrls'
 import { REPORT_LABEL_DE } from '~/utils/contact'
+import { PUBLISHER } from '~/utils/publisher'
 
 usePageSeo({
   title: 'Über das Projekt',
@@ -87,17 +88,19 @@ const contact = useContact()
       </ul>
       <!-- Voluntary, and deliberately without the article number: no text
            the site shows about a draft is model-generated, and its own
-           copy is reviewed and owned by the Medieninhaber — the human-review
-           exception of Art 50(4) AI Act. Citing it here would read as a
-           legal opinion; the facts are what a reader can check. If a model
-           ever produces what a page shows, this paragraph stops being true. -->
+           copy is reviewed by a person and owned by the Medieninhaber — the
+           human-review exception of Art 50(4) AI Act. Citing it here would
+           read as a legal opinion; the facts are what a reader can check. If
+           a model ever produces what a page shows, this paragraph stops
+           being true. The sentence names the two apart since 25.11.2026:
+           the Medieninhaber is a Verein, and a Verein reviews nothing. -->
       <p>
         Beim Programmieren und Formulieren hilft ein KI-Assistent. Was der
         Monitor zu einem Entwurf zeigt, erzeugt aber kein Sprachmodell:
         Fristen, Zahlen und Texte kommen aus den amtlichen Quellen, die
         Vergleiche rechnet gewöhnliche Software, und beim Aufruf einer Seite
-        wird kein KI-System befragt. Jeden Text dieser Website hat der
-        Medieninhaber geprüft und verantwortet ihn.
+        wird kein KI-System befragt. Jeden Text dieser Website hat ein Mensch
+        geprüft; verantwortet wird er vom Medieninhaber.
       </p>
     </ProseSection>
 
@@ -249,25 +252,27 @@ const contact = useContact()
     </ProseSection>
 
     <!-- 16.11.2026: says in so many words who receives the money and that
-         nothing is given for it. The recipient is the Medieninhaber as a
-         private person; no organisation collects for the monitor. The
-         Impressum's „Beteiligungsverhältnisse" says the same; change both
-         together. -->
+         nothing is given for it. 25.11.2026: the Verein runs the monitor,
+         but it has no account yet, so the recipient is still a private
+         person and the paragraph says „nicht an den Verein". The Impressum's
+         „Beteiligungsverhältnisse" and `/datenschutz#donations` say the
+         same; change the three together. -->
     <ProseSection id="support" heading="Unterstützen">
       <p>
-        Der Monitor ist werbefrei und ohne Bezahlschranke; Betrieb und
-        Weiterentwicklung trägt Manuel Meindl als Privatperson. Wer das
-        Projekt unterstützen möchte, kann das über
+        Der Monitor ist werbefrei und ohne Bezahlschranke. Betrieben wird er
+        vom Verein {{ PUBLISHER.shortName }}; die Kosten für Server und Domain
+        trägt bisher Manuel Meindl als Privatperson, und der Verein hat noch
+        kein eigenes Konto. Wer das Projekt unterstützen möchte, kann das über
         <ExternalLink
           href="https://liberapay.com/manuelmeindl/donate"
           class="link-inline"
         >Liberapay</ExternalLink>
         tun – oder per Überweisung an Manuel Meindl, IBAN
         <span class="select-all font-medium text-ink">AT59 1501 3002 3104 4157</span>.
-        Beiträge sind freiwillige Zuwendungen an ihn persönlich, ohne
-        Gegenleistung: Sie decken Server und Domain, was darüber hinausgeht,
-        fließt in die Weiterentwicklung. Steuerlich absetzbar sind sie
-        nicht.
+        Beiträge sind deshalb freiwillige Zuwendungen an ihn persönlich, nicht
+        an den Verein, und ohne Gegenleistung: Sie decken Server und Domain,
+        was darüber hinausgeht, fließt in die Weiterentwicklung. Steuerlich
+        absetzbar sind sie nicht.
       </p>
     </ProseSection>
 
@@ -281,7 +286,10 @@ const contact = useContact()
         <a
           :href="contact.mailto"
           class="link-inline"
-        >{{ contact.email }}</a>. Es antwortet Manuel Meindl.
+        >{{ contact.email }}</a>. Es antwortet Manuel Meindl. Den Monitor
+        betreibt der Verein {{ PUBLISHER.shortName }}; die Angaben dazu
+        stehen im
+        <NuxtLink to="/impressum#owner" class="link-inline">Impressum</NuxtLink>.
       </p>
       <p>
         Eine Angabe stimmt nicht, ein Paragraph ist falsch zugeordnet, etwas

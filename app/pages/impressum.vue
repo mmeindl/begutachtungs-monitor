@@ -30,7 +30,18 @@
  * § 25 Abs 1 asks for "ständig leicht und unmittelbar auffindbar": hence the
  * footer link on every page. Not in the main navigation — that is capped at
  * four entries, and nobody looks for this page there.
+ *
+ * The Medieninhaber is the Verein (since 25.11.2026; before, the maintainer
+ * as a private person). § 25 Abs 2 asks a Verein for its board and its
+ * purpose. Name, register number, address and board:
+ * `app/utils/publisher.ts`; the purpose stands in `#purpose` in the
+ * statutes' own words. The maintainer pays the running costs privately
+ * for now, and while the Verein has no bank account donations go to him
+ * personally: `#shares` says both, in the same words as `/ueber#support`
+ * and `/datenschutz#donations`. Change the three together.
  */
+import { PUBLISHER, boardLineOf } from '~/utils/publisher'
+
 usePageSeo({
   title: 'Impressum',
   description:
@@ -38,6 +49,7 @@ usePageSeo({
 })
 
 const contact = useContact()
+const boardLine = boardLineOf(PUBLISHER.board)
 </script>
 
 <template>
@@ -50,28 +62,24 @@ const contact = useContact()
     </p>
 
     <ProseSection id="owner" heading="Medieninhaber & Herausgeber" first>
-      <!-- <address> is the semantic element for the contact block of its
-           nearest section; `prose-flow` takes the browser's default italic
-           back. -->
-      <address>
-        Manuel Meindl<br>
-        Steingasse 1<br>
-        4020 Linz, Österreich<br>
-        E-Mail:
-        <a
-          :href="contact.mailto"
-          class="link-inline"
-        >{{ contact.email }}</a>
-      </address>
+      <PublisherAddress />
       <p>
-        Der Begutachtungs-Monitor ist ein privates, nichtkommerzielles
-        Civic-Tech-Projekt einer Einzelperson. Er steht in keiner Verbindung
-        zum Parlament, zu einem Bundesministerium oder zum Arbeitgeber des
-        Medieninhabers.
+        Vorstand: {{ boardLine }}.
+      </p>
+      <p>
+        Der Begutachtungs-Monitor ist ein nichtkommerzielles
+        Civic-Tech-Projekt. Betrieben wird er von einem gemeinnützigen
+        Verein. Der Monitor steht in keiner Verbindung zum Parlament, zu
+        einem Bundesministerium oder zum Arbeitgeber des Obmanns.
       </p>
     </ProseSection>
 
-    <ProseSection id="purpose" heading="Unternehmensgegenstand">
+    <!-- 25.11.2026: the Vereinszweck, which § 25 Abs 2 asks of a Verein that
+         is Medieninhaber. § 2 of the statutes word for word and whole: a
+         shortened purpose would be our reading of it. The statutes number
+         the three items; the page's lists have bullets, and the numbers
+         carry nothing here. -->
+    <ProseSection id="purpose" heading="Unternehmensgegenstand & Vereinszweck">
       <p>
         Betrieb einer nichtkommerziellen Informationsplattform zur
         Gesetzgebung in Österreich: Aufbereitung öffentlich zugänglicher
@@ -80,22 +88,62 @@ const contact = useContact()
         Kundmachung, zum EU-Recht, das sie umsetzen, und zu den Anliegen an
         das Parlament.
       </p>
+      <p>
+        Der Zweck des Vereins, im Wortlaut seiner Statuten (§ 2):
+      </p>
+      <p>
+        Der Verein, dessen Tätigkeit nicht auf Gewinn gerichtet ist, verfolgt
+        ausschließlich und unmittelbar gemeinnützige Zwecke im Sinn der
+        §§ 34 ff BAO. Er ist überparteilich.
+      </p>
+      <p>
+        Zweck des Vereins ist die Förderung des demokratischen Staatswesens
+        durch staatsbürgerliche Bildung, die Förderung der Erwachsenenbildung
+        sowie die Förderung von Wissenschaft und Forschung, jeweils auf dem
+        Gebiet der Rechtsetzung und der Beteiligung der Bevölkerung daran.
+        Der Verein fördert dabei insbesondere
+      </p>
+      <ul>
+        <li>
+          die Transparenz und Nachvollziehbarkeit der Rechtsetzung von ihrer
+          Vorbereitung in der Verwaltung über die Begutachtung bis zur
+          Evaluierung, vor allem der Begutachtungs- und
+          Konsultationsverfahren zu Gesetzes- und Verordnungsentwürfen in
+          Österreich, in anderen europäischen Staaten und in der Europäischen
+          Union: welche Entwürfe zur Begutachtung stehen, wie sie danach
+          verändert werden und was aus den Stellungnahmen dazu wird;
+        </li>
+        <li>
+          den einfachen und verständlichen Zugang der Bevölkerung zu
+          Gesetzesentwürfen, Fristen und Verfahren und ihre Beteiligung an
+          der Rechtsetzung und an anderen demokratischen
+          Entscheidungsverfahren;
+        </li>
+        <li>
+          die Verfügbarkeit und Nutzbarkeit offener Daten der öffentlichen
+          Hand über Rechtsetzung und Beteiligung.
+        </li>
+      </ul>
     </ProseSection>
 
     <!-- 16.11.2026: the sentence said „nicht finanziert, weder durch
          Förderungen noch durch Spenden", while /ueber has asked for donations
-         since 04.10.2026. It now says what is true: donations, to the
-         Medieninhaber as a private person. -->
+         since 04.10.2026. It now says what is true: donations, to a private
+         person. 25.11.2026: the Medieninhaber is the Verein; who pays the
+         costs for now and why donations still go to a person stands here,
+         because the reader who finds a Verein above expects its account
+         below. -->
     <ProseSection id="shares" heading="Beteiligungsverhältnisse">
       <p>
-        Medieninhaber ist eine natürliche Person. Es bestehen keine
-        Beteiligungen anderer Personen oder Unternehmen, keine stillen
-        Beteiligungen und keine Treuhandverhältnisse. Das Projekt erhält
-        keine Förderungen und keine Werbeeinnahmen und hat keine
-        Auftraggeber. Freiwillige
+        Medieninhaber ist ein Verein. An ihm bestehen keine Beteiligungen,
+        keine stillen Beteiligungen und keine Treuhandverhältnisse. Das
+        Projekt erhält keine Förderungen und keine Werbeeinnahmen und hat
+        keine Auftraggeber. Die Kosten für Server und Domain trägt bisher
+        Manuel Meindl als Privatperson. Der Verein hat noch kein eigenes
+        Konto: Freiwillige
         <NuxtLink to="/ueber#support" class="link-inline">Spenden</NuxtLink>
-        gehen an den Medieninhaber als Privatperson. Ändert sich daran etwas,
-        steht es hier.
+        gehen deshalb an ihn persönlich, nicht an den Verein. Ändert sich
+        daran etwas, steht es hier.
       </p>
     </ProseSection>
 
