@@ -35,6 +35,11 @@ import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
  * future level (Gemeinden) is a kind of its own, chosen by place, and does
  * not join this row.
  *
+ * The open panel is edged by a rule on its left (25.11.2026): its chips
+ * and the filter chips below are the same control, and without the rule
+ * „Wien" read as the first filter. The rule says where the Länder end; a
+ * tinted ground would have said it louder than the rest of the box.
+ *
  * Where every Land is unavailable with one reason (the homepage ranking),
  * the button itself is drawn unavailable and opens nothing: nine dashed
  * chips behind a click would say nine times what one sentence says.
@@ -81,7 +86,9 @@ const longLabel = computed(() => laenderLabel(4))
 /**
  * „Alle Länder", the first chip of the panel (25.11.2026): the select-all
  * box. Ticked when all nine are chosen, and then a press clears them; else a
- * press adds the rest. Not two text buttons „Alle" and „Keine" after the
+ * press adds the rest. Some but not all chosen, its box carries a dash
+ * (`mixed`, 25.11.2026): it then reads as the select-all it is, not as a
+ * tenth Land that happens to be off. Not two text buttons „Alle" and „Keine" after the
  * chips (built and dropped the same day): bare words in a row of chips read
  * as two more items without a box, a disabled one as broken, and clearing
  * is one or two presses anyway.
@@ -135,9 +142,9 @@ const allUnavailable = computed(() => {
       :id="panelId"
       role="group"
       aria-label="Länder"
-      class="flex basis-full flex-wrap items-center gap-2"
+      class="flex basis-full flex-wrap items-center gap-2 border-l-2 border-baseline pl-3"
     >
-      <ToggleChip :pressed="allLaender" @toggle="setLaender(allLaender ? [] : LAND_CODES)">
+      <ToggleChip :pressed="allLaender" :mixed="laender.length > 0" class="me-2" @toggle="setLaender(allLaender ? [] : LAND_CODES)">
         Alle Länder
       </ToggleChip>
       <ToggleChip

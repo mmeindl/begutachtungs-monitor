@@ -28,6 +28,13 @@ const props = defineProps<{
    * title and its accessible name.
    */
   locked?: string | null
+  /**
+   * Some of what it stands for is on, not all — the select-all chip
+   * „Alle Länder" with four of nine chosen (`SourceChips`, 25.11.2026).
+   * Drawn as off with a dash in the box, announced as „teilweise gedrückt"
+   * (`aria-pressed="mixed"`), so the box tells all, some and none apart.
+   */
+  mixed?: boolean
 }>()
 
 const emit = defineEmits<{ toggle: [] }>()
@@ -41,7 +48,7 @@ function press(): void {
   <UButton
     color="neutral"
     :variant="pressed && !unavailable ? 'subtle' : 'outline'"
-    :aria-pressed="pressed"
+    :aria-pressed="mixed && !pressed ? 'mixed' : pressed"
     :aria-disabled="unavailable || locked ? true : undefined"
     :title="unavailable ?? locked ?? undefined"
     class="shrink-0"
@@ -50,7 +57,7 @@ function press(): void {
   >
     <!-- A box, ticked when on: says „toggle" in both states, and both
          icons are one width, so pressing moves nothing. -->
-    <UIcon :name="pressed ? 'i-lucide-square-check' : 'i-lucide-square'" class="size-4 shrink-0" aria-hidden="true" />
+    <UIcon :name="pressed ? 'i-lucide-square-check' : mixed ? 'i-lucide-square-minus' : 'i-lucide-square'" class="size-4 shrink-0" aria-hidden="true" />
     <slot />
     <span v-if="unavailable || locked" class="sr-only">({{ unavailable ?? locked }})</span>
   </UButton>
