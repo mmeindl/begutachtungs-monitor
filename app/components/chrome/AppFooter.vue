@@ -34,7 +34,10 @@
  *     and no section: a block of rows under every page would stand beside
  *     the doors into lawmaking and be read as one of them. It is also the
  *     contact line („Kontakt: …" stood in the colophon until then): the
- *     project's addressees should not have to go to the Impressum first;
+ *     project's addressees should not have to go to the Impressum first.
+ *     „Am Monitor", not a bare „Mitmachen": on this site that word means
+ *     taking part in lawmaking. No header label for it: a sixth does not
+ *     fit at 320 px (`AppHeader`);
  *   - „Projekt unterstützen" — a pointer to /ueber, not a donate button:
  *     the ask, its channels and the no-deductibility caveat stand together
  *     there; the footer carries the pointer, not the pitch;

@@ -57,10 +57,12 @@
  * who filed. The line has just said that this part is the monitor's and
  * may therefore be wrong; the place to say so is beside it, not on another
  * page. A line that only credits publishers gets none: an error in a
- * source's own data is not ours to correct. The component writes it, as it
- * writes „Markierung", so no section can forget it. It opens a mail that
- * already names the page and the claim (`app/utils/contact.ts`). After
- * „Methode": whoever doubts the marking reads how it was made first. Muted
+ * source's own data is not ours to correct. Nor does a report line stand
+ * under every page: under each draft nobody had the question. The component
+ * writes it, as it writes „Markierung", so no section can forget it. It
+ * opens a mail that already names the page and the claim
+ * (`app/utils/contact.ts`). After „Methode": whoever doubts the marking
+ * reads how it was made first. Muted
  * and not blue-filled, because blue buttons are the doors into lawmaking
  * and this is a note to the monitor.
  *

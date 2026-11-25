@@ -148,7 +148,9 @@ export interface DraftArticle {
    * printed, the key is the Artikel's number, which is unique in its text.
    * Only the line directly below: a heading further down is the law's own
    * („2. Abschnitt"), and taken as a name it would rename the law half way.
-   * `segmentUnits` carries the same rule (`lawUnits.ts`).
+   * `segmentUnits` carries the same rule (`lawUnits.ts`). Not proven
+   * against their PDF drafts: three Salzburg Landesgesetzblätter (10/2018,
+   * 12/2020, 82/2018).
    */
   key: string | null
   /**

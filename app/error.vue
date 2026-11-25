@@ -67,7 +67,8 @@ function retry() {
        app.vue, so it builds the same shell. Until then a card stood alone
        on an empty page, and the only way on was the start page. Header and
        footer fetch nothing, and the router clears the error when a link is
-       followed. -->
+       followed. No illustration and no large „404": the status stands as
+       the small label above the title. -->
   <UApp v-if="missing" :locale="de">
     <NuxtLoadingIndicator color="var(--color-ink)" :height="2" />
     <NuxtLayout>

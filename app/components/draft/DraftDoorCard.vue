@@ -31,7 +31,10 @@ import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
  * („Begutachtung · Noch 5 Tage · bis …") — only where a second card stands
  * beside it; alone, the page says which window it is. Until then the
  * second window's buttons stepped back to an outline in the first card's
- * row, which on the toned ground read as the lesser door.
+ * row, which on the toned ground read as the lesser door. Windows that
+ * close on the same day share a card, as they share a countdown. Several
+ * actions in one window are one card, grouped by action (an Anliegen's
+ * Unterstützen and Stellungnahme, `AnliegenDoor`).
  * `docs/decisions.md`, „One door card per open window".
  *
  * Slots, in the card's order: `heading`; the default slot, the body under

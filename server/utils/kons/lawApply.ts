@@ -186,7 +186,12 @@ function lineText(l: PayloadLine): string {
  * prints its new text with the same markers the law uses, which is what
  * makes an inserted Absatz addressable the moment it lands.
  */
-/** § nodes whose heading `parsePayload` read off a bare line — no block marked it as one. */
+/**
+ * § nodes whose heading `parsePayload` read off a bare line — no block marked it as one.
+ * The oracle's checks 1 to 3 read heading and body as one string, so a
+ * boundary moved between them reads right to them: the refusal in `replace`
+ * is the only guard.
+ */
 export const GUESSED_HEADINGS = new WeakSet<LawNode>()
 
 export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {

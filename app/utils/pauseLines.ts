@@ -2,8 +2,18 @@
  * The pause line (23.11.2026): one sentence, a little funny, that reminds
  * the reader of a break. It stands in one place, on the plain 404 of the
  * error page, as the sentence under the title „Seite nicht gefunden". The
- * rule and what was rejected: `docs/decisions.md`, „A pause line stands on
- * the plain 404 and says nothing about a draft".
+ * rule: `docs/decisions.md`, „A pause line stands on the plain 404 and says
+ * nothing about a draft".
+ *
+ * The line is chosen by the page's path, which server and browser share: a
+ * date differs between the two around midnight, a random number always.
+ *
+ * Rejected: a random line in the footer of every page (it would stand under
+ * a draft on assisted dying as under any other, wears out for weekly
+ * readers, and a screen reader says it on every page), and one at the end
+ * of a long Textgegenüberstellung (built and taken back on 23.11.2026: under
+ * a ministry's text it read as the monitor's remark on the draft, and no
+ * list of sensitive drafts is ever complete).
  *
  * How a line is written:
  * - It reads directly under the title, so it does not say the title again.

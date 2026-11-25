@@ -39,8 +39,19 @@
  *     confirms the § — so everything outside the stretches passes exactly
  *     the checks it passes today.
  *
- * A § released this way is not „confirmed by the annex". It carries its
- * places — both wordings — so the page can say at the § what differs.
+ * A § released this way is not „confirmed by the annex" and never counted
+ * as confirmed. It carries its places — both wordings, the annex's as our
+ * reading of it („wie wir sie lesen") — so the page can say at the § what
+ * differs. The Gesetzestext is shown also where it carries its own typo: it
+ * is what was proposed. Parliament's copy of the draft is not read.
+ *
+ * Measured (20.11.2026): +181 §§ of 522 contradicted, none lost; of 152
+ * released at 60 promulgated laws, all identical to the law. Rejected: the
+ * design without the four payload conditions (strictly inside where a side
+ * is empty; no more often than the instruction can have written it, a
+ * payload inside its own old wording counted as gone, `written`; for a
+ * phrase, the old wording between the same `NEIGHBOURS`, `wroteHere`) —
+ * fault injection got a swapped word and a cut payload through it.
  */
 import type { ComparisonRow } from '../annex/comparisonRows'
 import { printedLayout } from '../annex/elision'

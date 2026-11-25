@@ -49,6 +49,13 @@
  * the accountability layer — the reason this project exists — and it was
  * set as trailing 12px grey punctuation behind a date and a count.
  *
+ * A FACT NEVER LINKS (06.11.2026). A link stands on a line of its own with
+ * its arrow, and it jumps to a section of this page, never to another page
+ * („In 3 Entwürfen der Länder ausgeführt →" lands in „Ausführung durch die
+ * Länder", `BgblLaenderBlock`; `Station.followUp`). The one link out is a
+ * station whose record exists only at the source, a Verordnung's
+ * Kundmachung in RIS (`Station.source`).
+ *
  * Deliberately NOT a summary of the substance, and it fetches nothing: an
  * earlier version fired all three comparison requests on mount, one of
  * which costs up to 30 s when RIS has the ressort's annex only as a scan.

@@ -594,7 +594,13 @@ function occurrences(hay: string, needle: string): number {
   return n
 }
 
-/** What the comparison form and the word list both drop: the copy's spellings of the same text. */
+/**
+ * What the comparison form and the word list both drop: the copy's spellings of the same text.
+ *
+ * Rejected (19./20.11.2026): splitting a dot leader from a glued figure. It
+ * confirms §§ that then show the draft's leader residue („.. 105 Euro") on
+ * the page like an omission mark.
+ */
 function sameText(t: string): string {
   return sameLayout(t)
     .replace(RIS_NOTE_RE, ' ')
@@ -1816,6 +1822,10 @@ const PLACE_WINDOW = 4
  * text, and seventeen correct results of the corpus read as changed out of
  * place. The diff of the reversed texts takes the last equal words instead
  * of the first; a change is reported only where neither diff places it.
+ *
+ * A change the annex leaves out (TDBG § 40b: „1. bis 6. …" where the draft
+ * changes Z 6) costs a correct confirmation, on purpose: the oracle does not
+ * vouch for what the ministry does not print.
  */
 function unplacedChange(segments: readonly { type: string; text: string }[], rows: readonly ComparisonRow[]): string | null {
   const pairs = rows.filter((r) => r.kind === 'pair' && !r.elided)
@@ -2072,6 +2082,11 @@ const ABSATZ_RUN_RE = /(?:^|(?<=[.:;…]\s*)|(?<=\.\.\.\s*))\(\d{1,3}[a-z]?\)(?:
  * printed with its words on the left, on the right nowhere — must not stand
  * in the result. The text checks miss it where the struck Absatz opens like
  * the next one (`keptDeletion`); its marker does not.
+ *
+ * **Only the ends of a chain are read, on purpose** (21.11.2026): over every
+ * confirmed § of both paths and the bench, about 9,400 Absätze inside
+ * chains, none was missing from the result while the standing text carried
+ * it.
  */
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function absatzOrderBroken(rows: readonly ComparisonRow[], resultAbsaetze: readonly string[], standingAbsaetze: readonly string[] | null = null, own: string | null = null): { note: string; foreign: boolean } | null {
@@ -2393,7 +2408,9 @@ function labelKind(label: string): DesignatedUnit['level'] {
  * (`MIN_LABEL_OPENING`); the label is one of two of its kind in a row (a
  * renumbering printed with the old label beside the new), or a citation's
  * number ending a sentence („nach Abs. 2."); the label is of another kind.
- * A label glued to its word is unglued before (`unglued`).
+ * A label glued to its word is unglued before (`unglued`). An annex that
+ * numbers an appended Absatz „(N)" where its draft appends „(N+1)" is
+ * contradicted, rightly.
  */
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function labelBroken(rows: readonly ComparisonRow[], units: readonly DesignatedUnit[], gotKey: string): string | null {

@@ -263,7 +263,9 @@ export interface Wording {
    * Zahl „18" ersetzt", „erhält die Absatzbezeichnung „(7)""): where in the
    * § it goes the line says in words, often for several places („jeweils"),
    * so it is not aligned. It accounts for every place of the right column
-   * it stands at as one stretch.
+   * it stands at as one stretch. Its address below the § is not read
+   * (21.11.2026): Bundesbahngesetz § 4 adds „insbesondere" to the lead-in of
+   * Abs. 2, a word the draft writes only elsewhere in the §.
    */
   repeats: boolean
   /** …and must stand there once at least, where its instruction names one § only. */
@@ -282,10 +284,15 @@ export interface Wording {
    * Satz durch den Satz „…“ ersetzt"): the verb of its clause writes anew, and the line quotes no wording as old. Only such a
    * wording accounts for struck words between its own (`struckAccount`). One a line inserts („nach dem Wort „mit“ wird die
    * Wortfolge „1. Oktober 2027“ eingefügt") strikes nothing, and one beside a quoted old wording („„X“ durch „Y“ ersetzt")
-   * replaces what the line names.
+   * replaces what the line names. Rejected as the narrower cure (22.11.2026): no bridge across a date. A date is where the hole
+   * was found, not what it is: an insertion strikes nothing wherever it stands.
    */
   bridges?: true
-  /** A wording its line writes for the §'s heading (`quoteRoles`): it accounts only above the § designation (`headingZone`). */
+  /**
+   * A wording its line writes for the §'s heading (`quoteRoles`): it accounts only above the § designation (`headingZone`).
+   * Read as any wording, it accounted for itself wherever it stood, also with the old heading kept (23.11.2026). Not a heading
+   * a line writes as a payload („Die Überschrift des § 5 lautet:"): that one is aligned as any payload.
+   */
   heading?: true
   /**
    * A designation the instruction gives („erhält die Absatzbezeichnung
@@ -360,7 +367,9 @@ const UNIT_WORD = '(?:Wort(?:e|es|folge|folgen|laut|lautes|gruppe)?|Wörter|Wör
  * „nach dem Wort „X"", „vor der Wortfolge „X"" — and at the line's start, „Nach der Überschrift „X"" (Oö. 2026-16124): the
  * place, not the text. Bare too („der Strichpunkt nach „überschreiten“", „das Wort „und“ vor „Geburtsdatum“"), and whatever
  * follows it: in „wird nach „zu tragen hat“ der Punkt durch einen Beistrich ersetzt" the full stop is replaced, and read as
- * the old wording the quotation accounted for its own words struck (22.11.2026, a review of the grammar).
+ * the old wording the quotation accounted for its own words struck (22.11.2026, a review of the grammar). Only the nouns a
+ * place is named by (`UNIT_WORD`), not any noun behind „nach" or „vor": „… wird vor dem Schlusspunkt die Wortfolge „X“
+ * eingefügt" would read the new wording as the place (rejected, 22.11.2026).
  */
 const ANCHOR_RE = new RegExp(`(?<![\\p{L}])(?:[Nn]ach|[Vv]or|[Hh]inter)\\s+(?:(?:de[mnr]\\s+|die\\s+|das\\s+)?(?:\\p{L}+\\s+)?${UNIT_WORD}\\s*)?$`, 'u')
 /** Between an old wording and the quotation that says where it stands, nothing else: „das Zitat „X“ nach der Wortfolge „Y“ durch …". */
@@ -436,6 +445,8 @@ const INEXACT_RE = /grammatikalisch|sinngemäß|in\s+der\s+jeweiligen|im\s+jewei
  *
  * Read clause by clause, since German puts the verb at either end:
  * „entfällt die Wortfolge „X"" and „wird die Wortfolge „X" gestrichen".
+ * The grammar grows from the drafts; still refused, the § then unchecked:
+ * ranges of wording, „geändert in/auf".
  */
 export function quoteRoles(raw: string): { text: string; role: Role; designation: boolean; range: boolean; rewrites: boolean; touching?: WordPlace; heading?: true }[] {
   const line = withoutResidue(raw)

@@ -294,6 +294,8 @@ const nullLines: (ComparisonLine & { residues: Residue[] })[] = []
  * and the share of the draft's and the Vorlage's five-word runs that stand
  * in the Landesgesetzblatt (`containedIn`). A clause that names another last
  * amendment, or a share below the Vorlage oracle's 0.6, is listed to read.
+ * Measured 21.11.2026: 31 finds, no wrong join; a Landesgesetzblatt holds
+ * 0.59 to 0.99 of its own Vorlage and at most 0.55 of any other find's.
  */
 const ktnFinds: { draft: string; lgbl: string; chain: ChainVerdict | null; draftShare: number | null; rvShare: number | null; error?: string }[] = []
 const lawWords = (r: { units: LawUnit[] | null; text: string }) => (r.units?.length ? r.units.map((u) => `${u.heading ?? ''} ${u.text}`).join(' ') : r.text)

@@ -9,6 +9,10 @@
  * the Kurzbeschreibung is written for the parliamentary process, the
  * Erläuterungen are the Ressort's own reasoning — and a Verordnungsentwurf
  * has no Kurzbeschreibung at all, because it never reaches Parliament.
+ * The Besonderer Teil's passages stand at their § in the comparison
+ * (`TextComparisonSection`). Parliament's Kurzinformation stays under
+ * „Worum geht es?" as the quick overview, without its „Hauptgesichtspunkte"
+ * where the Erläuterungen carry them (`withoutMainPoints`).
  *
  * WHAT IT IS NOT: no summary, no selection, no language model. What stands
  * here are the Ressort's paragraphs in the Ressort's order, read from the

@@ -84,6 +84,7 @@
  * `MIN_TRIES` times is caught below `pct`; a class tried fewer times is
  * printed and recorded as „nicht gehalten", never passed in silence
  * (`lib/landGuardReport.ts`).
+ * No floor is set by default: at 95 the three wording classes fail.
  *
  * „Nicht geprüft" (20.11.2026, `notHeld`): a § shown whose new text the
  * strict check did not hold carries the mark on the page. So a fault in the
