@@ -21,8 +21,9 @@ steps 0 and 1.
 
 ## State of the build (15.11.2026)
 
-Steps 0 and 1 are built on the branch `feat/eu-zyklus`, not merged. Where
-the build left this plan, and why:
+Steps 0 and 1 were built on the branch `feat/eu-zyklus` and are on `main`
+since 16.11.2026 (merged with `feat/wege-rest`). Where the build left this
+plan, and why:
 
 - **No route of its own, no prewarm line, no stored file for the rail.** The
   plan asked for all three. One Cellar query per act returns the whole rail
@@ -59,9 +60,9 @@ the build left this plan, and why:
   `OBSERVATORY_FILE` names the file per act, each read from the file's own
   page on 15.11.2026. A split procedure of an act new to the map gets a
   dead link until it is added.
-- **The Impressum sentence of `#imp-eurlex` is widened on the branch,** and
-  names the days of entry into force and of application besides what the
-  draft below lists.
+- **The licence sentence for EUR-Lex is widened** (today on `/quellen#eurlex`),
+  and names the days of entry into force and of application besides what
+  the draft below lists.
 - **Station 1 „Konsultation" is not rendered,** not even as a placeholder,
   until step 2 reads the portal.
 
@@ -334,7 +335,7 @@ Against the plan above:
   a browser on 15.11.2026: the application adds the title to the address
   itself. A single contribution has a page too
   (`…/initiatives/<id>/F<number>_de`).
-- The portal's entry is in `impressum.vue` on the branch, from the draft
+- The portal's entry stands on `/quellen#kommission`, from the draft
   below.
 
 ### Step 3 — open windows and pending proposals
@@ -671,7 +672,7 @@ in the row and in full on the directive's page):
 - Not done: no line in the sitemap for directives no draft names; no
   prewarm (the list's first request after a restart waits for the map);
   the wording of the list is a first proposal for the maintainer to read.
-- The Impressum sentence of `#imp-eurlex` is widened on the branch by the
+- The licence sentence for EUR-Lex (`/quellen#eurlex`) is widened by the
   list of directives and the notified measures (title, kind, day of
   notification, gazette reference): metadata of the source it already
   names.
@@ -685,7 +686,7 @@ are renumbered. It is a project of its own.
 
 ## The Impressum, as drafts
 
-Each is a proposal for the maintainer. All three are in `impressum.vue` on the branch `feat/eu-zyklus` since 15.11.2026, each in a wording widened when built (`#imp-eurlex`, `#imp-kommission`, `#imp-buergerinitiative`); the drafts below are the plan's.
+Each was a proposal for the maintainer. All three are on `main` since 16.11.2026 and stand on `/quellen` today, each in a wording widened when built (`#eurlex`, `#kommission`, `#buergerinitiative`); the drafts below are the plan's.
 
 - **`#imp-eurlex`, with step 1** — after „das Datum ihres Beschlusses":
   „…, der amtliche Titel und die Fundstelle im Amtsblatt, sowie zum

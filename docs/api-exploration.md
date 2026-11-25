@@ -253,6 +253,18 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/101?js=eval&
 
 For the ME→RV direction the detail JSONs via `preconst` remain the better route (§3) — but note `preconst` is **not a universal field**: 126 d.B. carries no `preconst` key at all (and no `stages`), so its absence is not proof of "no Ministerialentwurf" on its own. Cross-check against list 81.
 
+### Full-text search — `filterform/vts` (undocumented)
+
+```
+POST https://www.parlament.gv.at/Filter/api/filterform/vts/data?FBEZ=VTS_01
+Content-Type: application/json
+{"s.sm.query":"Begutachtung"}
+```
+
+The site's own search, found 06.09.2026 and re-checked 25.11.2026. The query is a **string**; an array, as the filter lists take, answers with a Java stack trace. The answer is not the filter list's shape: `{pages, count, meta:{totalHits}, rows:[{…}]}` with objects instead of positional rows (`item_type`, `title`, `link`, `datetime`, `category`, and a `description` of hits marked with `<span class="highlight">`), 20 per page. 25.11.2026: `count` 50,410 for „Begutachtung" against `pages` 500, so not every hit is reachable by paging. Hits mix the Parlamentskorrespondenz (`pk`) with Gegenstände (`PMGesch`). In September it was read as indexing document text, OCR'd scans included, back to GP XX; that was not re-checked.
+
+What it could serve: whether a Regierungsvorlage's Erläuterungen or a committee report mention the Begutachtung input, a question no structured field answers. What it does not: ME→RV is structured (`preconst`, above), and the RIS↔ME join needs metadata, not text. Undocumented, so it may change without notice; nothing in the product uses it.
+
 ---
 
 ## 2. RIS OGD API — `Applikation=Begut`
