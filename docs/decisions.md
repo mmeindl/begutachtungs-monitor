@@ -132,12 +132,26 @@ gets an entry of its own only where it carries a reason the rule does not.
   name is cut off; an e.U. counts as a natural person (§12.14).
 - **List 142's institution flag can withhold a name but never publish one on
   its own.** It records how the submitter registered and also marks persons
-  and law firms under a lawyer's name (§12.14).
+  and law firms under a lawyer's name (§12.14). `P` hides a name, `I` alone
+  publishes nothing, and `ORG_ALLOWLIST` outranks the flag: it is a person's
+  statement that a name is an organisation whose staff registered privately
+  (`classifySubmitter`).
 - **A stored name is held against today's classifier** before it is served:
   a record outlives the rules that wrote it.
 - **A change to `privacy.ts` is validated by a corpus comparison, not by
   tests:** old against new over every list-142 row, every newly public name
-  read by hand. Tests alone have missed real leaks (§12.14).
+  read by hand. Tests alone have missed real leaks (§12.14). How: classify
+  the rows with HEAD's `privacy.ts` (a copy in the scratchpad) and with the
+  changed one, for the current and the previous period, over
+  `{BEZUG_GP_CODE, BEZUG_ITYP, TYP: ["I"]}`. That filter keeps a period
+  under the 100,000-row cap (GP XXVII/ME: 8,611 rows instead of the first
+  100,000 of 235,864) and still holds every row a rule can publish, since
+  the `P` veto hides the rest. Print every newly public string unmasked
+  (each must be an organisation) and every newly hidden one with its naming
+  segment masked (each should be a person), and repeat until both lists are
+  clean. A count of „person-shaped" strings is a floor: short organisation
+  names look like persons. `pnpm audit:classifier` finds candidates; it does
+  not make this comparison.
 - **Above the fetch cap, the rows that are not organisations are not called
   „Privatpersonen":** 955 of the 3,459 person rows in GP XXVIII are
   non-public statements (§12.14).
@@ -1919,6 +1933,24 @@ gets an entry of its own only where it carries a reason the rule does not.
   scored every Anlage against the § of its number.
 - **Before a parser change, compare old against new over the whole corpus and
   read every item that moves.** Zeros measured on tuning data are in-sample.
+- **A new gate rule is held to fault injection before it is trusted**
+  (10.09.2026, `scripts/harness/faultInjection.ts`). Faults are set into §§
+  the gate has just confirmed (a sentence dropped from the left column, a
+  foreign one appended on the right) and the rule is asked again. A corpus
+  shows only what a rule fires on, never what it lets through: the left
+  check alone passed 93 % of lost sentences before an injection measured it.
+- **After a change to the oracle, the engine or the annex reader, the fault
+  floor runs on both paths and the BGBl bench with the oracle; after a
+  change to the page, the accounting runs** (26.10.2026):
+  `faultInjection.ts --mindestens=95` with and without `--xml`,
+  `kons.ts --oracle`, `accounting.ts --only=…`. Two runs are compared draft
+  by draft in their `--json`, not by the pass mark: on 26.10.2026 every
+  invariant held while one counter („Begründungen ohne §-Block") nearly
+  doubled, all of it one draft whose numbering („§ 1.01") a key change had
+  reached on the page and in the Lesefassung but not in the reader of the
+  passage headings. A key read in several places changes in all of them.
+  The first alarms of a new check are read by hand: the oracle's fifth check
+  found faults of the readers on its first runs, not only of the engine.
 - **The § comparison is held by `scripts/harness/station.ts`** (19.11.2026):
   reconstruction, completeness, a visible change and the own heading must
   hold for every pair (exit 1 on a breach); the last parliamentary text
@@ -2793,7 +2825,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   the Bundesrat has no period.
 - **Upstream blocks are respected, not circumvented:** one request per second
   and a two-hour pause after a 403 at Steiermark's firewall; EUR-Lex's bot
-  check is not bypassed, only the Cellar is queried (§12.64, §12.66).
+  check is not bypassed, only the Cellar is queried (§12.64, §12.66). The
+  `User-Agent` is never changed to get past a block, and a probe of a Land's
+  site goes through the shared session and its pace too
+  (`laender/session.ts`, `SitePacer`). A local test does not show where a
+  firewall draws its line: production's first cold read after the deploy of
+  30.10.2026 was blocked within two minutes, so after a deploy that adds or
+  changes a session reader the journal is read for 403s.
 - **A `robots.txt` that excludes everything is a question to the publisher,
   not a block** (15.11.2026). Tirol's Landtagsevidenz (`lte.tirol.gv.at`)
   answers `User-agent: *` / `Disallow: /`; the monitor keeps reading it at
@@ -2854,6 +2892,11 @@ The code names the EU rules D1 to D7; this is where they are defined
   direction.
 - **A reader change that alters a stored finding bumps its reader version in
   the same commit,** or the disk store keeps stale facts (§12.66, §12.67).
+- **The EU readers are pure modules: text and a CELEX number in, never a
+  RIS record** (04.11.2026, the headers of `umsetzungshinweis.ts`,
+  `vorblatt.ts` and their neighbours). No Nitro globals and relative imports
+  only, so the corpus script measures the shipped file and the Länder run
+  the same reader over a Landesgesetz's text unchanged.
 - **The header navigation is the door to `/eu-recht`** (14.11.2026). The
   homepage's window onto the map („EU-Recht in der Begutachtung") and the
   list's link to it (`EuMapLink`) are gone; the list's filter „Setzt
@@ -3943,12 +3986,46 @@ the reasoning in full stands in that component's header comment.
   attribute each change to who made it: the ministry after the
   Begutachtung, Parliament through its amendments. Both ends stay freely
   selectable.
+- **The Erläuterungen's Allgemeiner Teil stands on the page in the
+  ministry's words** (17.09.2026, `ExplanationsSection` under „Was das
+  Ministerium begründet"), the Besonderer Teil's passages at their § in the
+  comparison (`TextComparisonSection`). Parliament's Kurzinformation stays
+  under „Worum geht es?" as the quick overview, without its
+  „Hauptgesichtspunkte" where the Erläuterungen carry them
+  (`withoutMainPoints`). Readers triage a draft from the general part;
+  Parliament's summary is written for the parliamentary process, and a
+  Verordnungsentwurf has none.
+- **On the rail, a fact never links** (06.11.2026, `SpineRail`,
+  `Station.followUp` in `app/utils/spine.ts`). A link stands on a line of
+  its own with its arrow, and it jumps to a section of this page, never to
+  another page („In 3 Entwürfen der Länder ausgeführt →" lands in
+  „Ausführung durch die Länder", `BgblLaenderBlock`). The one link out is a
+  station whose record exists only at the source, a Verordnung's
+  Kundmachung in RIS (`Station.source`).
 
 ### Design and accessibility
 
 - **Two hues, one meaning each.** Blue means „you can do something here",
   yellow is the highlighter. Selection is ink: a selected control is the one
   you cannot act on.
+- **One hover state for every link: a 2 px underline** (03.10.2026,
+  `link-inline`, `link-quiet`, `link-muted` in `main.css`). Hover never
+  removes an underline, so the link under the pointer stays a link. What has
+  an edge (a row, a chip, a control) answers with the hover ground instead.
+- **A link in metadata wears the line's muted ink** (03.10.2026,
+  `link-muted`): captions and credit lines under a box, the footer. Its rest
+  underline says „link"; blue in the quietest text on the page would be its
+  loudest thing. Blue `link-inline` and `link-quiet` stay for content.
+- **The serif names the page's structure, the sans its apparatus**
+  (03.10.2026): the page title and the chapter heads (h1, h2) are serif; an
+  h3 is sans in `text-lg` (`PageSubsection`), a box's name sans at body size
+  in semibold (`card-heading`), a fact's label in a frame medium weight
+  (`FactList`). At body size the h3 wore the face of every title inside a
+  card, and the sub-section level was invisible.
+- **The middle dot separates in credit lines and figures** („Quelle: … ·
+  Grafik: …", „1.085 · 23,0 %"; maintainer, 20.11.2026). A version without
+  it, the source as a clause and the share in brackets, was built, seen and
+  taken back the same night.
 - **AAA contrast (7:1), computed, never judged by eye.** The gray hierarchy
   is therefore flat; hierarchy comes from size and weight.
 - **The site promises AA and aims for AAA** (maintainer, 24.11.2026).
@@ -4793,6 +4870,17 @@ mark sound §§ or risk a wrong clearance.
   the legend hides them (§12.17).
 - **Station icons, yellow bars on every section, a wash on the current
   station** (§12.39).
+- **A hue per station** (03.10.2026). The party colours already take the
+  free hues (turquoise, red, blue, green, pink); violet sits too close to
+  link blue, green means „inserted" in a diff, and amber and sepia carry
+  meanings of their own. Stations differ by shape and ink weight.
+  Ministries and the vote line get no hue either: both are led or named by
+  parties.
+- **Ink-only chrome with yellow as the action colour („Graphit"), and other
+  action hues** (tried 03.10.2026). A highlighter points, it does not
+  invite, and links without their blue lost the one convention every reader
+  brings. Traffic-light green collides with the diff's inserted green,
+  violet with link blue.
 - **The stations as a horizontal stepper** (15.09.2026). The German station
   names hyphenate in the prose column („Regierungsvorla-ge"), and the
   breakout that bought the width was unwanted itself.
