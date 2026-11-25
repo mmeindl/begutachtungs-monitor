@@ -141,8 +141,11 @@ Before you start:
   measurement. Let it finish, or deploy first.
 - **Deploy from a clean tree.** `deploy.sh` refuses a dirty one, and the
   maintainer's tree usually is dirty. Use a clean scratch worktree at the
-  pushed `main` with `node_modules` symlinked. Use `--allow-dirty` only when
-  the maintainer says so.
+  pushed `main`, and do **not** symlink `node_modules` into it: `deploy.sh`
+  runs `pnpm install` itself, which through a link would purge the main
+  checkout's modules. Let it install its own (fast, from the pnpm store), and
+  remove the worktree afterwards. Use `--allow-dirty` only when the
+  maintainer says so.
 - **Note the live revision** (`/srv/begutachtungs-monitor/REVISION`) so a
   rollback has a target.
 - **A change to how documents are read** needs the heap of the new revision
