@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Commit, merge, push and deploy changes to the Begutachtungs-Monitor. Use before every git commit in this repo, even a one-line one, before starting work that will be committed (it opens the local branch), and whenever the maintainer says "commit", "merge", "merge to main", "push", "commit push", "commit push deploy", "deploy", "is it live?" or "is it in?". Covers working on a local branch, staging only your own changes in a checkout other people edit at the same time, the checks, the commit message, the local merge into main, the push of main and the deploy with its checks afterwards.
+description: Commit, merge, push and deploy changes to the Begutachtungs-Monitor. Use before every git commit in this repo, even a one-line one, before starting work that will be committed (it opens the local branch), and whenever the maintainer says "commit", "merge", "merge to main", "push", "commit push", "commit push deploy", "ship", "deploy", "is it live?" or "is it in?". Covers working on a local branch, staging only your own changes in a checkout other people edit at the same time, the checks, the commit message, the local merge into main, the push of main and the deploy with its checks afterwards.
 ---
 
 # Ship
@@ -15,8 +15,12 @@ from the maintainer:
    "push" includes the merge. Say so in one line, then do both.
 4. **Deploy:** ship what `main` holds.
 
-A step that went well is no licence for the next one. The maintainer reviews
-between steps, and some weeks have a deploy freeze.
+**"Ship" is the go-ahead for all four:** commit, merge, push and deploy in
+one run, without stopping between them. It still stops at a red check, a
+foreign commit on `main` or a refused branch switch.
+
+Otherwise a step that went well is no licence for the next one. The
+maintainer reviews between steps, and some weeks have a deploy freeze.
 
 ## 0. The branch
 
