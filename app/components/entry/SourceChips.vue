@@ -40,6 +40,12 @@ import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
  * „Wien" read as the first filter. The rule says where the Länder end; a
  * tinted ground would have said it louder than the rest of the box.
  *
+ * While a Land is chosen, the button is drawn as a ticked chip — tinted
+ * ground and ink ring (26.11.2026). The ring alone read as off beside a
+ * ticked „Bund". No box in it: a press opens the panel, it switches
+ * nothing, and the label already says what is chosen. „keine", the
+ * default, stays an outline.
+ *
  * Where every Land is unavailable with one reason (the homepage ranking),
  * the button itself is drawn unavailable and opens nothing: nine dashed
  * chips behind a click would say nine times what one sentence says.
@@ -114,7 +120,7 @@ const allUnavailable = computed(() => {
     </ToggleChip>
     <UButton
       color="neutral"
-      variant="outline"
+      :variant="laender.length && !allUnavailable ? 'subtle' : 'outline'"
       class="shrink-0"
       :class="allUnavailable ? 'cursor-not-allowed outline-1 outline-dashed -outline-offset-1 outline-baseline bg-page text-ink-muted ring-0 hover:bg-page' : laender.length && 'ring-ink'"
       :aria-expanded="allUnavailable ? undefined : open"

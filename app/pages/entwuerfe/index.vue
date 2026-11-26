@@ -712,15 +712,16 @@ const statementsSortNote = computed(() => {
                closed — a shared link never hides an active filter. -->
           <UButton
             color="neutral"
-            variant="outline"
+            :variant="moreFilters ? 'subtle' : 'outline'"
             class="shrink-0 md:hidden"
             :class="moreFilters && 'ring-ink'"
             :aria-expanded="filtersOpen"
             aria-controls="filter-more-panel"
             @click="filtersOpen = !filtersOpen"
           >
-            <!-- The „Länder" button's grammar (25.11.2026): an ink ring
-                 while something is chosen, a chevron that turns when open,
+            <!-- The „Länder" button's grammar (25.11.2026): drawn as a
+                 ticked chip while something is chosen (tinted ground and
+                 ink ring, 26.11.2026), a chevron that turns when open,
                  no leading icon. Before, open and closed looked alike; and
                  with the chevron the sliders icon pushed the button off the
                  line of „Stellungnahme möglich" at 390 px. -->
