@@ -44,6 +44,7 @@ import type { EuConsultation, EuFeedbackReading, EuInitiative } from '../../../s
 import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S, FEEDBACK_NAMES_TTL_S } from '../cache/ttl'
 import { SitePacer } from '../laender/session'
+import { failureReason } from '../upstream/failureReason'
 import { UpstreamHttpError, upstreamJson } from '../upstream/fetch'
 import { FEEDBACK_READER_VERSION, FEEDBACK_STEP_PAGES, emptyReading, firstPageReading, isFeedbackStep, isWholeReading, progressOfFirstPage, progressReading, readFeedbackStep, readFirstFeedbackPage, type FeedbackPage, type FeedbackProgress } from './portalFeedback'
 import { PORTAL_FIRST_YEAR, PORTAL_GAP_MS, PORTAL_MAX_WAIT_MS, PORTAL_POLICY, PORTAL_READER_VERSION, PORTAL_SEARCH_HITS, carriesReference, comReferenceOf, initiativeUrl, parseInitiative, parseSearch, readOpenWindows, searchUrl, type PortalOpenWindows, type PortalSearch } from './haveYourSay'
@@ -109,11 +110,18 @@ const openWindowsCached = defineCachedFunction(
  * nothing is open, and only a successful reading may make it. A window
  * that closed since the list was read is the caller's to drop
  * (`windowsOpenOn`), by its own day.
+ *
+ * This is the read the uptime check's EU canary watches, so a failure says
+ * why in the log (27.11.2026) — as `failureReason` builds it, the kind of
+ * the failure and never a word of the answer: the portal's records name
+ * officials. The other reads of this file stay silent: the search answers
+ * 406 for one reference in ten, and the contributions carry the names.
  */
 export async function openWindows(): Promise<PortalOpenWindows | null> {
   try {
     return await openWindowsCached()
-  } catch {
+  } catch (error) {
+    console.warn('[eu] Ihre Meinung zählt nicht abrufbar:', failureReason(error))
     return null
   }
 }

@@ -205,12 +205,58 @@ export class UpstreamRefusedError extends UpstreamError {
   }
 }
 
-/** Every attempt failed. `cause` is the last failure, whatever kind it was. */
+const nameOf = (error: unknown): string | null =>
+  typeof error === 'object' && error !== null && 'name' in error && typeof error.name === 'string' ? error.name : null
+
+/**
+ * The system's code for a failed connection (`ENOTFOUND`, `ECONNRESET`,
+ * `UND_ERR_SOCKET`), on the error or one level down, where `fetch` puts it
+ * („fetch failed" with the socket's error as its cause). A code is the
+ * system's word, never the answer's; anything that does not look like one
+ * is left out.
+ */
+function systemCodeOf(error: unknown): string | null {
+  const nested = typeof error === 'object' && error !== null && 'cause' in error ? error.cause : null
+  for (const candidate of [error, nested]) {
+    const code = typeof candidate === 'object' && candidate !== null && 'code' in candidate ? candidate.code : null
+    if (typeof code === 'string' && /^[A-Z][A-Z0-9_]{2,39}$/.test(code)) return code
+  }
+  return null
+}
+
+/**
+ * What an attempt died of, as a KIND and never in the failure's own words:
+ * the runtime quotes a body that is no JSON in its message („Unexpected
+ * token 'E', "Erika Must"... is not valid JSON"), an upstream's answer can
+ * hold what no log may keep, and this text ends in the server's log.
+ */
+function attemptFailure(cause: unknown): string {
+  if (cause instanceof UpstreamHttpError) return `HTTP ${cause.status}`
+  // The body arrived and did not parse: an error page or a bot check served as the answer.
+  if (cause instanceof SyntaxError) return 'Antwort ist kein JSON'
+  const name = nameOf(cause)
+  if (name === 'TimeoutError' || name === 'AbortError') return 'Zeitüberschreitung'
+  const code = systemCodeOf(cause)
+  if (name) return code ? `${name} ${code}` : name
+  return 'Ursache unbekannt'
+}
+
+/**
+ * Every attempt failed. `cause` is the last failure, whatever kind it was;
+ * `reason` is its kind (`attemptFailure`) and stands in the message
+ * (27.11.2026). Until then a 503, a timeout and a body that did not parse
+ * all read „Upstream nicht erreichbar: <url>" wherever the message was
+ * logged, and whoever followed an alarm had to ask the source again to tell
+ * them apart.
+ */
 export class UpstreamUnreachableError extends UpstreamError {
   readonly retryable = false
+  readonly reason: string
   constructor(readonly url: string, override readonly cause: unknown) {
-    super(`Upstream nicht erreichbar: ${url}`)
+    const reason = attemptFailure(cause)
+    super(`Upstream nicht erreichbar (${reason}): ${url}`)
     this.name = 'UpstreamUnreachableError'
+    this.reason = reason
   }
 }
 

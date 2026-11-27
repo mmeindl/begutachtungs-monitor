@@ -34,6 +34,7 @@ import { staleWithin } from '../cache/stale'
 import { DERIVED_ANALYSIS_TTL_S, ECI_REGISTER_STALE_S } from '../cache/ttl'
 import { withinBudget } from '../http/budget'
 import { SitePacer } from '../laender/session'
+import { failureReason } from '../upstream/failureReason'
 import { UpstreamHttpError, upstreamJson } from '../upstream/fetch'
 import { ECI_GAP_MS, ECI_MAX_WAIT_MS, ECI_ONGOING, ECI_POLICY, ECI_READER_VERSION, eciDetailsUrl, eciListUrl, parseEciDetails, parseEciList, type EciList } from './eciRegister'
 
@@ -68,11 +69,17 @@ const detailsCached = defineCachedFunction(
  * The register's list, or null where it could not be read — never an empty
  * list for a failure: an empty list is the register's statement, and only a
  * successful reading may make it.
+ *
+ * This is the read the uptime check's EU canary watches, so a failure says
+ * why in the log (27.11.2026) — as `failureReason` builds it, the kind of
+ * the failure and never a word of the answer: the register's records name
+ * organisers. An initiative's details stay silent.
  */
 export async function eciList(): Promise<EciList | null> {
   try {
     return await listCached()
-  } catch {
+  } catch (error) {
+    console.warn('[eu] Register der Bürgerinitiative nicht abrufbar:', failureReason(error))
     return null
   }
 }

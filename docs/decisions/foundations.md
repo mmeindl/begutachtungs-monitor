@@ -45,6 +45,20 @@ holds, and the other areas: `docs/decisions.md`.
 - **Upstream calls identify themselves** with one `User-Agent`, retry twice
   on 5xx, and time out after 8 s per attempt, because timeout × 3 is how long
   an SSR render blocks before the error page.
+- **The HTTP client says what an exhausted read died of, as a kind**
+  (27.11.2026, `UpstreamUnreachableError.reason`, `attemptFailure` in
+  `upstream/fetch.ts`): „HTTP 503", „Zeitüberschreitung", „Antwort ist kein
+  JSON". It stands in the error's message, so every log line that prints
+  the message — a Land's `[laender] … nicht abrufbar:` — tells the three
+  apart. Never in the failure's own words: the runtime quotes a body that
+  is no JSON in its message, and an answer can name a person.
+- **A failed read of the two EU lists the uptime check watches logs its
+  reason without the error's message** (27.11.2026,
+  `upstream/failureReason.ts`; `openWindows`, `eciList`): the status, that
+  kind, or a reader's own fixed sentence, because the portal's and the
+  register's answers name officials and organisers. So an `eu-quelle`
+  alarm finds its reason in the journal. The portal's search (406 for one
+  reference in ten) and the contributions stay silent.
 - **Every whole-list read is checked against the `count` of the same
   response,** and every row against the requested period: the Parliament API
   silently ignores unknown filter keys and `showAll` silently stops at

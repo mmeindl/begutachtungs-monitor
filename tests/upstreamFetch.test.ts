@@ -163,6 +163,33 @@ describe('fetchUpstream', () => {
     )
     expect(calls).toHaveLength(2)
   })
+
+  /**
+   * The message is what a log line prints (`[laender] … nicht abrufbar:`), so
+   * it says what the last attempt died of (27.11.2026): until then a 503, a
+   * timeout and a body that did not parse read alike. It says so as a kind.
+   * The failure's own words stay in `cause`: the runtime quotes a body that
+   * is no JSON, and an answer can name a person. The name here is invented.
+   */
+  it('says in its message what the last attempt died of, as a kind and never in the failure’s words', async () => {
+    const giveUp = async (answer: Response | Error): Promise<UpstreamUnreachableError> => {
+      stubFetch(answer)
+      const err: unknown = await upstreamJson('https://example.test/x', NOW).catch((e: unknown) => e)
+      if (!(err instanceof UpstreamUnreachableError)) throw new Error('the read was expected to give up')
+      expect(err.message).toBe(`Upstream nicht erreichbar (${err.reason}): https://example.test/x`)
+      return err
+    }
+    expect((await giveUp(new Response('', { status: 503 }))).reason).toBe('HTTP 503')
+    expect((await giveUp(new DOMException('aborted', 'TimeoutError'))).reason).toBe('Zeitüberschreitung')
+    expect((await giveUp(new TypeError('fetch failed', { cause: { code: 'ECONNRESET' } }))).reason).toBe('TypeError ECONNRESET')
+    expect((await giveUp(new Error('Erika Musterfrau'))).reason).toBe('Error')
+
+    const noJson = await giveUp(new Response('Erika Musterfrau ist nicht im Dienst', { status: 200 }))
+    expect(noJson.reason).toBe('Antwort ist kein JSON')
+    expect(noJson.message).not.toContain('Erika')
+    // Kept for a caller that has to look (`scripts/lib/http.ts`, `onExhausted`).
+    expect(noJson.cause).toBeInstanceOf(SyntaxError)
+  })
 })
 
 describe('upstreamBytes', () => {

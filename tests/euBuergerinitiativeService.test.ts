@@ -17,16 +17,14 @@ vi.stubGlobal('defineCachedFunction', nitroCachedFunction)
 
 // No 2.5 s between the fake's answers.
 vi.mock('../server/utils/laender/session', () => ({ SitePacer: class { async turn() {} } }))
-vi.mock('../server/utils/upstream/fetch', () => {
-  class UpstreamHttpError extends Error {
-    constructor(readonly status: number, readonly url: string) {
-      super(`HTTP ${status} für ${url}`)
-    }
-  }
-  return { UpstreamHttpError, upstreamJson: vi.fn() }
-})
+// Only the request is a fake. The error classes are the client's own: the
+// service tells a 404 by them, and its log line reads them (`failureReason`).
+vi.mock('../server/utils/upstream/fetch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../server/utils/upstream/fetch')>()),
+  upstreamJson: vi.fn(),
+}))
 
-const { upstreamJson, UpstreamHttpError } = vi.mocked(await import('../server/utils/upstream/fetch'))
+const { upstreamJson, UpstreamHttpError, UpstreamUnreachableError } = vi.mocked(await import('../server/utils/upstream/fetch'))
 const { eciByNumber, eciList, eciOpen } = await import('../server/utils/eu/eciService')
 
 const fixture = (name: string): Record<string, unknown> => JSON.parse(readFileSync(new URL(`./fixtures/eu-eci/${name}.json`, import.meta.url), 'utf8'))
@@ -54,12 +52,19 @@ function register(answers: { list?: () => unknown; details?: (path: string) => u
   })
 }
 
+/** The log line of a failed list read (`eciList`); silenced, and read by the test that is about it. */
+let warn: ReturnType<typeof vi.spyOn>
+
 beforeEach(() => {
   asked = []
   clearNitroCache()
   upstreamJson.mockReset()
+  warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
-afterEach(() => vi.clearAllMocks())
+afterEach(() => {
+  vi.clearAllMocks()
+  warn.mockRestore()
+})
 
 describe('one initiative, through the service', () => {
   it('is found, and cached under its number', async () => {
@@ -99,6 +104,20 @@ describe('the list, through the service', () => {
     expect(nitroCacheKeys().filter((k) => k.startsWith('eu-eci-liste'))).toEqual([])
     register()
     expect((await eciList())?.entries).toHaveLength(3)
+  })
+
+  it('says why in the log: the kind of the failure, and nothing of the answer', async () => {
+    // What the client throws for a body that is no JSON. The runtime's message quotes the body; the name is invented.
+    const quoting = new SyntaxError(`Unexpected token 'E', "Erika Must"... is not valid JSON`)
+    register({ list: () => { throw new UpstreamUnreachableError('https://register.eci.ec.europa.eu/core/api/register/search/ALL/DE/0/0', quoting) } })
+    expect(await eciList()).toBeNull()
+    expect(warn.mock.calls).toEqual([['[eu] Register der Bürgerinitiative nicht abrufbar:', 'nicht erreichbar (Antwort ist kein JSON)']])
+  })
+
+  it('is silent where the list reads', async () => {
+    register()
+    await eciList()
+    expect(warn).not.toHaveBeenCalled()
   })
 })
 
