@@ -78,7 +78,7 @@
     "typescript": "^5.9.3",
     "vite-node": "^6.0.0",
     "vitest": "^4.1.12",
-    "vue-tsc": "^3.3.11"
+    "vue-tsc": "3.3.13"
   },
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
