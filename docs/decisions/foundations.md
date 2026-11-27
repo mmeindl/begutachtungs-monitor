@@ -26,7 +26,9 @@ holds, and the other areas: `docs/decisions.md`.
   over on one domain and one small server. So no recurring paid service
   beyond those two, one domain for all countries (a country is a path
   segment), and the public address comes from configuration. Anything that
-  needs a recurring bill is a layer the core runs without.
+  needs a recurring bill is a layer the core runs without. A synthesis of
+  statement texts is such a layer (27.11.2026): it may carry its own bill,
+  and the ceiling binds the core, which a copy runs without it.
 - **No third-party resources at runtime** (CLAUDE.md, „Legal"). Hosting only
   with EU-owned providers, not the EU regions of US hyperscalers (CLOUD
   Act). The build-time dependency on the npm registry is the documented

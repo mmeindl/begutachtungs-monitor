@@ -257,3 +257,10 @@ and the site search. What an entry holds, and the other areas:
   stays in the SSR HTML so the organisation can find itself (§12.15).
 - **Truncating titles.** Official titles put the distinguishing part at the
   end (§12.28).
+- **Moving the homepage's follow-up sections above „Jetzt im Parlament"**
+  (27.11.2026). It would shorten the way to them from 2,221 px to about
+  1,470 px, but the heading promises taking part first, and taking part is
+  the half with a deadline.
+- **For now: a page `/ressorts`, a view per organisation, citation aliases**
+  (UI review, 27.08.2026). Filters by outcome or state, a share image per
+  page and base rates wait on funding (CLAUDE.md, „Deferred on purpose").

@@ -337,6 +337,13 @@ areas: `docs/decisions.md`.
   Zusatzversicherung" (2008) carries BGBl. II Nr. 23/2009's title word for
   word and Nr. 362/2008's text (14.11.2026).
 
+### Parliament's items
+
+- **Letting the transmitting ministry lead a joint draft** (27.11.2026).
+  The lead stays the first ministry code in code-point order
+  (`foldJointDraft`); change it only when a page visibly names the wrong
+  ministry.
+
 ## Open questions
 
 - **Does list 81 update `Frist` when a Begutachtung is extended?** No
