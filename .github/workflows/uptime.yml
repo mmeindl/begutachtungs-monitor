@@ -1,9 +1,13 @@
 # Uptime check without a monitoring account (deploy/infrastructure.md):
 # GitHub's runners probe the live site twice an
 # hour. On failure the workflow opens ONE issue labelled `downtime` and
-# @mentions the owner — GitHub mails that — and closes it when the site
-# answers again. The job itself stays green so a night of downtime is one
-# issue, not 20 failed-run e-mails.
+# @mentions the handle in the repository variable ALERT_MENTION — GitHub
+# mails that — and closes it when the site answers again. Without the
+# variable it mentions the repository owner, which reaches a person only
+# when the owner is a user: an organisation's @mention notifies nobody.
+# A handle with an organisation name in it (a team) breaks at a rename.
+# The job itself stays green so a night of downtime is one issue, not 20
+# failed-run e-mails.
 #
 # What counts as "up": HTTP 200 on the start page AND the word
 # "Begutachtung" in the body. A Caddy error page or an empty shell is down.
@@ -127,7 +131,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REASON: ${{ steps.probe.outputs.reason }}
-          OWNER: ${{ github.repository_owner }}
+          MENTION: ${{ vars.ALERT_MENTION || github.repository_owner }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -139,7 +143,7 @@ jobs:
           if [ -n "$REASON" ]; then
             if [ -z "$open" ]; then
               body=$(printf '%s\n\n%s\n%s\n\n%s' \
-                "@$OWNER — the start page failed the uptime probe at $now." \
+                "@$MENTION — the start page failed the uptime probe at $now." \
                 "**Reason:** $REASON" \
                 "**Probe:** $RUN_URL" \
                 "The workflow re-checks twice an hour and closes this issue when the site answers again. Runbook: \`deploy/infrastructure.md\` (service status, app logs, redeploy).")
@@ -180,7 +184,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           LANDS: ${{ steps.laender.outputs.lands }}
-          OWNER: ${{ github.repository_owner }}
+          MENTION: ${{ vars.ALERT_MENTION || github.repository_owner }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -192,7 +196,7 @@ jobs:
           if [ -n "$LANDS" ]; then
             if [ -z "$open" ]; then
               body=$(printf '%s\n\n%s\n%s\n\n%s' \
-                "@$OWNER — a Land's list could not be read at $now (twice, 90 s apart)." \
+                "@$MENTION — a Land's list could not be read at $now (twice, 90 s apart)." \
                 "**Länder:** $LANDS (\`api\` = /api/laender itself did not answer)" \
                 "**Probe:** $RUN_URL" \
                 "The site shows these Länder as „gerade nicht abrufbar“ meanwhile. Check the Land's page against its parser and gate in \`server/utils/laender/\` (a relaunch, or a maintenance page). Closes itself when every Land reads again.")
@@ -244,7 +248,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCES: ${{ steps.eu.outputs.sources }}
-          OWNER: ${{ github.repository_owner }}
+          MENTION: ${{ vars.ALERT_MENTION || github.repository_owner }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -256,7 +260,7 @@ jobs:
           if [ -n "$SOURCES" ]; then
             if [ -z "$open" ]; then
               body=$(printf '%s\n\n%s\n%s\n\n%s' \
-                "@$OWNER — an EU source could not be read at $now (twice, 90 s apart)." \
+                "@$MENTION — an EU source could not be read at $now (twice, 90 s apart)." \
                 "**Quellen:** $SOURCES (\`api\` = our own endpoint under /api/eu-recht did not answer)" \
                 "**Probe:** $RUN_URL" \
                 "The site tells its readers meanwhile that the source could not be read. Neither interface is documented and nobody announces a change: open the portal or the register in a browser, see which addresses its pages load now, and hold them against the reader in \`server/utils/eu/\` (\`haveYourSay.ts\`, \`eciRegister.ts\`). Closes itself when both read again.")

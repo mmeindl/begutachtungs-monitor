@@ -171,7 +171,7 @@ jobs:
           FOUND: ${{ steps.drift.outputs.count != '' }}
           CLEAN: ${{ steps.drift.outcome == 'success' }}
           SUMMARY: ${{ steps.drift.outputs.summary }}
-          OWNER: ${{ github.repository_owner }}
+          MENTION: ${{ vars.ALERT_MENTION || github.repository_owner }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -183,7 +183,7 @@ jobs:
           if [ "$FOUND" = "true" ]; then
             if [ -z "$open" ]; then
               {
-                echo "@$OWNER — die wöchentliche Messung der Beilage hat am $now etwas gefunden."
+                echo "@$MENTION — die wöchentliche Messung der Beilage hat am $now etwas gefunden."
                 echo
                 echo "**Lauf:** $RUN_URL (die Berichte hängen als Artefakt \`annex-reports\` daran)"
                 echo

@@ -91,7 +91,7 @@ const contact = useContact()
         </p>
         <p>
           <ExternalLink
-            href="https://github.com/mmeindl/begutachtungs-monitor"
+            href="https://github.com/viewyourstate-org/begutachtungs-monitor"
             class="link-muted"
           >Quellcode auf GitHub</ExternalLink>
           ·

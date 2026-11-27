@@ -245,7 +245,7 @@ const LAENDER_WITHOUT_LICENCE: { name: string; label: string; href: string }[] =
       <p>
         Der Quellcode ist unter der
         <ExternalLink
-          href="https://github.com/mmeindl/begutachtungs-monitor"
+          href="https://github.com/viewyourstate-org/begutachtungs-monitor"
           class="link-inline"
         >AGPL-3.0 veröffentlicht</ExternalLink>.
       </p>

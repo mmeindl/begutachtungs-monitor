@@ -296,7 +296,7 @@ const contact = useContact()
         fehlt oder ist schwer zu verstehen: Jeder solche Hinweis hilft, per
         E-Mail oder als
         <ExternalLink
-          href="https://github.com/mmeindl/begutachtungs-monitor/issues"
+          href="https://github.com/viewyourstate-org/begutachtungs-monitor/issues"
           class="link-inline"
         >GitHub-Issue</ExternalLink>.
         Wo der Monitor selbst vergleicht, zählt oder einordnet, steht unter

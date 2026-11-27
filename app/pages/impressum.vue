@@ -184,7 +184,7 @@ const boardLine = boardLineOf(PUBLISHER.board)
         >E-Mail</a>
         oder als
         <ExternalLink
-          href="https://github.com/mmeindl/begutachtungs-monitor/issues"
+          href="https://github.com/viewyourstate-org/begutachtungs-monitor/issues"
           class="link-inline"
         >GitHub-Issue</ExternalLink>.
       </p>
@@ -200,7 +200,7 @@ const boardLine = boardLineOf(PUBLISHER.board)
         <NuxtLink to="/quellen" class="link-inline">Quellen &amp; Lizenzen</NuxtLink>.
         Der Quellcode des Monitors ist unter der
         <ExternalLink
-          href="https://github.com/mmeindl/begutachtungs-monitor"
+          href="https://github.com/viewyourstate-org/begutachtungs-monitor"
           class="link-inline"
         >AGPL-3.0 veröffentlicht</ExternalLink>.
       </p>
